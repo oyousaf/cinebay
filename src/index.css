@@ -1,0 +1,37 @@
+@import url("https://fonts.googleapis.com/css2?family=Concert+One&family=Permanent+Marker&display=swap");
+
+/* Tailwind core utilities */
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@theme inline {
+  --font-sans: "Concert One", ui-sans-serif, system-ui, sans-serif;
+  --font-heading: "Permanent Marker", cursive;
+}
+
+/* App Theme Colors */
+:root {
+  --color-background: #80ffcc; /* neon mint */
+  --color-foreground: #3b006a; /* parker purple */
+}
+
+.dark {
+  --color-background: #3b006a;
+  --color-foreground: #80ffcc;
+}
+
+/* Base body styles */
+body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  transition: background-color 0.3s, color 0.2s;
+}
+
+/* Hide scrollbar for galleries */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
