@@ -1,14 +1,14 @@
 import logo from "/logo.png";
 import { DarkModeToggle } from "./DarkModeToggle";
 import { motion } from "framer-motion";
-import { useState } from "react";
+//import { useState } from "react";
 import SearchBar from "@/components/SearchBar";
 import LatestMovies from "@/components/LatestMovies";
-import DevsPick from "./components/DevsPick";
 import YouShouldWatch from "./components/YouShouldWatch";
+import DevsPick from "./components/DevsPick";
 
 export default function App() {
-  const [selectedMovie, setSelectedMovie] = useState<any>(null);
+  //const [selectedMovie, setSelectedMovie] = useState<any>(null);
 
   return (
     <motion.div
