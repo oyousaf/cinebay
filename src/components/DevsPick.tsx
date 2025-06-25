@@ -1,14 +1,14 @@
 import { useEffect, useState, useRef } from "react";
 import { motion, useAnimation } from "framer-motion";
-import { DEV_PICKS } from "@/lib/constants/devPicks";
-import type { DevPickMovie } from "@/lib/constants/devPicks";
+import { DEV_PICK_TITLES } from "@/constants/devPicks";
+import { fetchMovieByTitle } from "@/lib/tmdb";
+import type { MovieMeta } from "@/types/movie";
 
-import { TMDB_IMAGE } from "@/lib/tmdb";
-
+const TMDB_IMAGE = "https://image.tmdb.org/t/p/w500";
 const SCROLL_SPEED = 20;
 
-const DevsPick = () => {
-  const [movies, setMovies] = useState<DevPickMovie[]>([]);
+export default function DevsPick() {
+  const [movies, setMovies] = useState<MovieMeta[]>([]);
   const galleryRef = useRef<HTMLDivElement>(null);
   const controls = useAnimation();
   const [galleryWidth, setGalleryWidth] = useState(0);
@@ -44,13 +44,33 @@ const DevsPick = () => {
   };
 
   useEffect(() => {
-    setMovies(DEV_PICKS);
+    async function load() {
+      const results: MovieMetadata[] = [];
+
+      for (const title of DEV_PICK_TITLES) {
+        const movie = await fetchMovieByTitle(title);
+        if (movie?.poster_path) {
+          results.push({
+            id: movie.id,
+            title: movie.title,
+            poster_path: movie.poster_path,
+            backdrop_path: movie.backdrop_path,
+            overview: movie.overview,
+            release_date: movie.release_date,
+            vote_average: movie.vote_average,
+          });
+        }
+      }
+
+      setMovies(results);
+    }
+
+    load();
   }, []);
 
   useEffect(() => {
     if (galleryRef.current) {
-      const totalWidth = galleryRef.current.scrollWidth / 2;
-      setGalleryWidth(totalWidth);
+      setGalleryWidth(galleryRef.current.scrollWidth / 2);
     }
   }, [movies]);
 
@@ -59,10 +79,11 @@ const DevsPick = () => {
     running.current = true;
 
     const loop = async () => {
+      const duration = galleryWidth / SCROLL_SPEED;
       while (running.current) {
         await controls.start({
           x: -galleryWidth,
-          transition: { duration: galleryWidth / SCROLL_SPEED, ease: "linear" },
+          transition: { duration, ease: "linear" },
         });
         controls.set({ x: 0 });
       }
@@ -114,11 +135,12 @@ const DevsPick = () => {
           {[...movies, ...movies].map((movie, idx) => (
             <motion.div
               key={`${movie.id}-${idx}`}
-              whileHover={{ scale: 1.05 }}
-              className="transition-transform duration-300 cursor-pointer shrink-0"
-              onClick={() => {
-                if (!isDragging.current) console.log("Selected:", movie.title);
+              whileHover={{
+                scale: 1.07,
+                boxShadow: "0 8px 32px #3b006a33",
               }}
+              className="transition-transform duration-300 cursor-pointer shrink-0"
+              onClick={() => console.log("Selected:", movie)}
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
             >
@@ -134,6 +156,4 @@ const DevsPick = () => {
       </div>
     </motion.div>
   );
-};
-
-export default DevsPick;
+}
