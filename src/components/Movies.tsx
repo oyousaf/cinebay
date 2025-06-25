@@ -5,7 +5,7 @@ import type { Movie } from "@/types/movie";
 
 const SCROLL_SPEED = 20;
 
-export default function LatestMovies({
+export default function Movies({
   onSelect,
 }: {
   onSelect: (movie: Movie) => void;
@@ -107,7 +107,10 @@ export default function LatestMovies({
               movie.poster_path && (
                 <motion.div
                   key={`${movie.id}-${idx}`}
-                  whileHover={{ scale: 1.11 }}
+                  whileHover={{
+                    scale: 1.11,
+                    transition: { type: "spring", stiffness: 300, damping: 20 },
+                  }}
                   className="cursor-pointer shrink-0"
                   onClick={() => !isDragging.current && onSelect(movie)}
                   onTouchStart={handleTouchStart}

@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import SearchBar from "@/components/SearchBar";
-import LatestMovies from "@/components/Movies";
-import YouShouldWatch from "./components/Shows";
+import Movies from "@/components/Movies";
+import Shows from "./components/Shows";
 import DevsPick from "./components/DevsPick";
 import Navbar from "./components/Navbar";
 
@@ -17,11 +17,11 @@ export default function App() {
       <SearchBar onSearch={(q) => alert(`Search for: ${q}`)} />
 
       <main className="w-full max-w-7xl flex-1 mx-auto flex flex-col items-center px-4 sm:px-6 pt-[176px] pb-6">
-        <LatestMovies
+        <Movies
           onSelect={(movie) => alert(`You clicked: ${movie.title}`)}
         />
-        <YouShouldWatch />
-        <DevsPick />
+        <Shows onSelect={(movie) => alert(`You clicked: ${movie.title}`)} />
+        <DevsPick onSelect={(movie) => alert(`You clicked: ${movie.title}`)} />
       </main>
     </motion.div>
   );

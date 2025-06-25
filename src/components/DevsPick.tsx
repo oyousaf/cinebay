@@ -6,7 +6,11 @@ import type { Movie } from "@/types/movie";
 
 const SCROLL_SPEED = 20;
 
-export default function DevsPick() {
+export default function DevsPick({
+  onSelect,
+}: {
+  onSelect: (movie: Movie) => void;
+}) {
   const [movies, setMovies] = useState<Movie[]>([]);
   const galleryRef = useRef<HTMLDivElement>(null);
   const controls = useAnimation();
@@ -114,11 +118,11 @@ export default function DevsPick() {
             <motion.div
               key={`${movie.id}-${idx}`}
               whileHover={{
-                scale: 1.07,
-                boxShadow: "0 8px 32px #3b006a33",
+                scale: 1.11,
+                transition: { type: "spring", stiffness: 300, damping: 20 },
               }}
               className="transition-transform duration-300 cursor-pointer shrink-0"
-              onClick={() => console.log("Selected:", movie)}
+              onClick={() => !isDragging.current && onSelect(movie)}
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
             >

@@ -5,7 +5,11 @@ import type { Movie } from "@/types/movie";
 
 const SCROLL_SPEED = 20;
 
-export default function YouShouldWatch() {
+export default function Shows({
+  onSelect,
+}: {
+  onSelect: (movie: Movie) => void;
+}) {
   const [picks, setPicks] = useState<Movie[]>([]);
   const galleryRef = useRef<HTMLDivElement>(null);
   const controls = useAnimation();
@@ -103,8 +107,12 @@ export default function YouShouldWatch() {
               movie.poster_path && (
                 <motion.div
                   key={`${movie.id}-${idx}`}
-                  whileHover={{ scale: 1.05 }}
+                  whileHover={{
+                    scale: 1.11,
+                    transition: { type: "spring", stiffness: 300, damping: 20 },
+                  }}
                   className="cursor-pointer shrink-0"
+                  onClick={() => !isDragging.current && onSelect(movie)}
                   onTouchStart={handleTouchStart}
                   onTouchMove={handleTouchMove}
                 >
