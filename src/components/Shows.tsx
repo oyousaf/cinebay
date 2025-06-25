@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { motion, useAnimation } from "framer-motion";
-import { fetchNowPlaying, TMDB_IMAGE } from "@/lib/tmdb";
+import { fetchRecommended, TMDB_IMAGE } from "@/lib/tmdb";
 
 type Movie = {
   id: number;
@@ -10,12 +10,8 @@ type Movie = {
 
 const SCROLL_SPEED = 20;
 
-export default function LatestMovies({
-  onSelect,
-}: {
-  onSelect: (movie: Movie) => void;
-}) {
-  const [movies, setMovies] = useState<Movie[]>([]);
+export default function YouShouldWatch() {
+  const [picks, setPicks] = useState<Movie[]>([]);
   const galleryRef = useRef<HTMLDivElement>(null);
   const controls = useAnimation();
   const [galleryWidth, setGalleryWidth] = useState(0);
@@ -39,7 +35,7 @@ export default function LatestMovies({
   };
 
   const resume = () => {
-    if (!galleryWidth || movies.length === 0) return;
+    if (!galleryWidth || picks.length === 0) return;
     running.current = true;
     controls.start({
       x: -galleryWidth,
@@ -48,7 +44,7 @@ export default function LatestMovies({
   };
 
   useEffect(() => {
-    fetchNowPlaying().then(setMovies);
+    fetchRecommended().then(setPicks);
   }, []);
 
   useEffect(() => {
@@ -56,10 +52,10 @@ export default function LatestMovies({
       const totalWidth = galleryRef.current.scrollWidth / 2;
       setGalleryWidth(totalWidth);
     }
-  }, [movies]);
+  }, [picks]);
 
   useEffect(() => {
-    if (!galleryWidth || movies.length === 0) return;
+    if (!galleryWidth || picks.length === 0) return;
     running.current = true;
 
     const loop = async () => {
@@ -78,7 +74,7 @@ export default function LatestMovies({
       running.current = false;
       controls.stop();
     };
-  }, [galleryWidth, movies]);
+  }, [galleryWidth, picks]);
 
   return (
     <motion.div
@@ -86,8 +82,8 @@ export default function LatestMovies({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
     >
-      <h2 className="font-heading text-3xl md:text-5xl font-bold mb-4 text-center tracking-wide">
-        Latest
+      <h2 className="font-heading text-3xl md:text-5xl font-bold mb-8 text-center tracking-wide">
+        Shows
       </h2>
       <div
         className="relative w-full overflow-x-auto scrollbar-hide"
@@ -107,21 +103,20 @@ export default function LatestMovies({
           animate={controls}
           style={{ touchAction: "pan-x" }}
         >
-          {[...movies, ...movies].map(
+          {[...picks, ...picks].map(
             (movie, idx) =>
               movie.poster_path && (
                 <motion.div
                   key={`${movie.id}-${idx}`}
-                  whileHover={{ scale: 1.11 }}
+                  whileHover={{ scale: 1.05 }}
                   className="cursor-pointer shrink-0"
-                  onClick={() => !isDragging.current && onSelect(movie)}
                   onTouchStart={handleTouchStart}
                   onTouchMove={handleTouchMove}
                 >
                   <img
                     src={TMDB_IMAGE + movie.poster_path}
                     alt={movie.title}
-                    className="h-52 w-36 md:h-72 md:w-52 lg:h-80 lg:w-56 object-cover rounded-lg shadow pointer-events-none"
+                    className="h-52 w-36 md:h-72 md:w-52 lg:h-80 lg:w-56 object-cover rounded-xl shadow pointer-events-none"
                     draggable={false}
                   />
                 </motion.div>

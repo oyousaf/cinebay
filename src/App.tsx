@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import SearchBar from "@/components/SearchBar";
-import LatestMovies from "@/components/LatestMovies";
-import YouShouldWatch from "./components/YouShouldWatch";
+import LatestMovies from "@/components/Movies";
+import YouShouldWatch from "./components/Shows";
 import DevsPick from "./components/DevsPick";
 import Navbar from "./components/Navbar";
 
