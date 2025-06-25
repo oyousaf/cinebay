@@ -11,6 +11,7 @@ export default function Navbar() {
         color: "hsl(var(--foreground))",
       }}
     >
+      
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3">
         <div className="grid grid-cols-3 items-center">
           <div />
@@ -18,7 +19,7 @@ export default function Navbar() {
             <motion.img
               src={logo}
               alt="CineBay"
-              className="w-20 h-20 object-contain drop-shadow-[0_0_12px_rgba(192,132,252,0.35)]"
+              className="w-20 h-20 object-contain drop-shadow-[0_0_12px_rgba(192,132,252,0.35)] dark:drop-shadow-[0_0_14px_rgba(255,255,255,0.25)]"
             />
           </div>
           <div className="flex justify-end">

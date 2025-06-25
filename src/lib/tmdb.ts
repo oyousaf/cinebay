@@ -41,10 +41,10 @@ async function fetchDetails(
   return toMovie(data, media_type);
 }
 
-// 🎬 Fetch latest popular movies (rating >= 6.5)
+// 🎬 Fetch latest popular movies
 export async function fetchMovies(): Promise<Movie[]> {
   const res = await fetch(
-    `${TMDB_API}/discover/movie?api_key=${API_KEY}&language=en-GB&sort_by=popularity.desc&vote_average.gte=6.5&include_adult=false`
+    `${TMDB_API}/discover/movie?api_key=${API_KEY}&language=en&sort_by=popularity.desc&vote_average.gte=6.5&include_adult=false`
   );
   const data = await res.json();
   const items = data.results || [];
@@ -54,10 +54,10 @@ export async function fetchMovies(): Promise<Movie[]> {
   ).filter(Boolean) as Movie[];
 }
 
-// 📺 Fetch latest popular TV shows (rating >= 6.5)
+// 📺 Fetch latest popular TV shows
 export async function fetchShows(): Promise<Movie[]> {
   const res = await fetch(
-    `${TMDB_API}/discover/tv?api_key=${API_KEY}&language=en-GB&sort_by=popularity.desc&vote_average.gte=6.5&include_adult=false`
+    `${TMDB_API}/discover/tv?api_key=${API_KEY}&language=en&sort_by=popularity.desc&vote_average.gte=6.5&include_adult=false`
   );
   const data = await res.json();
   const items = data.results || [];
