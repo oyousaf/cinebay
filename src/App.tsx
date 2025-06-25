@@ -16,7 +16,7 @@ export default function App() {
       <Navbar />
       <SearchBar onSearch={(q) => alert(`Search for: ${q}`)} />
 
-      <main className="w-full max-w-7xl flex-1 mx-auto flex flex-col items-center pt-6 pb-6 px-4 sm:px-6">
+      <main className="w-full max-w-7xl flex-1 mx-auto flex flex-col items-center px-4 sm:px-6 pt-[176px] pb-6">
         <LatestMovies
           onSelect={(movie) => alert(`You clicked: ${movie.title}`)}
         />

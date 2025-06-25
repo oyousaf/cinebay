@@ -82,7 +82,7 @@ export default function LatestMovies({
 
   return (
     <motion.div
-      className="w-full overflow-hidden py-12 mt-24 select-none"
+      className="w-full overflow-hidden py-12 select-none"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
     >
