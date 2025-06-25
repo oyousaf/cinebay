@@ -10,7 +10,7 @@ export default function Navbar() {
         color: "hsl(var(--foreground))",
       }}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3">
         <div className="grid grid-cols-3 items-center">
           <div />
           <div className="flex justify-center">
