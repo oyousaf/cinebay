@@ -13,7 +13,7 @@ export default function DevsPick({
 }) {
   const [movies, setMovies] = useState<Movie[]>([]);
   const galleryRef = useRef<HTMLDivElement>(null);
-  const controls = useAnimation();
+  const scrollControls = useAnimation();
   const [galleryWidth, setGalleryWidth] = useState(0);
   const running = useRef(true);
   const isDragging = useRef(false);
@@ -31,18 +31,15 @@ export default function DevsPick({
 
   const pause = () => {
     running.current = false;
-    controls.stop();
+    scrollControls.stop();
   };
 
   const resume = () => {
     if (!galleryWidth || movies.length === 0) return;
     running.current = true;
-    controls.start({
+    scrollControls.start({
       x: -galleryWidth,
-      transition: {
-        duration: galleryWidth / SCROLL_SPEED,
-        ease: "linear",
-      },
+      transition: { duration: galleryWidth / SCROLL_SPEED, ease: "linear" },
     });
   };
 
@@ -63,11 +60,11 @@ export default function DevsPick({
     const loop = async () => {
       const duration = galleryWidth / SCROLL_SPEED;
       while (running.current) {
-        await controls.start({
+        await scrollControls.start({
           x: -galleryWidth,
           transition: { duration, ease: "linear" },
         });
-        controls.set({ x: 0 });
+        scrollControls.set({ x: 0 });
       }
     };
 
@@ -75,7 +72,7 @@ export default function DevsPick({
 
     return () => {
       running.current = false;
-      controls.stop();
+      scrollControls.stop();
     };
   }, [galleryWidth, movies]);
 
@@ -84,7 +81,7 @@ export default function DevsPick({
       className="w-full overflow-hidden py-12 select-none"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      transition={{ delay: 0.6, duration: 0.7, ease: "easeOut" }}
+      transition={{ duration: 0.5, ease: "easeOut" }}
     >
       <h2
         className="font-heading text-3xl md:text-5xl font-bold mb-8 w-full text-center tracking-wide"
@@ -111,7 +108,7 @@ export default function DevsPick({
       >
         <motion.div
           className="flex gap-4 sm:gap-6 w-max px-2"
-          animate={controls}
+          animate={scrollControls}
           style={{ willChange: "transform", touchAction: "pan-x" }}
         >
           {[...movies, ...movies].map((movie, idx) => (
@@ -119,12 +116,13 @@ export default function DevsPick({
               key={`${movie.id}-${idx}`}
               whileHover={{
                 scale: 1.11,
-                transition: { type: "spring", stiffness: 300, damping: 20 },
+                transition: { type: "spring", stiffness: 260, damping: 18 },
               }}
-              className="transition-transform duration-300 cursor-pointer shrink-0"
+              className="shrink-0 cursor-pointer"
               onClick={() => !isDragging.current && onSelect(movie)}
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
+              style={{ willChange: "transform" }}
             >
               <img
                 src={TMDB_IMAGE + movie.poster_path}
