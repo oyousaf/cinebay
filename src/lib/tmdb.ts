@@ -98,7 +98,7 @@ export async function fetchMovies(): Promise<Movie[]> {
     .sort((a, b) => b.vote_average - a.vote_average);
 }
 
-// 📺 Fetch popular, non-excluded TV shows (last 3 years)
+// 📺 Fetch popular, non-excluded TV shows
 export async function fetchShows(): Promise<Movie[]> {
   const recentDate = new Date();
   recentDate.setFullYear(recentDate.getFullYear() - 3);
