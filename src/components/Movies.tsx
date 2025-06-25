@@ -1,12 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { motion, useAnimation } from "framer-motion";
-import { fetchNowPlaying, TMDB_IMAGE } from "@/lib/tmdb";
-
-type Movie = {
-  id: number;
-  title: string;
-  poster_path: string;
-};
+import { fetchMovies, TMDB_IMAGE } from "@/lib/tmdb";
+import type { Movie } from "@/types/movie";
 
 const SCROLL_SPEED = 20;
 
@@ -48,7 +43,7 @@ export default function LatestMovies({
   };
 
   useEffect(() => {
-    fetchNowPlaying().then(setMovies);
+    fetchMovies().then(setMovies);
   }, []);
 
   useEffect(() => {

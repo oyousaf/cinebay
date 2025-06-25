@@ -1,14 +1,13 @@
 import { useEffect, useState, useRef } from "react";
 import { motion, useAnimation } from "framer-motion";
-import { DEV_PICK_TITLES } from "@/constants/devPicks";
-import { fetchMovieByTitle } from "@/lib/tmdb";
-import type { MovieMeta } from "@/types/movie";
+import { DEVS_PICK_TITLES } from "@/lib/constants/devsPick";
+import { fetchDevsPick, TMDB_IMAGE } from "@/lib/tmdb";
+import type { Movie } from "@/types/movie";
 
-const TMDB_IMAGE = "https://image.tmdb.org/t/p/w500";
 const SCROLL_SPEED = 20;
 
 export default function DevsPick() {
-  const [movies, setMovies] = useState<MovieMeta[]>([]);
+  const [movies, setMovies] = useState<Movie[]>([]);
   const galleryRef = useRef<HTMLDivElement>(null);
   const controls = useAnimation();
   const [galleryWidth, setGalleryWidth] = useState(0);
@@ -44,28 +43,7 @@ export default function DevsPick() {
   };
 
   useEffect(() => {
-    async function load() {
-      const results: MovieMetadata[] = [];
-
-      for (const title of DEV_PICK_TITLES) {
-        const movie = await fetchMovieByTitle(title);
-        if (movie?.poster_path) {
-          results.push({
-            id: movie.id,
-            title: movie.title,
-            poster_path: movie.poster_path,
-            backdrop_path: movie.backdrop_path,
-            overview: movie.overview,
-            release_date: movie.release_date,
-            vote_average: movie.vote_average,
-          });
-        }
-      }
-
-      setMovies(results);
-    }
-
-    load();
+    fetchDevsPick(DEVS_PICK_TITLES).then(setMovies);
   }, []);
 
   useEffect(() => {
@@ -111,7 +89,7 @@ export default function DevsPick() {
           textShadow: "0 2px 16px #3b006a33",
         }}
       >
-        Dev's Pick
+        Dev&apos;s Pick
       </h2>
 
       <div

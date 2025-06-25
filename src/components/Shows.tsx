@@ -1,12 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { motion, useAnimation } from "framer-motion";
-import { fetchRecommended, TMDB_IMAGE } from "@/lib/tmdb";
-
-type Movie = {
-  id: number;
-  title: string;
-  poster_path: string;
-};
+import { fetchShows, TMDB_IMAGE } from "@/lib/tmdb";
+import type { Movie } from "@/types/movie";
 
 const SCROLL_SPEED = 20;
 
@@ -44,7 +39,7 @@ export default function YouShouldWatch() {
   };
 
   useEffect(() => {
-    fetchRecommended().then(setPicks);
+    fetchShows().then(setPicks);
   }, []);
 
   useEffect(() => {
