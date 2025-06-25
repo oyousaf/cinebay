@@ -6,6 +6,26 @@ const API_KEY = import.meta.env.VITE_TMDB_KEY;
 
 export { TMDB_IMAGE };
 
+// 🎯 Genre name to ID map for filtering
+const GENRE_MAP: Record<string, number> = {
+  Animation: 16,
+  Family: 10751,
+  Kids: 10762,
+};
+
+// 🚫 Excluded genres for movies and TV
+const EXCLUDED_GENRES_MOVIE = [GENRE_MAP.Animation, GENRE_MAP.Family];
+const EXCLUDED_GENRES_TV = [
+  GENRE_MAP.Animation,
+  GENRE_MAP.Family,
+  GENRE_MAP.Kids,
+];
+
+// 🧠 Helper: Convert genre name to TMDB genre ID
+function genreToId(name: string): number {
+  return GENRE_MAP[name] ?? -1;
+}
+
 // 🧠 Convert TMDB genres array to string[]
 function extractGenres(detail: any): string[] {
   return Array.isArray(detail.genres)
@@ -46,7 +66,7 @@ async function fetchDetails(
   }
 }
 
-// 🎬 Fetch popular movies, sorted by vote_average
+// 🎬 Fetch popular movies, filtering out Animation & Family
 export async function fetchMovies(): Promise<Movie[]> {
   const res = await fetch(
     `${TMDB_API}/discover/movie?api_key=${API_KEY}&language=en&sort_by=popularity.desc&vote_average.gte=6.5&include_adult=false`
@@ -58,12 +78,16 @@ export async function fetchMovies(): Promise<Movie[]> {
     items.map((item: any) => fetchDetails(item.id, "movie"))
   );
 
-  return (detailed.filter(Boolean) as Movie[]).sort(
-    (a, b) => b.vote_average - a.vote_average
-  );
+  return (detailed.filter(Boolean) as Movie[])
+    .filter((movie) =>
+      movie.genres.every(
+        (genre) => !EXCLUDED_GENRES_MOVIE.includes(genreToId(genre))
+      )
+    )
+    .sort((a, b) => b.vote_average - a.vote_average);
 }
 
-// 📺 Fetch popular recent TV shows, sorted by vote_average
+// 📺 Fetch popular recent TV shows, filtering out Animation, Family & Kids
 export async function fetchShows(): Promise<Movie[]> {
   const recentDate = new Date();
   recentDate.setFullYear(recentDate.getFullYear() - 3);
@@ -79,9 +103,13 @@ export async function fetchShows(): Promise<Movie[]> {
     items.map((item: any) => fetchDetails(item.id, "tv"))
   );
 
-  return (detailed.filter(Boolean) as Movie[]).sort(
-    (a, b) => b.vote_average - a.vote_average
-  );
+  return (detailed.filter(Boolean) as Movie[])
+    .filter((show) =>
+      show.genres.every(
+        (genre) => !EXCLUDED_GENRES_TV.includes(genreToId(genre))
+      )
+    )
+    .sort((a, b) => b.vote_average - a.vote_average);
 }
 
 // 🏆 Fetch enriched metadata for curated list, sorted by vote_average
