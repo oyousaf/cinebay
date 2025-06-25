@@ -56,9 +56,14 @@ export async function fetchMovies(): Promise<Movie[]> {
 
 // 📺 Fetch latest popular TV shows
 export async function fetchShows(): Promise<Movie[]> {
+  const recentDate = new Date();
+  recentDate.setFullYear(recentDate.getFullYear() - 3);
+  const fromDate = recentDate.toISOString().split("T")[0];
+
   const res = await fetch(
-    `${TMDB_API}/discover/tv?api_key=${API_KEY}&language=en&sort_by=popularity.desc&vote_average.gte=6.5&include_adult=false`
+    `${TMDB_API}/discover/tv?api_key=${API_KEY}&language=en&sort_by=popularity.desc&vote_average.gte=6.5&include_adult=false&first_air_date.gte=${fromDate}`
   );
+
   const data = await res.json();
   const items = data.results || [];
 
