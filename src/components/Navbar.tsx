@@ -1,5 +1,6 @@
 import { DarkModeToggle } from "../DarkModeToggle";
 import logo from "/logo.png";
+import { motion } from "framer-motion";
 
 export default function Navbar() {
   return (
@@ -14,10 +15,10 @@ export default function Navbar() {
         <div className="grid grid-cols-3 items-center">
           <div />
           <div className="flex justify-center">
-            <img
+            <motion.img
               src={logo}
               alt="CineBay"
-              className="w-20 h-20 object-contain"
+              className="w-20 h-20 object-contain drop-shadow-[0_0_12px_rgba(192,132,252,0.35)]"
             />
           </div>
           <div className="flex justify-end">
