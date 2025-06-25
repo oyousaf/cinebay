@@ -6,34 +6,46 @@ const API_KEY = import.meta.env.VITE_TMDB_KEY;
 
 export { TMDB_IMAGE };
 
-// 🎯 Genre name to ID map for filtering
+// 🎯 Genre name to ID map (shared across movie & TV)
 const GENRE_MAP: Record<string, number> = {
   Animation: 16,
   Family: 10751,
   Kids: 10762,
+  Music: 10402,
+  Romance: 10749,
+  News: 10763,
+  Reality: 10764,
+  Soap: 10766,
+  Talk: 10767,
+  Western: 37,
 };
 
-// 🚫 Excluded genres for movies and TV
-const EXCLUDED_GENRES_MOVIE = [GENRE_MAP.Animation, GENRE_MAP.Family];
-const EXCLUDED_GENRES_TV = [
-  GENRE_MAP.Animation,
-  GENRE_MAP.Family,
-  GENRE_MAP.Kids,
+// 🛑 Genre names to exclude for both movies & TV
+const EXCLUDED_GENRE_NAMES = [
+  "Animation",
+  "Family",
+  "Kids",
+  "Music",
+  "Romance",
+  "News",
+  "Reality",
+  "Soap",
+  "Talk",
+  "Western",
 ];
 
-// 🧠 Helper: Convert genre name to TMDB genre ID
+const EXCLUDED_GENRES = EXCLUDED_GENRE_NAMES.map((name) => GENRE_MAP[name]);
+
 function genreToId(name: string): number {
   return GENRE_MAP[name] ?? -1;
 }
 
-// 🧠 Convert TMDB genres array to string[]
 function extractGenres(detail: any): string[] {
   return Array.isArray(detail.genres)
     ? detail.genres.map((g: any) => g.name)
     : [];
 }
 
-// 🔄 Map TMDB item to Movie type
 function toMovie(detail: any, media_type: "movie" | "tv"): Movie {
   return {
     id: detail.id,
@@ -48,7 +60,6 @@ function toMovie(detail: any, media_type: "movie" | "tv"): Movie {
   };
 }
 
-// 🔍 Fetch full TMDB details for a single movie/show
 async function fetchDetails(
   id: number,
   media_type: "movie" | "tv"
@@ -66,7 +77,11 @@ async function fetchDetails(
   }
 }
 
-// 🎬 Fetch popular movies, filtering out Animation & Family
+function isAllowedContent(genres: string[]): boolean {
+  return genres.every((g) => !EXCLUDED_GENRES.includes(genreToId(g)));
+}
+
+// 🎬 Fetch popular, non-excluded movies
 export async function fetchMovies(): Promise<Movie[]> {
   const res = await fetch(
     `${TMDB_API}/discover/movie?api_key=${API_KEY}&language=en&sort_by=popularity.desc&vote_average.gte=6.5&include_adult=false`
@@ -79,15 +94,11 @@ export async function fetchMovies(): Promise<Movie[]> {
   );
 
   return (detailed.filter(Boolean) as Movie[])
-    .filter((movie) =>
-      movie.genres.every(
-        (genre) => !EXCLUDED_GENRES_MOVIE.includes(genreToId(genre))
-      )
-    )
+    .filter((movie) => isAllowedContent(movie.genres))
     .sort((a, b) => b.vote_average - a.vote_average);
 }
 
-// 📺 Fetch popular recent TV shows, filtering out Animation, Family & Kids
+// 📺 Fetch popular, non-excluded TV shows (last 3 years)
 export async function fetchShows(): Promise<Movie[]> {
   const recentDate = new Date();
   recentDate.setFullYear(recentDate.getFullYear() - 3);
@@ -104,15 +115,11 @@ export async function fetchShows(): Promise<Movie[]> {
   );
 
   return (detailed.filter(Boolean) as Movie[])
-    .filter((show) =>
-      show.genres.every(
-        (genre) => !EXCLUDED_GENRES_TV.includes(genreToId(genre))
-      )
-    )
+    .filter((show) => isAllowedContent(show.genres))
     .sort((a, b) => b.vote_average - a.vote_average);
 }
 
-// 🏆 Fetch enriched metadata for curated list, sorted by vote_average
+// 🏆 Fetch enriched metadata for curated title list
 export async function fetchDevsPick(titles: string[]): Promise<Movie[]> {
   const enriched = await Promise.all(
     titles.map(async (title) => {
