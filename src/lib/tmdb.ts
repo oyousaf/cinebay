@@ -6,14 +6,14 @@ const API_KEY = import.meta.env.VITE_TMDB_KEY;
 
 export { TMDB_IMAGE };
 
-// Utility: convert TMDB genres to string array
+// 🧠 Convert TMDB genres array to string[]
 function extractGenres(detail: any): string[] {
   return Array.isArray(detail.genres)
     ? detail.genres.map((g: any) => g.name)
     : [];
 }
 
-// Utility: convert TMDB raw data to `Movie` format
+// 🔄 Map TMDB item to Movie type
 function toMovie(detail: any, media_type: "movie" | "tv"): Movie {
   return {
     id: detail.id,
@@ -28,20 +28,25 @@ function toMovie(detail: any, media_type: "movie" | "tv"): Movie {
   };
 }
 
-// Generic fetch for full TMDB details (movie or tv)
+// 🔍 Fetch full TMDB details for a single movie/show
 async function fetchDetails(
   id: number,
   media_type: "movie" | "tv"
 ): Promise<Movie | null> {
-  const res = await fetch(
-    `${TMDB_API}/${media_type}/${id}?api_key=${API_KEY}&language=en-GB`
-  );
-  if (!res.ok) return null;
-  const data = await res.json();
-  return toMovie(data, media_type);
+  try {
+    const res = await fetch(
+      `${TMDB_API}/${media_type}/${id}?api_key=${API_KEY}&language=en-GB`
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    return toMovie(data, media_type);
+  } catch (err) {
+    console.error("Failed to fetch details:", err);
+    return null;
+  }
 }
 
-// 🎬 Fetch latest popular movies
+// 🎬 Fetch popular movies, sorted by vote_average
 export async function fetchMovies(): Promise<Movie[]> {
   const res = await fetch(
     `${TMDB_API}/discover/movie?api_key=${API_KEY}&language=en&sort_by=popularity.desc&vote_average.gte=6.5&include_adult=false`
@@ -49,12 +54,16 @@ export async function fetchMovies(): Promise<Movie[]> {
   const data = await res.json();
   const items = data.results || [];
 
-  return (
-    await Promise.all(items.map((item: any) => fetchDetails(item.id, "movie")))
-  ).filter(Boolean) as Movie[];
+  const detailed = await Promise.all(
+    items.map((item: any) => fetchDetails(item.id, "movie"))
+  );
+
+  return (detailed.filter(Boolean) as Movie[]).sort(
+    (a, b) => b.vote_average - a.vote_average
+  );
 }
 
-// 📺 Fetch latest popular TV shows
+// 📺 Fetch popular recent TV shows, sorted by vote_average
 export async function fetchShows(): Promise<Movie[]> {
   const recentDate = new Date();
   recentDate.setFullYear(recentDate.getFullYear() - 3);
@@ -63,24 +72,27 @@ export async function fetchShows(): Promise<Movie[]> {
   const res = await fetch(
     `${TMDB_API}/discover/tv?api_key=${API_KEY}&language=en&sort_by=popularity.desc&vote_average.gte=6.5&include_adult=false&first_air_date.gte=${fromDate}`
   );
-
   const data = await res.json();
   const items = data.results || [];
 
-  return (
-    await Promise.all(items.map((item: any) => fetchDetails(item.id, "tv")))
-  ).filter(Boolean) as Movie[];
+  const detailed = await Promise.all(
+    items.map((item: any) => fetchDetails(item.id, "tv"))
+  );
+
+  return (detailed.filter(Boolean) as Movie[]).sort(
+    (a, b) => b.vote_average - a.vote_average
+  );
 }
 
-// 🎯 Fetch enriched TMDB data for curated movie titles
+// 🏆 Fetch enriched metadata for curated list, sorted by vote_average
 export async function fetchDevsPick(titles: string[]): Promise<Movie[]> {
-  return (
-    await Promise.all(
-      titles.map(async (title) => {
-        const searchUrl = `${TMDB_API}/search/movie?api_key=${API_KEY}&query=${encodeURIComponent(
-          title
-        )}&language=en-GB`;
+  const enriched = await Promise.all(
+    titles.map(async (title) => {
+      const searchUrl = `${TMDB_API}/search/movie?api_key=${API_KEY}&query=${encodeURIComponent(
+        title
+      )}&language=en-GB`;
 
+      try {
         const res = await fetch(searchUrl);
         const data = await res.json();
 
@@ -94,7 +106,14 @@ export async function fetchDevsPick(titles: string[]): Promise<Movie[]> {
         }
 
         return await fetchDetails(bestMatch.id, "movie");
-      })
-    )
-  ).filter(Boolean) as Movie[];
+      } catch (err) {
+        console.error(`Error fetching "${title}"`, err);
+        return null;
+      }
+    })
+  );
+
+  return (enriched.filter(Boolean) as Movie[]).sort(
+    (a, b) => b.vote_average - a.vote_average
+  );
 }
