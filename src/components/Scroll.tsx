@@ -104,7 +104,7 @@ export default function Scroll({
             <motion.div
               key={`${movie.id}-${idx}`}
               whileHover={{
-                scale: 1.11,
+                scale: 1.07,
                 transition: { type: "spring", stiffness: 300, damping: 20 },
               }}
               className="cursor-pointer shrink-0"
