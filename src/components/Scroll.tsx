@@ -114,7 +114,11 @@ export default function Scroll({
             >
               <div className="relative">
                 <img
-                  src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
+                  src={
+                    movie.poster_path
+                      ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
+                      : "/fallback.png"
+                  }
                   alt={movie.title}
                   className="h-52 w-36 md:h-72 md:w-52 lg:h-80 lg:w-56 object-cover rounded-lg shadow pointer-events-none"
                   draggable={false}
