@@ -4,7 +4,7 @@ import logo from "/logo.png";
 export default function Navbar() {
   return (
     <header
-      className="fixed top-0 left-0 w-full z-50"
+      className="fixed top-0 left-0 w-full z-50 shadow-md shadow-violet-300/20 backdrop-blur-sm"
       style={{
         backgroundColor: "hsl(var(--background))",
         color: "hsl(var(--foreground))",
