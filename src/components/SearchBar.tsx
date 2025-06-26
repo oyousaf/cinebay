@@ -9,7 +9,7 @@ type TMDBResult = {
   name?: string;
   media_type: "movie" | "tv" | "person";
   poster_path?: string;
-  profile_path?: string; // used for person
+  profile_path?: string;
 };
 
 export default function SearchBar({
@@ -56,9 +56,7 @@ export default function SearchBar({
       setError(false);
       try {
         const res = await fetch(
-          `https://api.themoviedb.org/3/search/multi?query=${encodeURIComponent(
-            searchTerm
-          )}&api_key=${import.meta.env.VITE_TMDB_KEY}&language=en-GB`
+          `/api/tmdb/search?query=${encodeURIComponent(searchTerm)}`
         );
         const data = await res.json();
         setResults(data.results?.slice(0, 10) || []);
@@ -76,7 +74,6 @@ export default function SearchBar({
     debouncedSearch(query);
   }, [query]);
 
-  // Escape and click-outside handling
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (
@@ -166,7 +163,6 @@ export default function SearchBar({
         </motion.button>
       </motion.form>
 
-      {/* Suggestions Dropdown */}
       {dropdownOpen && (
         <div
           ref={resultsRef}
@@ -209,7 +205,6 @@ export default function SearchBar({
                     imagePath ? "" : "opacity-70 blur-sm"
                   }`}
                 />
-
                 <div className="flex flex-col">
                   <span className="font-medium text-sm">
                     {item.title || item.name}

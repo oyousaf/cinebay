@@ -1,10 +1,6 @@
 import type { Movie } from "@/types/movie";
 
-const TMDB_API = "https://api.themoviedb.org/3";
-const TMDB_IMAGE = "https://image.tmdb.org/t/p/w500";
-const API_KEY = import.meta.env.VITE_TMDB_KEY;
-
-export { TMDB_IMAGE };
+export const TMDB_IMAGE = "https://image.tmdb.org/t/p/w500";
 
 // 🎯 Genre name to ID map (shared across movie & TV)
 const GENRE_MAP: Record<string, number> = {
@@ -20,7 +16,6 @@ const GENRE_MAP: Record<string, number> = {
   Western: 37,
 };
 
-// 🛑 Genre names to exclude for both movies & TV
 const EXCLUDED_GENRE_NAMES = [
   "Animation",
   "Family",
@@ -33,7 +28,6 @@ const EXCLUDED_GENRE_NAMES = [
   "Talk",
   "Western",
 ];
-
 const EXCLUDED_GENRES = EXCLUDED_GENRE_NAMES.map((name) => GENRE_MAP[name]);
 
 function genreToId(name: string): number {
@@ -51,48 +45,52 @@ function toMovie(detail: any, media_type: "movie" | "tv" | "person"): Movie {
     id: detail.id,
     title: detail.title || detail.name || "",
     overview: detail.overview,
-    poster_path: detail.poster_path,
-    backdrop_path: detail.backdrop_path,
-    profile_path: detail.profile_path,
+    poster_path: detail.poster_path || "",
+    backdrop_path: detail.backdrop_path || "",
+    profile_path: detail.profile_path || "",
     release_date: detail.release_date || detail.first_air_date || "",
-    vote_average: detail.vote_average,
+    vote_average: detail.vote_average ?? 0,
     media_type,
     genres: extractGenres(detail),
     runtime: detail.runtime ?? null,
+    known_for: media_type === "person" ? detail.known_for ?? [] : undefined,
   };
-}
-
-async function fetchDetails(
-  id: number,
-  media_type: "movie" | "tv"
-): Promise<Movie | null> {
-  try {
-    const res = await fetch(
-      `${TMDB_API}/${media_type}/${id}?api_key=${API_KEY}&language=en-GB`
-    );
-    if (!res.ok) return null;
-    const data = await res.json();
-    return toMovie(data, media_type);
-  } catch (err) {
-    console.error("Failed to fetch details:", err);
-    return null;
-  }
 }
 
 function isAllowedContent(genres: string[]): boolean {
   return genres.every((g) => !EXCLUDED_GENRES.includes(genreToId(g)));
 }
 
-// 🎬 Fetch popular, non-excluded movies
+// 🎯 TMDB Proxy fetch wrapper
+async function fetchFromProxy(endpoint: string): Promise<any | null> {
+  try {
+    const res = await fetch(`/api/tmdb${endpoint}`);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (err) {
+    console.error(`Proxy fetch failed: ${endpoint}`, err);
+    return null;
+  }
+}
+
+// 🧠 Fetch detailed movie/show info
+export async function fetchDetails(
+  id: number,
+  media_type: "movie" | "tv" | "person"
+): Promise<Movie | null> {
+  const data = await fetchFromProxy(`/${media_type}/${id}?language=en-GB`);
+  return data ? toMovie(data, media_type) : null;
+}
+
+// 🎬 Fetch popular, filtered movies
 export async function fetchMovies(): Promise<Movie[]> {
-  const res = await fetch(
-    `${TMDB_API}/discover/movie?api_key=${API_KEY}&language=en&sort_by=popularity.desc&vote_average.gte=6.5&include_adult=false`
+  const data = await fetchFromProxy(
+    `/discover/movie?language=en&sort_by=popularity.desc&vote_average.gte=6.5&include_adult=false`
   );
-  const data = await res.json();
-  const items = data.results || [];
+  if (!data?.results) return [];
 
   const detailed = await Promise.all(
-    items.map((item: any) => fetchDetails(item.id, "movie"))
+    data.results.map((item: any) => fetchDetails(item.id, "movie"))
   );
 
   return (detailed.filter(Boolean) as Movie[])
@@ -100,20 +98,19 @@ export async function fetchMovies(): Promise<Movie[]> {
     .sort((a, b) => b.vote_average - a.vote_average);
 }
 
-// 📺 Fetch popular, non-excluded TV shows
+// 📺 Fetch popular, filtered shows
 export async function fetchShows(): Promise<Movie[]> {
   const recentDate = new Date();
   recentDate.setFullYear(recentDate.getFullYear() - 3);
   const fromDate = recentDate.toISOString().split("T")[0];
 
-  const res = await fetch(
-    `${TMDB_API}/discover/tv?api_key=${API_KEY}&language=en&sort_by=popularity.desc&vote_average.gte=6.5&include_adult=false&first_air_date.gte=${fromDate}`
+  const data = await fetchFromProxy(
+    `/discover/tv?language=en&sort_by=popularity.desc&vote_average.gte=6.5&include_adult=false&first_air_date.gte=${fromDate}`
   );
-  const data = await res.json();
-  const items = data.results || [];
+  if (!data?.results) return [];
 
   const detailed = await Promise.all(
-    items.map((item: any) => fetchDetails(item.id, "tv"))
+    data.results.map((item: any) => fetchDetails(item.id, "tv"))
   );
 
   return (detailed.filter(Boolean) as Movie[])
@@ -121,32 +118,24 @@ export async function fetchShows(): Promise<Movie[]> {
     .sort((a, b) => b.vote_average - a.vote_average);
 }
 
-// 🏆 Fetch enriched metadata for curated title list
+// 🏆 Enrich curated list with best-match metadata
 export async function fetchDevsPick(titles: string[]): Promise<Movie[]> {
   const enriched = await Promise.all(
     titles.map(async (title) => {
-      const searchUrl = `${TMDB_API}/search/movie?api_key=${API_KEY}&query=${encodeURIComponent(
-        title
-      )}&language=en-GB`;
+      const data = await fetchFromProxy(
+        `/search/movie?query=${encodeURIComponent(title)}&language=en-GB`
+      );
 
-      try {
-        const res = await fetch(searchUrl);
-        const data = await res.json();
+      const bestMatch = (data?.results || []).sort(
+        (a: any, b: any) => (b.popularity ?? 0) - (a.popularity ?? 0)
+      )[0];
 
-        const bestMatch = (data.results || []).sort(
-          (a: any, b: any) => (b.popularity ?? 0) - (a.popularity ?? 0)
-        )[0];
-
-        if (!bestMatch) {
-          console.warn(`❌ Not found on TMDB: ${title}`);
-          return null;
-        }
-
-        return await fetchDetails(bestMatch.id, "movie");
-      } catch (err) {
-        console.error(`Error fetching "${title}"`, err);
+      if (!bestMatch) {
+        console.warn(`❌ Not found on TMDB: ${title}`);
         return null;
       }
+
+      return await fetchDetails(bestMatch.id, "movie");
     })
   );
 
