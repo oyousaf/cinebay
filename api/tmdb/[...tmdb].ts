@@ -9,28 +9,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: "Missing TMDB API key" });
   }
 
-  const pathSegments = req.query.tmdb;
-  const tmdbPath = Array.isArray(pathSegments)
-    ? pathSegments.join("/")
-    : pathSegments;
+  const tmdbPath = Array.isArray(req.query.tmdb)
+    ? req.query.tmdb.join("/")
+    : req.query.tmdb;
 
   if (!tmdbPath) {
     return res.status(400).json({ error: "Missing TMDB path" });
   }
 
   const query = req.url?.split("?")[1] ?? "";
-  const apiUrl = `${TMDB_API}/${tmdbPath}?${query}${
-    query ? "&" : ""
-  }api_key=${API_KEY}`;
+  const separator = query ? "&" : "";
+  const url = `${TMDB_API}/${tmdbPath}?${query}${separator}api_key=${API_KEY}`;
 
   try {
-    const { data } = await axios.get(apiUrl);
+    const { data } = await axios.get(url);
     res.status(200).json(data);
-  } catch (err: any) {
-    console.error("❌ TMDB proxy error:", err.message);
-    res.status(err.response?.status || 500).json({
-      error: err.message,
-      detail: err.response?.data,
-    });
+  } catch (error: any) {
+    console.error("❌ TMDB Proxy Error:", error.message);
+    res
+      .status(error.response?.status || 500)
+      .json({ error: error.message, detail: error.response?.data });
   }
 }
