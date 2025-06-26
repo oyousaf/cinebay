@@ -9,6 +9,7 @@ type TMDBResult = {
   name?: string;
   media_type: "movie" | "tv" | "person";
   poster_path?: string;
+  profile_path?: string; // used for person
 };
 
 export default function SearchBar({
@@ -27,7 +28,7 @@ export default function SearchBar({
   const lastScroll = useRef(0);
   const resultsRef = useRef<HTMLDivElement>(null);
 
-  // 👇 Hide bar on scroll
+  // Scroll hide
   useEffect(() => {
     const handleScroll = () => {
       const current = window.scrollY;
@@ -42,7 +43,7 @@ export default function SearchBar({
     return () => window.removeEventListener("scroll", handleScroll);
   }, [barControls]);
 
-  // 👇 Debounced search
+  // Debounced search
   const debouncedSearch = useRef(
     debounce(async (searchTerm: string) => {
       if (!searchTerm) {
@@ -60,7 +61,7 @@ export default function SearchBar({
           )}&api_key=${import.meta.env.VITE_TMDB_KEY}&language=en-GB`
         );
         const data = await res.json();
-        setResults(data.results?.slice(0, 6) || []);
+        setResults(data.results?.slice(0, 10) || []);
         setDropdownOpen(true);
       } catch {
         setError(true);
@@ -75,7 +76,7 @@ export default function SearchBar({
     debouncedSearch(query);
   }, [query]);
 
-  // 👇 ESC and outside click closes dropdown
+  // Escape and click-outside handling
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (
@@ -165,11 +166,11 @@ export default function SearchBar({
         </motion.button>
       </motion.form>
 
-      {/* 🔽 Dropdown */}
+      {/* Suggestions Dropdown */}
       {dropdownOpen && (
         <div
           ref={resultsRef}
-          className="w-full max-w-md mt-2 rounded-lg shadow-lg bg-zinc-900 text-white overflow-hidden"
+          className="w-full max-w-md mt-2 rounded-lg shadow-lg overflow-hidden bg-[hsl(var(--background))] text-[hsl(var(--foreground))]"
         >
           {loading && <div className="p-3 text-sm text-center">Loading...</div>}
           {error && (
@@ -180,36 +181,46 @@ export default function SearchBar({
           {!loading && results.length === 0 && query.trim() && (
             <div className="p-3 text-sm text-center">No results found.</div>
           )}
-          {results.map((item) => (
-            <div
-              key={`${item.media_type}-${item.id}`}
-              className="flex items-center gap-3 px-4 py-2 hover:bg-zinc-800 cursor-pointer"
-              onClick={() => {
-                onSearch(item.title || item.name || "");
-                setQuery("");
-                setResults([]);
-                setDropdownOpen(false);
-              }}
-            >
-              <img
-                src={
-                  item.poster_path
-                    ? `https://image.tmdb.org/t/p/w92${item.poster_path}`
-                    : "/fallback.jpg"
-                }
-                alt={item.title || item.name}
-                className="w-10 h-14 object-cover rounded-md"
-              />
-              <div className="flex flex-col">
-                <span className="font-medium text-sm">
-                  {item.title || item.name}
-                </span>
-                <span className="text-xs text-zinc-400 capitalize">
-                  {item.media_type}
-                </span>
+          {results.map((item) => {
+            const imagePath =
+              item.media_type === "person"
+                ? item.profile_path
+                : item.poster_path;
+
+            return (
+              <div
+                key={`${item.media_type}-${item.id}`}
+                className="flex items-center gap-3 px-4 py-2 hover:bg-[hsl(var(--foreground))]/10 cursor-pointer"
+                onClick={() => {
+                  onSearch(item.title || item.name || "");
+                  setQuery("");
+                  setResults([]);
+                  setDropdownOpen(false);
+                }}
+              >
+                <img
+                  src={
+                    imagePath
+                      ? `https://image.tmdb.org/t/p/w92${imagePath}`
+                      : "/fallback.jpg"
+                  }
+                  alt={item.title || item.name}
+                  className={`w-10 h-14 object-cover rounded-md ${
+                    imagePath ? "" : "opacity-70 blur-sm"
+                  }`}
+                />
+
+                <div className="flex flex-col">
+                  <span className="font-medium text-sm">
+                    {item.title || item.name}
+                  </span>
+                  <span className="text-xs text-zinc-400 capitalize">
+                    {item.media_type}
+                  </span>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </motion.div>
