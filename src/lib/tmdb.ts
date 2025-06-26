@@ -1,8 +1,22 @@
 import type { Movie } from "@/types/movie";
+import axios from "axios";
 
 export const TMDB_IMAGE = "https://image.tmdb.org/t/p/w500";
 
-// 🎯 Genre name to ID map (shared across movie & TV)
+// 🎯 Genres to exclude
+const EXCLUDED_GENRE_IDS = new Set([
+  16, // Animation
+  10751, // Family
+  10762, // Kids
+  10402, // Music
+  10749, // Romance
+  10763, // News
+  10764, // Reality
+  10766, // Soap
+  10767, // Talk
+  37, // Western
+]);
+
 const GENRE_MAP: Record<string, number> = {
   Animation: 16,
   Family: 10751,
@@ -16,23 +30,7 @@ const GENRE_MAP: Record<string, number> = {
   Western: 37,
 };
 
-const EXCLUDED_GENRE_NAMES = [
-  "Animation",
-  "Family",
-  "Kids",
-  "Music",
-  "Romance",
-  "News",
-  "Reality",
-  "Soap",
-  "Talk",
-  "Western",
-];
-const EXCLUDED_GENRES = EXCLUDED_GENRE_NAMES.map((name) => GENRE_MAP[name]);
-
-function genreToId(name: string): number {
-  return GENRE_MAP[name] ?? -1;
-}
+const genreToId = (name: string): number => GENRE_MAP[name] ?? -1;
 
 function extractGenres(detail: any): string[] {
   return Array.isArray(detail.genres)
@@ -40,11 +38,15 @@ function extractGenres(detail: any): string[] {
     : [];
 }
 
+function isAllowedContent(genres: string[]): boolean {
+  return !genres.some((g) => EXCLUDED_GENRE_IDS.has(genreToId(g)));
+}
+
 function toMovie(detail: any, media_type: "movie" | "tv" | "person"): Movie {
   return {
     id: detail.id,
-    title: detail.title || detail.name || "",
-    overview: detail.overview,
+    title: detail.title || detail.name || "Untitled",
+    overview: detail.overview || "",
     poster_path: detail.poster_path || "",
     backdrop_path: detail.backdrop_path || "",
     profile_path: detail.profile_path || "",
@@ -53,27 +55,25 @@ function toMovie(detail: any, media_type: "movie" | "tv" | "person"): Movie {
     media_type,
     genres: extractGenres(detail),
     runtime: detail.runtime ?? null,
-    known_for: media_type === "person" ? detail.known_for ?? [] : undefined,
+    known_for:
+      media_type === "person" && Array.isArray(detail.known_for)
+        ? detail.known_for
+        : undefined,
   };
 }
 
-function isAllowedContent(genres: string[]): boolean {
-  return genres.every((g) => !EXCLUDED_GENRES.includes(genreToId(g)));
-}
-
-// 🎯 TMDB Proxy fetch wrapper
-async function fetchFromProxy(endpoint: string): Promise<any | null> {
+// 🔌 Axios TMDB proxy
+export async function fetchFromProxy(endpoint: string) {
   try {
-    const res = await fetch(`/api/tmdb${endpoint}`);
-    if (!res.ok) return null;
-    return await res.json();
+    const { data } = await axios.get(`/api/tmdb${endpoint}`);
+    return data;
   } catch (err) {
-    console.error(`Proxy fetch failed: ${endpoint}`, err);
+    console.error("❌ Proxy fetch failed:", endpoint, err);
     return null;
   }
 }
 
-// 🧠 Fetch detailed movie/show info
+// 📄 Detailed info
 export async function fetchDetails(
   id: number,
   media_type: "movie" | "tv" | "person"
@@ -82,7 +82,7 @@ export async function fetchDetails(
   return data ? toMovie(data, media_type) : null;
 }
 
-// 🎬 Fetch popular, filtered movies
+// 🎬 Popular Movies
 export async function fetchMovies(): Promise<Movie[]> {
   const data = await fetchFromProxy(
     `/discover/movie?language=en&sort_by=popularity.desc&vote_average.gte=6.5&include_adult=false`
@@ -93,16 +93,16 @@ export async function fetchMovies(): Promise<Movie[]> {
     data.results.map((item: any) => fetchDetails(item.id, "movie"))
   );
 
-  return (detailed.filter(Boolean) as Movie[])
-    .filter((movie) => isAllowedContent(movie.genres))
-    .sort((a, b) => b.vote_average - a.vote_average);
+  return (detailed.filter(Boolean) as Movie[]).filter((m) =>
+    isAllowedContent(m.genres)
+  );
 }
 
-// 📺 Fetch popular, filtered shows
+// 📺 Popular Shows
 export async function fetchShows(): Promise<Movie[]> {
-  const recentDate = new Date();
-  recentDate.setFullYear(recentDate.getFullYear() - 3);
-  const fromDate = recentDate.toISOString().split("T")[0];
+  const date = new Date();
+  date.setFullYear(date.getFullYear() - 3);
+  const fromDate = date.toISOString().split("T")[0];
 
   const data = await fetchFromProxy(
     `/discover/tv?language=en&sort_by=popularity.desc&vote_average.gte=6.5&include_adult=false&first_air_date.gte=${fromDate}`
@@ -113,25 +113,27 @@ export async function fetchShows(): Promise<Movie[]> {
     data.results.map((item: any) => fetchDetails(item.id, "tv"))
   );
 
-  return (detailed.filter(Boolean) as Movie[])
-    .filter((show) => isAllowedContent(show.genres))
-    .sort((a, b) => b.vote_average - a.vote_average);
+  return (detailed.filter(Boolean) as Movie[]).filter((s) =>
+    isAllowedContent(s.genres)
+  );
 }
 
-// 🏆 Enrich curated list with best-match metadata
+// 🧠 Curated Picks by title
 export async function fetchDevsPick(titles: string[]): Promise<Movie[]> {
   const enriched = await Promise.all(
     titles.map(async (title) => {
       const data = await fetchFromProxy(
         `/search/movie?query=${encodeURIComponent(title)}&language=en-GB`
       );
+      console.log(`🔎 Searching TMDB for: "${title}"`, data?.results);
+
 
       const bestMatch = (data?.results || []).sort(
         (a: any, b: any) => (b.popularity ?? 0) - (a.popularity ?? 0)
       )[0];
 
       if (!bestMatch) {
-        console.warn(`❌ Not found on TMDB: ${title}`);
+        console.warn(`⚠️ Not found on TMDB: ${title}`);
         return null;
       }
 

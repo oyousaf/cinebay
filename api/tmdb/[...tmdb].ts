@@ -1,34 +1,23 @@
-export const config = {
-  runtime: "edge", 
-};
+import type { VercelRequest, VercelResponse } from "@vercel/node";
+import axios from "axios";
 
-export default async function handler(req: Request): Promise<Response> {
-  const { pathname, search } = new URL(req.url);
-  const tmdbPath = pathname.replace(/^\/api\/tmdb/, ""); 
+const TMDB_API = "https://api.themoviedb.org/3";
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
   const TMDB_KEY = process.env.TMDB_KEY;
+  if (!TMDB_KEY) return res.status(500).json({ error: "Missing TMDB API key" });
 
-  if (!TMDB_KEY) {
-    return new Response(JSON.stringify({ error: "Missing TMDB_KEY" }), {
-      status: 500,
-    });
-  }
-
-  const tmdbUrl = `https://api.themoviedb.org/3${tmdbPath}${search}`;
-  const separator = tmdbUrl.includes("?") ? "&" : "?";
-  const finalUrl = `${tmdbUrl}${separator}api_key=${TMDB_KEY}`;
+  const tmdbPath = req.url?.replace(/^\/api\/tmdb\//, "").split("?")[0] || "";
+  const query = req.url?.split("?")[1] || "";
+  const url = `${TMDB_API}/${tmdbPath}?${query}${
+    query ? "&" : ""
+  }api_key=${TMDB_KEY}`;
 
   try {
-    const res = await fetch(finalUrl, {
-      headers: { "Content-Type": "application/json" },
-    });
-    const data = await res.json();
-    return new Response(JSON.stringify(data), {
-      status: res.status,
-      headers: { "Content-Type": "application/json" },
-    });
-  } catch (error) {
-    return new Response(JSON.stringify({ error: "Fetch failed" }), {
-      status: 500,
-    });
+    const { data } = await axios.get(url);
+    res.status(200).json(data);
+  } catch (err: any) {
+    console.error("❌ TMDB Proxy Error:", err.message);
+    res.status(err.response?.status || 500).json({ error: err.message });
   }
 }
