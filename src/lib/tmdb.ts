@@ -46,12 +46,14 @@ function extractGenres(detail: any): string[] {
     : [];
 }
 
-function toMovie(detail: any, media_type: "movie" | "tv"): Movie {
+function toMovie(detail: any, media_type: "movie" | "tv" | "person"): Movie {
   return {
     id: detail.id,
     title: detail.title || detail.name || "",
     overview: detail.overview,
     poster_path: detail.poster_path,
+    backdrop_path: detail.backdrop_path,
+    profile_path: detail.profile_path,
     release_date: detail.release_date || detail.first_air_date || "",
     vote_average: detail.vote_average,
     media_type,
