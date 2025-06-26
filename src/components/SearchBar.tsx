@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { motion, useAnimation } from "framer-motion";
 import { Search } from "lucide-react";
 import debounce from "lodash.debounce";
+import { fetchDetails } from "@/lib/tmdb";
+import type { Movie } from "@/types/movie";
 
 type TMDBResult = {
   id: number;
@@ -13,9 +15,9 @@ type TMDBResult = {
 };
 
 export default function SearchBar({
-  onSearch,
+  onSelect,
 }: {
-  onSearch: (q: string) => void;
+  onSelect: (movie: Movie) => void;
 }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<TMDBResult[]>([]);
@@ -28,7 +30,7 @@ export default function SearchBar({
   const lastScroll = useRef(0);
   const resultsRef = useRef<HTMLDivElement>(null);
 
-  // Scroll hide
+  // Scroll-hide search bar
   useEffect(() => {
     const handleScroll = () => {
       const current = window.scrollY;
@@ -56,7 +58,7 @@ export default function SearchBar({
       setError(false);
       try {
         const res = await fetch(
-          `/api/tmdb/search?query=${encodeURIComponent(searchTerm)}`
+          `/api/tmdb/search/multi?query=${encodeURIComponent(searchTerm)}`
         );
         const data = await res.json();
         setResults(data.results?.slice(0, 10) || []);
@@ -74,6 +76,7 @@ export default function SearchBar({
     debouncedSearch(query);
   }, [query]);
 
+  // Close on click outside or escape
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (
@@ -111,11 +114,7 @@ export default function SearchBar({
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ delay: 0.3, duration: 0.5, ease: "easeOut" }}
-        onSubmit={(e) => {
-          e.preventDefault();
-          onSearch(query.trim());
-          setDropdownOpen(false);
-        }}
+        onSubmit={(e) => e.preventDefault()}
         autoComplete="off"
         className="w-full max-w-md flex items-center gap-2 rounded-xl shadow-md border"
         style={{
@@ -187,8 +186,9 @@ export default function SearchBar({
               <div
                 key={`${item.media_type}-${item.id}`}
                 className="flex items-center gap-3 px-4 py-2 hover:bg-[hsl(var(--foreground))]/10 cursor-pointer"
-                onClick={() => {
-                  onSearch(item.title || item.name || "");
+                onClick={async () => {
+                  const full = await fetchDetails(item.id, item.media_type);
+                  if (full) onSelect(full);
                   setQuery("");
                   setResults([]);
                   setDropdownOpen(false);

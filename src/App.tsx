@@ -1,16 +1,16 @@
+// App.tsx
 import { useState } from "react";
 import { motion } from "framer-motion";
 import SearchBar from "@/components/SearchBar";
 import Movies from "@/components/Movies";
-import Shows from "./components/Shows";
-import DevsPick from "./components/DevsPick";
-import Navbar from "./components/Navbar";
-import Modal from "./components/Modal";
-import type { Movie } from "./types/movie";
+import Shows from "@/components/Shows";
+import DevsPick from "@/components/DevsPick";
+import Navbar from "@/components/Navbar";
+import Modal from "@/components/Modal";
+import type { Movie } from "@/types/movie";
 
 export default function App() {
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
 
   return (
     <motion.div
@@ -20,7 +20,7 @@ export default function App() {
       className="min-h-screen w-full flex flex-col"
     >
       <Navbar />
-      <SearchBar onSearch={(q) => setSearchTerm(q)} />
+      <SearchBar onSelect={setSelectedMovie} /> 
 
       <main className="w-full max-w-7xl flex-1 mx-auto flex flex-col items-center px-4 sm:px-6 pt-[176px] pb-6">
         <Movies onSelect={setSelectedMovie} />
