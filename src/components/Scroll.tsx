@@ -15,9 +15,10 @@ export default function ScrollGallery({
 }) {
   const galleryRef = useRef<HTMLDivElement>(null);
   const controls = useAnimation();
-  const running = useRef(true);
+  const running = useRef(false);
   const isDragging = useRef(false);
   const [galleryWidth, setGalleryWidth] = useState(0);
+  const loopRef = useRef<Promise<void> | null>(null); // for cleanup and preventing duplicates
   let dragStartX = 0;
 
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -37,7 +38,7 @@ export default function ScrollGallery({
   };
 
   const resume = () => {
-    if (!galleryWidth || !items.length) return;
+    if (!galleryWidth || !items.length || running.current) return;
     running.current = true;
     animateLoop();
   };
@@ -45,12 +46,16 @@ export default function ScrollGallery({
   const animateLoop = async () => {
     if (!running.current || !galleryWidth) return;
     const duration = galleryWidth / SCROLL_SPEED;
-    await controls.start({
-      x: -galleryWidth,
-      transition: { duration, ease: "linear" },
-    });
-    controls.set({ x: 0 });
-    if (running.current) animateLoop();
+
+    while (running.current) {
+      loopRef.current = controls.start({
+        x: -galleryWidth,
+        transition: { duration, ease: "linear" },
+      });
+      await loopRef.current;
+      if (!running.current) break;
+      controls.set({ x: 0 });
+    }
   };
 
   useEffect(() => {
@@ -61,12 +66,21 @@ export default function ScrollGallery({
 
   useEffect(() => {
     if (galleryWidth && items.length) {
-      running.current = true;
-      animateLoop();
+      resume(); // start only once
     }
+
+    const handleBlur = () => pause();
+    const handleFocus = () => resume();
+
+    window.addEventListener("blur", handleBlur);
+    window.addEventListener("focus", handleFocus);
+
     return () => {
       running.current = false;
+      loopRef.current = null;
       controls.stop();
+      window.removeEventListener("blur", handleBlur);
+      window.removeEventListener("focus", handleFocus);
     };
   }, [galleryWidth, items]);
 
