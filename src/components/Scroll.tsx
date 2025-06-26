@@ -1,11 +1,10 @@
-// components/ScrollGallery.tsx
 import { useEffect, useRef, useState } from "react";
 import { motion, useAnimation } from "framer-motion";
 import type { Movie } from "@/types/movie";
 
 const SCROLL_SPEED = 20;
 
-export default function Scroll({
+export default function ScrollGallery({
   title,
   items,
   onSelect,
@@ -16,9 +15,9 @@ export default function Scroll({
 }) {
   const galleryRef = useRef<HTMLDivElement>(null);
   const controls = useAnimation();
-  const [galleryWidth, setGalleryWidth] = useState(0);
   const running = useRef(true);
   const isDragging = useRef(false);
+  const [galleryWidth, setGalleryWidth] = useState(0);
   let dragStartX = 0;
 
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -27,8 +26,9 @@ export default function Scroll({
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    const deltaX = Math.abs(e.touches[0].clientX - dragStartX);
-    if (deltaX > 10) isDragging.current = true;
+    if (Math.abs(e.touches[0].clientX - dragStartX) > 10) {
+      isDragging.current = true;
+    }
   };
 
   const pause = () => {
@@ -37,12 +37,20 @@ export default function Scroll({
   };
 
   const resume = () => {
-    if (!galleryWidth || items.length === 0) return;
+    if (!galleryWidth || !items.length) return;
     running.current = true;
-    controls.start({
+    animateLoop();
+  };
+
+  const animateLoop = async () => {
+    if (!running.current || !galleryWidth) return;
+    const duration = galleryWidth / SCROLL_SPEED;
+    await controls.start({
       x: -galleryWidth,
-      transition: { duration: galleryWidth / SCROLL_SPEED, ease: "linear" },
+      transition: { duration, ease: "linear" },
     });
+    controls.set({ x: 0 });
+    if (running.current) animateLoop();
   };
 
   useEffect(() => {
@@ -52,21 +60,10 @@ export default function Scroll({
   }, [items]);
 
   useEffect(() => {
-    if (!galleryWidth || items.length === 0) return;
-    running.current = true;
-
-    const loop = async () => {
-      const duration = galleryWidth / SCROLL_SPEED;
-      while (running.current) {
-        await controls.start({
-          x: -galleryWidth,
-          transition: { duration, ease: "linear" },
-        });
-        controls.set({ x: 0 });
-      }
-    };
-
-    loop();
+    if (galleryWidth && items.length) {
+      running.current = true;
+      animateLoop();
+    }
     return () => {
       running.current = false;
       controls.stop();
@@ -108,9 +105,16 @@ export default function Scroll({
                 transition: { type: "spring", stiffness: 300, damping: 20 },
               }}
               className="cursor-pointer shrink-0"
-              onClick={() => !isDragging.current && onSelect(movie)}
+              onClick={() => {
+                pause();
+                if (!isDragging.current) onSelect(movie);
+              }}
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
+              onTouchEnd={() => {
+                if (!isDragging.current) onSelect(movie);
+                resume();
+              }}
             >
               <div className="relative">
                 <img
@@ -124,7 +128,7 @@ export default function Scroll({
                   draggable={false}
                 />
                 <div className="absolute bottom-1 right-1 bg-yellow-400 text-black text-xs md:text-sm px-1.5 py-0.5 rounded font-semibold shadow">
-                  {movie.vote_average.toFixed(1)}
+                  {movie.vote_average?.toFixed(1) ?? "N/A"}
                 </div>
               </div>
             </motion.div>
