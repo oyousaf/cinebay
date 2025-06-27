@@ -37,7 +37,7 @@ app.get("/api/tmdb/:category/:id?", async (req, res) => {
 });
 
 app.get("/api/hello", (req, res) => {
-  res.json({ message: "Backend working!" });
+  res.json({ message: "Backend active!" });
 });
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
