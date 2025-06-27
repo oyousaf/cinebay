@@ -18,7 +18,7 @@ export default function ScrollGallery({
   const running = useRef(false);
   const isDragging = useRef(false);
   const [galleryWidth, setGalleryWidth] = useState(0);
-  const loopRef = useRef<Promise<void> | null>(null); // for cleanup and preventing duplicates
+  const loopRef = useRef<Promise<void> | null>(null); 
   let dragStartX = 0;
 
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -66,7 +66,7 @@ export default function ScrollGallery({
 
   useEffect(() => {
     if (galleryWidth && items.length) {
-      resume(); // start only once
+      resume();
     }
 
     const handleBlur = () => pause();
