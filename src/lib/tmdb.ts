@@ -118,7 +118,6 @@ export async function fetchDevsPick(titles: string[]): Promise<Movie[]> {
       const data = await fetchFromProxy(
         `/search/movie?query=${encodeURIComponent(title)}&language=en-GB`
       );
-      console.log(`🔎 Searching TMDB for: "${title}"`, data?.results);
 
       const bestMatch = (data?.results || []).sort(
         (a: any, b: any) => (b.popularity ?? 0) - (a.popularity ?? 0)
