@@ -54,9 +54,13 @@ function toMovie(detail: any, media_type: "movie" | "tv" | "person"): Movie {
 }
 
 // 🔌 Axios TMDB proxy
+const isLocal =
+  typeof window !== "undefined" && window.location.hostname === "localhost";
+const baseURL = isLocal ? "http://localhost:3000/api/tmdb" : "/api/tmdb";
+
 export async function fetchFromProxy(endpoint: string) {
   try {
-    const { data } = await axios.get(`/api/tmdb${endpoint}`);
+    const { data } = await axios.get(`${baseURL}${endpoint}`);
     return data;
   } catch (err) {
     console.error("❌ Proxy fetch failed:", endpoint, err);
