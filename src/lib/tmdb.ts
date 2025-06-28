@@ -21,7 +21,6 @@ const GENRE_MAP: Record<string, number> = {
   Western: 37,
 };
 
-const currentDate = new Date();
 const MIN_DATE = new Date();
 MIN_DATE.setMonth(MIN_DATE.getMonth() - 3);
 const MIN_DATE_STR = MIN_DATE.toISOString().split("T")[0];
