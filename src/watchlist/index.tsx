@@ -90,7 +90,12 @@ export default function Watchlist() {
                     />
 
                     {movie.isNew && (
-                      <div className="absolute top-2 left-2 bg-amber-400 text-black text-xs font-bold px-2 py-0.5 rounded shadow">
+                      <div
+                        className="absolute top-2 left-2 bg-amber-400 text-black text-xs font-bold px-2 py-0.5 rounded shadow"
+                        style={{
+                          boxShadow: "0 0 6px #fbbf24, 0 0 12px #facc15",
+                        }}
+                      >
                         NEW
                       </div>
                     )}
