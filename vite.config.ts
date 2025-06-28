@@ -54,6 +54,25 @@ export default defineConfig({
               cacheableResponse: { statuses: [0, 200] },
             },
           },
+          // TMDB popular/top_rated with background sync
+          {
+            urlPattern:
+              /^https:\/\/api\.themoviedb\.org\/3\/movie\/(popular|top_rated)/,
+            handler: "StaleWhileRevalidate",
+            options: {
+              cacheName: "tmdb-popular",
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 86400,
+              },
+              backgroundSync: {
+                name: "tmdb-popular-queue",
+                options: {
+                  maxRetentionTime: 24 * 60, // 24 hours
+                },
+              },
+            },
+          },
           // VIDSRC API
           {
             urlPattern: /^https:\/\/vidsrc\.me\/api\/.*/i,
@@ -75,7 +94,7 @@ export default defineConfig({
               cacheName: "tmdb-image-cache",
               expiration: {
                 maxEntries: 100,
-                maxAgeSeconds: 604800,
+                maxAgeSeconds: 604800, // 7 days
               },
               cacheableResponse: { statuses: [0, 200] },
             },
@@ -86,26 +105,6 @@ export default defineConfig({
         enabled: true,
       },
     }),
-    runtimeCaching: [
-  {
-    urlPattern: /^https:\/\/api\.themoviedb\.org\/3\/movie\/(popular|top_rated)/,
-    handler: "StaleWhileRevalidate",
-    options: {
-      cacheName: "tmdb-popular",
-      expiration: {
-        maxEntries: 50,
-        maxAgeSeconds: 60 * 60 * 24, // 1 day
-      },
-      backgroundSync: {
-        name: "tmdb-popular-queue",
-        options: {
-          maxRetentionTime: 24 * 60, // Retry for up to 24h
-        },
-      },
-    },
-  },
-]
-
   ],
   resolve: {
     alias: {
