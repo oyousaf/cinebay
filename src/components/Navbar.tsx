@@ -18,7 +18,7 @@ export default function Navbar() {
           <div className="flex justify-start">
             <a
               href="/watchlist"
-              className="flex items-center gap-2 text-sm text-foreground hover:text-yellow-400 transition"
+              className="flex items-center gap-2 hover:text-yellow-400 transition"
             >
               <Bookmark size={30} />
             </a>
@@ -38,9 +38,7 @@ export default function Navbar() {
 
           {/* Dark Mode Toggle */}
           <div className="flex justify-end">
-            <div className="text-foreground hover:text-yellow-400 transition cursor-pointer">
               <DarkModeToggle />
-            </div>
           </div>
         </div>
       </div>
