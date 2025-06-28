@@ -10,6 +10,8 @@ import {
   isInWatchlist,
 } from "@/lib/watchlist";
 
+import { toast } from "sonner";
+
 export default function Modal({
   movie,
   onClose,
@@ -38,6 +40,17 @@ export default function Modal({
     setIsSaved(isInWatchlist(movie.id));
   }, [movie.id]);
 
+  const handleToggleWatchlist = () => {
+    if (isSaved) {
+      removeFromWatchlist(movie.id);
+      toast.error(`Removed from Watchlist`);
+    } else {
+      saveToWatchlist(movie);
+      toast.success(`Added to Watchlist`);
+    }
+    setIsSaved(!isSaved);
+  };
+
   return (
     <AnimatePresence>
       <motion.div
@@ -54,13 +67,25 @@ export default function Modal({
           transition={{ duration: 0.3, ease: "easeOut" }}
           className="relative w-[95vw] sm:w-full max-w-4xl mx-auto rounded-2xl overflow-hidden shadow-2xl"
         >
-          {/* 🔲 Background */}
-          <div
-            className="absolute inset-0 bg-cover bg-center"
-            style={{ backgroundImage: `url(${backdrop})` }}
+          {/* 🔲 Animated Backdrop */}
+          <motion.div
+            className="absolute inset-0 z-0 overflow-hidden"
+            initial={{ opacity: 0, scale: 1.05 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 1.05 }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
           >
+            <motion.img
+              src={backdrop}
+              alt="Backdrop"
+              className="w-full h-full object-cover"
+              initial={{ scale: 1.05 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 1.05 }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
+            />
             <div className="absolute inset-0 bg-black/70" />
-          </div>
+          </motion.div>
 
           {/* 🧊 Modal Content */}
           <motion.div
@@ -70,7 +95,7 @@ export default function Modal({
             className="relative z-10 px-4 py-6 sm:p-8 text-white space-y-6 bg-gradient-to-b from-black/80 via-black/60 to-black/90 max-h-[90vh] overflow-y-auto"
           >
             <div className="flex flex-col sm:flex-row gap-6 sm:items-start">
-              {/* 🎞️ Poster Image */}
+              {/* 🎞️ Poster */}
               <motion.img
                 src={poster}
                 alt={title}
@@ -80,7 +105,7 @@ export default function Modal({
                 className="w-36 sm:w-44 rounded-lg shadow-lg object-cover"
               />
 
-              {/* 📃 Text Block */}
+              {/* 📃 Details */}
               <div className="flex-1 space-y-4">
                 <h2 className="text-3xl sm:text-4xl font-bold">{title}</h2>
 
@@ -126,26 +151,22 @@ export default function Modal({
 
           {/* ❤️ Watch Later Button */}
           {movie.media_type !== "person" && (
-            <button
-              onClick={() => {
-                if (isSaved) {
-                  removeFromWatchlist(movie.id);
-                } else {
-                  saveToWatchlist(movie);
-                }
-                setIsSaved(!isSaved);
-              }}
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              onClick={handleToggleWatchlist}
               className={`absolute top-3 left-3 z-50 ${
                 isSaved ? "text-yellow-400" : "text-white"
               } hover:text-yellow-400 bg-black/60 backdrop-blur p-2 rounded-full shadow-md transition cursor-pointer`}
-              title={isSaved ? "Remove from Watchlist" : "Add to Watchlist"}
+              aria-label={
+                isSaved ? "Remove from Watchlist" : "Add to Watchlist"
+              }
             >
               <Heart
                 size={22}
                 strokeWidth={isSaved ? 3 : 2}
                 fill={isSaved ? "currentColor" : "none"}
               />
-            </button>
+            </motion.button>
           )}
 
           {/* ❌ Close */}
