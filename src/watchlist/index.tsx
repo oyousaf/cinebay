@@ -3,23 +3,26 @@ import { getWatchlist, removeFromWatchlist } from "@/lib/watchlist";
 import type { Movie } from "@/types/movie";
 import Modal from "@/components/Modal";
 import Navbar from "@/components/Navbar";
+import ConfirmModal from "@/components/ConfirmModal";
+import { toast } from "sonner";
 
 export default function Watchlist() {
   const [watchlist, setWatchlist] = useState<Movie[]>([]);
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
+  const [pendingRemove, setPendingRemove] = useState<Movie | null>(null);
 
   useEffect(() => {
     setWatchlist(getWatchlist());
   }, []);
 
-  const handleRemove = (id: number, title: string) => {
-    const confirmed = window.confirm(
-      `Are you sure you want to remove "${title}" from your watchlist?`
-    );
-    if (!confirmed) return;
+  const confirmRemove = (movie: Movie) => setPendingRemove(movie);
 
-    removeFromWatchlist(id);
-    setWatchlist((prev) => prev.filter((m) => m.id !== id));
+  const handleRemove = () => {
+    if (!pendingRemove) return;
+    removeFromWatchlist(pendingRemove.id);
+    setWatchlist((prev) => prev.filter((m) => m.id !== pendingRemove.id));
+    toast.success("Removed from Watchlist");
+    setPendingRemove(null);
   };
 
   return (
@@ -54,18 +57,23 @@ export default function Watchlist() {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleRemove(
-                      movie.id,
-                      movie.title || movie.name || "Untitled"
-                    );
+                    confirmRemove(movie);
                   }}
-                  className="absolute top-2 right-2 bg-black/70 hover:bg-red-500 text-white text-xs px-2 py-1 rounded shadow-sm transition"
+                  className="absolute top-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded hover:bg-red-500"
                 >
                   Remove
                 </button>
               </div>
             ))}
           </div>
+        )}
+
+        {pendingRemove && (
+          <ConfirmModal
+            message={`Are you sure you want to remove "${pendingRemove.title}" from your Watchlist?`}
+            onConfirm={handleRemove}
+            onCancel={() => setPendingRemove(null)}
+          />
         )}
       </main>
 

@@ -8,6 +8,7 @@ import Navbar from "@/components/Navbar";
 import Modal from "@/components/Modal";
 import type { Movie } from "@/types/movie";
 import Watchlist from "@/watchlist";
+import { Toaster } from "sonner";
 
 export default function App() {
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
@@ -34,6 +35,7 @@ export default function App() {
       {selectedMovie && (
         <Modal movie={selectedMovie} onClose={() => setSelectedMovie(null)} />
       )}
+      <Toaster position="bottom-center" richColors closeButton />
     </motion.div>
   );
 }
