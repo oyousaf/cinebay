@@ -46,10 +46,7 @@ function toMovie(detail: any, media_type: "movie" | "tv" | "person"): Movie {
     media_type,
     genres: extractGenres(detail),
     runtime: detail.runtime ?? null,
-    known_for:
-      media_type === "person" && Array.isArray(detail.known_for)
-        ? detail.known_for
-        : undefined,
+    known_for: undefined,
   };
 }
 

@@ -11,6 +11,9 @@ import Watchlist from "@/watchlist";
 
 export default function App() {
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
+  const pathname = window.location.pathname;
+
+  if (pathname === "/watchlist") return <Watchlist />;
 
   return (
     <motion.div
@@ -20,7 +23,7 @@ export default function App() {
       className="min-h-screen w-full flex flex-col"
     >
       <Navbar />
-      <SearchBar onSelect={setSelectedMovie} /> 
+      <SearchBar onSelect={setSelectedMovie} />
 
       <main className="w-full max-w-7xl flex-1 mx-auto flex flex-col items-center px-4 sm:px-6 pt-[176px] pb-6">
         <Movies onSelect={setSelectedMovie} />
