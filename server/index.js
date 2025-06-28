@@ -17,6 +17,23 @@ app.use(
 
 app.use(express.json());
 
+app.get("/api/tmdb/search/multi", async (req, res) => {
+  const query = req.query;
+
+  try {
+    const response = await axios.get(
+      "https://api.themoviedb.org/3/search/multi",
+      {
+        params: { api_key: process.env.TMDB_API_KEY, ...query },
+      }
+    );
+    res.json(response.data);
+  } catch (err) {
+    console.error("❌ /search/multi failed:", err);
+    res.status(500).json({ error: "TMDB multi-search failed" });
+  }
+});
+
 // 🔁 Proxy TMDB requests
 app.get("/api/tmdb/:category/:id?", async (req, res) => {
   const { category, id } = req.params;

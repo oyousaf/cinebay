@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { motion, useAnimation } from "framer-motion";
 import { Search } from "lucide-react";
 import debounce from "lodash.debounce";
-import { fetchDetails } from "@/lib/tmdb";
+import { fetchDetails, fetchFromProxy } from "@/lib/tmdb";
 import type { Movie } from "@/types/movie";
 
 type TMDBResult = {
@@ -48,7 +48,7 @@ export default function SearchBar({
   // Debounced search
   const debouncedSearch = useRef(
     debounce(async (searchTerm: string) => {
-      if (!searchTerm) {
+      if (!searchTerm.trim()) {
         setResults([]);
         setDropdownOpen(false);
         return;
@@ -56,14 +56,15 @@ export default function SearchBar({
 
       setLoading(true);
       setError(false);
+
       try {
-        const res = await fetch(
-          `/api/tmdb/search/multi?query=${encodeURIComponent(searchTerm)}`
+        const data = await fetchFromProxy(
+          `/search/multi?query=${encodeURIComponent(searchTerm)}`
         );
-        const data = await res.json();
-        setResults(data.results?.slice(0, 10) || []);
+        setResults(data?.results?.slice(0, 10) || []);
         setDropdownOpen(true);
-      } catch {
+      } catch (err) {
+        console.error("❌ TMDB Search Failed:", err);
         setError(true);
         setDropdownOpen(true);
       } finally {
@@ -76,7 +77,7 @@ export default function SearchBar({
     debouncedSearch(query);
   }, [query]);
 
-  // Close on click outside or escape
+  // Close on click outside or Escape
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (
@@ -97,7 +98,6 @@ export default function SearchBar({
 
     document.addEventListener("mousedown", handleClickOutside);
     document.addEventListener("keydown", handleEsc);
-
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
       document.removeEventListener("keydown", handleEsc);
