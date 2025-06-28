@@ -3,7 +3,12 @@ import logo from "/logo.png";
 import { motion } from "framer-motion";
 import { Bookmark } from "lucide-react";
 
-export default function Navbar() {
+type NavbarProps = {
+  onViewChange: (view: "home" | "watchlist") => void;
+  currentView: "home" | "watchlist";
+};
+
+export default function Navbar({ onViewChange, currentView }: NavbarProps) {
   return (
     <header
       className="fixed top-0 left-0 w-full z-50 shadow-md shadow-violet-300/20 backdrop-blur-sm"
@@ -16,17 +21,26 @@ export default function Navbar() {
         <div className="grid grid-cols-3 items-center">
           {/* Watchlist Button */}
           <div className="flex justify-start">
-            <a
-              href="/watchlist"
-              className="flex items-center gap-2 hover:text-yellow-400 transition"
+            <button
+              onClick={() => onViewChange("watchlist")}
+              className={`flex items-center gap-2 transition cursor-pointer ${
+                currentView === "watchlist"
+                  ? "text-amber-400"
+                  : "hover:text-amber-400"
+              }`}
+              aria-label="Go to Watchlist"
             >
               <Bookmark size={30} />
-            </a>
+            </button>
           </div>
 
           {/* Logo */}
           <div className="flex justify-center">
-            <a href="/" className="inline-block">
+            <button
+              onClick={() => onViewChange("home")}
+              className="inline-block cursor-pointer"
+              aria-label="Go to Home"
+            >
               <motion.img
                 src={logo}
                 alt="CineBay"
@@ -35,7 +49,7 @@ export default function Navbar() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, ease: "easeOut" }}
               />
-            </a>
+            </button>
           </div>
 
           {/* Dark Mode Toggle */}

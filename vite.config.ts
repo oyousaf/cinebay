@@ -33,7 +33,6 @@ export default defineConfig({
         skipWaiting: true,
         clientsClaim: true,
         navigateFallback: "/",
-        navigateFallbackAllowlist: [/^\/$/, /^\/watchlist/],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/api\.themoviedb\.org\/.*/i,
