@@ -10,7 +10,6 @@ import type { Movie } from "@/types/movie";
 import Watchlist from "@/watchlist";
 import { Toaster, toast } from "sonner";
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { useRegisterSW } from "virtual:pwa-register/react";
 
 export default function App() {
