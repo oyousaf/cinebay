@@ -46,7 +46,7 @@ export default function Modal({
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.95, opacity: 0 }}
           transition={{ duration: 0.3, ease: "easeOut" }}
-          className="relative w-full max-w-4xl rounded-xl overflow-hidden shadow-lg"
+          className="relative w-[95vw] sm:w-full max-w-4xl mx-auto rounded-2xl overflow-hidden shadow-2xl"
         >
           {/* Background */}
           <div
@@ -57,7 +57,7 @@ export default function Modal({
           </div>
 
           {/* Content */}
-          <div className="relative z-10 p-6 sm:p-8 text-white space-y-6 bg-gradient-to-b from-black/80 via-black/60 to-black/90">
+          <div className="relative z-10 px-4 py-6 sm:p-8 text-white space-y-6 bg-gradient-to-b from-black/80 via-black/60 to-black/90">
             {movie.media_type === "person" ? (
               // 👤 Person Layout
               <div className="flex flex-col sm:flex-row gap-6 sm:items-start">
@@ -169,7 +169,10 @@ export default function Modal({
             className="absolute top-3 right-3 z-50 text-white hover:text-yellow-400 cursor-pointer"
             onClick={onClose}
           >
-            <X size={24} />
+            <X
+              size={28}
+              className="p-1 bg-black/60 rounded-full backdrop-blur"
+            />
           </button>
         </motion.div>
       </motion.div>
