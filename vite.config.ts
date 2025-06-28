@@ -15,7 +15,7 @@ export default defineConfig({
         name: "CineBay",
         short_name: "CineBay",
         theme_color: "#80FFCC",
-        background_color: "#000000",
+        background_color: "#80FFCC",
         display: "standalone",
         start_url: "/",
         icons: [
@@ -38,8 +38,49 @@ export default defineConfig({
         ],
       },
       workbox: {
-        navigateFallback: "/index.html",
+        navigateFallback: "/offline.html",
         navigateFallbackAllowlist: [/^\/$/, /^\/watchlist/],
+        runtimeCaching: [
+          // TMDB API
+          {
+            urlPattern: /^https:\/\/api\.themoviedb\.org\/.*/i,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "tmdb-api-cache",
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 86400,
+              },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          // VIDSRC API
+          {
+            urlPattern: /^https:\/\/vidsrc\.me\/api\/.*/i,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "vidsrc-api-cache",
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 86400,
+              },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          // TMDB Images
+          {
+            urlPattern: /^https:\/\/image\.tmdb\.org\/t\/p\/.*/i,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "tmdb-image-cache",
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 604800,
+              },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+        ],
       },
       devOptions: {
         enabled: true,
