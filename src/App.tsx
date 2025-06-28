@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import SearchBar from "@/components/SearchBar";
 import Movies from "@/components/Movies";
@@ -9,14 +9,13 @@ import Modal from "@/components/Modal";
 import type { Movie } from "@/types/movie";
 import Watchlist from "@/watchlist";
 import { Toaster, toast } from "sonner";
-
 import { useRegisterSW } from "virtual:pwa-register/react";
 
 export default function App() {
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
   const pathname = window.location.pathname;
 
-  // ✅ Service worker toast handler
+  // ✅ PWA: Service Worker update + offline ready
   useRegisterSW({
     onNeedRefresh() {
       toast.info("New update available. Refresh to update", {
@@ -30,6 +29,30 @@ export default function App() {
       toast.success("App is ready to work offline ✨");
     },
   });
+
+  // ✅ Auto-refresh when coming back online (bust offline shell)
+  useEffect(() => {
+    if (!navigator.onLine) {
+      toast.error("You are offline ⚠️");
+    }
+
+    const handleOnline = () => {
+      toast.success("Back online. Reloading...");
+      setTimeout(() => window.location.reload(), 1000);
+    };
+
+    const handleOffline = () => {
+      toast.error("You are offline ⚠️");
+    };
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
 
   if (pathname === "/watchlist") return <Watchlist />;
 
@@ -53,7 +76,6 @@ export default function App() {
         <Modal movie={selectedMovie} onClose={() => setSelectedMovie(null)} />
       )}
 
-      {/* ✅ Toaster with rich colors */}
       <Toaster position="bottom-center" richColors closeButton />
     </motion.div>
   );
