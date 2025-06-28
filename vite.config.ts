@@ -10,12 +10,14 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
+      includeAssets: ["favicon.svg", "robots.txt", "apple-touch-icon.png"],
       manifest: {
         name: "CineBay",
         short_name: "CineBay",
         theme_color: "#80FFCC",
-        background_color: "#80FFCC",
+        background_color: "#000000",
         display: "standalone",
+        start_url: "/",
         icons: [
           {
             src: "icon-192.png",
@@ -26,8 +28,20 @@ export default defineConfig({
             src: "icon-512.png",
             sizes: "512x512",
             type: "image/png",
-            purpose: "any"
           },
+          {
+            src: "icon-1024.png",
+            sizes: "1024x1024",
+            type: "image/png",
+            purpose: "any"
+          }
+        ],
+      },
+      workbox: {
+        navigateFallback: "/index.html",
+        navigateFallbackAllowlist: [
+          /^\/$/,
+          /^\/watchlist/,
         ],
       },
       devOptions: {
@@ -40,7 +54,7 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-    server: {
+  server: {
     proxy: {
       "/api": "http://localhost:3000",
     },
