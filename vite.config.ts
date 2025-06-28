@@ -33,16 +33,13 @@ export default defineConfig({
             src: "icon-1024.png",
             sizes: "1024x1024",
             type: "image/png",
-            purpose: "any"
-          }
+            purpose: "any",
+          },
         ],
       },
       workbox: {
         navigateFallback: "/index.html",
-        navigateFallbackAllowlist: [
-          /^\/$/,
-          /^\/watchlist/,
-        ],
+        navigateFallbackAllowlist: [/^\/$/, /^\/watchlist/],
       },
       devOptions: {
         enabled: true,
