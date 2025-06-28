@@ -21,6 +21,9 @@ const GENRE_MAP: Record<string, number> = {
   Western: 37,
 };
 
+const currentYear = new Date().getFullYear();
+const MIN_YEAR = currentYear - 3;
+
 const genreToId = (name: string): number => GENRE_MAP[name] ?? -1;
 
 function extractGenres(detail: any): string[] {
@@ -29,8 +32,17 @@ function extractGenres(detail: any): string[] {
     : [];
 }
 
-function isAllowedContent(genres: string[]): boolean {
-  return !genres.some((g) => EXCLUDED_GENRE_IDS.has(genreToId(g)));
+function extractYear(dateStr: string): number | null {
+  const match = dateStr?.match(/^(\d{4})/);
+  return match ? parseInt(match[1], 10) : null;
+}
+
+function isAllowedContent(genres: string[], year: number | null): boolean {
+  return (
+    year !== null &&
+    year >= MIN_YEAR &&
+    !genres.some((g) => EXCLUDED_GENRE_IDS.has(genreToId(g)))
+  );
 }
 
 function toMovie(detail: any, media_type: "movie" | "tv" | "person"): Movie {
@@ -50,7 +62,6 @@ function toMovie(detail: any, media_type: "movie" | "tv" | "person"): Movie {
   };
 }
 
-// 🔌 Axios TMDB proxy
 const baseURL = `${import.meta.env.VITE_API_URL}/api/tmdb`;
 
 export async function fetchFromProxy(endpoint: string) {
@@ -63,7 +74,6 @@ export async function fetchFromProxy(endpoint: string) {
   }
 }
 
-// 📄 Detailed info
 export async function fetchDetails(
   id: number,
   media_type: "movie" | "tv" | "person"
@@ -72,7 +82,6 @@ export async function fetchDetails(
   return data ? toMovie(data, media_type) : null;
 }
 
-// 🎬 Popular Movies
 export async function fetchMovies(): Promise<Movie[]> {
   const data = await fetchFromProxy(
     `/discover/movie?language=en&sort_by=popularity.desc&vote_average.gte=6.5&include_adult=false`
@@ -83,16 +92,14 @@ export async function fetchMovies(): Promise<Movie[]> {
     data.results.map((item: any) => fetchDetails(item.id, "movie"))
   );
 
-  return (detailed.filter(Boolean) as Movie[]).filter((m) =>
-    isAllowedContent(m.genres)
-  );
+  return (detailed.filter(Boolean) as Movie[]).filter((m) => {
+    const year = extractYear(m.release_date);
+    return isAllowedContent(m.genres, year);
+  });
 }
 
-// 📺 Popular Shows
 export async function fetchShows(): Promise<Movie[]> {
-  const date = new Date();
-  date.setFullYear(date.getFullYear() - 3);
-  const fromDate = date.toISOString().split("T")[0];
+  const fromDate = `${MIN_YEAR}-01-01`;
 
   const data = await fetchFromProxy(
     `/discover/tv?language=en&sort_by=popularity.desc&vote_average.gte=6.5&include_adult=false&first_air_date.gte=${fromDate}`
@@ -103,12 +110,13 @@ export async function fetchShows(): Promise<Movie[]> {
     data.results.map((item: any) => fetchDetails(item.id, "tv"))
   );
 
-  return (detailed.filter(Boolean) as Movie[]).filter((s) =>
-    isAllowedContent(s.genres)
-  );
+  return (detailed.filter(Boolean) as Movie[]).filter((s) => {
+    const year = extractYear(s.release_date);
+    return isAllowedContent(s.genres, year);
+  });
 }
 
-// 🧠 Curated Picks by title
+// Dev's Pick
 export async function fetchDevsPick(titles: string[]): Promise<Movie[]> {
   const enriched = await Promise.all(
     titles.map(async (title) => {
