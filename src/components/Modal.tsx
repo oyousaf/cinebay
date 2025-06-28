@@ -129,7 +129,12 @@ export default function Modal({
                 {movie.media_type !== "person" && (
                   <div className="flex flex-wrap gap-2 sm:gap-3 items-center text-sm text-right sm:text-base text-zinc-300 pt-2">
                     {movie.isNew && (
-                      <span className="bg-amber-400 text-white text-xs font-bold px-2 py-0.5 rounded shadow-sm">
+                      <span
+                        className="bg-amber-400 text-black text-xs font-bold px-2 py-0.5 rounded shadow-sm"
+                        style={{
+                          boxShadow: "0 0 6px #fbbf24, 0 0 12px #facc15",
+                        }}
+                      >
                         NEW
                       </span>
                     )}
