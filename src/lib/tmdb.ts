@@ -70,6 +70,8 @@ function toMovie(detail: any, media_type: "movie" | "tv" | "person"): Movie {
     media_type,
     genres: extractGenres(detail),
     runtime: detail.runtime ?? null,
+    original_language: detail.original_language ?? "",
+    credits: detail.credits ?? undefined,
     known_for: undefined,
     isNew: isNewRelease(releaseDateStr),
   };
@@ -91,32 +93,37 @@ export async function fetchDetails(
   id: number,
   media_type: "movie" | "tv" | "person"
 ): Promise<Movie | null> {
-  const data = await fetchFromProxy(`/${media_type}/${id}?language=en-GB`);
+  const data = await fetchFromProxy(
+    `/${media_type}/${id}?language=en-GB&append_to_response=credits`
+  );
   return data ? toMovie(data, media_type) : null;
+}
+
+function emptyPlaceholder(type: "movie" | "tv"): Movie {
+  return {
+    id: -1,
+    title: type === "movie" ? "No movies found" : "No shows found",
+    overview: "",
+    poster_path: "",
+    backdrop_path: "",
+    profile_path: "",
+    release_date: "",
+    vote_average: 0,
+    media_type: type,
+    genres: [],
+    runtime: null,
+    original_language: "",
+    credits: undefined,
+    known_for: undefined,
+    isNew: false,
+  };
 }
 
 export async function fetchMovies(): Promise<Movie[]> {
   const data = await fetchFromProxy(
     `/discover/movie?language=en&sort_by=popularity.desc&vote_average.gte=6.5&include_adult=false&release_date.gte=${MIN_DATE_STR}`
   );
-  if (!data?.results)
-    return [
-      {
-        id: -1,
-        title: "No movies found",
-        overview: "",
-        poster_path: "",
-        backdrop_path: "",
-        profile_path: "",
-        release_date: "",
-        vote_average: 0,
-        media_type: "movie",
-        genres: [],
-        runtime: null,
-        known_for: undefined,
-        isNew: false,
-      },
-    ];
+  if (!data?.results) return [emptyPlaceholder("movie")];
 
   const detailed = await Promise.all(
     data.results.map((item: any) => fetchDetails(item.id, "movie"))
@@ -126,49 +133,14 @@ export async function fetchMovies(): Promise<Movie[]> {
     isAllowedContent(m.genres, m.release_date)
   );
 
-  return filtered.length
-    ? filtered
-    : [
-        {
-          id: -1,
-          title: "No movies found",
-          overview: "",
-          poster_path: "",
-          backdrop_path: "",
-          profile_path: "",
-          release_date: "",
-          vote_average: 0,
-          media_type: "movie",
-          genres: [],
-          runtime: null,
-          known_for: undefined,
-          isNew: false,
-        },
-      ];
+  return filtered.length ? filtered : [emptyPlaceholder("movie")];
 }
 
 export async function fetchShows(): Promise<Movie[]> {
   const data = await fetchFromProxy(
     `/discover/tv?language=en&sort_by=popularity.desc&vote_average.gte=6.5&include_adult=false&first_air_date.gte=${MIN_DATE_STR}`
   );
-  if (!data?.results)
-    return [
-      {
-        id: -1,
-        title: "No shows found",
-        overview: "",
-        poster_path: "",
-        backdrop_path: "",
-        profile_path: "",
-        release_date: "",
-        vote_average: 0,
-        media_type: "tv",
-        genres: [],
-        runtime: null,
-        known_for: undefined,
-        isNew: false,
-      },
-    ];
+  if (!data?.results) return [emptyPlaceholder("tv")];
 
   const detailed = await Promise.all(
     data.results.map((item: any) => fetchDetails(item.id, "tv"))
@@ -178,28 +150,9 @@ export async function fetchShows(): Promise<Movie[]> {
     isAllowedContent(s.genres, s.release_date)
   );
 
-  return filtered.length
-    ? filtered
-    : [
-        {
-          id: -1,
-          title: "No shows found",
-          overview: "",
-          poster_path: "",
-          backdrop_path: "",
-          profile_path: "",
-          release_date: "",
-          vote_average: 0,
-          media_type: "tv",
-          genres: [],
-          runtime: null,
-          known_for: undefined,
-          isNew: false,
-        },
-      ];
+  return filtered.length ? filtered : [emptyPlaceholder("tv")];
 }
 
-// Dev's Pick
 export async function fetchDevsPick(titles: string[]): Promise<Movie[]> {
   const enriched = await Promise.all(
     titles.map(async (title) => {

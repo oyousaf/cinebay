@@ -51,6 +51,16 @@ export default function Modal({
     setIsSaved(!isSaved);
   };
 
+  const releaseDate = movie.release_date
+    ? new Date(movie.release_date).toLocaleDateString("en-GB", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+    : "Unknown";
+
+  const cast = movie.credits?.cast?.slice(0, 5) ?? [];
+
   return (
     <AnimatePresence>
       <motion.div
@@ -115,17 +125,62 @@ export default function Modal({
                   </p>
                 )}
 
+                {/* 📌 Metadata */}
                 {movie.media_type !== "person" && (
-                  <div className="flex flex-wrap justify-end items-center gap-2 text-xs sm:text-sm text-zinc-300 mt-4">
-                    <span className="truncate max-w-full">
-                      {movie.genres?.join(", ") || "N/A"}
-                    </span>
-                    <span className="hidden sm:inline">·</span>
-                    <span>{movie.release_date?.slice(0, 4) || "?"}</span>
-                    <span className="hidden sm:inline">·</span>
+                  <div className="flex flex-wrap gap-2 sm:gap-3 items-center text-sm text-right sm:text-base text-zinc-300 pt-2">
+                    {movie.isNew && (
+                      <span className="bg-teal-600 text-white text-xs font-bold px-2 py-0.5 rounded shadow-sm">
+                        NEW
+                      </span>
+                    )}
+
+                    {movie.genres?.length > 0 && (
+                      <span className="italic truncate">
+                        {movie.genres.join(", ")}
+                      </span>
+                    )}
+                    <span>·</span>
+                    <span>{releaseDate}</span>
+
+                    {movie.runtime && (
+                      <>
+                        <span>·</span>
+                        <span>{movie.runtime} mins</span>
+                      </>
+                    )}
+
+                    {movie.original_language && (
+                      <>
+                        <span>·</span>
+                        <span className="capitalize">
+                          {new Intl.DisplayNames(["en"], {
+                            type: "language",
+                          }).of(movie.original_language)}
+                        </span>
+                      </>
+                    )}
+
+                    <span>·</span>
                     <span className="bg-yellow-400 text-black font-bold px-2 py-0.5 rounded shadow-sm">
                       {movie.vote_average?.toFixed(1) || "?"}
                     </span>
+                  </div>
+                )}
+
+                {/* 🧑 Cast */}
+                {cast.length > 0 && (
+                  <div className="pt-2 text-sm text-zinc-400">
+                    <p>
+                      <span className="font-semibold text-zinc-300">
+                        Starring:
+                      </span>{" "}
+                      {cast.map((actor, i) => (
+                        <span key={actor.id}>
+                          {actor.name}
+                          {i < cast.length - 1 ? ", " : ""}
+                        </span>
+                      ))}
+                    </p>
                   </div>
                 )}
 
@@ -138,7 +193,7 @@ export default function Modal({
                     className="pt-2"
                   >
                     <button
-                      className="bg-yellow-400 hover:bg-yellow-300 text-black text-xl font-semibold px-6 py-2 rounded-xl shadow-md transition"
+                      className="bg-yellow-400 hover:bg-yellow-300 text-black text-xl font-semibold px-6 py-2 rounded-xl shadow-md transition cursor-pointer"
                       onClick={() => console.log("Watch clicked for:", title)}
                     >
                       Watch

@@ -1,3 +1,10 @@
+export type CastMember = {
+  id: number;
+  name: string;
+  character?: string;
+  profile_path?: string;
+};
+
 export type Movie = {
   id: number;
   title: string;
@@ -11,7 +18,12 @@ export type Movie = {
   media_type: "movie" | "tv" | "person";
   genres: string[];
   runtime: number | null;
+  original_language?: string;
   isNew?: boolean;
+
+  credits?: {
+    cast?: CastMember[];
+  };
 
   // 👤 Only used if media_type === "person"
   known_for?: {
