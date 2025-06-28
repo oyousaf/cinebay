@@ -18,7 +18,7 @@ export default function ScrollGallery({
   const running = useRef(false);
   const isDragging = useRef(false);
   const [galleryWidth, setGalleryWidth] = useState(0);
-  const loopRef = useRef<Promise<void> | null>(null); 
+  const loopRef = useRef<Promise<void> | null>(null);
   let dragStartX = 0;
 
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -141,9 +141,17 @@ export default function ScrollGallery({
                   className="h-52 w-36 md:h-72 md:w-52 lg:h-80 lg:w-56 object-cover rounded-lg shadow pointer-events-none"
                   draggable={false}
                 />
+                {/* Vote average badge */}
                 <div className="absolute bottom-1 right-1 bg-yellow-400 text-black text-xs md:text-sm px-1.5 py-0.5 rounded font-semibold shadow">
                   {movie.vote_average?.toFixed(1) ?? "N/A"}
                 </div>
+
+                {/* 🆕 NEW badge */}
+                {movie.isNew && (
+                  <div className="absolute top-1 left-1 bg-yellow-500 text-black text-[10px] md:text-xs px-1.5 py-0.5 rounded font-bold shadow">
+                    NEW
+                  </div>
+                )}
               </div>
             </motion.div>
           ))}

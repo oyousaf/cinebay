@@ -11,6 +11,7 @@ export type Movie = {
   media_type: "movie" | "tv" | "person";
   genres: string[];
   runtime: number | null;
+  isNew?: boolean;
 
   // 👤 Only used if media_type === "person"
   known_for?: {

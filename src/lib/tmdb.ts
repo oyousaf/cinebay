@@ -21,8 +21,10 @@ const GENRE_MAP: Record<string, number> = {
   Western: 37,
 };
 
-const currentYear = new Date().getFullYear();
-const MIN_YEAR = currentYear - 3;
+const currentDate = new Date();
+const MIN_DATE = new Date();
+MIN_DATE.setMonth(MIN_DATE.getMonth() - 3);
+const MIN_DATE_STR = MIN_DATE.toISOString().split("T")[0];
 
 const genreToId = (name: string): number => GENRE_MAP[name] ?? -1;
 
@@ -37,15 +39,25 @@ function extractYear(dateStr: string): number | null {
   return match ? parseInt(match[1], 10) : null;
 }
 
-function isAllowedContent(genres: string[], year: number | null): boolean {
+function isAllowedContent(genres: string[], releaseDateStr: string): boolean {
+  const year = extractYear(releaseDateStr);
+  const releaseDate = new Date(releaseDateStr);
   return (
     year !== null &&
-    year >= MIN_YEAR &&
+    releaseDate >= MIN_DATE &&
     !genres.some((g) => EXCLUDED_GENRE_IDS.has(genreToId(g)))
   );
 }
 
+function isNewRelease(dateStr: string): boolean {
+  const releaseDate = new Date(dateStr);
+  const oneMonthAgo = new Date();
+  oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+  return releaseDate > oneMonthAgo;
+}
+
 function toMovie(detail: any, media_type: "movie" | "tv" | "person"): Movie {
+  const releaseDateStr = detail.release_date || detail.first_air_date || "";
   return {
     id: detail.id,
     title: detail.title || detail.name || "Untitled",
@@ -53,12 +65,13 @@ function toMovie(detail: any, media_type: "movie" | "tv" | "person"): Movie {
     poster_path: detail.poster_path || "",
     backdrop_path: detail.backdrop_path || "",
     profile_path: detail.profile_path || "",
-    release_date: detail.release_date || detail.first_air_date || "",
+    release_date: releaseDateStr,
     vote_average: detail.vote_average ?? 0,
     media_type,
     genres: extractGenres(detail),
     runtime: detail.runtime ?? null,
     known_for: undefined,
+    isNew: isNewRelease(releaseDateStr),
   };
 }
 
@@ -84,36 +97,106 @@ export async function fetchDetails(
 
 export async function fetchMovies(): Promise<Movie[]> {
   const data = await fetchFromProxy(
-    `/discover/movie?language=en&sort_by=popularity.desc&vote_average.gte=6.5&include_adult=false`
+    `/discover/movie?language=en&sort_by=popularity.desc&vote_average.gte=6.5&include_adult=false&release_date.gte=${MIN_DATE_STR}`
   );
-  if (!data?.results) return [];
+  if (!data?.results)
+    return [
+      {
+        id: -1,
+        title: "No movies found",
+        overview: "",
+        poster_path: "",
+        backdrop_path: "",
+        profile_path: "",
+        release_date: "",
+        vote_average: 0,
+        media_type: "movie",
+        genres: [],
+        runtime: null,
+        known_for: undefined,
+        isNew: false,
+      },
+    ];
 
   const detailed = await Promise.all(
     data.results.map((item: any) => fetchDetails(item.id, "movie"))
   );
 
-  return (detailed.filter(Boolean) as Movie[]).filter((m) => {
-    const year = extractYear(m.release_date);
-    return isAllowedContent(m.genres, year);
-  });
+  const filtered = (detailed.filter(Boolean) as Movie[]).filter((m) =>
+    isAllowedContent(m.genres, m.release_date)
+  );
+
+  return filtered.length
+    ? filtered
+    : [
+        {
+          id: -1,
+          title: "No movies found",
+          overview: "",
+          poster_path: "",
+          backdrop_path: "",
+          profile_path: "",
+          release_date: "",
+          vote_average: 0,
+          media_type: "movie",
+          genres: [],
+          runtime: null,
+          known_for: undefined,
+          isNew: false,
+        },
+      ];
 }
 
 export async function fetchShows(): Promise<Movie[]> {
-  const fromDate = `${MIN_YEAR}-01-01`;
-
   const data = await fetchFromProxy(
-    `/discover/tv?language=en&sort_by=popularity.desc&vote_average.gte=6.5&include_adult=false&first_air_date.gte=${fromDate}`
+    `/discover/tv?language=en&sort_by=popularity.desc&vote_average.gte=6.5&include_adult=false&first_air_date.gte=${MIN_DATE_STR}`
   );
-  if (!data?.results) return [];
+  if (!data?.results)
+    return [
+      {
+        id: -1,
+        title: "No shows found",
+        overview: "",
+        poster_path: "",
+        backdrop_path: "",
+        profile_path: "",
+        release_date: "",
+        vote_average: 0,
+        media_type: "tv",
+        genres: [],
+        runtime: null,
+        known_for: undefined,
+        isNew: false,
+      },
+    ];
 
   const detailed = await Promise.all(
     data.results.map((item: any) => fetchDetails(item.id, "tv"))
   );
 
-  return (detailed.filter(Boolean) as Movie[]).filter((s) => {
-    const year = extractYear(s.release_date);
-    return isAllowedContent(s.genres, year);
-  });
+  const filtered = (detailed.filter(Boolean) as Movie[]).filter((s) =>
+    isAllowedContent(s.genres, s.release_date)
+  );
+
+  return filtered.length
+    ? filtered
+    : [
+        {
+          id: -1,
+          title: "No shows found",
+          overview: "",
+          poster_path: "",
+          backdrop_path: "",
+          profile_path: "",
+          release_date: "",
+          vote_average: 0,
+          media_type: "tv",
+          genres: [],
+          runtime: null,
+          known_for: undefined,
+          isNew: false,
+        },
+      ];
 }
 
 // Dev's Pick
