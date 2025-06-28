@@ -1,4 +1,3 @@
-// App.tsx
 import { useState } from "react";
 import { motion } from "framer-motion";
 import SearchBar from "@/components/SearchBar";
@@ -8,6 +7,7 @@ import DevsPick from "@/components/DevsPick";
 import Navbar from "@/components/Navbar";
 import Modal from "@/components/Modal";
 import type { Movie } from "@/types/movie";
+import Watchlist from "@/watchlist";
 
 export default function App() {
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
