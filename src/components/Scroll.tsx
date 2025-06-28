@@ -148,7 +148,7 @@ export default function ScrollGallery({
 
                 {/* 🆕 NEW badge */}
                 {movie.isNew && (
-                  <div className="absolute top-1 left-1 bg-yellow-500 text-black text-[10px] md:text-xs px-1.5 py-0.5 rounded font-bold shadow">
+                  <div className="absolute top-1 left-1 bg-amber-400 text-black text-[10px] md:text-xs px-1.5 py-0.5 rounded font-bold shadow">
                     NEW
                   </div>
                 )}

@@ -6,6 +6,7 @@ import Modal from "@/components/Modal";
 import Navbar from "@/components/Navbar";
 import ConfirmModal from "@/components/ConfirmModal";
 import { toast } from "sonner";
+import { Trash2 } from "lucide-react";
 
 export default function Watchlist() {
   const [watchlist, setWatchlist] = useState<Movie[]>([]);
@@ -51,41 +52,62 @@ export default function Watchlist() {
               transition={{ delay: 0.2 }}
               className="text-zinc-400 italic"
             >
-              You haven’t saved anything yet.
+              Nothing to see here.
             </motion.p>
           ) : (
             <motion.div
               layout
               className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4"
             >
-              {watchlist.map((movie) => (
-                <motion.div
-                  layout
-                  key={movie.id}
-                  className="relative group cursor-pointer rounded-xl overflow-hidden shadow-xl transition-transform hover:scale-105"
-                  onClick={() => setSelectedMovie(movie)}
-                  whileHover={{ scale: 1.03 }}
-                >
-                  <img
-                    src={
-                      movie.poster_path
-                        ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
-                        : "/fallback.jpg"
-                    }
-                    alt={movie.title}
-                    className="w-full object-cover"
-                  />
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      confirmRemove(movie);
+              <AnimatePresence>
+                {watchlist.map((movie) => (
+                  <motion.div
+                    key={movie.id}
+                    layout
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    transition={{ layout: { duration: 0.3 } }}
+                    className="relative group cursor-pointer rounded-xl overflow-hidden shadow-xl"
+                    onClick={() => setSelectedMovie(movie)}
+                    whileHover={{
+                      scale: 1.07,
+                      transition: {
+                        type: "spring",
+                        stiffness: 300,
+                        damping: 20,
+                      },
                     }}
-                    className="absolute top-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded hover:bg-red-500"
                   >
-                    Remove
-                  </button>
-                </motion.div>
-              ))}
+                    <img
+                      src={
+                        movie.poster_path
+                          ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
+                          : "/fallback.jpg"
+                      }
+                      alt={movie.title}
+                      className="w-full object-cover"
+                    />
+
+                    {movie.isNew && (
+                      <div className="absolute top-2 left-2 bg-amber-400 text-black text-xs font-bold px-2 py-0.5 rounded shadow">
+                        NEW
+                      </div>
+                    )}
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        confirmRemove(movie);
+                      }}
+                      className="absolute top-2 right-2 bg-black/60 text-white p-1.5 rounded-full hover:bg-red-600 hover:text-white shadow transition cursor-pointer"
+                      aria-label="Remove from Watchlist"
+                    >
+                      <Trash2 size={16} strokeWidth={2} />
+                    </button>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
             </motion.div>
           )}
 
