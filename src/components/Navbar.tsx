@@ -26,19 +26,21 @@ export default function Navbar() {
 
           {/* Logo */}
           <div className="flex justify-center">
-            <motion.img
-              src={logo}
-              alt="CineBay"
-              className="w-20 h-20 object-contain drop-shadow-[0_0_12px_rgba(192,132,252,0.35)] dark:drop-shadow-[0_0_14px_rgba(255,255,255,0.25)]"
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, ease: "easeOut" }}
-            />
+            <a href="/" className="inline-block">
+              <motion.img
+                src={logo}
+                alt="CineBay"
+                className="w-20 h-20 object-contain drop-shadow-[0_0_12px_rgba(192,132,252,0.35)] dark:drop-shadow-[0_0_14px_rgba(255,255,255,0.25)]"
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, ease: "easeOut" }}
+              />
+            </a>
           </div>
 
           {/* Dark Mode Toggle */}
           <div className="flex justify-end">
-              <DarkModeToggle />
+            <DarkModeToggle />
           </div>
         </div>
       </div>
