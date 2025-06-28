@@ -8,11 +8,29 @@ import Navbar from "@/components/Navbar";
 import Modal from "@/components/Modal";
 import type { Movie } from "@/types/movie";
 import Watchlist from "@/watchlist";
-import { Toaster } from "sonner";
+import { Toaster, toast } from "sonner";
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import { useRegisterSW } from "virtual:pwa-register/react";
 
 export default function App() {
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
   const pathname = window.location.pathname;
+
+  // ✅ Service worker toast handler
+  useRegisterSW({
+    onNeedRefresh() {
+      toast.info("New update available. Refresh to update", {
+        action: {
+          label: "Refresh",
+          onClick: () => window.location.reload(),
+        },
+      });
+    },
+    onOfflineReady() {
+      toast.success("App is ready to work offline ✨");
+    },
+  });
 
   if (pathname === "/watchlist") return <Watchlist />;
 
@@ -35,6 +53,8 @@ export default function App() {
       {selectedMovie && (
         <Modal movie={selectedMovie} onClose={() => setSelectedMovie(null)} />
       )}
+
+      {/* ✅ Toaster with rich colors */}
       <Toaster position="bottom-center" richColors closeButton />
     </motion.div>
   );

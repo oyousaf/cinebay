@@ -86,6 +86,26 @@ export default defineConfig({
         enabled: true,
       },
     }),
+    runtimeCaching: [
+  {
+    urlPattern: /^https:\/\/api\.themoviedb\.org\/3\/movie\/(popular|top_rated)/,
+    handler: "StaleWhileRevalidate",
+    options: {
+      cacheName: "tmdb-popular",
+      expiration: {
+        maxEntries: 50,
+        maxAgeSeconds: 60 * 60 * 24, // 1 day
+      },
+      backgroundSync: {
+        name: "tmdb-popular-queue",
+        options: {
+          maxRetentionTime: 24 * 60, // Retry for up to 24h
+        },
+      },
+    },
+  },
+]
+
   ],
   resolve: {
     alias: {
