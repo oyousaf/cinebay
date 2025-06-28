@@ -3,6 +3,13 @@ import { X, Heart } from "lucide-react";
 import type { Movie } from "@/types/movie";
 import { TMDB_IMAGE } from "@/lib/tmdb";
 
+import { useEffect, useState } from "react";
+import {
+  saveToWatchlist,
+  removeFromWatchlist,
+  isInWatchlist,
+} from "@/lib/watchlist";
+
 export default function Modal({
   movie,
   onClose,
@@ -24,6 +31,12 @@ export default function Modal({
       : "/fallback.jpg";
 
   const title = movie.title || movie.name || "Untitled";
+
+  const [isSaved, setIsSaved] = useState(false);
+
+  useEffect(() => {
+    setIsSaved(isInWatchlist(movie.id));
+  }, [movie.id]);
 
   return (
     <AnimatePresence>
@@ -114,11 +127,24 @@ export default function Modal({
           {/* ❤️ Watch Later Button */}
           {movie.media_type !== "person" && (
             <button
-              onClick={() => console.log("Add to Watch Later:", movie.title)}
-              className="absolute top-3 left-3 z-50 text-white hover:text-yellow-400 bg-black/60 backdrop-blur p-2 rounded-full shadow-md transition"
-              title="Watch Later"
+              onClick={() => {
+                if (isSaved) {
+                  removeFromWatchlist(movie.id);
+                } else {
+                  saveToWatchlist(movie);
+                }
+                setIsSaved(!isSaved);
+              }}
+              className={`absolute top-3 left-3 z-50 ${
+                isSaved ? "text-yellow-400" : "text-white"
+              } hover:text-yellow-400 bg-black/60 backdrop-blur p-2 rounded-full shadow-md transition cursor-pointer`}
+              title={isSaved ? "Remove from Watchlist" : "Add to Watchlist"}
             >
-              <Heart size={22} strokeWidth={2} />
+              <Heart
+                size={22}
+                strokeWidth={isSaved ? 3 : 2}
+                fill={isSaved ? "currentColor" : "none"}
+              />
             </button>
           )}
 
