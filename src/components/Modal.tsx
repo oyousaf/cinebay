@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { X } from "lucide-react";
+import { X, Heart } from "lucide-react";
 import type { Movie } from "@/types/movie";
 import { TMDB_IMAGE } from "@/lib/tmdb";
 
@@ -25,13 +25,6 @@ export default function Modal({
 
   const title = movie.title || movie.name || "Untitled";
 
-  const subtitle =
-    movie.media_type === "person"
-      ? ""
-      : `${movie.genres?.join(", ") || "N/A"} · ${
-          movie.release_date?.slice(0, 4) || "?"
-        } · ⭐ ${movie.vote_average?.toFixed(1) || "?"}`;
-
   return (
     <AnimatePresence>
       <motion.div
@@ -48,7 +41,7 @@ export default function Modal({
           transition={{ duration: 0.3, ease: "easeOut" }}
           className="relative w-[95vw] sm:w-full max-w-4xl mx-auto rounded-2xl overflow-hidden shadow-2xl"
         >
-          {/* Background */}
+          {/* 🔲 Background */}
           <div
             className="absolute inset-0 bg-cover bg-center"
             style={{ backgroundImage: `url(${backdrop})` }}
@@ -56,115 +49,80 @@ export default function Modal({
             <div className="absolute inset-0 bg-black/70" />
           </div>
 
-          {/* Content */}
-          <div className="relative z-10 px-4 py-6 sm:p-8 text-white space-y-6 bg-gradient-to-b from-black/80 via-black/60 to-black/90">
-            {movie.media_type === "person" ? (
-              // 👤 Person Layout
-              <div className="flex flex-col sm:flex-row gap-6 sm:items-start">
-                <img
-                  src={poster}
-                  alt={title}
-                  className="w-36 sm:w-44 rounded-lg shadow-lg object-cover"
-                />
-                <div className="flex-1 space-y-4">
-                  <h2 className="text-3xl sm:text-4xl font-bold">{title}</h2>
-                  {movie.overview ? (
-                    <p className="text-sm text-zinc-200 leading-relaxed">
-                      {movie.overview}
-                    </p>
-                  ) : (
-                    <p className="text-sm italic text-zinc-400">
-                      No biography available.
-                    </p>
-                  )}
+          {/* 🧊 Modal Content */}
+          <motion.div
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.1, duration: 0.4 }}
+            className="relative z-10 px-4 py-6 sm:p-8 text-white space-y-6 bg-gradient-to-b from-black/80 via-black/60 to-black/90 max-h-[90vh] overflow-y-auto"
+          >
+            <div className="flex flex-col sm:flex-row gap-6 sm:items-start">
+              {/* 🎞️ Poster Image */}
+              <motion.img
+                src={poster}
+                alt={title}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.2, duration: 0.4 }}
+                className="w-36 sm:w-44 rounded-lg shadow-lg object-cover"
+              />
 
-                  {movie.id && (
-                    <a
-                      href={`https://www.themoviedb.org/person/${movie.id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm text-yellow-300 hover:underline"
-                    >
-                      View on TMDB →
-                    </a>
-                  )}
+              {/* 📃 Text Block */}
+              <div className="flex-1 space-y-4">
+                <h2 className="text-3xl sm:text-4xl font-bold">{title}</h2>
 
-                  {movie.media_type === "person" &&
-                    Array.isArray(movie.known_for) &&
-                    movie.known_for.length > 0 && (
-                      <div className="pt-4">
-                        <h3 className="text-lg font-semibold text-white mb-2">
-                          Known For
-                        </h3>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                          {movie.known_for!.map((item) => {
-                            const knownTitle = item.title || item.name;
-                            const poster = item.poster_path
-                              ? `https://image.tmdb.org/t/p/w185${item.poster_path}`
-                              : "/fallback.jpg";
+                {movie.overview && (
+                  <p className="text-md text-zinc-200 leading-relaxed">
+                    {movie.overview}
+                  </p>
+                )}
 
-                            return (
-                              <div
-                                key={`${item.media_type}-${item.id}`}
-                                className="space-y-1"
-                              >
-                                <img
-                                  src={poster}
-                                  alt={knownTitle}
-                                  className="w-full rounded-lg object-cover shadow-md"
-                                />
-                                <div className="text-sm text-zinc-200 truncate">
-                                  {knownTitle}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
+                {movie.media_type !== "person" && (
+                  <div className="flex flex-wrap justify-end items-center gap-2 text-xs sm:text-sm text-zinc-300 mt-4">
+                    <span className="truncate max-w-full">
+                      {movie.genres?.join(", ") || "N/A"}
+                    </span>
+                    <span className="hidden sm:inline">·</span>
+                    <span>{movie.release_date?.slice(0, 4) || "?"}</span>
+                    <span className="hidden sm:inline">·</span>
+                    <span className="bg-yellow-400 text-black font-bold px-2 py-0.5 rounded shadow-sm">
+                      {movie.vote_average?.toFixed(1) || "?"}
+                    </span>
+                  </div>
+                )}
 
-                  <button
-                    className="mt-4 bg-yellow-400 hover:bg-yellow-300 text-black text-base font-semibold px-6 py-2 rounded-xl shadow-md transition"
-                    onClick={() => console.log("View profile:", title)}
+                {/* 🎬 Watch Button */}
+                {movie.media_type !== "person" && (
+                  <motion.div
+                    initial={{ y: 10, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.4, duration: 0.4 }}
+                    className="pt-2"
                   >
-                    View Profile
-                  </button>
-                </div>
+                    <button
+                      className="bg-yellow-400 hover:bg-yellow-300 text-black text-xl font-semibold px-6 py-2 rounded-xl shadow-md transition"
+                      onClick={() => console.log("Watch clicked for:", title)}
+                    >
+                      Watch
+                    </button>
+                  </motion.div>
+                )}
               </div>
-            ) : (
-              // 🎬 Movie/TV Layout
-              <div className="flex flex-col sm:flex-row gap-6 sm:items-start">
-                <img
-                  src={poster}
-                  alt={title}
-                  className="w-36 sm:w-44 rounded-lg shadow-lg object-cover"
-                />
-                <div className="flex-1 space-y-2">
-                  <div className="text-sm text-zinc-300">{subtitle}</div>
-                  <h2 className="text-3xl sm:text-4xl font-bold">{title}</h2>
-                  {movie.overview && (
-                    <p className="text-md text-zinc-200 leading-relaxed">
-                      {movie.overview}
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
+            </div>
+          </motion.div>
 
-            {/* Watch Button */}
-            {movie.media_type !== "person" && (
-              <div className="pt-4">
-                <button
-                  className="bg-yellow-400 hover:bg-yellow-300 text-black text-xl font-semibold px-6 py-2 rounded-xl shadow-md transition"
-                  onClick={() => console.log("Watch clicked for:", title)}
-                >
-                  Watch
-                </button>
-              </div>
-            )}
-          </div>
+          {/* ❤️ Watch Later Button */}
+          {movie.media_type !== "person" && (
+            <button
+              onClick={() => console.log("Add to Watch Later:", movie.title)}
+              className="absolute top-3 left-3 z-50 text-white hover:text-yellow-400 bg-black/60 backdrop-blur p-2 rounded-full shadow-md transition"
+              title="Watch Later"
+            >
+              <Heart size={22} strokeWidth={2} />
+            </button>
+          )}
 
-          {/* ❌ Close Button */}
+          {/* ❌ Close */}
           <button
             className="absolute top-3 right-3 z-50 text-white hover:text-yellow-400 cursor-pointer"
             onClick={onClose}
