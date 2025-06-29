@@ -11,7 +11,9 @@ import {
 } from "@/lib/watchlist";
 
 import PlayerModal from "@/components/PlayerModal";
-import CastSlider from "@/components/CastSlider";
+import StarringList from "./modal/StarringList";
+import KnownForSlider from "./modal/KnownForSlider";
+import Recommendations from "./modal/Recommendations";
 
 export default function Modal({
   movie,
@@ -32,6 +34,8 @@ export default function Modal({
   const poster = movie.profile_path || movie.poster_path || "";
   const displayPoster = poster ? `${TMDB_IMAGE}${poster}` : "/fallback.jpg";
 
+  const embedUrl = `https://vidsrc.me/embed/${movie.media_type}/${movie.id}`;
+
   const releaseDate = movie.release_date
     ? new Date(movie.release_date).toLocaleDateString("en-GB", {
         day: "numeric",
@@ -39,9 +43,6 @@ export default function Modal({
         year: "numeric",
       })
     : null;
-
-  const embedUrl = `https://vidsrc.me/embed/${movie.media_type}/${movie.id}`;
-  const cast = movie.credits?.cast?.slice(0, 5) || [];
 
   useEffect(() => {
     setIsSaved(isInWatchlist(movie.id));
@@ -88,7 +89,6 @@ export default function Modal({
           transition={{ duration: 0.3 }}
           className="relative w-[95vw] sm:w-full max-w-4xl mx-auto rounded-2xl overflow-hidden shadow-2xl"
         >
-          {/* Content */}
           <div className="relative z-10 px-4 py-6 sm:p-8 bg-gradient-to-b from-black/80 via-black/60 to-black/90 text-white max-h-[90vh] overflow-y-auto space-y-6">
             <div className="flex flex-col sm:flex-row gap-6 sm:items-start">
               <img
@@ -114,14 +114,13 @@ export default function Modal({
                   )
                 )}
 
-                {/* Metadata */}
                 <div className="flex flex-wrap gap-2 sm:gap-3 text-sm sm:text-base text-zinc-300 pt-2">
                   {!isPerson && movie.isNew && (
                     <span className="bg-amber-400 text-black text-xs font-bold p-2 rounded shadow">
                       NEW
                     </span>
                   )}
-                  {!isPerson && movie.genres?.length > 0 && (
+                  {!isPerson && movie.genres?.length && (
                     <span className="italic truncate">
                       {movie.genres.join(", ")}
                     </span>
@@ -168,32 +167,20 @@ export default function Modal({
                   )}
                 </div>
 
-                {/* Cast or Known For */}
-                {!isPerson && cast.length > 0 && (
-                  <div className="pt-2 text-sm text-zinc-400">
-                    <span className="font-semibold text-zinc-300">
-                      Starring:
-                    </span>{" "}
-                    {cast.map((actor, i) => (
-                      <span
-                        key={actor.id}
-                        className="underline cursor-pointer"
-                        onClick={() =>
-                          fetchDetails(actor.id, "person").then(
-                            (res) => res && onSelect?.(res)
-                          )
-                        }
-                      >
-                        {actor.name}
-                        {i < cast.length - 1 ? ", " : ""}
-                      </span>
-                    ))}
-                  </div>
-                )}
+                {/* Subcomponents */}
+                {!isPerson &&
+                  movie.credits?.cast &&
+                  movie.credits.cast.length > 0 && (
+                    <StarringList
+                      cast={movie.credits.cast}
+                      onSelect={onSelect}
+                    />
+                  )}
+
                 {isPerson &&
                   Array.isArray(movie.known_for) &&
                   movie.known_for.length > 0 && (
-                    <CastSlider
+                    <KnownForSlider
                       items={movie.known_for}
                       onSelect={async (item) => {
                         if (!item.id || !item.media_type) return;
@@ -206,6 +193,16 @@ export default function Modal({
                     />
                   )}
 
+                {!isPerson &&
+                  Array.isArray(movie.recommendations) &&
+                  movie.recommendations.length > 0 && (
+                    <Recommendations
+                      items={movie.recommendations}
+                      onSelect={onSelect}
+                    />
+                  )}
+
+                {/* Watch Button */}
                 {!isPerson && (
                   <div className="pt-2">
                     <button
@@ -220,6 +217,7 @@ export default function Modal({
             </div>
           </div>
 
+          {/* Modal Actions */}
           {!isPerson && (
             <motion.button
               whileTap={{ scale: 0.9 }}

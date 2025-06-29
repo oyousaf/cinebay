@@ -115,7 +115,7 @@ export default function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
     <motion.div
       animate={barControls}
       initial={{ y: 0, opacity: 1 }}
-      className="fixed top-[88px] left-0 w-full z-40 flex flex-col items-center px-4 sm:px-6 py-4"
+      className="fixed top-[88px] left-0 w-full z-40 flex flex-col items-center px-4 sm:px-6 py-8"
     >
       <motion.form
         initial={{ opacity: 0, scale: 0.95 }}

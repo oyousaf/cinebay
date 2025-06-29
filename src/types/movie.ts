@@ -32,6 +32,7 @@ export type Movie = {
   runtime: number | null;
   original_language?: string;
   isNew?: boolean;
+  recommendations?: Movie[];
 
   // Movie/show only
   credits?: {

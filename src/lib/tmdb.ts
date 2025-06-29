@@ -58,6 +58,26 @@ function isNewRelease(dateStr: string): boolean {
 function toMovie(detail: any, media_type: "movie" | "tv" | "person"): Movie {
   const releaseDateStr = detail.release_date || detail.first_air_date || "";
 
+  const recommendationsRaw = detail.recommendations?.results || [];
+  const recommendations: Movie[] = recommendationsRaw
+    .map((r: any) => ({
+      id: r.id,
+      title: r.title || r.name || "Untitled",
+      overview: r.overview || "",
+      poster_path: r.poster_path || "",
+      backdrop_path: r.backdrop_path || "",
+      profile_path: "",
+      release_date: r.release_date || r.first_air_date || "",
+      vote_average: r.vote_average ?? 0,
+      media_type: r.media_type ?? media_type,
+      genres: [],
+      runtime: null,
+      original_language: r.original_language ?? "",
+      isNew: isNewRelease(r.release_date || r.first_air_date || ""),
+      recommendations: [],
+    }))
+    .filter(Boolean);
+
   return {
     id: detail.id,
     title: detail.title || detail.name || "Untitled",
@@ -78,6 +98,7 @@ function toMovie(detail: any, media_type: "movie" | "tv" | "person"): Movie {
     known_for: detail.known_for ?? undefined,
     isNew: isNewRelease(releaseDateStr),
     deathday: detail.deathday ?? undefined,
+    recommendations,
   };
 }
 
