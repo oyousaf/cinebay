@@ -54,7 +54,7 @@ export default function Watchlist() {
           ) : (
             <motion.div
               layout
-              className="grid grid-cols-3 md:grid-cols-4 gap-4"
+              className="grid grid-cols-3 md:grid-cols-5 gap-4"
             >
               <AnimatePresence>
                 {watchlist.map((movie) => (
