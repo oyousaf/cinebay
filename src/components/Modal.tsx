@@ -173,7 +173,12 @@ export default function Modal({
                 {/* Metadata */}
                 <div className="flex flex-wrap gap-2 sm:gap-3 text-sm sm:text-base text-zinc-300 pt-2">
                   {!isPerson && movie.isNew && (
-                    <span className="bg-amber-400 text-black text-xs font-bold p-2 rounded shadow">
+                    <span
+                      className="bg-amber-400 text-black text-xs font-bold p-2 rounded shadow"
+                      style={{
+                        boxShadow: "0 0 6px #fbbf24, 0 0 12px #facc15",
+                      }}
+                    >
                       NEW
                     </span>
                   )}
@@ -197,7 +202,12 @@ export default function Modal({
                   {!isPerson &&
                     typeof movie.vote_average === "number" &&
                     movie.vote_average > 0 && (
-                      <span className="bg-yellow-400 text-black font-bold px-2 py-0.5 rounded shadow-sm">
+                      <span
+                        className="bg-yellow-400 text-black font-bold px-2 py-0.5 rounded shadow-sm"
+                        style={{
+                          boxShadow: "0 0 6px #fbbf24, 0 0 12px #facc15",
+                        }}
+                      >
                         {movie.vote_average.toFixed(1)}
                       </span>
                     )}
@@ -246,8 +256,11 @@ export default function Modal({
                 {!isPerson && (
                   <div className="pt-2">
                     <button
-                      className="bg-yellow-400 hover:bg-yellow-300 text-black text-xl cursor-pointer font-semibold px-6 py-2 rounded-xl shadow-md transition"
+                      className="bg-yellow-400 hover:bg-yellow-300 text-black text-xl cursor-pointer uppercase font-semibold px-6 py-2 rounded-xl shadow-md transition"
                       onClick={() => setShowPlayer(true)}
+                      style={{
+                        boxShadow: "0 0 6px #fbbf24, 0 0 12px #facc15",
+                      }}
                     >
                       Watch
                     </button>

@@ -1,34 +1,33 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { getWatchlist, removeFromWatchlist } from "@/lib/watchlist";
-import type { Movie } from "@/types/movie";
-import Modal from "@/components/Modal";
-import ConfirmModal from "@/components/ConfirmModal";
 import { toast } from "sonner";
 import { Trash2 } from "lucide-react";
 
+import { getWatchlist, removeFromWatchlist } from "@/lib/watchlist";
+import type { Movie } from "@/types/movie";
+
+import Modal from "@/components/Modal";
+import ConfirmModal from "@/components/ConfirmModal";
+
 export default function Watchlist() {
   const [watchlist, setWatchlist] = useState<Movie[]>([]);
-  const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
-  const [pendingRemove, setPendingRemove] = useState<Movie | null>(null);
+  const [selected, setSelected] = useState<Movie | null>(null);
+  const [toRemove, setToRemove] = useState<Movie | null>(null);
 
   useEffect(() => {
     setWatchlist(getWatchlist());
   }, []);
 
-  const confirmRemove = (movie: Movie) => setPendingRemove(movie);
-
   const handleRemove = () => {
-    if (!pendingRemove) return;
-    removeFromWatchlist(pendingRemove.id);
-    setWatchlist((prev) => prev.filter((m) => m.id !== pendingRemove.id));
+    if (!toRemove) return;
+    removeFromWatchlist(toRemove.id);
+    setWatchlist((prev) => prev.filter((m) => m.id !== toRemove.id));
     toast.success("Removed from Watchlist");
-    setPendingRemove(null);
+    setToRemove(null);
   };
 
   return (
     <div className="min-h-screen w-full bg-gradient-to-b from-foreground via-foreground to-black text-white">
-      {/* Page Animation Wrapper */}
       <AnimatePresence mode="wait">
         <motion.main
           key="watchlist"
@@ -65,8 +64,6 @@ export default function Watchlist() {
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.9 }}
                     transition={{ layout: { duration: 0.3 } }}
-                    className="relative group cursor-pointer rounded-xl overflow-hidden shadow-xl"
-                    onClick={() => setSelectedMovie(movie)}
                     whileHover={{
                       scale: 1.07,
                       transition: {
@@ -75,6 +72,8 @@ export default function Watchlist() {
                         damping: 20,
                       },
                     }}
+                    className="relative group cursor-pointer rounded-xl overflow-hidden shadow-xl"
+                    onClick={() => setSelected(movie)}
                   >
                     <img
                       src={
@@ -100,9 +99,9 @@ export default function Watchlist() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        confirmRemove(movie);
+                        setToRemove(movie);
                       }}
-                      className="absolute top-2 right-2 bg-black/60 text-white p-1.5 rounded-full hover:bg-red-600 hover:text-white shadow transition cursor-pointer"
+                      className="absolute top-2 right-2 bg-black/60 text-white p-1.5 cursor-pointer rounded-full hover:bg-red-600 hover:text-white shadow transition"
                       aria-label="Remove from Watchlist"
                     >
                       <Trash2 size={16} strokeWidth={2} />
@@ -113,19 +112,17 @@ export default function Watchlist() {
             </motion.div>
           )}
 
-          {pendingRemove && (
+          {toRemove && (
             <ConfirmModal
-              message={`Are you sure you want to remove "${pendingRemove.title}" from your Watchlist?`}
+              message={`Remove "${toRemove.title}" from your Watchlist?`}
               onConfirm={handleRemove}
-              onCancel={() => setPendingRemove(null)}
+              onCancel={() => setToRemove(null)}
             />
           )}
         </motion.main>
       </AnimatePresence>
 
-      {selectedMovie && (
-        <Modal movie={selectedMovie} onClose={() => setSelectedMovie(null)} />
-      )}
+      {selected && <Modal movie={selected} onClose={() => setSelected(null)} />}
     </div>
   );
 }
