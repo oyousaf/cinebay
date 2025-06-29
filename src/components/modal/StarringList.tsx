@@ -8,12 +8,14 @@ export default function StarringList({
   cast: CastMember[];
   onSelect?: (item: Movie) => void;
 }) {
-  if (!cast || cast.length === 0) return null;
+  if (!cast?.length) return null;
+
+  const mainCast = cast.slice(0, 5);
 
   return (
     <div className="pt-2 text-sm text-zinc-400">
       <span className="font-semibold text-zinc-300">Starring:</span>{" "}
-      {cast.map((actor, i) => (
+      {mainCast.map((actor, i) => (
         <span
           key={actor.id}
           className="underline cursor-pointer"
@@ -24,7 +26,7 @@ export default function StarringList({
           }
         >
           {actor.name}
-          {i < cast.length - 1 ? ", " : ""}
+          {i < mainCast.length - 1 ? ", " : ""}
         </span>
       ))}
     </div>

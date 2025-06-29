@@ -10,11 +10,15 @@ export default function KnownForSlider({
 }) {
   if (!items?.length) return null;
 
+  const sorted = [...items].sort(
+    (a, b) => (b.vote_average ?? 0) - (a.vote_average ?? 0)
+  );
+
   return (
     <div className="pt-2">
       <h3 className="text-sm font-semibold text-zinc-300 mb-2">Known For</h3>
-      <div className="flex gap-3 overflow-x-auto pb-2">
-        {items.map((item) => {
+      <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
+        {sorted.map((item) => {
           const title = item.title || item.name || "Untitled";
           const poster = item.poster_path
             ? `${TMDB_IMAGE}${item.poster_path}`
