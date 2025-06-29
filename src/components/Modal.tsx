@@ -46,15 +46,10 @@ export default function Modal({
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        onClose();
-      }
+      if (e.key === "Escape") onClose();
     };
-
     window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
 
   useEffect(() => {
@@ -102,6 +97,47 @@ export default function Modal({
           transition={{ duration: 0.3 }}
           className="relative w-[95vw] sm:w-full max-w-4xl mx-auto rounded-2xl overflow-hidden shadow-2xl"
         >
+          {/* Navigation Buttons */}
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="absolute top-3 left-3 z-50 text-white hover:text-yellow-400 cursor-pointer"
+            >
+              <ArrowLeft className="w-6 h-6 bg-black/60 rounded-full p-1" />
+            </button>
+          )}
+
+          <div className="absolute top-3 right-3 z-50 flex gap-2">
+            {!isPerson && (
+              <motion.button
+                whileTap={{ scale: 0.9 }}
+                onClick={toggleWatchlist}
+                className={`${
+                  isSaved ? "text-yellow-400" : "text-white"
+                } hover:text-yellow-400 bg-black/60 backdrop-blur p-2 rounded-full shadow-md cursor-pointer`}
+                aria-label={
+                  isSaved ? "Remove from Watchlist" : "Add to Watchlist"
+                }
+              >
+                <Heart
+                  size={22}
+                  strokeWidth={isSaved ? 3 : 2}
+                  fill={isSaved ? "currentColor" : "none"}
+                />
+              </motion.button>
+            )}
+            <button
+              onClick={onClose}
+              className="text-white hover:text-yellow-400 cursor-pointer"
+            >
+              <X
+                size={28}
+                className="p-1 bg-black/60 rounded-full backdrop-blur"
+              />
+            </button>
+          </div>
+
+          {/* Main Modal Content */}
           <div className="relative z-10 px-4 py-6 sm:p-8 bg-gradient-to-b from-black/80 via-black/60 to-black/90 text-white max-h-[90vh] overflow-y-auto space-y-6">
             <div className="flex flex-col sm:flex-row gap-6 sm:items-start">
               <img
@@ -113,6 +149,7 @@ export default function Modal({
               <div className="flex-1 space-y-4">
                 <h2 className="text-3xl sm:text-4xl font-bold">{title}</h2>
 
+                {/* Overview or Biography */}
                 {isPerson && movie.biography ? (
                   <p className="text-md text-zinc-200 leading-relaxed whitespace-pre-line">
                     {movie.biography.length > 600
@@ -127,6 +164,7 @@ export default function Modal({
                   )
                 )}
 
+                {/* Metadata */}
                 <div className="flex flex-wrap gap-2 sm:gap-3 text-sm sm:text-base text-zinc-300 pt-2">
                   {!isPerson && movie.isNew && (
                     <span
@@ -220,7 +258,6 @@ export default function Modal({
                     />
                   )}
 
-                {/* Watch Button */}
                 {!isPerson && (
                   <div className="pt-2">
                     <button
@@ -235,49 +272,10 @@ export default function Modal({
             </div>
           </div>
 
-          {/* Modal Actions */}
-          {!isPerson && (
-            <motion.button
-              whileTap={{ scale: 0.9 }}
-              onClick={toggleWatchlist}
-              className={`absolute top-3 left-3 z-50 ${
-                isSaved ? "text-yellow-400" : "text-white"
-              } hover:text-yellow-400 bg-black/60 backdrop-blur p-2 rounded-full shadow-md cursor-pointer`}
-              aria-label={
-                isSaved ? "Remove from Watchlist" : "Add to Watchlist"
-              }
-            >
-              <Heart
-                size={22}
-                strokeWidth={isSaved ? 3 : 2}
-                fill={isSaved ? "currentColor" : "none"}
-              />
-            </motion.button>
+          {!isPerson && showPlayer && (
+            <PlayerModal url={embedUrl} onClose={() => setShowPlayer(false)} />
           )}
-
-          {onBack && (
-            <button
-              onClick={onBack}
-              className="absolute top-3 left-12 z-50 text-white hover:text-yellow-400 cursor-pointer"
-            >
-              <ArrowLeft className="w-6 h-6 bg-black/60 rounded-full p-1" />
-            </button>
-          )}
-
-          <button
-            className="absolute top-3 right-3 z-50 text-white hover:text-yellow-400 cursor-pointer"
-            onClick={onClose}
-          >
-            <X
-              size={28}
-              className="p-1 bg-black/60 rounded-full backdrop-blur"
-            />
-          </button>
         </motion.div>
-
-        {!isPerson && showPlayer && (
-          <PlayerModal url={embedUrl} onClose={() => setShowPlayer(false)} />
-        )}
       </motion.div>
     </AnimatePresence>
   );

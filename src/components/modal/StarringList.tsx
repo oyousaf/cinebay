@@ -16,17 +16,18 @@ export default function StarringList({
     <div className="pt-2 text-sm text-zinc-400">
       <span className="font-semibold text-zinc-300">Starring:</span>{" "}
       {mainCast.map((actor, i) => (
-        <span
-          key={actor.id}
-          className="underline cursor-pointer"
-          onClick={() =>
-            fetchDetails(actor.id, "person").then((res) => {
-              if (res) onSelect?.(res);
-            })
-          }
-        >
-          {actor.name}
-          {i < mainCast.length - 1 ? ", " : ""}
+        <span key={actor.id}>
+          <span
+            className="underline cursor-pointer hover:text-yellow-400 transition-colors"
+            onClick={() =>
+              fetchDetails(actor.id, "person").then(
+                (res) => res && onSelect?.(res)
+              )
+            }
+          >
+            {actor.name}
+          </span>
+          {i < mainCast.length - 1 && ", "}
         </span>
       ))}
     </div>
