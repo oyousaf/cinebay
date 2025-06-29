@@ -96,7 +96,7 @@ export default function Watchlist() {
                         e.stopPropagation();
                         setToRemove(movie);
                       }}
-                      className="absolute top-2 right-2 bg-black/60 text-red-300 p-1.5 cursor-pointer rounded-full hover:text-red-500 shadow transition"
+                      className="absolute top-2 right-2 bg-black/60 text-white p-1.5 cursor-pointer rounded-full hover:text-red-500 shadow transition"
                       aria-label="Remove from Watchlist"
                     >
                       <Trash2 size={16} strokeWidth={2} />
