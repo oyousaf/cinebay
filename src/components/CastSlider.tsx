@@ -1,15 +1,22 @@
-import { TMDB_IMAGE } from "@/lib/tmdb";
+import { TMDB_IMAGE, fetchDetails } from "@/lib/tmdb";
+import type { KnownForItem, Movie } from "@/types/movie";
 
-interface KnownForItem {
-  id: number;
-  title?: string;
-  name?: string;
-  poster_path?: string;
-  release_date?: string;
-  media_type?: string;
-}
+export default function CastSlider({
+  items,
+  onSelect,
+}: {
+  items: KnownForItem[];
+  onSelect?: (item: Movie) => void;
+}) {
+  const handleSelect = async (item: KnownForItem) => {
+    if (!onSelect || !item.media_type) return;
+    const validType = item.media_type === "movie" || item.media_type === "tv";
+    if (!validType) return;
 
-export default function CastSlider({ items }: { items: KnownForItem[] }) {
+    const full = await fetchDetails(item.id, item.media_type);
+    if (full?.media_type) onSelect(full);
+  };
+
   return (
     <div className="pt-2">
       <h3 className="text-sm font-semibold text-zinc-300 mb-2">Known For</h3>
@@ -26,7 +33,8 @@ export default function CastSlider({ items }: { items: KnownForItem[] }) {
           return (
             <div
               key={item.id}
-              className="w-28 flex-shrink-0 text-center space-y-1"
+              onClick={() => handleSelect(item)}
+              className="w-28 flex-shrink-0 text-center space-y-1 cursor-pointer"
             >
               <img
                 src={poster}

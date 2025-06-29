@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Heart } from "lucide-react";
+import { X, Heart, ArrowLeft } from "lucide-react";
 
 import type { Movie } from "@/types/movie";
-import { TMDB_IMAGE } from "@/lib/tmdb";
+import { TMDB_IMAGE, fetchDetails } from "@/lib/tmdb";
 import {
   isInWatchlist,
   removeFromWatchlist,
@@ -16,9 +16,13 @@ import CastSlider from "@/components/CastSlider";
 export default function Modal({
   movie,
   onClose,
+  onSelect,
+  onBack,
 }: {
   movie: Movie;
   onClose: () => void;
+  onSelect?: (item: Movie) => void;
+  onBack?: () => void;
 }) {
   const isPerson = movie.media_type === "person";
   const [isSaved, setIsSaved] = useState(false);
@@ -26,11 +30,8 @@ export default function Modal({
 
   const title = movie.title || movie.name || "Untitled";
   const poster = movie.profile_path || movie.poster_path || "";
-  const backdrop = movie.backdrop_path
-    ? `${TMDB_IMAGE.replace("w500", "original")}${movie.backdrop_path}`
-    : "/fallback.jpg";
-
   const displayPoster = poster ? `${TMDB_IMAGE}${poster}` : "/fallback.jpg";
+
   const releaseDate = movie.release_date
     ? new Date(movie.release_date).toLocaleDateString("en-GB", {
         day: "numeric",
@@ -47,11 +48,7 @@ export default function Modal({
   }, [movie.id]);
 
   const toggleWatchlist = () => {
-    if (isSaved) {
-      removeFromWatchlist(movie.id);
-    } else {
-      saveToWatchlist(movie);
-    }
+    isSaved ? removeFromWatchlist(movie.id) : saveToWatchlist(movie);
     setIsSaved(!isSaved);
   };
 
@@ -61,6 +58,19 @@ export default function Modal({
         ? "Actress"
         : "Actor"
       : movie.known_for_department;
+
+  const calculateAge = () => {
+    if (!movie.birthday) return null;
+    const birth = new Date(movie.birthday);
+    const death = movie.deathday ? new Date(movie.deathday) : new Date();
+    let age = death.getFullYear() - birth.getFullYear();
+    if (
+      death < new Date(death.getFullYear(), birth.getMonth(), birth.getDate())
+    ) {
+      age--;
+    }
+    return age;
+  };
 
   return (
     <AnimatePresence>
@@ -78,7 +88,7 @@ export default function Modal({
           transition={{ duration: 0.3 }}
           className="relative w-[95vw] sm:w-full max-w-4xl mx-auto rounded-2xl overflow-hidden shadow-2xl"
         >
-          {/* 🧊 Modal Content */}
+          {/* Content */}
           <div className="relative z-10 px-4 py-6 sm:p-8 bg-gradient-to-b from-black/80 via-black/60 to-black/90 text-white max-h-[90vh] overflow-y-auto space-y-6">
             <div className="flex flex-col sm:flex-row gap-6 sm:items-start">
               <img
@@ -87,46 +97,40 @@ export default function Modal({
                 className="w-36 sm:w-44 rounded-lg shadow-lg object-cover"
                 loading="lazy"
               />
-
               <div className="flex-1 space-y-4">
                 <h2 className="text-3xl sm:text-4xl font-bold">{title}</h2>
 
-                {/* 📝 Overview or Biography */}
-                {!isPerson && movie.overview && (
-                  <p className="text-md text-zinc-200 leading-relaxed">
-                    {movie.overview}
-                  </p>
-                )}
-                {isPerson && movie.biography && (
+                {isPerson && movie.biography ? (
                   <p className="text-md text-zinc-200 leading-relaxed whitespace-pre-line">
                     {movie.biography.length > 600
                       ? movie.biography.slice(0, 600) + "..."
                       : movie.biography}
                   </p>
+                ) : (
+                  movie.overview && (
+                    <p className="text-md text-zinc-200 leading-relaxed">
+                      {movie.overview}
+                    </p>
+                  )
                 )}
 
-                {/* 📅 Meta Info */}
+                {/* Metadata */}
                 <div className="flex flex-wrap gap-2 sm:gap-3 text-sm sm:text-base text-zinc-300 pt-2">
-                  {movie.isNew && !isPerson && (
-                    <span
-                      className="bg-amber-400 text-black text-xs font-bold p-2 rounded shadow"
-                      style={{
-                        boxShadow: "0 0 6px #fbbf24, 0 0 12px #facc15",
-                      }}
-                    >
+                  {!isPerson && movie.isNew && (
+                    <span className="bg-amber-400 text-black text-xs font-bold p-2 rounded shadow">
                       NEW
                     </span>
                   )}
-                  {movie.genres?.length > 0 && !isPerson && (
+                  {!isPerson && movie.genres?.length > 0 && (
                     <span className="italic truncate">
                       {movie.genres.join(", ")}
                     </span>
                   )}
                   {releaseDate && <span>· {releaseDate}</span>}
-                  {movie.runtime && !isPerson && (
+                  {!isPerson && movie.runtime && (
                     <span>· {movie.runtime} mins</span>
                   )}
-                  {movie.original_language && !isPerson && (
+                  {!isPerson && movie.original_language && (
                     <span className="capitalize">
                       ·{" "}
                       {new Intl.DisplayNames(["en"], {
@@ -141,62 +145,45 @@ export default function Modal({
                         {movie.vote_average.toFixed(1)}
                       </span>
                     )}
-
-                  {movie.birthday && isPerson && (
+                  {isPerson && movie.birthday && (
                     <span>
                       🎂{" "}
                       {new Date(movie.birthday).toLocaleDateString("en-GB", {
                         day: "numeric",
                         month: "long",
                         year: "numeric",
-                      })}
-                      {movie.birthday && (
-                        <>
-                          {" "}
-                          (
-                          {(() => {
-                            const birth = new Date(movie.birthday);
-                            const death = movie.deathday
-                              ? new Date(movie.deathday)
-                              : new Date();
-                            const age =
-                              death.getFullYear() -
-                              birth.getFullYear() -
-                              (death <
-                              new Date(
-                                death.getFullYear(),
-                                birth.getMonth(),
-                                birth.getDate()
-                              )
-                                ? 1
-                                : 0);
-                            return `${age} yrs`;
-                          })()}
-                          {movie.deathday ? ", deceased" : ""})
-                        </>
-                      )}
+                      })}{" "}
+                      ({calculateAge()} yrs
+                      {movie.deathday ? ", deceased" : ""})
                     </span>
                   )}
-
-                  {movie.place_of_birth && isPerson && (
+                  {isPerson && movie.place_of_birth && (
                     <span>📍 {movie.place_of_birth}</span>
                   )}
-                  {movie.popularity && isPerson && (
+                  {isPerson && movie.popularity && (
                     <span>⭐ {movie.popularity.toFixed(1)} popularity</span>
                   )}
-                  {genderLabel && isPerson && (
+                  {isPerson && genderLabel && (
                     <span className="italic text-zinc-400">{genderLabel}</span>
                   )}
                 </div>
 
-                {/* 🧑 Starring / Known For */}
+                {/* Cast or Known For */}
                 {!isPerson && cast.length > 0 && (
                   <div className="pt-2 text-sm text-zinc-400">
                     <span className="font-semibold text-zinc-300">
                       Starring:
                     </span>{" "}
                     {cast.map((actor, i) => (
-                      <span key={actor.id}>
+                      <span
+                        key={actor.id}
+                        className="underline cursor-pointer"
+                        onClick={() =>
+                          fetchDetails(actor.id, "person").then(
+                            (res) => res && onSelect?.(res)
+                          )
+                        }
+                      >
                         {actor.name}
                         {i < cast.length - 1 ? ", " : ""}
                       </span>
@@ -206,10 +193,19 @@ export default function Modal({
                 {isPerson &&
                   Array.isArray(movie.known_for) &&
                   movie.known_for.length > 0 && (
-                    <CastSlider items={movie.known_for} />
+                    <CastSlider
+                      items={movie.known_for}
+                      onSelect={async (item) => {
+                        if (!item.id || !item.media_type) return;
+                        const full = await fetchDetails(
+                          item.id,
+                          item.media_type
+                        );
+                        if (full) onSelect?.(full);
+                      }}
+                    />
                   )}
 
-                {/* 🎬 Watch Button */}
                 {!isPerson && (
                   <div className="pt-2">
                     <button
@@ -224,7 +220,6 @@ export default function Modal({
             </div>
           </div>
 
-          {/* ❤️ Watchlist Toggle */}
           {!isPerson && (
             <motion.button
               whileTap={{ scale: 0.9 }}
@@ -244,9 +239,17 @@ export default function Modal({
             </motion.button>
           )}
 
-          {/* ❌ Close */}
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="absolute top-3 left-12 z-50 text-white hover:text-yellow-400"
+            >
+              <ArrowLeft className="w-6 h-6 bg-black/60 rounded-full p-1" />
+            </button>
+          )}
+
           <button
-            className="absolute top-3 right-3 z-50 text-white hover:text-yellow-400 cursor-pointer"
+            className="absolute top-3 right-3 z-50 text-white hover:text-yellow-400"
             onClick={onClose}
           >
             <X
@@ -256,7 +259,6 @@ export default function Modal({
           </button>
         </motion.div>
 
-        {/* 🎞️ Player Overlay */}
         {!isPerson && showPlayer && (
           <PlayerModal url={embedUrl} onClose={() => setShowPlayer(false)} />
         )}

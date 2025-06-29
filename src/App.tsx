@@ -13,6 +13,7 @@ import type { Movie } from "@/types/movie";
 
 export default function App() {
   const [selectedItem, setSelectedItem] = useState<Movie | null>(null);
+  const [modalHistory, setModalHistory] = useState<Movie[]>([]);
 
   const [view, setView] = useState<"home" | "watchlist">(() => {
     if (typeof window !== "undefined") {
@@ -26,7 +27,18 @@ export default function App() {
   }, [view]);
 
   const handleSelect = (item: Movie) => {
+    if (selectedItem) {
+      setModalHistory((prev) => [...prev, selectedItem]);
+    }
     setSelectedItem(item);
+  };
+
+  const handleBackInModal = () => {
+    const last = modalHistory.at(-1);
+    if (!last) return;
+
+    setModalHistory((prev) => prev.slice(0, -1));
+    setSelectedItem(last);
   };
 
   const renderHome = () => (
@@ -57,7 +69,15 @@ export default function App() {
       </AnimatePresence>
 
       {selectedItem && (
-        <Modal movie={selectedItem} onClose={() => setSelectedItem(null)} />
+        <Modal
+          movie={selectedItem}
+          onClose={() => {
+            setSelectedItem(null);
+            setModalHistory([]);
+          }}
+          onSelect={handleSelect}
+          onBack={modalHistory.length > 0 ? handleBackInModal : undefined}
+        />
       )}
     </div>
   );
