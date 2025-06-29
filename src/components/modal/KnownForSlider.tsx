@@ -8,24 +8,25 @@ type Props = {
 };
 
 const KnownForSlider: React.FC<Props> = ({ items, onSelect }) => {
-  if (!items?.length) return null;
+  const filtered = [...items]
+    .filter((item) => (item.vote_average ?? 0) >= 6.5)
+    .sort((a, b) => (b.vote_average ?? 0) - (a.vote_average ?? 0))
+    .slice(0, 10);
 
-  const sorted = [...items].sort(
-    (a, b) => (b.vote_average ?? 0) - (a.vote_average ?? 0)
-  );
+  if (!filtered.length) return null;
 
   return (
     <div className="pt-4">
       <h3 className="text-md font-semibold text-zinc-300 mb-2">Known For</h3>
       <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-        {sorted.map((item) => {
+        {filtered.map((item) => {
           const title = item.title || item.name || "Untitled";
           const poster = item.poster_path
             ? `${TMDB_IMAGE}${item.poster_path}`
             : "/fallback.jpg";
           const year = item.release_date
             ? new Date(item.release_date).getFullYear()
-            : "";
+            : null;
 
           return (
             <div

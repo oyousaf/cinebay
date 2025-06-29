@@ -8,7 +8,12 @@ type Props = {
 };
 
 const Recommendations: React.FC<Props> = ({ items, onSelect }) => {
-  if (!items?.length) return null;
+  const filtered = [...items]
+    .filter((item) => (item.vote_average ?? 0) >= 6.5)
+    .sort((a, b) => (b.vote_average ?? 0) - (a.vote_average ?? 0))
+    .slice(0, 10);
+
+  if (!filtered.length) return null;
 
   return (
     <div className="pt-4">
@@ -16,7 +21,7 @@ const Recommendations: React.FC<Props> = ({ items, onSelect }) => {
         Recommendations
       </h3>
       <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-        {items.map((item) => {
+        {filtered.map((item) => {
           const title = item.title || item.name || "Untitled";
           const poster = item.poster_path
             ? `${TMDB_IMAGE}${item.poster_path}`
@@ -25,8 +30,8 @@ const Recommendations: React.FC<Props> = ({ items, onSelect }) => {
           return (
             <div
               key={item.id}
-              className="w-28 flex-shrink-0 text-center space-y-1 cursor-pointer"
               onClick={() => onSelect?.(item)}
+              className="w-28 flex-shrink-0 text-center space-y-1 cursor-pointer"
             >
               <img
                 src={poster}
