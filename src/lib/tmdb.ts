@@ -57,6 +57,7 @@ function isNewRelease(dateStr: string): boolean {
 
 function toMovie(detail: any, media_type: "movie" | "tv" | "person"): Movie {
   const releaseDateStr = detail.release_date || detail.first_air_date || "";
+
   return {
     id: detail.id,
     title: detail.title || detail.name || "Untitled",
@@ -71,7 +72,10 @@ function toMovie(detail: any, media_type: "movie" | "tv" | "person"): Movie {
     runtime: detail.runtime ?? null,
     original_language: detail.original_language ?? "",
     credits: detail.credits ?? undefined,
-    known_for: undefined,
+    biography: detail.biography ?? undefined,
+    place_of_birth: detail.place_of_birth ?? undefined,
+    known_for_department: detail.known_for_department ?? undefined,
+    known_for: detail.known_for ?? undefined,
     isNew: isNewRelease(releaseDateStr),
   };
 }
@@ -92,10 +96,22 @@ export async function fetchDetails(
   id: number,
   media_type: "movie" | "tv" | "person"
 ): Promise<Movie | null> {
-  const data = await fetchFromProxy(
+  const base = await fetchFromProxy(
     `/${media_type}/${id}?language=en-GB&append_to_response=credits`
   );
-  return data ? toMovie(data, media_type) : null;
+  if (!base) return null;
+
+  if (media_type === "person") {
+    const credits = await fetchFromProxy(`/person/${id}/combined_credits`);
+    return {
+      ...toMovie(base, media_type),
+      known_for: credits?.cast?.slice(0, 12) ?? [],
+      birthday: base.birthday ?? "",
+      gender: base.gender ?? 0,
+    };
+  }
+
+  return toMovie(base, media_type);
 }
 
 function emptyPlaceholder(type: "movie" | "tv"): Movie {
@@ -113,7 +129,10 @@ function emptyPlaceholder(type: "movie" | "tv"): Movie {
     runtime: null,
     original_language: "",
     credits: undefined,
-    known_for: undefined,
+    biography: "",
+    place_of_birth: "",
+    known_for_department: "",
+    known_for: [],
     isNew: false,
   };
 }

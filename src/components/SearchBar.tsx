@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { motion, useAnimation } from "framer-motion";
 import { Search } from "lucide-react";
 import debounce from "lodash.debounce";
+
 import { fetchDetails, fetchFromProxy } from "@/lib/tmdb";
 import type { Movie } from "@/types/movie";
 
@@ -14,59 +15,53 @@ type TMDBResult = {
   profile_path?: string;
 };
 
-export default function SearchBar({
-  onSelect,
-}: {
-  onSelect: (movie: Movie) => void;
-}) {
+type Props = {
+  onSelectMovie: (movie: Movie) => void;
+  onSelectPerson?: (person: Movie) => void;
+};
+
+export default function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<TMDBResult[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const iconControls = useAnimation();
   const barControls = useAnimation();
   const lastScroll = useRef(0);
   const resultsRef = useRef<HTMLDivElement>(null);
 
-  // Scroll-hide search bar
   useEffect(() => {
     const handleScroll = () => {
       const current = window.scrollY;
-      if (current > lastScroll.current && current > 80) {
-        barControls.start({ y: -80, opacity: 0 });
-      } else {
-        barControls.start({ y: 0, opacity: 1 });
-      }
+      barControls.start({
+        y: current > lastScroll.current && current > 80 ? -80 : 0,
+        opacity: current > lastScroll.current && current > 80 ? 0 : 1,
+      });
       lastScroll.current = current;
     };
+
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, [barControls]);
 
-  // Debounced search
   const debouncedSearch = useRef(
-    debounce(async (searchTerm: string) => {
-      if (!searchTerm.trim()) {
+    debounce(async (term: string) => {
+      if (!term.trim()) {
         setResults([]);
         setDropdownOpen(false);
         return;
       }
 
       setLoading(true);
-      setError(false);
-
       try {
         const data = await fetchFromProxy(
-          `/search/multi?query=${encodeURIComponent(searchTerm)}`
+          `/search/multi?query=${encodeURIComponent(term)}`
         );
         setResults(data?.results?.slice(0, 10) || []);
         setDropdownOpen(true);
       } catch (err) {
-        console.error("❌ TMDB Search Failed:", err);
-        setError(true);
-        setDropdownOpen(true);
+        console.error("❌ TMDB Search Failed", err);
       } finally {
         setLoading(false);
       }
@@ -77,9 +72,8 @@ export default function SearchBar({
     debouncedSearch(query);
   }, [query]);
 
-  // Close on click outside or Escape
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
+    const clickOutside = (e: MouseEvent) => {
       if (
         resultsRef.current &&
         !resultsRef.current.contains(e.target as Node)
@@ -87,22 +81,35 @@ export default function SearchBar({
         setDropdownOpen(false);
       }
     };
-
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         setQuery("");
-        setResults([]);
         setDropdownOpen(false);
       }
     };
 
-    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("mousedown", clickOutside);
     document.addEventListener("keydown", handleEsc);
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("mousedown", clickOutside);
       document.removeEventListener("keydown", handleEsc);
     };
   }, []);
+
+  const handleSelect = async (item: TMDBResult) => {
+    const full = await fetchDetails(item.id, item.media_type);
+    if (!full) return;
+
+    if (item.media_type === "person" && onSelectPerson) {
+      onSelectPerson(full);
+    } else {
+      onSelectMovie(full);
+    }
+
+    setQuery("");
+    setResults([]);
+    setDropdownOpen(false);
+  };
 
   return (
     <motion.div
@@ -115,12 +122,10 @@ export default function SearchBar({
         animate={{ opacity: 1, scale: 1 }}
         transition={{ delay: 0.3, duration: 0.5, ease: "easeOut" }}
         onSubmit={(e) => e.preventDefault()}
-        autoComplete="off"
-        className="w-full max-w-md flex items-center gap-2 rounded-xl shadow-md border"
+        className="w-full max-w-md flex items-center gap-2 rounded-xl shadow-md border px-4 py-2"
         style={{
           backgroundColor: "hsl(var(--background))",
           borderColor: "hsl(var(--foreground))",
-          padding: "0.5rem 1rem",
         }}
       >
         <motion.input
@@ -129,32 +134,15 @@ export default function SearchBar({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           whileFocus={{ scale: 1.02 }}
-          className="flex-1 text-base md:text-lg bg-transparent outline-none placeholder:text-gray-500"
+          className="flex-1 bg-transparent outline-none text-base md:text-lg placeholder:text-gray-500"
           style={{ color: "hsl(var(--foreground))" }}
         />
         <motion.button
           type="submit"
           whileTap={{ scale: 0.97 }}
           whileHover={{ scale: 1.12 }}
-          className="h-10 w-10 flex items-center justify-center rounded-full transition-colors"
-          style={{
-            color: "hsl(var(--foreground))",
-            backgroundColor: "transparent",
-            border: "none",
-          }}
-          onHoverStart={() =>
-            iconControls.start({
-              rotate: [0, 16, -16, 0],
-              transition: { duration: 0.5, ease: "easeInOut" },
-            })
-          }
-          onHoverEnd={() =>
-            iconControls.start({
-              rotate: 0,
-              transition: { duration: 0.3, ease: "easeOut" },
-            })
-          }
-          aria-label="Search"
+          className="h-10 w-10 flex items-center justify-center rounded-full"
+          style={{ color: "hsl(var(--foreground))" }}
         >
           <motion.span animate={iconControls}>
             <Search className="h-5 w-5" />
@@ -168,48 +156,35 @@ export default function SearchBar({
           className="w-full max-w-md mt-2 rounded-lg shadow-lg overflow-hidden bg-[hsl(var(--background))] text-[hsl(var(--foreground))]"
         >
           {loading && <div className="p-3 text-sm text-center">Loading...</div>}
-          {error && (
-            <div className="p-3 text-sm text-red-500 text-center">
-              Error fetching results.
-            </div>
-          )}
           {!loading && results.length === 0 && query.trim() && (
             <div className="p-3 text-sm text-center">No results found.</div>
           )}
           {results.map((item) => {
-            const imagePath =
+            const image =
               item.media_type === "person"
                 ? item.profile_path
                 : item.poster_path;
-
+            const name = item.title || item.name || "Unknown";
             return (
               <div
                 key={`${item.media_type}-${item.id}`}
                 className="flex items-center gap-3 px-4 py-2 hover:bg-[hsl(var(--foreground))]/10 cursor-pointer"
-                onClick={async () => {
-                  const full = await fetchDetails(item.id, item.media_type);
-                  if (full) onSelect(full);
-                  setQuery("");
-                  setResults([]);
-                  setDropdownOpen(false);
-                }}
+                onClick={() => handleSelect(item)}
               >
                 <img
                   src={
-                    imagePath
-                      ? `https://image.tmdb.org/t/p/w92${imagePath}`
+                    image
+                      ? `https://image.tmdb.org/t/p/w92${image}`
                       : "/fallback.jpg"
                   }
-                  alt={item.title || item.name}
+                  alt={name}
                   className={`w-10 h-14 object-cover rounded-md ${
-                    imagePath ? "" : "opacity-70 blur-sm"
+                    image ? "" : "opacity-70 blur-sm"
                   }`}
                 />
                 <div className="flex flex-col">
-                  <span className="font-medium text-sm">
-                    {item.title || item.name}
-                  </span>
-                  <span className="text-xs text-zinc-400 capitalize">
+                  <span className="font-medium text-sm">{name}</span>
+                  <span className="text-xs text-zinc-400 uppercase">
                     {item.media_type}
                   </span>
                 </div>

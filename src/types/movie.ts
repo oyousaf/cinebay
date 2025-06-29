@@ -5,6 +5,18 @@ export type CastMember = {
   profile_path?: string;
 };
 
+export type KnownForItem = {
+  id: number;
+  title?: string;
+  name?: string;
+  media_type: "movie" | "tv";
+  poster_path?: string;
+  backdrop_path?: string;
+  vote_average?: number;
+  release_date?: string;
+  first_air_date?: string;
+};
+
 export type Movie = {
   id: number;
   title: string;
@@ -21,20 +33,17 @@ export type Movie = {
   original_language?: string;
   isNew?: boolean;
 
+  // Movie/show only
   credits?: {
     cast?: CastMember[];
   };
 
-  // 👤 Only used if media_type === "person"
-  known_for?: {
-    id: number;
-    title?: string;
-    name?: string;
-    media_type: "movie" | "tv";
-    poster_path?: string;
-    backdrop_path?: string;
-    vote_average?: number;
-    release_date?: string;
-    first_air_date?: string;
-  }[];
+  // Person only
+  biography?: string;
+  known_for_department?: string;
+  birthday?: string;
+  gender?: number;
+  place_of_birth?: string;
+  popularity?: number;
+  known_for?: KnownForItem[];
 };
