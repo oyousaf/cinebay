@@ -44,11 +44,7 @@ export default function App() {
 
   const renderHome = () => (
     <>
-      <Toaster
-        richColors
-        position="bottom-center"
-        theme="dark"
-      />
+      <Toaster richColors position="bottom-center" theme="dark" />
 
       <SearchBar onSelectMovie={handleSelect} onSelectPerson={handleSelect} />
       <main className="w-full max-w-7xl flex-1 mx-auto flex flex-col items-center px-4 sm:px-6 pt-[176px] pb-6">
@@ -71,7 +67,11 @@ export default function App() {
           exit={{ opacity: 0, x: view === "home" ? 40 : -40 }}
           transition={{ duration: 0.25, ease: "easeOut" }}
         >
-          {view === "watchlist" ? <Watchlist /> : renderHome()}
+          {view === "watchlist" ? (
+            <Watchlist onSelect={handleSelect} />
+          ) : (
+            renderHome()
+          )}
         </motion.div>
       </AnimatePresence>
 

@@ -6,12 +6,14 @@ import { Trash2 } from "lucide-react";
 import { getWatchlist, removeFromWatchlist } from "@/lib/watchlist";
 import type { Movie } from "@/types/movie";
 
-import Modal from "@/components/Modal";
 import ConfirmModal from "@/components/ConfirmModal";
 
-export default function Watchlist() {
+export default function Watchlist({
+  onSelect,
+}: {
+  onSelect: (movie: Movie) => void;
+}) {
   const [watchlist, setWatchlist] = useState<Movie[]>([]);
-  const [selected, setSelected] = useState<Movie | null>(null);
   const [toRemove, setToRemove] = useState<Movie | null>(null);
 
   useEffect(() => {
@@ -73,7 +75,7 @@ export default function Watchlist() {
                       },
                     }}
                     className="relative group cursor-pointer rounded-xl overflow-hidden shadow-xl"
-                    onClick={() => setSelected(movie)}
+                    onClick={() => onSelect(movie)}
                   >
                     <img
                       src={
@@ -116,14 +118,6 @@ export default function Watchlist() {
           )}
         </motion.main>
       </AnimatePresence>
-
-      {selected && (
-        <Modal
-          movie={selected}
-          onClose={() => setSelected(null)}
-          onSelect={(next) => setSelected(next)}
-        />
-      )}
     </div>
   );
 }
