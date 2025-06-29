@@ -231,7 +231,7 @@ export default function Modal({
               onClick={toggleWatchlist}
               className={`absolute top-3 left-3 z-50 ${
                 isSaved ? "text-yellow-400" : "text-white"
-              } hover:text-yellow-400 bg-black/60 backdrop-blur p-2 rounded-full shadow-md`}
+              } hover:text-yellow-400 bg-black/60 backdrop-blur p-2 rounded-full shadow-md cursor-pointer`}
               aria-label={
                 isSaved ? "Remove from Watchlist" : "Add to Watchlist"
               }
@@ -246,7 +246,7 @@ export default function Modal({
 
           {/* ❌ Close */}
           <button
-            className="absolute top-3 right-3 z-50 text-white hover:text-yellow-400"
+            className="absolute top-3 right-3 z-50 text-white hover:text-yellow-400 cursor-pointer"
             onClick={onClose}
           >
             <X
