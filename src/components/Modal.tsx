@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Heart, ArrowLeft } from "lucide-react";
+import { toast } from "sonner";
 
 import type { Movie } from "@/types/movie";
 import { TMDB_IMAGE, fetchDetails } from "@/lib/tmdb";
@@ -57,7 +58,13 @@ export default function Modal({
   }, [movie.id]);
 
   const toggleWatchlist = () => {
-    isSaved ? removeFromWatchlist(movie.id) : saveToWatchlist(movie);
+    if (isSaved) {
+      removeFromWatchlist(movie.id);
+      toast.error("Removed from Watchlist");
+    } else {
+      saveToWatchlist(movie);
+      toast.success("Added to Watchlist");
+    }
     setIsSaved(!isSaved);
   };
 

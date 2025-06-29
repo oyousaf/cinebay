@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { Toaster } from "sonner";
 
 import Navbar from "@/components/Navbar";
 import SearchBar from "@/components/SearchBar";
@@ -43,6 +44,12 @@ export default function App() {
 
   const renderHome = () => (
     <>
+      <Toaster
+        richColors
+        position="bottom-center"
+        theme="dark"
+      />
+
       <SearchBar onSelectMovie={handleSelect} onSelectPerson={handleSelect} />
       <main className="w-full max-w-7xl flex-1 mx-auto flex flex-col items-center px-4 sm:px-6 pt-[176px] pb-6">
         <Movies onSelect={handleSelect} />
