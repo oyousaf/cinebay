@@ -7,14 +7,12 @@ type Props = {
   onSelect?: (item: Movie) => void;
 };
 
-const Recommendations: React.FC<Props> = ({ items, onSelect }) => {
+const Similar: React.FC<Props> = ({ items, onSelect }) => {
   if (!items?.length) return null;
 
   return (
     <div className="pt-4">
-      <h3 className="text-md font-semibold text-zinc-300 mb-2">
-        Recommendations
-      </h3>
+      <h3 className="text-md font-semibold text-zinc-300 mb-2">Similar</h3>
       <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
         {items.map((item) => {
           const title = item.title || item.name || "Untitled";
@@ -45,4 +43,4 @@ const Recommendations: React.FC<Props> = ({ items, onSelect }) => {
   );
 };
 
-export default memo(Recommendations);
+export default memo(Similar);

@@ -33,6 +33,7 @@ export type Movie = {
   original_language?: string;
   isNew?: boolean;
   recommendations?: Movie[];
+  similar?: Movie[];
 
   // Movie/show only
   credits?: {

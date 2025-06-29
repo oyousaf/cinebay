@@ -258,19 +258,14 @@ export default function Modal({
             {isPerson &&
               Array.isArray(movie.known_for) &&
               movie.known_for.length > 0 && (
-                <div className="space-y-2">
-                  <h3 className="text-md font-semibold text-zinc-300">
-                    Known For
-                  </h3>
-                  <KnownForSlider
-                    items={movie.known_for}
-                    onSelect={async (item) => {
-                      if (!item.id || !item.media_type) return;
-                      const full = await fetchDetails(item.id, item.media_type);
-                      if (full) onSelect?.(full);
-                    }}
-                  />
-                </div>
+                <KnownForSlider
+                  items={movie.known_for}
+                  onSelect={async (item) => {
+                    if (!item.id || !item.media_type) return;
+                    const full = await fetchDetails(item.id, item.media_type);
+                    if (full) onSelect?.(full);
+                  }}
+                />
               )}
           </div>
 

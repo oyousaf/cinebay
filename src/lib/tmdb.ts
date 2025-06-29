@@ -119,7 +119,7 @@ export async function fetchDetails(
   media_type: "movie" | "tv" | "person"
 ): Promise<Movie | null> {
   const base = await fetchFromProxy(
-    `/${media_type}/${id}?language=en-GB&append_to_response=credits,recommendations`
+    `/${media_type}/${id}?language=en-GB&append_to_response=credits,recommendations,similar`
   );
   if (!base) return null;
 
@@ -136,6 +136,10 @@ export async function fetchDetails(
   return {
     ...toMovie(base, media_type),
     recommendations: base.recommendations?.results?.slice(0, 10) ?? [],
+    similar:
+      base.similar?.results
+        ?.filter((item: Movie) => item.vote_average >= 6.5 && item.poster_path)
+        ?.slice(0, 10) ?? [],
   };
 }
 
