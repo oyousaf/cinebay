@@ -104,7 +104,7 @@ export default function Modal({
           transition={{ duration: 0.3 }}
           className="relative w-[95vw] sm:w-full max-w-4xl mx-auto rounded-2xl overflow-hidden shadow-2xl"
         >
-          {/* Navigation Buttons */}
+          {/* Navigation */}
           {onBack && (
             <button
               onClick={onBack}
@@ -144,7 +144,7 @@ export default function Modal({
             </button>
           </div>
 
-          {/* Main Modal Content */}
+          {/* Main Content */}
           <div className="relative z-10 px-4 py-6 sm:p-8 bg-gradient-to-b from-black/80 via-black/60 to-black/90 text-white max-h-[90vh] overflow-y-auto space-y-6">
             <div className="flex flex-col sm:flex-row gap-6 sm:items-start">
               <img
@@ -156,7 +156,6 @@ export default function Modal({
               <div className="flex-1 space-y-4">
                 <h2 className="text-3xl sm:text-4xl font-bold">{title}</h2>
 
-                {/* Overview or Biography */}
                 {isPerson && movie.biography ? (
                   <p className="text-md text-zinc-200 leading-relaxed whitespace-pre-line">
                     {movie.biography.length > 600
@@ -174,12 +173,7 @@ export default function Modal({
                 {/* Metadata */}
                 <div className="flex flex-wrap gap-2 sm:gap-3 text-sm sm:text-base text-zinc-300 pt-2">
                   {!isPerson && movie.isNew && (
-                    <span
-                      className="bg-amber-400 text-black text-xs font-bold p-2 rounded shadow"
-                      style={{
-                        boxShadow: "0 0 6px #fbbf24, 0 0 12px #facc15",
-                      }}
-                    >
+                    <span className="bg-amber-400 text-black text-xs font-bold p-2 rounded shadow">
                       NEW
                     </span>
                   )}
@@ -240,22 +234,6 @@ export default function Modal({
                     />
                   )}
 
-                {isPerson &&
-                  Array.isArray(movie.known_for) &&
-                  movie.known_for.length > 0 && (
-                    <KnownForSlider
-                      items={movie.known_for}
-                      onSelect={async (item) => {
-                        if (!item.id || !item.media_type) return;
-                        const full = await fetchDetails(
-                          item.id,
-                          item.media_type
-                        );
-                        if (full) onSelect?.(full);
-                      }}
-                    />
-                  )}
-
                 {!isPerson &&
                   Array.isArray(movie.recommendations) &&
                   movie.recommendations.length > 0 && (
@@ -277,6 +255,23 @@ export default function Modal({
                 )}
               </div>
             </div>
+            {isPerson &&
+              Array.isArray(movie.known_for) &&
+              movie.known_for.length > 0 && (
+                <div className="space-y-2">
+                  <h3 className="text-md font-semibold text-zinc-300">
+                    Known For
+                  </h3>
+                  <KnownForSlider
+                    items={movie.known_for}
+                    onSelect={async (item) => {
+                      if (!item.id || !item.media_type) return;
+                      const full = await fetchDetails(item.id, item.media_type);
+                      if (full) onSelect?.(full);
+                    }}
+                  />
+                </div>
+              )}
           </div>
 
           {!isPerson && showPlayer && (

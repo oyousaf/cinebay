@@ -15,9 +15,11 @@ export default function KnownForSlider({
   );
 
   return (
-    <div className="pt-2">
-      <h3 className="text-sm font-semibold text-zinc-300 mb-2">Known For</h3>
-      <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
+    <div
+      className="overflow-x-auto scrollbar-hide -mx-1 px-1"
+      style={{ WebkitOverflowScrolling: "touch" }}
+    >
+      <div className="flex gap-3 pb-2">
         {sorted.map((item) => {
           const title = item.title || item.name || "Untitled";
           const poster = item.poster_path
