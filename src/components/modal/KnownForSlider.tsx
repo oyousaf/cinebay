@@ -42,7 +42,7 @@ export default function KnownForSlider({
                     runtime: null,
                     original_language: "",
                     isNew: false,
-                    recommendations: ""
+                    recommendations: [],
                   });
                 }
               }}

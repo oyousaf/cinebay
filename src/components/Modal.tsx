@@ -206,7 +206,7 @@ export default function Modal({
                 {!isPerson && (
                   <div className="pt-2">
                     <button
-                      className="bg-yellow-400 hover:bg-yellow-300 text-black text-xl font-semibold px-6 py-2 rounded-xl shadow-md transition"
+                      className="bg-yellow-400 hover:bg-yellow-300 text-black text-xl cursor-pointer font-semibold px-6 py-2 rounded-xl shadow-md transition"
                       onClick={() => setShowPlayer(true)}
                     >
                       Watch
@@ -240,14 +240,14 @@ export default function Modal({
           {onBack && (
             <button
               onClick={onBack}
-              className="absolute top-3 left-12 z-50 text-white hover:text-yellow-400"
+              className="absolute top-3 left-12 z-50 text-white hover:text-yellow-400 cursor-pointer"
             >
               <ArrowLeft className="w-6 h-6 bg-black/60 rounded-full p-1" />
             </button>
           )}
 
           <button
-            className="absolute top-3 right-3 z-50 text-white hover:text-yellow-400"
+            className="absolute top-3 right-3 z-50 text-white hover:text-yellow-400 cursor-pointer"
             onClick={onClose}
           >
             <X

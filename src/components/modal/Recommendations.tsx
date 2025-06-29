@@ -1,13 +1,13 @@
+import { memo } from "react";
 import { TMDB_IMAGE } from "@/lib/tmdb";
 import type { Movie } from "@/types/movie";
 
-export default function Recommendations({
-  items,
-  onSelect,
-}: {
+type Props = {
   items: Movie[];
   onSelect?: (item: Movie) => void;
-}) {
+};
+
+const Recommendations: React.FC<Props> = ({ items, onSelect }) => {
   if (!items?.length) return null;
 
   return (
@@ -15,12 +15,12 @@ export default function Recommendations({
       <h3 className="text-sm font-semibold text-zinc-300 mb-2">
         Recommendations
       </h3>
-      <div className="flex gap-3 overflow-x-auto pb-2">
+      <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
         {items.map((item) => {
+          const title = item.title || item.name || "Untitled";
           const poster = item.poster_path
             ? `${TMDB_IMAGE}${item.poster_path}`
             : "/fallback.jpg";
-          const title = item.title || item.name || "Untitled";
 
           return (
             <div
@@ -43,4 +43,6 @@ export default function Recommendations({
       </div>
     </div>
   );
-}
+};
+
+export default memo(Recommendations);
