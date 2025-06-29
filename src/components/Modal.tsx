@@ -234,15 +234,6 @@ export default function Modal({
                     />
                   )}
 
-                {!isPerson &&
-                  Array.isArray(movie.recommendations) &&
-                  movie.recommendations.length > 0 && (
-                    <Recommendations
-                      items={movie.recommendations}
-                      onSelect={onSelect}
-                    />
-                  )}
-
                 {!isPerson && (
                   <div className="pt-2">
                     <button
@@ -255,6 +246,15 @@ export default function Modal({
                 )}
               </div>
             </div>
+
+            {!isPerson &&
+              Array.isArray(movie.recommendations) &&
+              movie.recommendations.length > 0 && (
+                <Recommendations
+                  items={movie.recommendations}
+                  onSelect={onSelect}
+                />
+              )}
             {isPerson &&
               Array.isArray(movie.known_for) &&
               movie.known_for.length > 0 && (
