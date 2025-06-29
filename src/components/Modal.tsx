@@ -127,9 +127,12 @@ export default function Modal({
                 }
               >
                 <Heart
-                  size={22}
+                  size={20}
                   strokeWidth={isSaved ? 3 : 2}
                   fill={isSaved ? "currentColor" : "none"}
+                  className={`transition-all duration-300 ${
+                    isSaved ? "drop-shadow-[0_0_6px_#fbbf24]" : ""
+                  }`}
                 />
               </motion.button>
             )}
@@ -137,10 +140,7 @@ export default function Modal({
               onClick={onClose}
               className="text-white hover:text-yellow-400 cursor-pointer"
             >
-              <X
-                size={28}
-                className="p-1 bg-black/60 rounded-full backdrop-blur"
-              />
+              <X size={28} className="bg-black/60 rounded-full backdrop-blur" />
             </button>
           </div>
 
@@ -173,12 +173,7 @@ export default function Modal({
                 {/* Metadata */}
                 <div className="flex flex-wrap gap-2 sm:gap-3 text-sm sm:text-base text-zinc-300 pt-2">
                   {!isPerson && movie.isNew && (
-                    <span
-                      className="bg-amber-400 text-black text-xs font-bold p-2 rounded shadow"
-                      style={{
-                        boxShadow: "0 0 6px #fbbf24, 0 0 12px #facc15",
-                      }}
-                    >
+                    <span className="bg-amber-400 text-black text-xs font-bold p-2 rounded shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15] uppercase">
                       NEW
                     </span>
                   )}
@@ -202,12 +197,7 @@ export default function Modal({
                   {!isPerson &&
                     typeof movie.vote_average === "number" &&
                     movie.vote_average > 0 && (
-                      <span
-                        className="bg-yellow-400 text-black font-bold px-2 py-0.5 rounded shadow-sm"
-                        style={{
-                          boxShadow: "0 0 6px #fbbf24, 0 0 12px #facc15",
-                        }}
-                      >
+                      <span className="bg-yellow-400 shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15] text-black font-bold px-2 py-0.5 rounded">
                         {movie.vote_average.toFixed(1)}
                       </span>
                     )}
@@ -256,11 +246,8 @@ export default function Modal({
                 {!isPerson && (
                   <div className="pt-2">
                     <button
-                      className="bg-yellow-400 hover:bg-yellow-300 text-black text-xl cursor-pointer uppercase font-semibold px-6 py-2 rounded-xl shadow-md transition"
+                      className="bg-yellow-400 hover:bg-yellow-300 shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15] text-black text-xl cursor-pointer uppercase font-semibold px-6 py-2 rounded-xl transition"
                       onClick={() => setShowPlayer(true)}
-                      style={{
-                        boxShadow: "0 0 6px #fbbf24, 0 0 12px #facc15",
-                      }}
                     >
                       Watch
                     </button>

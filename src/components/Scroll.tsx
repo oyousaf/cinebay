@@ -191,22 +191,19 @@ export default function ScrollGallery({
                     draggable={false}
                   />
 
-                  {/* Rating Badge */}
-                  <div className="absolute bottom-2 right-2 bg-yellow-400 text-black text-xs md:text-sm px-1.5 py-0.5 rounded font-semibold shadow z-10">
-                    {movie.vote_average?.toFixed(1) ?? "N/A"}
-                  </div>
-
                   {/* NEW Badge */}
                   {movie.isNew && (
                     <div
-                      className="absolute top-2 left-2 bg-amber-400 text-black text-[10px] md:text-xs px-1.5 py-0.5 rounded font-bold z-10"
-                      style={{
-                        boxShadow: "0 0 6px #fbbf24, 0 0 12px #facc15",
-                      }}
+                      className="absolute top-2 left-2 bg-amber-400 shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15] text-black text-[10px] md:text-xs px-1.5 py-0.5 rounded font-bold z-10"
                     >
                       NEW
                     </div>
                   )}
+
+                  {/* Rating Badge */}
+                  <div className="absolute bottom-2 right-2 bg-yellow-400 shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15] text-black text-xs md:text-sm px-1.5 py-0.5 rounded font-semibold z-10">
+                    {movie.vote_average?.toFixed(1) ?? "N/A"}
+                  </div>
                 </div>
               </motion.div>
             ))}

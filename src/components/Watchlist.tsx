@@ -86,12 +86,7 @@ export default function Watchlist() {
                     />
 
                     {movie.isNew && (
-                      <div
-                        className="absolute top-2 left-2 bg-amber-400 text-black text-xs font-bold px-2 py-0.5 rounded shadow"
-                        style={{
-                          boxShadow: "0 0 6px #fbbf24, 0 0 12px #facc15",
-                        }}
-                      >
+                      <div className="absolute top-2 left-2 bg-amber-400 text-black shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15] text-xs font-bold px-2 py-0.5 rounded">
                         NEW
                       </div>
                     )}
@@ -101,7 +96,7 @@ export default function Watchlist() {
                         e.stopPropagation();
                         setToRemove(movie);
                       }}
-                      className="absolute top-2 right-2 bg-black/60 text-white p-1.5 cursor-pointer rounded-full hover:bg-red-600 hover:text-white shadow transition"
+                      className="absolute top-2 right-2 bg-black/60 text-red-300 p-1.5 cursor-pointer rounded-full hover:text-red-500 shadow transition"
                       aria-label="Remove from Watchlist"
                     >
                       <Trash2 size={16} strokeWidth={2} />
@@ -122,7 +117,13 @@ export default function Watchlist() {
         </motion.main>
       </AnimatePresence>
 
-      {selected && <Modal movie={selected} onClose={() => setSelected(null)} />}
+      {selected && (
+        <Modal
+          movie={selected}
+          onClose={() => setSelected(null)}
+          onSelect={(next) => setSelected(next)}
+        />
+      )}
     </div>
   );
 }
