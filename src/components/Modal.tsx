@@ -15,6 +15,7 @@ import PlayerModal from "@/components/PlayerModal";
 import StarringList from "./modal/StarringList";
 import KnownForSlider from "./modal/KnownForSlider";
 import Recommendations from "./modal/Recommendations";
+import Similar from "./modal/Similar"; // <- NEW
 
 export default function Modal({
   movie,
@@ -34,7 +35,6 @@ export default function Modal({
   const title = movie.title || movie.name || "Untitled";
   const poster = movie.profile_path || movie.poster_path || "";
   const displayPoster = poster ? `${TMDB_IMAGE}${poster}` : "/fallback.jpg";
-
   const embedUrl = `https://vidsrc.me/embed/${movie.media_type}/${movie.id}`;
 
   const releaseDate = movie.release_date
@@ -52,6 +52,16 @@ export default function Modal({
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
+
+  useEffect(() => {
+    // Lock scroll on mount
+    document.body.style.overflow = "hidden";
+
+    // Restore scroll on unmount
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, []);
 
   useEffect(() => {
     setIsSaved(isInWatchlist(movie.id));
@@ -247,14 +257,21 @@ export default function Modal({
               </div>
             </div>
 
-            {!isPerson &&
-              Array.isArray(movie.recommendations) &&
-              movie.recommendations.length > 0 && (
-                <Recommendations
-                  items={movie.recommendations}
-                  onSelect={onSelect}
-                />
-              )}
+            {/* Related Sections */}
+            {!isPerson && (
+              <>
+                {Array.isArray(movie.similar) && movie.similar.length > 0 ? (
+                  <Similar items={movie.similar} onSelect={onSelect} />
+                ) : Array.isArray(movie.recommendations) &&
+                  movie.recommendations.length > 0 ? (
+                  <Recommendations
+                    items={movie.recommendations}
+                    onSelect={onSelect}
+                  />
+                ) : null}
+              </>
+            )}
+
             {isPerson &&
               Array.isArray(movie.known_for) &&
               movie.known_for.length > 0 && (
