@@ -46,4 +46,5 @@ export type Movie = {
   place_of_birth?: string;
   popularity?: number;
   known_for?: KnownForItem[];
+  deathday?: string;
 };

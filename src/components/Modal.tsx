@@ -129,11 +129,14 @@ export default function Modal({
                       }).of(movie.original_language)}
                     </span>
                   )}
-                  {movie.vote_average && !isPerson && (
-                    <span className="bg-yellow-400 text-black font-bold px-2 py-0.5 rounded shadow-sm">
-                      {movie.vote_average.toFixed(1)}
-                    </span>
-                  )}
+                  {!isPerson &&
+                    typeof movie.vote_average === "number" &&
+                    movie.vote_average > 0 && (
+                      <span className="bg-yellow-400 text-black font-bold px-2 py-0.5 rounded shadow-sm">
+                        {movie.vote_average.toFixed(1)}
+                      </span>
+                    )}
+
                   {movie.birthday && isPerson && (
                     <span>
                       🎂{" "}
@@ -142,8 +145,34 @@ export default function Modal({
                         month: "long",
                         year: "numeric",
                       })}
+                      {movie.birthday && (
+                        <>
+                          {" "}
+                          (
+                          {(() => {
+                            const birth = new Date(movie.birthday);
+                            const death = movie.deathday
+                              ? new Date(movie.deathday)
+                              : new Date();
+                            const age =
+                              death.getFullYear() -
+                              birth.getFullYear() -
+                              (death <
+                              new Date(
+                                death.getFullYear(),
+                                birth.getMonth(),
+                                birth.getDate()
+                              )
+                                ? 1
+                                : 0);
+                            return `${age} yrs`;
+                          })()}
+                          {movie.deathday ? ", deceased" : ""})
+                        </>
+                      )}
                     </span>
                   )}
+
                   {movie.place_of_birth && isPerson && (
                     <span>📍 {movie.place_of_birth}</span>
                   )}

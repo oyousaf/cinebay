@@ -77,6 +77,7 @@ function toMovie(detail: any, media_type: "movie" | "tv" | "person"): Movie {
     known_for_department: detail.known_for_department ?? undefined,
     known_for: detail.known_for ?? undefined,
     isNew: isNewRelease(releaseDateStr),
+    deathday: detail.deathday ?? undefined,
   };
 }
 
