@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Heart, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
@@ -15,7 +15,7 @@ import PlayerModal from "@/components/PlayerModal";
 import StarringList from "./modal/StarringList";
 import KnownForSlider from "./modal/KnownForSlider";
 import Recommendations from "./modal/Recommendations";
-import Similar from "./modal/Similar"; // <- NEW
+import Similar from "./modal/Similar";
 
 export default function Modal({
   movie,
@@ -37,46 +37,16 @@ export default function Modal({
   const displayPoster = poster ? `${TMDB_IMAGE}${poster}` : "/fallback.jpg";
   const embedUrl = `https://vidsrc.me/embed/${movie.media_type}/${movie.id}`;
 
-  const releaseDate = movie.release_date
-    ? new Date(movie.release_date).toLocaleDateString("en-GB", {
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-      })
-    : null;
+  const formatDate = (dateStr?: string) =>
+    dateStr
+      ? new Date(dateStr).toLocaleDateString("en-GB", {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        })
+      : null;
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
-
-  useEffect(() => {
-    // Lock scroll on mount
-    document.body.style.overflow = "hidden";
-
-    // Restore scroll on unmount
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, []);
-
-  useEffect(() => {
-    setIsSaved(isInWatchlist(movie.id));
-  }, [movie.id]);
-
-  const toggleWatchlist = () => {
-    if (isSaved) {
-      removeFromWatchlist(movie.id);
-      toast.error("Removed from Watchlist");
-    } else {
-      saveToWatchlist(movie);
-      toast.success("Added to Watchlist");
-    }
-    setIsSaved(!isSaved);
-  };
+  const releaseDate = formatDate(movie.release_date);
 
   const genderLabel =
     movie.known_for_department === "Acting"
@@ -98,10 +68,52 @@ export default function Modal({
     return age;
   };
 
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    },
+    [onClose]
+  );
+
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = "";
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [handleKeyDown]);
+
+  useEffect(() => {
+    setIsSaved(isInWatchlist(movie.id));
+  }, [movie.id]);
+
+  const toggleWatchlist = () => {
+    if (isSaved) {
+      removeFromWatchlist(movie.id);
+      toast.error("Removed from Watchlist");
+    } else {
+      saveToWatchlist(movie);
+      toast.success("Added to Watchlist");
+    }
+    setIsSaved(!isSaved);
+  };
+
+  const relatedContent =
+    !isPerson &&
+    (Array.isArray(movie.similar) && movie.similar.length > 0 ? (
+      <Similar items={movie.similar} onSelect={onSelect} />
+    ) : Array.isArray(movie.recommendations) &&
+      movie.recommendations.length > 0 ? (
+      <Recommendations items={movie.recommendations} onSelect={onSelect} />
+    ) : null);
+
   return (
     <AnimatePresence>
       <motion.div
         key={movie.id}
+        role="dialog"
+        aria-modal="true"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -114,9 +126,9 @@ export default function Modal({
           transition={{ duration: 0.3 }}
           className="relative w-[95vw] sm:w-full max-w-4xl mx-auto rounded-2xl overflow-hidden shadow-2xl"
         >
-          {/* Navigation */}
           {onBack && (
             <button
+              type="button"
               onClick={onBack}
               className="absolute top-3 left-3 z-50 text-white hover:text-yellow-400 cursor-pointer"
             >
@@ -129,6 +141,7 @@ export default function Modal({
               <motion.button
                 whileTap={{ scale: 0.9 }}
                 onClick={toggleWatchlist}
+                type="button"
                 className={`${
                   isSaved ? "text-yellow-400" : "text-white"
                 } hover:text-yellow-400 bg-black/60 backdrop-blur p-2 rounded-full shadow-md cursor-pointer`}
@@ -147,6 +160,7 @@ export default function Modal({
               </motion.button>
             )}
             <button
+              type="button"
               onClick={onClose}
               className="text-white hover:text-yellow-400 cursor-pointer"
             >
@@ -154,7 +168,6 @@ export default function Modal({
             </button>
           </div>
 
-          {/* Main Content */}
           <div className="relative z-10 px-4 py-6 sm:p-8 bg-gradient-to-b from-black/80 via-black/60 to-black/90 text-white max-h-[90vh] overflow-y-auto space-y-6">
             <div className="flex flex-col sm:flex-row gap-6 sm:items-start">
               <img
@@ -180,7 +193,6 @@ export default function Modal({
                   )
                 )}
 
-                {/* Metadata */}
                 <div className="flex flex-wrap gap-2 sm:gap-3 text-sm sm:text-base text-zinc-300 pt-2">
                   {!isPerson && movie.isNew && (
                     <span className="bg-amber-400 text-black text-xs font-bold p-2 rounded shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15] uppercase">
@@ -213,13 +225,7 @@ export default function Modal({
                     )}
                   {isPerson && movie.birthday && (
                     <span>
-                      🎂{" "}
-                      {new Date(movie.birthday).toLocaleDateString("en-GB", {
-                        day: "numeric",
-                        month: "long",
-                        year: "numeric",
-                      })}{" "}
-                      ({calculateAge()} yrs
+                      🎂 {formatDate(movie.birthday)} ({calculateAge()} yrs
                       {movie.deathday ? ", deceased" : ""})
                     </span>
                   )}
@@ -234,7 +240,6 @@ export default function Modal({
                   )}
                 </div>
 
-                {/* Subcomponents */}
                 {!isPerson &&
                   movie.credits?.cast &&
                   movie.credits.cast.length > 0 && (
@@ -247,6 +252,7 @@ export default function Modal({
                 {!isPerson && (
                   <div className="pt-2">
                     <button
+                      type="button"
                       className="bg-yellow-400 hover:bg-yellow-300 shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15] text-black text-xl cursor-pointer uppercase font-semibold px-6 py-2 rounded-xl transition"
                       onClick={() => setShowPlayer(true)}
                     >
@@ -257,20 +263,7 @@ export default function Modal({
               </div>
             </div>
 
-            {/* Related Sections */}
-            {!isPerson && (
-              <>
-                {Array.isArray(movie.similar) && movie.similar.length > 0 ? (
-                  <Similar items={movie.similar} onSelect={onSelect} />
-                ) : Array.isArray(movie.recommendations) &&
-                  movie.recommendations.length > 0 ? (
-                  <Recommendations
-                    items={movie.recommendations}
-                    onSelect={onSelect}
-                  />
-                ) : null}
-              </>
-            )}
+            {!isPerson && relatedContent}
 
             {isPerson &&
               Array.isArray(movie.known_for) &&
