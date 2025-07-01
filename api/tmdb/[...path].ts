@@ -2,7 +2,7 @@ export const config = { runtime: "edge" };
 
 export default async function handler(req: Request) {
   const { pathname, searchParams } = new URL(req.url);
-  const pathSegments = pathname.split("/").slice(3);
+  const pathSegments = pathname.split("/").slice(3); // adjust if base path changes
   const tmdbPath = pathSegments.join("/");
 
   const TMDB_API_KEY = process.env.TMDB_API_KEY;
