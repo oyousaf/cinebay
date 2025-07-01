@@ -1,20 +1,20 @@
-export const config = {
-  runtime: "edge",
-};
+export const config = { runtime: "edge" };
 
 export default async function handler(req: Request) {
   const { pathname, searchParams } = new URL(req.url);
-
   const pathSegments = pathname.split("/").slice(3);
   const tmdbPath = pathSegments.join("/");
+
+  console.log("🧪 Incoming Path:", pathname);
+  console.log("🔧 TMDB Path:", tmdbPath);
+  console.log("🔍 Full URL:", `https://api.themoviedb.org/3/${tmdbPath}?${searchParams.toString()}`);
 
   const TMDB_API_KEY = process.env.TMDB_API_KEY;
   if (!TMDB_API_KEY) {
     return new Response("Missing TMDB API key", { status: 500 });
   }
 
-  const queryString = searchParams.toString();
-  const url = `https://api.themoviedb.org/3/${tmdbPath}?${queryString}&api_key=${TMDB_API_KEY}`;
+  const url = `https://api.themoviedb.org/3/${tmdbPath}?${searchParams.toString()}&api_key=${TMDB_API_KEY}`;
 
   try {
     const res = await fetch(url);
