@@ -60,6 +60,12 @@ function toMovie(detail: any, media_type: "movie" | "tv" | "person"): Movie {
 
   const recommendationsRaw = detail.recommendations?.results || [];
   const recommendations: Movie[] = recommendationsRaw
+    .filter((r: any) => {
+      const year = extractYear(r.release_date || r.first_air_date || "");
+      return (
+        r.original_language === "en" && (year ?? 0) >= 1950 && r.poster_path
+      );
+    })
     .map((r: any) => ({
       id: r.id,
       title: r.title || r.name || "Untitled",
@@ -75,8 +81,7 @@ function toMovie(detail: any, media_type: "movie" | "tv" | "person"): Movie {
       original_language: r.original_language ?? "",
       isNew: isNewRelease(r.release_date || r.first_air_date || ""),
       recommendations: [],
-    }))
-    .filter(Boolean);
+    }));
 
   return {
     id: detail.id,
@@ -133,13 +138,39 @@ export async function fetchDetails(
     };
   }
 
+  const recommendations =
+    base.recommendations?.results
+      ?.filter((item: any) => {
+        const year = extractYear(
+          item.release_date || item.first_air_date || ""
+        );
+        return (
+          item.original_language === "en" &&
+          (year ?? 0) >= 1950 &&
+          item.poster_path
+        );
+      })
+      ?.slice(0, 10) ?? [];
+
+  const similar =
+    base.similar?.results
+      ?.filter((item: any) => {
+        const year = extractYear(
+          item.release_date || item.first_air_date || ""
+        );
+        return (
+          item.vote_average >= 6.5 &&
+          item.poster_path &&
+          item.original_language === "en" &&
+          (year ?? 0) >= 1950
+        );
+      })
+      ?.slice(0, 10) ?? [];
+
   return {
     ...toMovie(base, media_type),
-    recommendations: base.recommendations?.results?.slice(0, 10) ?? [],
-    similar:
-      base.similar?.results
-        ?.filter((item: Movie) => item.vote_average >= 6.5 && item.poster_path)
-        ?.slice(0, 10) ?? [],
+    recommendations,
+    similar,
   };
 }
 
@@ -176,8 +207,9 @@ export async function fetchMovies(): Promise<Movie[]> {
     data.results.map((item: any) => fetchDetails(item.id, "movie"))
   );
 
-  const filtered = (detailed.filter(Boolean) as Movie[]).filter((m) =>
-    isAllowedContent(m.genres, m.release_date)
+  const filtered = (detailed.filter(Boolean) as Movie[]).filter(
+    (m) =>
+      isAllowedContent(m.genres, m.release_date) && m.original_language === "en"
   );
 
   return filtered.length ? filtered : [emptyPlaceholder("movie")];
@@ -193,8 +225,9 @@ export async function fetchShows(): Promise<Movie[]> {
     data.results.map((item: any) => fetchDetails(item.id, "tv"))
   );
 
-  const filtered = (detailed.filter(Boolean) as Movie[]).filter((s) =>
-    isAllowedContent(s.genres, s.release_date)
+  const filtered = (detailed.filter(Boolean) as Movie[]).filter(
+    (s) =>
+      isAllowedContent(s.genres, s.release_date) && s.original_language === "en"
   );
 
   return filtered.length ? filtered : [emptyPlaceholder("tv")];
@@ -211,12 +244,13 @@ export async function fetchDevsPick(titles: string[]): Promise<Movie[]> {
         (a: any, b: any) => (b.popularity ?? 0) - (a.popularity ?? 0)
       )[0];
 
-      if (!bestMatch) {
-        console.warn(`⚠️ Not found on TMDB: ${title}`);
+      if (!bestMatch || bestMatch.original_language !== "en") {
+        console.warn(`⚠️ Skipped (not English or not found): ${title}`);
         return null;
       }
 
-      return await fetchDetails(bestMatch.id, "movie");
+      const full = await fetchDetails(bestMatch.id, "movie");
+      return full?.original_language === "en" ? full : null;
     })
   );
 
