@@ -4,8 +4,6 @@ import tailwindcss from "@tailwindcss/vite";
 import { VitePWA } from "vite-plugin-pwa";
 import path from "path";
 
-const isUsingLocalApi = process.env.VITE_API_URL?.includes("localhost");
-
 export default defineConfig({
   plugins: [
     tailwindcss(),
@@ -46,6 +44,19 @@ export default defineConfig({
             },
           },
           {
+            urlPattern:
+              /^https:\/\/api\.themoviedb\.org\/3\/movie\/(popular|top_rated)/,
+            handler: "StaleWhileRevalidate",
+            options: {
+              cacheName: "tmdb-popular",
+              expiration: { maxEntries: 50, maxAgeSeconds: 86400 },
+              backgroundSync: {
+                name: "tmdb-popular-queue",
+                options: { maxRetentionTime: 24 * 60 },
+              },
+            },
+          },
+          {
             urlPattern: /^https:\/\/vidsrc\.me\/api\/.*/i,
             handler: "CacheFirst",
             options: {
@@ -76,10 +87,8 @@ export default defineConfig({
     },
   },
   server: {
-    proxy: isUsingLocalApi
-      ? {
-          "/api": "http://localhost:3000",
-        }
-      : undefined,
+    proxy: {
+      "/api": "http://localhost:3000",
+    },
   },
 });
