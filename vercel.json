@@ -5,5 +5,10 @@
       "runtime": "edge"
     }
   },
-  "routes": [{ "src": "/api/(.*)", "dest": "/api/$1.ts" }]
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/$1.ts"
+    }
+  ]
 }
