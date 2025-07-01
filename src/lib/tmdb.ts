@@ -28,9 +28,7 @@ const MIN_DATE_STR = MIN_DATE.toISOString().split("T")[0];
 const genreToId = (name: string): number => GENRE_MAP[name] ?? -1;
 
 function extractGenres(detail: any): string[] {
-  return Array.isArray(detail.genres)
-    ? detail.genres.map((g: any) => g.name)
-    : [];
+  return Array.isArray(detail.genres) ? detail.genres.map((g: any) => g.name) : [];
 }
 
 function extractYear(dateStr: string): number | null {
@@ -58,8 +56,14 @@ function isNewRelease(dateStr: string): boolean {
 function toMovie(detail: any, media_type: "movie" | "tv" | "person"): Movie {
   const releaseDateStr = detail.release_date || detail.first_air_date || "";
 
-  const recommendationsRaw = detail.recommendations?.results || [];
+  const recommendationsRaw =
+    detail.similar?.results?.length > 0
+      ? detail.similar.results
+      : detail.recommendations?.results || [];
+
   const recommendations: Movie[] = recommendationsRaw
+    .filter((r: any) => r.vote_average >= 6.5 && r.poster_path)
+    .slice(0, 10)
     .map((r: any) => ({
       id: r.id,
       title: r.title || r.name || "Untitled",
@@ -75,8 +79,7 @@ function toMovie(detail: any, media_type: "movie" | "tv" | "person"): Movie {
       original_language: r.original_language ?? "",
       isNew: isNewRelease(r.release_date || r.first_air_date || ""),
       recommendations: [],
-    }))
-    .filter(Boolean);
+    }));
 
   return {
     id: detail.id,
@@ -106,10 +109,14 @@ const baseURL = `${import.meta.env.VITE_API_URL}/api/tmdb`;
 
 export async function fetchFromProxy(endpoint: string) {
   try {
-    const { data } = await axios.get(`${baseURL}${endpoint}`);
-    return data;
-  } catch (err) {
-    console.error("❌ Proxy fetch failed:", endpoint, err);
+    const response = await axios.get(`${baseURL}${endpoint}`, {
+      headers: {
+        "Cache-Control": "no-store", // prevent 304/stale issues
+      },
+    });
+    return response?.data ?? null;
+  } catch (err: any) {
+    console.error("❌ Proxy fetch failed:", endpoint, err?.message || err);
     return null;
   }
 }
@@ -123,47 +130,19 @@ export async function fetchDetails(
   );
   if (!base) return null;
 
-  const allRecommendations = (
-    base.similar?.results
-      ?.filter((item: any) => item.vote_average >= 6.5 && item.poster_path)
-      ?.slice(0, 10) ??
-    base.recommendations?.results
-      ?.filter((item: any) => item.vote_average >= 6.5 && item.poster_path)
-      ?.slice(0, 10) ??
-    []
-  ).map((r: any) => ({
-    id: r.id,
-    title: r.title || r.name || "Untitled",
-    overview: r.overview || "",
-    poster_path: r.poster_path || "",
-    backdrop_path: r.backdrop_path || "",
-    profile_path: "",
-    release_date: r.release_date || r.first_air_date || "",
-    vote_average: r.vote_average ?? 0,
-    media_type: r.media_type ?? media_type,
-    genres: [],
-    runtime: null,
-    original_language: r.original_language ?? "",
-    isNew: isNewRelease(r.release_date || r.first_air_date || ""),
-    recommendations: [],
-  }));
-
-  const commonFields = {
-    ...toMovie(base, media_type),
-    recommendations: allRecommendations,
-  };
+  const movie = toMovie(base, media_type);
 
   if (media_type === "person") {
     const credits = await fetchFromProxy(`/person/${id}/combined_credits`);
     return {
-      ...commonFields,
+      ...movie,
       known_for: credits?.cast?.slice(0, 12) ?? [],
       birthday: base.birthday ?? "",
       gender: base.gender ?? 0,
     };
   }
 
-  return commonFields;
+  return movie;
 }
 
 function emptyPlaceholder(type: "movie" | "tv"): Movie {
