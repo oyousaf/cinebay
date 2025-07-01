@@ -1,5 +1,7 @@
-import type { Movie } from "@/types/movie";
 import axios from "axios";
+
+import type { Movie } from "@/types/movie";
+import { DEVS_PICK_LIST } from "./constants/devsPick";
 
 export const TMDB_IMAGE = "https://image.tmdb.org/t/p/w500";
 
@@ -232,25 +234,16 @@ export async function fetchShows(): Promise<Movie[]> {
 
   return filtered.length ? filtered : [emptyPlaceholder("tv")];
 }
-
-export async function fetchDevsPick(titles: string[]): Promise<Movie[]> {
+export async function fetchDevsPick(): Promise<Movie[]> {
   const enriched = await Promise.all(
-    titles.map(async (title) => {
-      const data = await fetchFromProxy(
-        `/search/movie?query=${encodeURIComponent(title)}&language=en-GB`
-      );
-
-      const bestMatch = (data?.results || []).sort(
-        (a: any, b: any) => (b.popularity ?? 0) - (a.popularity ?? 0)
-      )[0];
-
-      if (!bestMatch || bestMatch.original_language !== "en") {
-        console.warn(`⚠️ Skipped (not English or not found): ${title}`);
+    DEVS_PICK_LIST.map(async (id) => {
+      try {
+        const full = await fetchDetails(id, "movie");
+        return full?.original_language === "en" ? full : null;
+      } catch (err) {
+        console.warn(`⚠️ Failed to fetch details for ID ${id}`, err);
         return null;
       }
-
-      const full = await fetchDetails(bestMatch.id, "movie");
-      return full?.original_language === "en" ? full : null;
     })
   );
 
