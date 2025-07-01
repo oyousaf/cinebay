@@ -99,13 +99,38 @@ export default function Modal({
     setIsSaved(!isSaved);
   };
 
+  const handleSelectWithDetails = async (item: Movie) => {
+    const mediaType = item.media_type || movie.media_type || "movie";
+    if (!item.id) {
+      console.warn("⚠️ Missing ID for selected item:", item);
+      return;
+    }
+
+    try {
+      const full = await fetchDetails(
+        item.id,
+        mediaType as "movie" | "tv" | "person"
+      );
+      if (full) {
+        onSelect?.(full);
+      } else {
+        console.warn("⚠️ fetchDetails returned null:", item);
+      }
+    } catch (error) {
+      console.error("❌ Error fetching details for item:", item, error);
+    }
+  };
+
   const relatedContent =
     !isPerson &&
     (Array.isArray(movie.similar) && movie.similar.length > 0 ? (
-      <Similar items={movie.similar} onSelect={onSelect} />
+      <Similar items={movie.similar} onSelect={handleSelectWithDetails} />
     ) : Array.isArray(movie.recommendations) &&
       movie.recommendations.length > 0 ? (
-      <Recommendations items={movie.recommendations} onSelect={onSelect} />
+      <Recommendations
+        items={movie.recommendations}
+        onSelect={handleSelectWithDetails}
+      />
     ) : null);
 
   return (
@@ -270,11 +295,7 @@ export default function Modal({
               movie.known_for.length > 0 && (
                 <KnownForSlider
                   items={movie.known_for}
-                  onSelect={async (item) => {
-                    if (!item.id || !item.media_type) return;
-                    const full = await fetchDetails(item.id, item.media_type);
-                    if (full) onSelect?.(full);
-                  }}
+                  onSelect={handleSelectWithDetails}
                 />
               )}
           </div>
