@@ -8,7 +8,7 @@ export default async function handler(request: Request) {
 
   const tmdbUrl = new URL(`https://api.themoviedb.org/3/${category}/${id}`);
   urlObj.searchParams.forEach((value, key) => tmdbUrl.searchParams.set(key, value));
-  tmdbUrl.searchParams.set("api_key", apiKey || "");
+  tmdbUrl.searchParams.set("api_key", apiKey || "");gg
 
   try {
     const res = await fetch(tmdbUrl.toString());
