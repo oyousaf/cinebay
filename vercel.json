@@ -1,8 +1,16 @@
 {
-  "name": "cinebay",
-  "version": "1.0.0",
-  "type": "module",
-  "engines": {
-    "node": "20.x"
-  }
+  "version": 2,
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/$1.ts"
+    },
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ]
 }
