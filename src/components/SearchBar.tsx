@@ -130,6 +130,7 @@ export default function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
       >
         <motion.input
           type="text"
+          name="search"
           placeholder="Search movies, shows, people..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
