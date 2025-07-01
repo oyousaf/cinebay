@@ -1,11 +1,9 @@
 {
-  "version": 2,
+  "version": 1,
   "functions": {
     "api/**/*.ts": {
-      "runtime": "vercel-edge@2.5.0"
+      "runtime": "vercel-node@18"
     }
   },
-  "routes": [
-    { "src": "/api/(.*)", "dest": "/api/$1.ts" }
-  ]
+  "routes": [{ "src": "/api/(.*)", "dest": "/api/$1.ts" }]
 }
