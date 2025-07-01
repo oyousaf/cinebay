@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "functions": {
+    "api/tmdb/search/movie.ts": {
+      "runtime": "vercel-nodejs@2.8.0"
+    }
+  },
+  "routes": [{ "src": "/api/(.*)", "dest": "/api/$1.ts" }]
+}
