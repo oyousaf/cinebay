@@ -123,24 +123,47 @@ export async function fetchDetails(
   );
   if (!base) return null;
 
+  const allRecommendations = (
+    base.similar?.results
+      ?.filter((item: any) => item.vote_average >= 6.5 && item.poster_path)
+      ?.slice(0, 10) ??
+    base.recommendations?.results
+      ?.filter((item: any) => item.vote_average >= 6.5 && item.poster_path)
+      ?.slice(0, 10) ??
+    []
+  ).map((r: any) => ({
+    id: r.id,
+    title: r.title || r.name || "Untitled",
+    overview: r.overview || "",
+    poster_path: r.poster_path || "",
+    backdrop_path: r.backdrop_path || "",
+    profile_path: "",
+    release_date: r.release_date || r.first_air_date || "",
+    vote_average: r.vote_average ?? 0,
+    media_type: r.media_type ?? media_type,
+    genres: [],
+    runtime: null,
+    original_language: r.original_language ?? "",
+    isNew: isNewRelease(r.release_date || r.first_air_date || ""),
+    recommendations: [],
+  }));
+
+  const commonFields = {
+    ...toMovie(base, media_type),
+    recommendations: allRecommendations,
+  };
+
   if (media_type === "person") {
     const credits = await fetchFromProxy(`/person/${id}/combined_credits`);
     return {
-      ...toMovie(base, media_type),
+      ...commonFields,
       known_for: credits?.cast?.slice(0, 12) ?? [],
       birthday: base.birthday ?? "",
       gender: base.gender ?? 0,
     };
   }
 
-  return {
-    ...toMovie(base, media_type),
-    recommendations: base.recommendations?.results?.slice(0, 10) ?? [],
-    similar:
-      base.similar?.results
-        ?.filter((item: Movie) => item.vote_average >= 6.5 && item.poster_path)
-        ?.slice(0, 10) ?? [],
-  };
+  return commonFields;
 }
 
 function emptyPlaceholder(type: "movie" | "tv"): Movie {
