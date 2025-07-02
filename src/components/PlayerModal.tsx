@@ -11,13 +11,13 @@ export default function PlayerModal({
 }) {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
+  const [stillLoading, setStillLoading] = useState(false);
   const timeoutRef = useRef<number | null>(null);
 
-  // fallback if iframe takes too long
   useEffect(() => {
     timeoutRef.current = window.setTimeout(() => {
-      if (!loaded) setError(true);
-    }, 10000); // 10 sec
+      if (!loaded) setStillLoading(true);
+    }, 15000);
 
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -35,8 +35,13 @@ export default function PlayerModal({
       >
         <div className="relative w-full max-w-6xl aspect-video bg-black shadow-2xl rounded-xl overflow-hidden">
           {!loaded && !error && (
-            <div className="absolute inset-0 z-10 flex items-center justify-center">
+            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center text-white gap-2 text-sm sm:text-base px-4 text-center">
               <Loader2 className="h-8 w-8 animate-spin" />
+              {stillLoading && (
+                <p className="pt-2 text-zinc-300 text-xs sm:text-sm">
+                  Still loading... If nothing appears, try another source.
+                </p>
+              )}
             </div>
           )}
 
@@ -50,7 +55,10 @@ export default function PlayerModal({
               src={url}
               allowFullScreen
               className="w-full h-full border-none"
-              onLoad={() => setLoaded(true)}
+              onLoad={() => {
+                setLoaded(true);
+                setError(false);
+              }}
               onError={() => setError(true)}
             />
           )}
