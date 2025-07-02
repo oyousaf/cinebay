@@ -220,7 +220,7 @@ export default function Modal({
 
                 <div className="flex flex-wrap gap-2 sm:gap-3 text-sm sm:text-base text-zinc-300 pt-2">
                   {!isPerson && movie.isNew && (
-                    <span className="bg-amber-400 text-black text-xs font-bold p-2 rounded shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15] uppercase">
+                    <span className="bg-amber-400 text-black text-sm font-bold px-2 py-1 rounded shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15] uppercase">
                       NEW
                     </span>
                   )}
@@ -244,7 +244,7 @@ export default function Modal({
                   {!isPerson &&
                     typeof movie.vote_average === "number" &&
                     movie.vote_average > 0 && (
-                      <span className="bg-yellow-400 shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15] text-black font-bold px-2 py-0.5 rounded">
+                      <span className="bg-yellow-400 shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15] text-sm text-black font-bold px-2 py-1 rounded">
                         {movie.vote_average.toFixed(1)}
                       </span>
                     )}

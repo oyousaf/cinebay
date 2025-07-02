@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
-import { Trash2 } from "lucide-react";
+import { Trash2, Loader2 } from "lucide-react";
 
 import { getWatchlist, removeFromWatchlist } from "@/lib/watchlist";
 import type { Movie } from "@/types/movie";
@@ -14,10 +14,16 @@ export default function Watchlist({
   onSelect: (movie: Movie) => void;
 }) {
   const [watchlist, setWatchlist] = useState<Movie[]>([]);
+  const [loading, setLoading] = useState(true);
   const [toRemove, setToRemove] = useState<Movie | null>(null);
 
   useEffect(() => {
-    setWatchlist(getWatchlist());
+    const load = () => {
+      const list = getWatchlist();
+      setWatchlist(list);
+      setLoading(false);
+    };
+    setTimeout(load, 250); // smoother transition
   }, []);
 
   const handleRemove = () => {
@@ -43,7 +49,11 @@ export default function Watchlist({
             Your Watchlist
           </h1>
 
-          {watchlist.length === 0 ? (
+          {loading ? (
+            <div className="flex justify-center pt-8">
+              <Loader2 className="animate-spin h-6 w-6 text-muted-foreground" />
+            </div>
+          ) : watchlist.length === 0 ? (
             <motion.p
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -85,10 +95,13 @@ export default function Watchlist({
                       }
                       alt={movie.title}
                       className="w-full object-cover"
+                      onError={(e) =>
+                        ((e.target as HTMLImageElement).src = "/fallback.jpg")
+                      }
                     />
 
                     {movie.isNew && (
-                      <div className="absolute top-2 left-2 bg-amber-400 text-black shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15] text-xs font-bold px-2 py-0.5 rounded">
+                      <div className="absolute top-2 left-2 bg-amber-400 text-black shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15] text-xs font-bold px-2 py-1 rounded">
                         NEW
                       </div>
                     )}
