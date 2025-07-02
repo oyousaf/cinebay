@@ -91,8 +91,9 @@ export default function Watchlist({
                     }}
                     drag="x"
                     dragConstraints={{ left: 0, right: 0 }}
+                    dragSnapToOrigin
                     dragElastic={0.2}
-                    whileDrag={{ scale: 0.97, backgroundColor: "#7f1d1d" }} // deep red
+                    whileDrag={{ scale: 0.97, backgroundColor: "#7f1d1d" }}
                     onDragEnd={(e, info) => {
                       if (info.offset.x < -100) {
                         setToRemove(movie);
