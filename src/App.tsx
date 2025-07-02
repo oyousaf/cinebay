@@ -7,12 +7,19 @@ import SearchBar from "@/components/SearchBar";
 import Movies from "@/components/Movies";
 import Shows from "@/components/Shows";
 import Watchlist from "@/components/Watchlist";
-
 import type { Movie } from "@/types/movie";
 
 // Lazy load heavy components
 const DevsPick = lazy(() => import("@/components/DevsPick"));
 const Modal = lazy(() => import("@/components/Modal"));
+
+// Prefetch DevsPick on idle
+if (typeof window !== "undefined") {
+  const prefetch = () => import("@/components/DevsPick");
+  "requestIdleCallback" in window
+    ? requestIdleCallback(prefetch)
+    : setTimeout(prefetch, 2000);
+}
 
 export default function App() {
   const [selectedItem, setSelectedItem] = useState<Movie | null>(null);
@@ -39,7 +46,6 @@ export default function App() {
   const handleBackInModal = () => {
     const last = modalHistory.at(-1);
     if (!last) return;
-
     setModalHistory((prev) => prev.slice(0, -1));
     setSelectedItem(last);
   };
@@ -48,7 +54,6 @@ export default function App() {
     <>
       <Toaster richColors position="bottom-center" theme="dark" />
       <SearchBar onSelectMovie={handleSelect} onSelectPerson={handleSelect} />
-
       <main className="w-full max-w-7xl flex-1 mx-auto flex flex-col items-center px-4 sm:px-6 pt-[176px] pb-6">
         <Movies onSelect={handleSelect} />
         <Shows onSelect={handleSelect} />
@@ -68,7 +73,6 @@ export default function App() {
   return (
     <div className="min-h-screen w-full flex flex-col bg-background text-foreground">
       <Navbar onViewChange={setView} currentView={view} />
-
       <AnimatePresence mode="wait">
         <motion.div
           key={view}

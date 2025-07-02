@@ -74,6 +74,16 @@ export default defineConfig({
               cacheableResponse: { statuses: [0, 200] },
             },
           },
+          {
+            // Cache the modal chunk
+            urlPattern: /\/assets\/Modal.*\.js$/,
+            handler: "StaleWhileRevalidate",
+            options: {
+              cacheName: "modal-component-cache",
+              expiration: { maxEntries: 5, maxAgeSeconds: 604800 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
         ],
       },
       devOptions: {
