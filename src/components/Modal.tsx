@@ -31,6 +31,7 @@ export default function Modal({
   const isPerson = movie.media_type === "person";
   const [isSaved, setIsSaved] = useState(false);
   const [showPlayer, setShowPlayer] = useState(false);
+  const [mounting, setMounting] = useState(true);
 
   const title = movie.title || movie.name || "Untitled";
   const poster = movie.profile_path || movie.poster_path || "";
@@ -86,6 +87,11 @@ export default function Modal({
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [handleKeyDown]);
+
+  useEffect(() => {
+    const id = setTimeout(() => setMounting(false), 150);
+    return () => clearTimeout(id);
+  }, []);
 
   useEffect(() => {
     setIsSaved(isInWatchlist(movie.id));
@@ -211,7 +217,9 @@ export default function Modal({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+        className={`fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm ${
+          mounting ? "pointer-events-none" : ""
+        }`}
       >
         <motion.div
           initial={{ scale: 0.95, opacity: 0 }}
