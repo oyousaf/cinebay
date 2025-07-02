@@ -53,4 +53,37 @@ export const DEVS_PICK_LIST = [
   11798, // This Is England
   10557, // East Is East
   63943, // West Is West
+  12481, // The Big Boss
+  11713, // Fist of Fury
+  9462, // The Way of the Dragon
+  9461, // Enter the Dragon
+  13333, // Game of Death
+  84383, // I Am Bruce Lee
+  218, // The Terminator
+  280, // Terminator 2: Judgment Day
+  106, // Predator
+  861, // Total Recall
+  10999, // Commando
+  865, // The Running Man
+  36955, // True Lies
+  1366, // Rocky
+  1367, // Rocky II
+  1371, // Rocky III
+  1374, // Rocky IV
+  1368, // First Blood
+  9350, // Cliffhanger
+  9739, // Demolition Man
+  312221, // Creed
+  480530, // Creed II
+  470, // Bloodsport
+  1520, // Kickboxer
+  13672, // JCVD
+  36647, // Blade
+  10158, // White Men Can't Jump
+  36586, // Blade II
+  10027, // Unleashed
+  76163, // The Expendables 2
+  2140, // Kiss of the Dragon
+  2085, // Romeo Must Die
+  10623, // Cradle 2 the Grave
 ];
