@@ -18,7 +18,7 @@
     "clsx": "^2.1.1",
     "cors": "^2.8.5",
     "dotenv": "^16.6.0",
-    "express": "^4.19.2",
+    "express": "^4.21.2",
     "framer-motion": "^12.19.1",
     "lodash.debounce": "^4.0.8",
     "lucide-react": "^0.522.0",
@@ -51,5 +51,10 @@
     "typescript": "~5.8.3",
     "vite": "^6.3.5",
     "vite-plugin-pwa": "^1.0.0"
-  }
+  },
+  "description": "**CineBay** is a sleek and modern movie discovery app built for fast, cinematic browsing — whether you're on desktop or tablet. It features auto-scrolling carousels, swipe-friendly UI, and smooth animations, making it feel like a true media experience.",
+  "main": "server.js",
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
 }
