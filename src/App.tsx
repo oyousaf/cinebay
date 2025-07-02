@@ -1,18 +1,18 @@
-import { useState, useEffect, Suspense, lazy } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Toaster } from "sonner";
 
 import Navbar from "@/components/Navbar";
+import SearchBar from "@/components/SearchBar";
 import Movies from "@/components/Movies";
 import Shows from "@/components/Shows";
-import DevsPick from "@/components/DevsPick";
 import Watchlist from "@/components/Watchlist";
-import Modal from "@/components/Modal";
 
 import type { Movie } from "@/types/movie";
 
-// 🧠 Lazy load SearchBar (Vite handles this efficiently)
-const SearchBar = lazy(() => import("@/components/SearchBar"));
+// Lazy load heavy components
+const DevsPick = lazy(() => import("@/components/DevsPick"));
+const Modal = lazy(() => import("@/components/Modal"));
 
 export default function App() {
   const [selectedItem, setSelectedItem] = useState<Movie | null>(null);
@@ -39,6 +39,7 @@ export default function App() {
   const handleBackInModal = () => {
     const last = modalHistory.at(-1);
     if (!last) return;
+
     setModalHistory((prev) => prev.slice(0, -1));
     setSelectedItem(last);
   };
@@ -46,14 +47,20 @@ export default function App() {
   const renderHome = () => (
     <>
       <Toaster richColors position="bottom-center" theme="dark" />
-      <Suspense fallback={<div style={{ height: 140 }} />} >
-        <SearchBar onSelectMovie={handleSelect} onSelectPerson={handleSelect} />
-      </Suspense>
+      <SearchBar onSelectMovie={handleSelect} onSelectPerson={handleSelect} />
 
       <main className="w-full max-w-7xl flex-1 mx-auto flex flex-col items-center px-4 sm:px-6 pt-[176px] pb-6">
         <Movies onSelect={handleSelect} />
         <Shows onSelect={handleSelect} />
-        <DevsPick onSelect={handleSelect} />
+        <Suspense
+          fallback={
+            <div className="text-sm text-center mt-8 text-muted-foreground">
+              Loading Dev's Pick…
+            </div>
+          }
+        >
+          <DevsPick onSelect={handleSelect} />
+        </Suspense>
       </main>
     </>
   );
@@ -79,15 +86,17 @@ export default function App() {
       </AnimatePresence>
 
       {selectedItem && (
-        <Modal
-          movie={selectedItem}
-          onClose={() => {
-            setSelectedItem(null);
-            setModalHistory([]);
-          }}
-          onSelect={handleSelect}
-          onBack={modalHistory.length > 0 ? handleBackInModal : undefined}
-        />
+        <Suspense fallback={null}>
+          <Modal
+            movie={selectedItem}
+            onClose={() => {
+              setSelectedItem(null);
+              setModalHistory([]);
+            }}
+            onSelect={handleSelect}
+            onBack={modalHistory.length > 0 ? handleBackInModal : undefined}
+          />
+        </Suspense>
       )}
     </div>
   );
