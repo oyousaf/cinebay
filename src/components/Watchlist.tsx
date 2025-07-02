@@ -80,6 +80,7 @@ export default function Watchlist({
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.9 }}
                     transition={{ layout: { duration: 0.3 } }}
+                    onClick={() => onSelect(movie)}
                     whileHover={{
                       scale: 1.07,
                       transition: {
