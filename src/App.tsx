@@ -8,6 +8,7 @@ import Movies from "@/components/Movies";
 import Shows from "@/components/Shows";
 import Watchlist from "@/components/Watchlist";
 import type { Movie } from "@/types/movie";
+import { Loader2 } from "lucide-react";
 
 // Lazy load heavy components
 const DevsPick = lazy(() => import("@/components/DevsPick"));
@@ -59,9 +60,7 @@ export default function App() {
         <Shows onSelect={handleSelect} />
         <Suspense
           fallback={
-            <div className="text-sm text-center mt-8 text-muted-foreground">
-              Loading Dev's Pick…
-            </div>
+            <Loader2 className="h-6 w-6 text-muted-foreground animate-spin" />
           }
         >
           <DevsPick onSelect={handleSelect} />

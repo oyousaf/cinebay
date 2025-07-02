@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, useAnimation } from "framer-motion";
+import { Loader2 } from "lucide-react";
 import type { Movie } from "@/types/movie";
 
 const SCROLL_SPEED = 20;
@@ -57,7 +58,6 @@ export default function ScrollGallery({
     }
   };
 
-  // Scroll to middle clone on mount
   useEffect(() => {
     const container = galleryRef.current;
     if (container && items.length) {
@@ -68,7 +68,6 @@ export default function ScrollGallery({
     }
   }, [items]);
 
-  // Loop scroll when reaching edges
   useEffect(() => {
     const container = galleryRef.current;
     if (!container || !items.length) return;
@@ -97,7 +96,6 @@ export default function ScrollGallery({
     return () => observer.disconnect();
   }, [items]);
 
-  // Set gallery width for animation
   useEffect(() => {
     const container = galleryRef.current;
     if (container) {
@@ -105,7 +103,6 @@ export default function ScrollGallery({
     }
   }, [items]);
 
-  // Handle pause/resume on blur/focus
   useEffect(() => {
     if (galleryWidth && items.length) resume();
     const handleBlur = () => pause();
@@ -130,86 +127,91 @@ export default function ScrollGallery({
         {title}
       </h2>
 
-      {/* Scrollable outer container */}
-      <div
-        ref={galleryRef}
-        className="relative w-full overflow-x-auto scrollbar-hide"
-        style={{
-          WebkitOverflowScrolling: "touch",
-          maskImage:
-            "linear-gradient(to right, transparent 0%, black 5%, black 95%, transparent 100%)",
-          WebkitMaskImage:
-            "linear-gradient(to right, transparent 0%, black 5%, black 95%, transparent 100%)",
-        }}
-        onMouseEnter={pause}
-        onMouseLeave={resume}
-        onTouchStart={pause}
-        onTouchEnd={resume}
-      >
-        {/* Animated scroll content */}
-        <div className="w-max">
+      {items.length === 0 ? (
+        <div className="flex justify-center items-center py-16">
           <motion.div
-            className="flex gap-4 sm:gap-6 px-2 pt-6 pb-4"
-            animate={controls}
-            style={{ touchAction: "pan-x" }}
+            animate={{ rotate: 360 }}
+            transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
           >
-            {tripledItems.map((movie, idx) => (
-              <motion.div
-                key={`${movie.id}-${idx}`}
-                className="relative cursor-pointer shrink-0 snap-start"
-                data-observe={
-                  idx === 0
-                    ? "start"
-                    : idx === tripledItems.length - 1
-                    ? "end"
-                    : undefined
-                }
-                whileHover={{
-                  scale: 1.07,
-                  transition: { type: "spring", stiffness: 300, damping: 20 },
-                }}
-                onClick={() => {
-                  pause();
-                  if (!isDragging.current) onSelect(movie);
-                }}
-                onTouchStart={handleTouchStart}
-                onTouchMove={handleTouchMove}
-                onTouchEnd={() => {
-                  if (!isDragging.current) onSelect(movie);
-                  resume();
-                }}
-              >
-                <div className="relative rounded-lg">
-                  <img
-                    src={
-                      movie.poster_path
-                        ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
-                        : "/fallback.png"
-                    }
-                    alt={movie.title}
-                    className="h-52 w-36 md:h-72 md:w-52 lg:h-80 lg:w-56 object-cover rounded-lg shadow pointer-events-none"
-                    draggable={false}
-                  />
-
-                  {/* NEW Badge */}
-                  {movie.isNew && (
-                    <div
-                      className="absolute top-2 left-2 bg-amber-400 shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15] text-black text-[10px] md:text-xs px-1.5 py-0.5 rounded font-bold z-10"
-                    >
-                      NEW
-                    </div>
-                  )}
-
-                  {/* Rating Badge */}
-                  <div className="absolute bottom-2 right-2 bg-yellow-400 shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15] text-black text-xs md:text-sm px-1.5 py-0.5 rounded font-semibold z-10">
-                    {movie.vote_average?.toFixed(1) ?? "N/A"}
-                  </div>
-                </div>
-              </motion.div>
-            ))}
+            <Loader2 className="h-6 w-6 text-muted-foreground animate-spin" />
           </motion.div>
         </div>
-      </div>
+      ) : (
+        <div
+          ref={galleryRef}
+          className="relative w-full overflow-x-auto scrollbar-hide"
+          style={{
+            WebkitOverflowScrolling: "touch",
+            maskImage:
+              "linear-gradient(to right, transparent 0%, black 5%, black 95%, transparent 100%)",
+            WebkitMaskImage:
+              "linear-gradient(to right, transparent 0%, black 5%, black 95%, transparent 100%)",
+          }}
+          onMouseEnter={pause}
+          onMouseLeave={resume}
+          onTouchStart={pause}
+          onTouchEnd={resume}
+        >
+          <div className="w-max">
+            <motion.div
+              className="flex gap-4 sm:gap-6 px-2 pt-6 pb-4"
+              animate={controls}
+              style={{ touchAction: "pan-x" }}
+            >
+              {tripledItems.map((movie, idx) => (
+                <motion.div
+                  key={`${movie.id}-${idx}`}
+                  className="relative cursor-pointer shrink-0 snap-start"
+                  data-observe={
+                    idx === 0
+                      ? "start"
+                      : idx === tripledItems.length - 1
+                      ? "end"
+                      : undefined
+                  }
+                  whileHover={{
+                    scale: 1.07,
+                    transition: { type: "spring", stiffness: 300, damping: 20 },
+                  }}
+                  onClick={() => {
+                    pause();
+                    if (!isDragging.current) onSelect(movie);
+                  }}
+                  onTouchStart={handleTouchStart}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={() => {
+                    if (!isDragging.current) onSelect(movie);
+                    resume();
+                  }}
+                >
+                  <div className="relative rounded-lg">
+                    <img
+                      src={
+                        movie.poster_path
+                          ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
+                          : "/fallback.png"
+                      }
+                      alt={movie.title}
+                      className="h-52 w-36 md:h-72 md:w-52 lg:h-80 lg:w-56 object-cover rounded-lg shadow pointer-events-none"
+                      draggable={false}
+                    />
+
+                    {movie.isNew && (
+                      <div className="absolute top-2 left-2 bg-amber-400 shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15] text-black text-[10px] md:text-xs px-1.5 py-0.5 rounded font-bold z-10">
+                        NEW
+                      </div>
+                    )}
+
+                    <div className="absolute bottom-2 right-2 bg-yellow-400 shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15] text-black text-xs md:text-sm px-1.5 py-0.5 rounded font-semibold z-10">
+                      {movie.vote_average?.toFixed(1) ?? "N/A"}
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </motion.div>
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 }
