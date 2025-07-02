@@ -23,7 +23,11 @@ export default function Watchlist({
       setWatchlist(list);
       setLoading(false);
     };
-    setTimeout(load, 250);
+    if ("requestIdleCallback" in window) {
+      requestIdleCallback(load);
+    } else {
+      setTimeout(load, 250);
+    }
   }, []);
 
   const handleRemove = () => {
@@ -46,7 +50,7 @@ export default function Watchlist({
           className="pt-[176px] px-4 max-w-6xl mx-auto pb-12"
         >
           <h1 className="text-3xl sm:text-4xl font-bold mb-6 drop-shadow-md text-center">
-            Your Watchlist
+            Watchlist
           </h1>
 
           {loading ? (
@@ -84,8 +88,16 @@ export default function Watchlist({
                         damping: 20,
                       },
                     }}
-                    className="relative group cursor-pointer rounded-xl overflow-hidden shadow-xl"
-                    onClick={() => onSelect(movie)}
+                    drag="x"
+                    dragConstraints={{ left: 0, right: 0 }}
+                    dragElastic={0.2}
+                    whileDrag={{ scale: 0.97, backgroundColor: "#7f1d1d" }} // deep red
+                    onDragEnd={(e, info) => {
+                      if (info.offset.x < -100) {
+                        setToRemove(movie);
+                      }
+                    }}
+                    className="relative group cursor-pointer rounded-xl overflow-hidden shadow-xl bg-black"
                   >
                     <img
                       src={
