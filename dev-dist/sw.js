@@ -82,7 +82,7 @@ define(['./workbox-20fbb2ef'], (function (workbox) { 'use strict';
     "revision": "3ca0b8505b4bec776b69afdba2768812"
   }, {
     "url": "/",
-    "revision": "0.2emo8o8lilo"
+    "revision": "0.2lbhk88tdao"
   }], {});
   workbox.cleanupOutdatedCaches();
   workbox.registerRoute(new workbox.NavigationRoute(workbox.createHandlerBoundToURL("/"), {
@@ -119,6 +119,15 @@ define(['./workbox-20fbb2ef'], (function (workbox) { 'use strict';
     "cacheName": "tmdb-image-cache",
     plugins: [new workbox.ExpirationPlugin({
       maxEntries: 100,
+      maxAgeSeconds: 604800
+    }), new workbox.CacheableResponsePlugin({
+      statuses: [0, 200]
+    })]
+  }), 'GET');
+  workbox.registerRoute(/\/assets\/Modal.*\.js$/, new workbox.StaleWhileRevalidate({
+    "cacheName": "modal-component-cache",
+    plugins: [new workbox.ExpirationPlugin({
+      maxEntries: 5,
       maxAgeSeconds: 604800
     }), new workbox.CacheableResponsePlugin({
       statuses: [0, 200]

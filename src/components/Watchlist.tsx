@@ -23,7 +23,7 @@ export default function Watchlist({
       setWatchlist(list);
       setLoading(false);
     };
-    setTimeout(load, 250); // smoother transition
+    setTimeout(load, 250);
   }, []);
 
   const handleRemove = () => {
