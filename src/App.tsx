@@ -38,7 +38,7 @@ export default function App() {
   }, [view]);
 
   const handleSelect = (item: Movie) => {
-    if (selectedItem) {
+    if (selectedItem && selectedItem.id !== item.id) {
       setModalHistory((prev) => [...prev, selectedItem]);
     }
     setSelectedItem(item);

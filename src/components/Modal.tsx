@@ -1,4 +1,3 @@
-// ...imports unchanged
 import { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Heart, ArrowLeft } from "lucide-react";
@@ -102,11 +101,11 @@ export default function Modal({
     if (isPerson) return;
 
     const domains = [
+      "vidsrc.io",
       "vidsrc.to",
       "vidsrc.xyz",
       "vidsrc.net",
       "vidsrc.vc",
-      "vidsrc.io",
       "vidsrc.pm",
       "vidsrc.in",
     ];
@@ -216,7 +215,7 @@ export default function Modal({
 
       {cast.length > 0 && <StarringList cast={cast} onSelect={onSelect} />}
 
-      <div className="pt-2">
+      <div className="pt-4 text-center sm:text-left">
         <button
           type="button"
           className="bg-yellow-400 hover:bg-yellow-300 shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15] text-black text-xl cursor-pointer uppercase font-semibold px-6 py-2 rounded-xl transition"
@@ -260,49 +259,58 @@ export default function Modal({
           transition={{ duration: 0.3 }}
           className="relative w-[95vw] sm:w-full max-w-4xl mx-auto rounded-2xl overflow-hidden shadow-2xl"
         >
-          {onBack && (
-            <button
-              type="button"
-              onClick={onBack}
-              className="absolute top-3 left-3 z-50 text-white hover:text-yellow-400 cursor-pointer"
-            >
-              <ArrowLeft className="w-6 h-6 bg-black/60 rounded-full p-1" />
-            </button>
-          )}
-
-          <div className="absolute top-3 right-3 z-50 flex gap-2">
-            {!isPerson && (
-              <motion.button
-                whileTap={{ scale: 0.9 }}
-                onClick={toggleWatchlist}
+          {/* Top Control Bar */}
+          <div className="absolute top-3 left-3 right-3 z-50 flex justify-between items-center">
+            {onBack ? (
+              <button
                 type="button"
-                className={`${
-                  isSaved ? "text-yellow-400" : "text-white"
-                } hover:text-yellow-400 bg-black/60 backdrop-blur p-2 rounded-full shadow-md cursor-pointer`}
-                aria-label={
-                  isSaved ? "Remove from Watchlist" : "Add to Watchlist"
-                }
+                onClick={onBack}
+                className="text-white hover:text-yellow-400 cursor-pointer"
               >
-                <Heart
-                  size={20}
-                  strokeWidth={isSaved ? 3 : 2}
-                  fill={isSaved ? "currentColor" : "none"}
-                  className={`transition-all duration-300 ${
-                    isSaved ? "drop-shadow-[0_0_6px_#fbbf24]" : ""
-                  }`}
-                />
-              </motion.button>
+                <ArrowLeft className="w-6 h-6 bg-black/60 rounded-full p-1" />
+              </button>
+            ) : (
+              <span />
             )}
-            <button
-              type="button"
-              onClick={onClose}
-              className="text-white hover:text-yellow-400 cursor-pointer"
-            >
-              <X size={28} className="bg-black/60 rounded-full backdrop-blur" />
-            </button>
+
+            <div className="flex gap-2">
+              {!isPerson && (
+                <motion.button
+                  whileTap={{ scale: 0.9 }}
+                  onClick={toggleWatchlist}
+                  type="button"
+                  className={`${
+                    isSaved ? "text-yellow-400" : "text-white"
+                  } hover:text-yellow-400 bg-black/60 backdrop-blur p-2 rounded-full shadow-md cursor-pointer`}
+                  aria-label={
+                    isSaved ? "Remove from Watchlist" : "Add to Watchlist"
+                  }
+                >
+                  <Heart
+                    size={20}
+                    strokeWidth={isSaved ? 3 : 2}
+                    fill={isSaved ? "currentColor" : "none"}
+                    className={`transition-all duration-300 ${
+                      isSaved ? "drop-shadow-[0_0_6px_#fbbf24]" : ""
+                    }`}
+                  />
+                </motion.button>
+              )}
+              <button
+                type="button"
+                onClick={onClose}
+                className="text-white hover:text-yellow-400 cursor-pointer"
+              >
+                <X
+                  size={28}
+                  className="bg-black/60 rounded-full backdrop-blur"
+                />
+              </button>
+            </div>
           </div>
 
-          <div className="relative z-10 px-4 py-6 sm:p-8 bg-gradient-to-b from-black/80 via-black/60 to-black/90 text-white max-h-[90vh] overflow-y-auto space-y-6">
+          {/* Modal Content */}
+          <div className="relative z-10 px-4 py-8 sm:p-8 bg-gradient-to-b from-black/80 via-black/60 to-black/90 text-white max-h-[90vh] overflow-y-auto space-y-6">
             <div className="flex flex-col sm:flex-row gap-6 sm:items-start pt-6 sm:pt-0">
               <div className="flex justify-center sm:block">
                 <img
