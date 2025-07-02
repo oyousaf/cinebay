@@ -75,7 +75,7 @@ export const DEVS_PICK_LIST = [
   9739, // Demolition Man
   312221, // Creed
   480530, // Creed II
-  470, // Bloodsport
+  11690, // Bloodsport
   10222, // Kickboxer
   13672, // JCVD
   36647, // Blade
