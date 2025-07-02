@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, useAnimation } from "framer-motion";
 import { Search } from "lucide-react";
 import debounce from "lodash.debounce";
@@ -6,21 +6,12 @@ import debounce from "lodash.debounce";
 import { fetchDetails, fetchFromProxy } from "@/lib/tmdb";
 import type { Movie } from "@/types/movie";
 
-type TMDBResult = {
-  id: number;
-  title?: string;
-  name?: string;
-  media_type: "movie" | "tv" | "person";
-  poster_path?: string;
-  profile_path?: string;
-};
+import React from "react";
 
-type Props = {
+const SearchBar: React.FC<{
   onSelectMovie: (movie: Movie) => void;
   onSelectPerson?: (person: Movie) => void;
-};
-
-export default function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
+}> = React.memo(({ onSelectMovie, onSelectPerson }) => {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<TMDBResult[]>([]);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -96,7 +87,7 @@ export default function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
     };
   }, []);
 
-  const handleSelect = async (item: TMDBResult) => {
+  const handleSelect = useCallback(async (item: TMDBResult) => {
     const full = await fetchDetails(item.id, item.media_type);
     if (!full) return;
 
@@ -109,7 +100,7 @@ export default function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
     setQuery("");
     setResults([]);
     setDropdownOpen(false);
-  };
+  }, [onSelectMovie, onSelectPerson]);
 
   return (
     <motion.div
@@ -179,6 +170,7 @@ export default function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
                       : "/fallback.jpg"
                   }
                   alt={name}
+                  loading="lazy"
                   className={`w-10 h-14 object-cover rounded-md ${
                     image ? "" : "opacity-70 blur-sm"
                   }`}
@@ -196,4 +188,16 @@ export default function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
       )}
     </motion.div>
   );
-}
+});
+
+export default SearchBar;
+
+// Type below to avoid hoisting errors
+type TMDBResult = {
+  id: number;
+  title?: string;
+  name?: string;
+  media_type: "movie" | "tv" | "person";
+  poster_path?: string;
+  profile_path?: string;
+};
