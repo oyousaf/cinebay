@@ -37,6 +37,9 @@ export default function Modal({
   const displayPoster = poster ? `${TMDB_IMAGE}${poster}` : "/fallback.jpg";
   const embedUrl = `https://vidsrc.me/embed/${movie.media_type}/${movie.id}`;
 
+  const cast = movie.credits?.cast ?? [];
+  const knownFor = movie.known_for ?? [];
+
   const formatDate = (dateStr?: string) =>
     dateStr
       ? new Date(dateStr).toLocaleDateString("en-GB", {
@@ -161,9 +164,9 @@ export default function Modal({
         {movie.original_language && (
           <span className="capitalize">
             ·{" "}
-            {new Intl.DisplayNames(["en"], { type: "language" }).of(
-              movie.original_language
-            )}
+            {new Intl.DisplayNames(["en"], {
+              type: "language",
+            }).of(movie.original_language)}
           </span>
         )}
         {typeof movie.vote_average === "number" && movie.vote_average > 0 && (
@@ -172,9 +175,9 @@ export default function Modal({
           </span>
         )}
       </div>
-      {!isPerson && movie.credits?.cast && movie.credits.cast.length > 0 && (
-        <StarringList cast={movie.credits.cast} onSelect={onSelect} />
-      )}
+
+      {cast.length > 0 && <StarringList cast={cast} onSelect={onSelect} />}
+
       <div className="pt-2">
         <button
           type="button"
@@ -276,14 +279,12 @@ export default function Modal({
 
             {!isPerson && relatedContent}
 
-            {isPerson &&
-              Array.isArray(movie.known_for) &&
-              movie.known_for.length > 0 && (
-                <KnownForSlider
-                  items={movie.known_for}
-                  onSelect={handleSelectWithDetails}
-                />
-              )}
+            {isPerson && knownFor.length > 0 && (
+              <KnownForSlider
+                items={knownFor}
+                onSelect={handleSelectWithDetails}
+              />
+            )}
           </div>
 
           {!isPerson && showPlayer && (
