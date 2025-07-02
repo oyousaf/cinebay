@@ -37,12 +37,18 @@ export default function App() {
     localStorage.setItem("view", view);
   }, [view]);
 
-  const handleSelect = (item: Movie) => {
-    if (selectedItem && selectedItem.id !== item.id) {
-      setModalHistory((prev) => [...prev, selectedItem]);
-    }
-    setSelectedItem(item);
-  };
+  const handleSelect = (() => {
+    let lastId: number | null = null;
+    return (item: Movie) => {
+      if (item.id === lastId) return;
+      lastId = item.id;
+
+      if (selectedItem && selectedItem.id !== item.id) {
+        setModalHistory((prev) => [...prev, selectedItem]);
+      }
+      setSelectedItem(item);
+    };
+  })();
 
   const handleBackInModal = () => {
     const last = modalHistory.at(-1);
