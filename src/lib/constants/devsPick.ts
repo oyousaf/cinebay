@@ -76,7 +76,7 @@ export const DEVS_PICK_LIST = [
   312221, // Creed
   480530, // Creed II
   470, // Bloodsport
-  1520, // Kickboxer
+  10222, // Kickboxer
   13672, // JCVD
   36647, // Blade
   10158, // White Men Can't Jump
