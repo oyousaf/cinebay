@@ -102,11 +102,11 @@ export default function Modal({
     if (isPerson) return;
 
     const domains = [
-      "vidsrc.io",
       "vidsrc.to",
       "vidsrc.xyz",
       "vidsrc.net",
       "vidsrc.vc",
+      "vidsrc.io",
       "vidsrc.pm",
       "vidsrc.in",
     ];
@@ -188,7 +188,7 @@ export default function Modal({
           {movie.overview}
         </p>
       )}
-      <div className="flex flex-wrap gap-2 sm:gap-3 text-sm sm:text-base text-zinc-300 pt-2">
+      <div className="flex flex-wrap gap-2 sm:gap-3 text-sm sm:text-base text-zinc-300 pt-2 justify-center sm:justify-start text-center sm:text-left">
         {movie.isNew && (
           <span className="bg-amber-400 text-black text-sm font-bold px-2 py-[2px] rounded shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15] uppercase">
             NEW
@@ -303,14 +303,16 @@ export default function Modal({
           </div>
 
           <div className="relative z-10 px-4 py-6 sm:p-8 bg-gradient-to-b from-black/80 via-black/60 to-black/90 text-white max-h-[90vh] overflow-y-auto space-y-6">
-            <div className="flex flex-col sm:flex-row gap-6 sm:items-start">
-              <img
-                src={displayPoster}
-                alt={title}
-                className="w-36 sm:w-44 rounded-lg shadow-lg object-cover"
-                loading="lazy"
-              />
-              <div className="flex-1 space-y-4">
+            <div className="flex flex-col sm:flex-row gap-6 sm:items-start pt-6 sm:pt-0">
+              <div className="flex justify-center sm:block">
+                <img
+                  src={displayPoster}
+                  alt={title}
+                  className="w-40 sm:w-44 rounded-lg shadow-lg object-cover"
+                  loading="lazy"
+                />
+              </div>
+              <div className="flex-1 space-y-4 mt-4 sm:mt-0 text-center sm:text-left">
                 <h2 className="text-3xl sm:text-4xl font-bold">{title}</h2>
                 {renderPersonInfo}
                 {renderMovieInfo}
