@@ -172,7 +172,7 @@ export default function Modal({
           </span>
         )}
       </div>
-      {movie.credits?.cast?.length > 0 && (
+      {!isPerson && movie.credits?.cast && movie.credits.cast.length > 0 && (
         <StarringList cast={movie.credits.cast} onSelect={onSelect} />
       )}
       <div className="pt-2">
@@ -276,12 +276,14 @@ export default function Modal({
 
             {!isPerson && relatedContent}
 
-            {isPerson && movie.known_for?.length > 0 && (
-              <KnownForSlider
-                items={movie.known_for}
-                onSelect={handleSelectWithDetails}
-              />
-            )}
+            {isPerson &&
+              Array.isArray(movie.known_for) &&
+              movie.known_for.length > 0 && (
+                <KnownForSlider
+                  items={movie.known_for}
+                  onSelect={handleSelectWithDetails}
+                />
+              )}
           </div>
 
           {!isPerson && showPlayer && (
