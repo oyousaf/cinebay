@@ -101,25 +101,91 @@ export default function Modal({
 
   const handleSelectWithDetails = async (item: Movie) => {
     const mediaType = item.media_type || movie.media_type || "movie";
-    if (!item.id) {
-      console.warn("⚠️ Missing ID for selected item:", item);
-      return;
-    }
-
+    if (!item.id) return;
     try {
       const full = await fetchDetails(
         item.id,
         mediaType as "movie" | "tv" | "person"
       );
-      if (full) {
-        onSelect?.(full);
-      } else {
-        console.warn("⚠️ fetchDetails returned null:", item);
-      }
+      if (full) onSelect?.(full);
     } catch (error) {
-      console.error("❌ Error fetching details for item:", item, error);
+      console.error("Error fetching details:", error);
     }
   };
+
+  const renderPersonInfo = isPerson && (
+    <>
+      {movie.biography && (
+        <p className="text-md text-zinc-200 leading-relaxed whitespace-pre-line">
+          {movie.biography.length > 600
+            ? movie.biography.slice(0, 600) + "..."
+            : movie.biography}
+        </p>
+      )}
+      <div className="flex flex-wrap gap-2 sm:gap-3 text-sm sm:text-base text-zinc-300 pt-2">
+        {movie.birthday && (
+          <span>
+            🎂 {formatDate(movie.birthday)} ({calculateAge()} yrs
+            {movie.deathday ? ", deceased" : ""})
+          </span>
+        )}
+        {movie.place_of_birth && <span>📍 {movie.place_of_birth}</span>}
+        {movie.popularity && (
+          <span>⭐ {movie.popularity.toFixed(1)} popularity</span>
+        )}
+        {genderLabel && (
+          <span className="italic text-zinc-400">{genderLabel}</span>
+        )}
+      </div>
+    </>
+  );
+
+  const renderMovieInfo = !isPerson && (
+    <>
+      {movie.overview && (
+        <p className="text-md text-zinc-200 leading-relaxed">
+          {movie.overview}
+        </p>
+      )}
+      <div className="flex flex-wrap gap-2 sm:gap-3 text-sm sm:text-base text-zinc-300 pt-2">
+        {movie.isNew && (
+          <span className="bg-amber-400 text-black text-sm font-bold px-2 py-[2px] rounded shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15] uppercase">
+            NEW
+          </span>
+        )}
+        {movie.genres?.length && (
+          <span className="italic truncate">{movie.genres.join(", ")}</span>
+        )}
+        {releaseDate && <span>· {releaseDate}</span>}
+        {movie.runtime && <span>· {movie.runtime} mins</span>}
+        {movie.original_language && (
+          <span className="capitalize">
+            ·{" "}
+            {new Intl.DisplayNames(["en"], { type: "language" }).of(
+              movie.original_language
+            )}
+          </span>
+        )}
+        {typeof movie.vote_average === "number" && movie.vote_average > 0 && (
+          <span className="bg-yellow-400 shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15] text-sm text-black font-bold px-2 py-[2px] rounded">
+            {movie.vote_average.toFixed(1)}
+          </span>
+        )}
+      </div>
+      {movie.credits?.cast?.length > 0 && (
+        <StarringList cast={movie.credits.cast} onSelect={onSelect} />
+      )}
+      <div className="pt-2">
+        <button
+          type="button"
+          className="bg-yellow-400 hover:bg-yellow-300 shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15] text-black text-xl cursor-pointer uppercase font-semibold px-6 py-2 rounded-xl transition"
+          onClick={() => setShowPlayer(true)}
+        >
+          Watch
+        </button>
+      </div>
+    </>
+  );
 
   const relatedContent =
     !isPerson &&
@@ -203,101 +269,19 @@ export default function Modal({
               />
               <div className="flex-1 space-y-4">
                 <h2 className="text-3xl sm:text-4xl font-bold">{title}</h2>
-
-                {isPerson && movie.biography ? (
-                  <p className="text-md text-zinc-200 leading-relaxed whitespace-pre-line">
-                    {movie.biography.length > 600
-                      ? movie.biography.slice(0, 600) + "..."
-                      : movie.biography}
-                  </p>
-                ) : (
-                  movie.overview && (
-                    <p className="text-md text-zinc-200 leading-relaxed">
-                      {movie.overview}
-                    </p>
-                  )
-                )}
-
-                <div className="flex flex-wrap gap-2 sm:gap-3 text-sm sm:text-base text-zinc-300 pt-2">
-                  {!isPerson && movie.isNew && (
-                    <span className="bg-amber-400 text-black text-sm font-bold px-2 py-1 rounded shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15] uppercase">
-                      NEW
-                    </span>
-                  )}
-                  {!isPerson && movie.genres?.length && (
-                    <span className="italic truncate">
-                      {movie.genres.join(", ")}
-                    </span>
-                  )}
-                  {releaseDate && <span>· {releaseDate}</span>}
-                  {!isPerson && movie.runtime && (
-                    <span>· {movie.runtime} mins</span>
-                  )}
-                  {!isPerson && movie.original_language && (
-                    <span className="capitalize">
-                      ·{" "}
-                      {new Intl.DisplayNames(["en"], {
-                        type: "language",
-                      }).of(movie.original_language)}
-                    </span>
-                  )}
-                  {!isPerson &&
-                    typeof movie.vote_average === "number" &&
-                    movie.vote_average > 0 && (
-                      <span className="bg-yellow-400 shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15] text-sm text-black font-bold px-2 py-1 rounded">
-                        {movie.vote_average.toFixed(1)}
-                      </span>
-                    )}
-                  {isPerson && movie.birthday && (
-                    <span>
-                      🎂 {formatDate(movie.birthday)} ({calculateAge()} yrs
-                      {movie.deathday ? ", deceased" : ""})
-                    </span>
-                  )}
-                  {isPerson && movie.place_of_birth && (
-                    <span>📍 {movie.place_of_birth}</span>
-                  )}
-                  {isPerson && movie.popularity && (
-                    <span>⭐ {movie.popularity.toFixed(1)} popularity</span>
-                  )}
-                  {isPerson && genderLabel && (
-                    <span className="italic text-zinc-400">{genderLabel}</span>
-                  )}
-                </div>
-
-                {!isPerson &&
-                  movie.credits?.cast &&
-                  movie.credits.cast.length > 0 && (
-                    <StarringList
-                      cast={movie.credits.cast}
-                      onSelect={onSelect}
-                    />
-                  )}
-
-                {!isPerson && (
-                  <div className="pt-2">
-                    <button
-                      type="button"
-                      className="bg-yellow-400 hover:bg-yellow-300 shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15] text-black text-xl cursor-pointer uppercase font-semibold px-6 py-2 rounded-xl transition"
-                      onClick={() => setShowPlayer(true)}
-                    >
-                      Watch
-                    </button>
-                  </div>
-                )}
+                {renderPersonInfo}
+                {renderMovieInfo}
               </div>
             </div>
 
             {!isPerson && relatedContent}
 
-            {isPerson &&
-              Array.isArray(movie.known_for) &&
-              movie.known_for.length > 0 && (
-                <KnownForSlider
-                  items={movie.known_for}
-                  onSelect={handleSelectWithDetails}
-                />
-              )}
+            {isPerson && movie.known_for?.length > 0 && (
+              <KnownForSlider
+                items={movie.known_for}
+                onSelect={handleSelectWithDetails}
+              />
+            )}
           </div>
 
           {!isPerson && showPlayer && (
