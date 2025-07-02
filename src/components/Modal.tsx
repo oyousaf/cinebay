@@ -1,3 +1,4 @@
+// ...imports unchanged
 import { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Heart, ArrowLeft } from "lucide-react";
@@ -32,11 +33,11 @@ export default function Modal({
   const [isSaved, setIsSaved] = useState(false);
   const [showPlayer, setShowPlayer] = useState(false);
   const [mounting, setMounting] = useState(true);
+  const [embedUrl, setEmbedUrl] = useState<string | null>(null);
 
   const title = movie.title || movie.name || "Untitled";
   const poster = movie.profile_path || movie.poster_path || "";
   const displayPoster = poster ? `${TMDB_IMAGE}${poster}` : "/fallback.jpg";
-  const embedUrl = `https://vidsrc.me/embed/${movie.media_type}/${movie.id}`;
 
   const cast = movie.credits?.cast ?? [];
   const knownFor = movie.known_for ?? [];
@@ -96,6 +97,37 @@ export default function Modal({
   useEffect(() => {
     setIsSaved(isInWatchlist(movie.id));
   }, [movie.id]);
+
+  useEffect(() => {
+    if (isPerson) return;
+
+    const domains = [
+      "vidsrc.io",
+      "vidsrc.to",
+      "vidsrc.xyz",
+      "vidsrc.net",
+      "vidsrc.vc",
+      "vidsrc.pm",
+      "vidsrc.in",
+    ];
+
+    const testEmbed = async () => {
+      for (const domain of domains) {
+        const url = `https://${domain}/embed/${movie.media_type}/${movie.id}`;
+        try {
+          await fetch(url, { method: "HEAD", mode: "no-cors" });
+          setEmbedUrl(url);
+          return;
+        } catch {
+          continue;
+        }
+      }
+
+      toast.error("No working stream found.");
+    };
+
+    testEmbed();
+  }, [movie]);
 
   const toggleWatchlist = () => {
     if (isSaved) {
@@ -295,7 +327,7 @@ export default function Modal({
             )}
           </div>
 
-          {!isPerson && showPlayer && (
+          {!isPerson && showPlayer && embedUrl && (
             <PlayerModal url={embedUrl} onClose={() => setShowPlayer(false)} />
           )}
         </motion.div>
