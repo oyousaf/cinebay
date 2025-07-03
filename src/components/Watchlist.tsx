@@ -35,29 +35,31 @@ export default function Watchlist({
     }
   }, [loadWatchlist]);
 
-  const handleRemove = (movie: Movie) => {
-    removeFromWatchlist(movie.id);
-    setWatchlist((prev) => prev.filter((m) => m.id !== movie.id));
+  const confirmRemove = () => {
+    if (!toRemove) return;
 
-    const t = toast.custom(
-      (id) => (
-        <span className="flex items-center gap-4">
-          Removed from Watchlist
-          <button
-            className="text-yellow-300 underline"
-            onClick={() => {
-              toast.dismiss(id);
-              saveToWatchlist(movie);
-              setWatchlist((prev) => [movie, ...prev]);
-              if (undoTimeoutRef.current) clearTimeout(undoTimeoutRef.current);
-            }}
-          >
-            Undo
-          </button>
+    removeFromWatchlist(toRemove.id);
+    setWatchlist((prev) => prev.filter((m) => m.id !== toRemove.id));
+
+    toast.custom((id) => (
+      <div className="bg-zinc-900 text-white px-4 py-3 rounded shadow-lg flex items-center justify-between gap-4 w-full max-w-sm">
+        <span>
+          Removed <strong>{toRemove.title}</strong>
         </span>
-      ),
-      { duration: 5000 }
-    );
+        <button
+          onClick={() => {
+            toast.dismiss(id);
+            saveToWatchlist(toRemove);
+            setWatchlist((prev) => [toRemove!, ...prev]);
+          }}
+          className="text-yellow-400 hover:underline"
+        >
+          Undo
+        </button>
+      </div>
+    ), { duration: 5000 });
+
+    setToRemove(null);
   };
 
   return (
@@ -127,21 +129,17 @@ export default function Watchlist({
                     whileDrag={{ scale: 0.97, backgroundColor: "#7f1d1d" }}
                     onDragEnd={(e, info) => {
                       if (info.offset.x < -100) {
-                        handleRemove(movie);
+                        setToRemove(movie);
                       }
                     }}
                     onTouchStart={(e) => {
-                      const target = e.currentTarget;
                       const timeout = setTimeout(() => {
-                        handleRemove(movie);
+                        setToRemove(movie);
                       }, 800);
                       const clear = () => clearTimeout(timeout);
-                      target.addEventListener("touchend", clear, {
-                        once: true,
-                      });
-                      target.addEventListener("touchmove", clear, {
-                        once: true,
-                      });
+                      const target = e.currentTarget;
+                      target.addEventListener("touchend", clear, { once: true });
+                      target.addEventListener("touchmove", clear, { once: true });
                     }}
                     className="relative group cursor-pointer rounded-xl overflow-hidden shadow-xl bg-black"
                   >
@@ -167,7 +165,7 @@ export default function Watchlist({
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleRemove(movie);
+                        setToRemove(movie);
                       }}
                       className="absolute top-2 right-2 bg-black/60 text-white p-1.5 cursor-pointer rounded-full hover:text-red-500 shadow transition"
                       aria-label="Remove from Watchlist"
@@ -178,6 +176,14 @@ export default function Watchlist({
                 ))}
               </AnimatePresence>
             </motion.div>
+          )}
+
+          {toRemove && (
+            <ConfirmModal
+              message={`Remove "${toRemove.title}" from your Watchlist?`}
+              onConfirm={confirmRemove}
+              onCancel={() => setToRemove(null)}
+            />
           )}
         </motion.main>
       </AnimatePresence>
