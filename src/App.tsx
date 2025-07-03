@@ -73,7 +73,7 @@ export default function App() {
       </main>
     </>
   );
-  
+
   return (
     <div className="min-h-screen w-full flex flex-col bg-background text-foreground">
       <Toaster richColors position="bottom-center" theme="dark" />
