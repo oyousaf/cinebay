@@ -69,7 +69,7 @@ export default function Watchlist({
             saveToWatchlist(toRemove);
             setWatchlist((prev) => [toRemove!, ...prev]);
           }}
-          className="text-yellow-400 hover:underline flex-shrink-0 whitespace-nowrap"
+          className="text-yellow-400 hover:underline flex-shrink-0 whitespace-nowrap cursor-pointer"
         >
           Undo
         </button>
