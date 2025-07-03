@@ -38,6 +38,8 @@ const getAge = (birth: Date, death?: Date) => {
   return age;
 };
 
+const embedCache = new Map<number, string>();
+
 export default function Modal({
   movie,
   onClose,
@@ -84,7 +86,10 @@ export default function Modal({
     const mediaType = item.media_type || movie.media_type || "movie";
     if (!item.id) return;
     try {
-      const full = await fetchDetails(item.id, mediaType as "movie" | "tv" | "person");
+      const full = await fetchDetails(
+        item.id,
+        mediaType as "movie" | "tv" | "person"
+      );
       if (full) onSelect?.(full);
     } catch (error) {
       console.error("Error fetching details:", error);
@@ -106,11 +111,73 @@ export default function Modal({
   }, []);
 
   useEffect(() => {
-    setIsSaved(isInWatchlist(movie.id));
-  }, [movie.id]);
+    if (isPerson) return;
+
+    const cached = embedCache.get(movie.id);
+    if (cached) {
+      setEmbedUrl(cached);
+      return;
+    }
+
+    const domains = [
+      "vidsrc.to",
+      "vidsrc.xyz",
+      "vidsrc.net",
+      "vidsrc.vc",
+      "vidsrc.pm",
+      "vidsrc.in",
+      "vidsrc.io", // Last resort
+    ];
+
+    let iframe: HTMLIFrameElement | null = null;
+    let index = 0;
+    let timeoutId: ReturnType<typeof setTimeout>;
+
+    const tryNextDomain = () => {
+      if (index >= domains.length) {
+        toast.error("No working stream found.");
+        return;
+      }
+
+      const url = `https://${domains[index]}/embed/${movie.media_type}/${movie.id}`;
+      iframe!.src = url;
+
+      timeoutId = setTimeout(() => {
+        index++;
+        tryNextDomain();
+      }, 2500); // fallback if onerror doesn't fire
+    };
+
+    iframe = document.createElement("iframe");
+    iframe.style.display = "none";
+    iframe.onload = () => {
+      clearTimeout(timeoutId);
+      embedCache.set(movie.id, iframe!.src); // ✅ cache working domain
+      setEmbedUrl(iframe!.src);
+    };
+    iframe.onerror = () => {
+      index++;
+      tryNextDomain();
+    };
+
+    document.body.appendChild(iframe);
+    tryNextDomain();
+
+    return () => {
+      clearTimeout(timeoutId);
+      if (iframe && iframe.parentNode) iframe.parentNode.removeChild(iframe);
+    };
+  }, [movie, isPerson]);
 
   useEffect(() => {
     if (isPerson) return;
+
+    const cached = embedCache.get(movie.id);
+    if (cached) {
+      setEmbedUrl(cached);
+      return;
+    }
+
     const domains = [
       "vidsrc.io",
       "vidsrc.to",
@@ -121,19 +188,44 @@ export default function Modal({
       "vidsrc.in",
     ];
 
-    const testEmbed = async () => {
-      for (const domain of domains) {
-        const url = `https://${domain}/embed/${movie.media_type}/${movie.id}`;
-        try {
-          await fetch(url, { method: "HEAD", mode: "no-cors" });
-          setEmbedUrl(url);
-          return;
-        } catch {}
+    let iframe: HTMLIFrameElement | null = null;
+    let index = 0;
+    let timeoutId: ReturnType<typeof setTimeout>;
+
+    const tryNextDomain = () => {
+      if (index >= domains.length) {
+        toast.error("No working stream found.");
+        return;
       }
-      toast.error("No working stream found.");
+
+      const url = `https://${domains[index]}/embed/${movie.media_type}/${movie.id}`;
+      iframe!.src = url;
+
+      timeoutId = setTimeout(() => {
+        index++;
+        tryNextDomain();
+      }, 2500); // fallback if onerror doesn't fire
     };
 
-    testEmbed();
+    iframe = document.createElement("iframe");
+    iframe.style.display = "none";
+    iframe.onload = () => {
+      clearTimeout(timeoutId);
+      embedCache.set(movie.id, iframe!.src); // ✅ cache working domain
+      setEmbedUrl(iframe!.src);
+    };
+    iframe.onerror = () => {
+      index++;
+      tryNextDomain();
+    };
+
+    document.body.appendChild(iframe);
+    tryNextDomain();
+
+    return () => {
+      clearTimeout(timeoutId);
+      if (iframe && iframe.parentNode) iframe.parentNode.removeChild(iframe);
+    };
   }, [movie, isPerson]);
 
   const toggleWatchlist = () => {
@@ -149,35 +241,63 @@ export default function Modal({
 
   const personInfo = (
     <>
-      {movie.biography && <p className="text-md text-zinc-200 leading-relaxed whitespace-pre-line">{shortBio(movie.biography)}</p>}
+      {movie.biography && (
+        <p className="text-md text-zinc-200 leading-relaxed whitespace-pre-line">
+          {shortBio(movie.biography)}
+        </p>
+      )}
       <div className="flex flex-wrap gap-2 sm:gap-3 text-sm sm:text-base text-zinc-300 pt-2">
         {movie.birthday && (
           <span>
-            🎂 {formatDate(movie.birthday)} ({getAge(new Date(movie.birthday), movie.deathday ? new Date(movie.deathday) : undefined)} yrs{movie.deathday ? ", deceased" : ""})
+            🎂 {formatDate(movie.birthday)} (
+            {getAge(
+              new Date(movie.birthday),
+              movie.deathday ? new Date(movie.deathday) : undefined
+            )}{" "}
+            yrs{movie.deathday ? ", deceased" : ""})
           </span>
         )}
         {movie.place_of_birth && <span>📍 {movie.place_of_birth}</span>}
-        {movie.popularity && <span>⭐ {movie.popularity.toFixed(1)} popularity</span>}
-        {genderLabel && <span className="italic text-zinc-400">{genderLabel}</span>}
+        {movie.popularity && (
+          <span>⭐ {movie.popularity.toFixed(1)} popularity</span>
+        )}
+        {genderLabel && (
+          <span className="italic text-zinc-400">{genderLabel}</span>
+        )}
       </div>
     </>
   );
 
   const movieInfo = (
     <>
-      {movie.overview && <p className="text-md text-zinc-200 leading-relaxed">{movie.overview}</p>}
+      {movie.overview && (
+        <p className="text-md text-zinc-200 leading-relaxed">
+          {movie.overview}
+        </p>
+      )}
       <div className="flex flex-wrap gap-2 sm:gap-3 text-sm sm:text-base text-zinc-300 pt-2 justify-center sm:justify-start text-center sm:text-left">
-        {movie.isNew && <span className="bg-amber-400 text-black text-sm font-bold px-2 py-[2px] rounded shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15] uppercase">NEW</span>}
-        {movie.genres?.length && <span className="italic truncate">{movie.genres.join(", ")}</span>}
+        {movie.isNew && (
+          <span className="bg-amber-400 text-black text-sm font-bold px-2 py-[2px] rounded shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15] uppercase">
+            NEW
+          </span>
+        )}
+        {movie.genres?.length && (
+          <span className="italic truncate">{movie.genres.join(", ")}</span>
+        )}
         {releaseDate && <span>· {releaseDate}</span>}
         {movie.runtime && <span>· {movie.runtime} mins</span>}
         {movie.original_language && (
           <span className="capitalize">
-            · {new Intl.DisplayNames(["en"], { type: "language" }).of(movie.original_language)}
+            ·{" "}
+            {new Intl.DisplayNames(["en"], { type: "language" }).of(
+              movie.original_language
+            )}
           </span>
         )}
         {typeof movie.vote_average === "number" && movie.vote_average > 0 && (
-          <span className="bg-yellow-400 shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15] text-sm text-black font-bold px-2 py-[2px] rounded">{movie.vote_average.toFixed(1)}</span>
+          <span className="bg-yellow-400 shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15] text-sm text-black font-bold px-2 py-[2px] rounded">
+            {movie.vote_average.toFixed(1)}
+          </span>
         )}
       </div>
       {cast.length > 0 && <StarringList cast={cast} onSelect={onSelect} />}
@@ -196,8 +316,12 @@ export default function Modal({
   const relatedContent =
     Array.isArray(movie.similar) && movie.similar.length > 0 ? (
       <Similar items={movie.similar} onSelect={handleSelectWithDetails} />
-    ) : Array.isArray(movie.recommendations) && movie.recommendations.length > 0 ? (
-      <Recommendations items={movie.recommendations} onSelect={handleSelectWithDetails} />
+    ) : Array.isArray(movie.recommendations) &&
+      movie.recommendations.length > 0 ? (
+      <Recommendations
+        items={movie.recommendations}
+        onSelect={handleSelectWithDetails}
+      />
     ) : null;
 
   return (
@@ -209,7 +333,9 @@ export default function Modal({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className={`fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm ${mounting ? "pointer-events-none" : ""}`}
+        className={`fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm ${
+          mounting ? "pointer-events-none" : ""
+        }`}
       >
         <motion.div
           initial={{ scale: 0.95, opacity: 0 }}
@@ -221,7 +347,11 @@ export default function Modal({
           {/* Top Control Bar */}
           <div className="absolute top-3 left-3 right-3 z-50 flex justify-between items-center">
             {onBack ? (
-              <button type="button" onClick={onBack} className="text-white hover:text-yellow-400 cursor-pointer">
+              <button
+                type="button"
+                onClick={onBack}
+                className="text-white hover:text-yellow-400 cursor-pointer"
+              >
                 <ArrowLeft className="w-6 h-6 bg-black/60 rounded-full p-1" />
               </button>
             ) : (
@@ -233,19 +363,32 @@ export default function Modal({
                   whileTap={{ scale: 0.9 }}
                   onClick={toggleWatchlist}
                   type="button"
-                  className={`${isSaved ? "text-yellow-400" : "text-white"} hover:text-yellow-400 bg-black/60 backdrop-blur p-2 rounded-full shadow-md cursor-pointer`}
-                  aria-label={isSaved ? "Remove from Watchlist" : "Add to Watchlist"}
+                  className={`${
+                    isSaved ? "text-yellow-400" : "text-white"
+                  } hover:text-yellow-400 bg-black/60 backdrop-blur p-2 rounded-full shadow-md cursor-pointer`}
+                  aria-label={
+                    isSaved ? "Remove from Watchlist" : "Add to Watchlist"
+                  }
                 >
                   <Heart
                     size={20}
                     strokeWidth={isSaved ? 3 : 2}
                     fill={isSaved ? "currentColor" : "none"}
-                    className={`transition-all duration-300 ${isSaved ? "drop-shadow-[0_0_6px_#fbbf24]" : ""}`}
+                    className={`transition-all duration-300 ${
+                      isSaved ? "drop-shadow-[0_0_6px_#fbbf24]" : ""
+                    }`}
                   />
                 </motion.button>
               )}
-              <button type="button" onClick={onClose} className="text-white hover:text-yellow-400 cursor-pointer">
-                <X size={28} className="bg-black/60 rounded-full backdrop-blur" />
+              <button
+                type="button"
+                onClick={onClose}
+                className="text-white hover:text-yellow-400 cursor-pointer"
+              >
+                <X
+                  size={28}
+                  className="bg-black/60 rounded-full backdrop-blur"
+                />
               </button>
             </div>
           </div>
@@ -267,11 +410,14 @@ export default function Modal({
               </div>
             </div>
 
-            {isPerson ? (
-              knownFor.length > 0 && <KnownForSlider items={knownFor} onSelect={handleSelectWithDetails} />
-            ) : (
-              relatedContent
-            )}
+            {isPerson
+              ? knownFor.length > 0 && (
+                  <KnownForSlider
+                    items={knownFor}
+                    onSelect={handleSelectWithDetails}
+                  />
+                )
+              : relatedContent}
           </div>
 
           {!isPerson && showPlayer && embedUrl && (
