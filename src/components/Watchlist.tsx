@@ -41,23 +41,26 @@ export default function Watchlist({
     removeFromWatchlist(toRemove.id);
     setWatchlist((prev) => prev.filter((m) => m.id !== toRemove.id));
 
-    toast.custom((id) => (
-      <div className="bg-zinc-900 text-white px-4 py-3 rounded shadow-lg flex items-center justify-between gap-4 w-full max-w-sm">
-        <span>
-          Removed <strong>{toRemove.title}</strong>
-        </span>
-        <button
-          onClick={() => {
-            toast.dismiss(id);
-            saveToWatchlist(toRemove);
-            setWatchlist((prev) => [toRemove!, ...prev]);
-          }}
-          className="text-yellow-400 hover:underline"
-        >
-          Undo
-        </button>
-      </div>
-    ), { duration: 5000 });
+    toast.custom(
+      (id) => (
+        <div className="bg-zinc-900 text-white px-4 py-3 rounded shadow-lg flex items-center justify-between gap-4 w-full max-w-sm">
+          <span>
+            Removed <strong>{toRemove.title}</strong>
+          </span>
+          <button
+            onClick={() => {
+              toast.dismiss(id);
+              saveToWatchlist(toRemove);
+              setWatchlist((prev) => [toRemove!, ...prev]);
+            }}
+            className="text-yellow-400 hover:underline cursor-pointer"
+          >
+            Undo
+          </button>
+        </div>
+      ),
+      { duration: 5000 }
+    );
 
     setToRemove(null);
   };
@@ -138,8 +141,12 @@ export default function Watchlist({
                       }, 800);
                       const clear = () => clearTimeout(timeout);
                       const target = e.currentTarget;
-                      target.addEventListener("touchend", clear, { once: true });
-                      target.addEventListener("touchmove", clear, { once: true });
+                      target.addEventListener("touchend", clear, {
+                        once: true,
+                      });
+                      target.addEventListener("touchmove", clear, {
+                        once: true,
+                      });
                     }}
                     className="relative group cursor-pointer rounded-xl overflow-hidden shadow-xl bg-black"
                   >
