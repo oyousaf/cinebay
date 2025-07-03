@@ -111,81 +111,28 @@ export default function Modal({
   }, []);
 
   useEffect(() => {
-    if (isPerson) return;
-
-    const cached = embedCache.get(movie.id);
-    if (cached) {
-      setEmbedUrl(cached);
-      return;
-    }
-
-    const domains = [
-      "vidsrc.to",
-      "vidsrc.xyz",
-      "vidsrc.net",
-      "vidsrc.vc",
-      "vidsrc.pm",
-      "vidsrc.in",
-      "vidsrc.io", // Last resort
-    ];
-
-    let iframe: HTMLIFrameElement | null = null;
-    let index = 0;
-    let timeoutId: ReturnType<typeof setTimeout>;
-
-    const tryNextDomain = () => {
-      if (index >= domains.length) {
-        toast.error("No working stream found.");
-        return;
-      }
-
-      const url = `https://${domains[index]}/embed/${movie.media_type}/${movie.id}`;
-      iframe!.src = url;
-
-      timeoutId = setTimeout(() => {
-        index++;
-        tryNextDomain();
-      }, 2500); // fallback if onerror doesn't fire
-    };
-
-    iframe = document.createElement("iframe");
-    iframe.style.display = "none";
-    iframe.onload = () => {
-      clearTimeout(timeoutId);
-      embedCache.set(movie.id, iframe!.src); // ✅ cache working domain
-      setEmbedUrl(iframe!.src);
-    };
-    iframe.onerror = () => {
-      index++;
-      tryNextDomain();
-    };
-
-    document.body.appendChild(iframe);
-    tryNextDomain();
-
-    return () => {
-      clearTimeout(timeoutId);
-      if (iframe && iframe.parentNode) iframe.parentNode.removeChild(iframe);
-    };
-  }, [movie, isPerson]);
+    setIsSaved(isInWatchlist(movie.id));
+  }, [movie.id]);
 
   useEffect(() => {
-    if (isPerson) return;
+    if (isPerson || !movie?.id) return;
 
-    const cached = embedCache.get(movie.id);
-    if (cached) {
-      setEmbedUrl(cached);
+    const localKey = `embedCache:${movie.id}`;
+    const stored = localStorage.getItem(localKey);
+    if (stored) {
+      embedCache.set(movie.id, stored);
+      setEmbedUrl(stored);
       return;
     }
 
     const domains = [
-      "vidsrc.io",
       "vidsrc.to",
       "vidsrc.xyz",
       "vidsrc.net",
       "vidsrc.vc",
       "vidsrc.pm",
       "vidsrc.in",
+      "vidsrc.io",
     ];
 
     let iframe: HTMLIFrameElement | null = null;
@@ -204,14 +151,15 @@ export default function Modal({
       timeoutId = setTimeout(() => {
         index++;
         tryNextDomain();
-      }, 2500); // fallback if onerror doesn't fire
+      }, 2500);
     };
 
     iframe = document.createElement("iframe");
     iframe.style.display = "none";
     iframe.onload = () => {
       clearTimeout(timeoutId);
-      embedCache.set(movie.id, iframe!.src); // ✅ cache working domain
+      embedCache.set(movie.id, iframe!.src);
+      localStorage.setItem(localKey, iframe!.src);
       setEmbedUrl(iframe!.src);
     };
     iframe.onerror = () => {
@@ -344,7 +292,6 @@ export default function Modal({
           transition={{ duration: 0.3 }}
           className="relative w-[95vw] sm:w-full max-w-4xl mx-auto rounded-2xl overflow-hidden shadow-2xl"
         >
-          {/* Top Control Bar */}
           <div className="absolute top-3 left-3 right-3 z-50 flex justify-between items-center">
             {onBack ? (
               <button
@@ -393,7 +340,6 @@ export default function Modal({
             </div>
           </div>
 
-          {/* Modal Content */}
           <div className="relative z-10 px-4 py-8 sm:p-8 bg-gradient-to-b from-black/80 via-black/60 to-black/90 text-white max-h-[90vh] overflow-y-auto space-y-6">
             <div className="flex flex-col sm:flex-row gap-6 sm:items-start pt-6 sm:pt-0">
               <div className="flex justify-center sm:block">
