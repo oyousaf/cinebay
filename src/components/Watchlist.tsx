@@ -1,43 +1,49 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { Trash2, Loader2 } from "lucide-react";
 
-import ConfirmModal from "@/components/ConfirmModal";
 import {
   getWatchlist,
   removeFromWatchlist,
   saveToWatchlist,
 } from "@/lib/watchlist";
 import type { Movie } from "@/types/movie";
+import ConfirmModal from "@/components/ConfirmModal";
 import { TMDB_IMAGE } from "@/lib/tmdb";
 
-export default function Watchlist({
-  onSelect,
-}: {
-  onSelect: (movie: Movie) => void;
-}) {
+type FilterState = {
+  type: "all" | "movie" | "tv";
+  sortBy: "title-asc" | "rating-desc" | "newest";
+};
+
+export default function Watchlist({ onSelect }: { onSelect: (movie: Movie) => void }) {
   const [watchlist, setWatchlist] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(true);
   const [toRemove, setToRemove] = useState<Movie | null>(null);
-  const undoTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [filters, setFilters] = useState<FilterState>(() => {
+    try {
+      const stored = localStorage.getItem("watchlistFilters");
+      return stored ? JSON.parse(stored) : { type: "all", sortBy: "title-asc" };
+    } catch {
+      return { type: "all", sortBy: "title-asc" };
+    }
+  });
 
-  const loadWatchlist = useCallback(() => {
-    setWatchlist(getWatchlist());
-    setLoading(false);
+  useEffect(() => {
+    const load = () => {
+      setWatchlist(getWatchlist());
+      setLoading(false);
+    };
+    "requestIdleCallback" in window ? requestIdleCallback(load) : setTimeout(load, 250);
   }, []);
 
   useEffect(() => {
-    if ("requestIdleCallback" in window) {
-      requestIdleCallback(loadWatchlist);
-    } else {
-      setTimeout(loadWatchlist, 250);
-    }
-  }, [loadWatchlist]);
+    localStorage.setItem("watchlistFilters", JSON.stringify(filters));
+  }, [filters]);
 
   const confirmRemove = () => {
     if (!toRemove) return;
-
     removeFromWatchlist(toRemove.id);
     setWatchlist((prev) => prev.filter((m) => m.id !== toRemove.id));
 
@@ -61,6 +67,24 @@ export default function Watchlist({
 
     setToRemove(null);
   };
+
+  const filteredList = watchlist
+    .filter((m) => filters.type === "all" || m.media_type === filters.type)
+    .sort((a, b) => {
+      switch (filters.sortBy) {
+        case "title-asc":
+          return (a.title || a.name || "").localeCompare(b.title || b.name || "");
+        case "rating-desc":
+          return (b.vote_average ?? 0) - (a.vote_average ?? 0);
+        case "newest":
+          return (
+            new Date(b.release_date || "").getTime() -
+            new Date(a.release_date || "").getTime()
+          );
+        default:
+          return 0;
+      }
+    });
 
   return (
     <div className="min-h-screen w-full bg-gradient-to-b from-foreground via-foreground to-black text-white">
@@ -91,95 +115,105 @@ export default function Watchlist({
               Plot twist: you haven’t added anything yet.
             </motion.p>
           ) : (
-            <motion.div
-              layout
-              className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4"
-            >
-              <AnimatePresence>
-                {watchlist.map((movie) => (
-                  <motion.div
-                    key={movie.id}
-                    layout
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
-                    transition={{ layout: { duration: 0.3 } }}
-                    onClick={(e) => {
-                      if (
-                        Math.abs(
-                          e.clientX -
-                            e.currentTarget.getBoundingClientRect().left
-                        ) < 5
-                      ) {
-                        onSelect(movie);
-                      }
-                    }}
-                    whileHover={{
-                      scale: 1.07,
-                      transition: {
-                        type: "spring",
-                        stiffness: 300,
-                        damping: 20,
-                      },
-                    }}
-                    drag="x"
-                    dragConstraints={{ left: 0, right: 0 }}
-                    dragSnapToOrigin
-                    dragElastic={0.2}
-                    whileDrag={{ scale: 0.97, backgroundColor: "#7f1d1d" }}
-                    onDragEnd={(e, info) => {
-                      if (info.offset.x < -100) {
-                        setToRemove(movie);
-                      }
-                    }}
-                    onTouchStart={(e) => {
-                      const timeout = setTimeout(() => {
-                        setToRemove(movie);
-                      }, 800);
-                      const clear = () => clearTimeout(timeout);
-                      const target = e.currentTarget;
-                      target.addEventListener("touchend", clear, {
-                        once: true,
-                      });
-                      target.addEventListener("touchmove", clear, {
-                        once: true,
-                      });
-                    }}
-                    className="relative group cursor-pointer rounded-xl overflow-hidden shadow-xl bg-black"
-                  >
-                    <img
-                      src={
-                        movie.poster_path
-                          ? `${TMDB_IMAGE}${movie.poster_path}`
-                          : "/fallback.jpg"
-                      }
-                      alt={movie.title}
-                      className="w-full object-cover"
-                      onError={(e) =>
-                        ((e.target as HTMLImageElement).src = "/fallback.jpg")
-                      }
-                    />
+            <>
+              <div className="mb-6 flex flex-wrap justify-center items-center gap-4 text-sm sm:text-base">
+                <select
+                  value={filters.type}
+                  onChange={(e) =>
+                    setFilters((f) => ({
+                      ...f,
+                      type: e.target.value as FilterState["type"],
+                    }))
+                  }
+                  className="bg-zinc-900 text-white border border-zinc-700 rounded px-3 py-1 focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                >
+                  <option value="all">All Types</option>
+                  <option value="movie">Movies</option>
+                  <option value="tv">TV Shows</option>
+                </select>
 
-                    {movie.isNew && (
-                      <div className="absolute top-2 left-2 bg-amber-400 text-black shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15] text-xs font-bold px-2 py-1 rounded">
-                        NEW
-                      </div>
-                    )}
+                <select
+                  value={filters.sortBy}
+                  onChange={(e) =>
+                    setFilters((f) => ({
+                      ...f,
+                      sortBy: e.target.value as FilterState["sortBy"],
+                    }))
+                  }
+                  className="bg-zinc-900 text-white border border-zinc-700 rounded px-3 py-1 focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                >
+                  <option value="title-asc">Title A–Z</option>
+                  <option value="rating-desc">Top Rated</option>
+                  <option value="newest">Newest First</option>
+                </select>
+              </div>
 
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setToRemove(movie);
+              <motion.div
+                layout
+                className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4"
+              >
+                <AnimatePresence>
+                  {filteredList.map((movie) => (
+                    <motion.div
+                      key={movie.id}
+                      layout
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      transition={{ layout: { duration: 0.3 } }}
+                      onClick={() => onSelect(movie)}
+                      whileHover={{
+                        scale: 1.03,
+                        transition: {
+                          type: "spring",
+                          stiffness: 300,
+                          damping: 20,
+                        },
                       }}
-                      className="absolute top-2 right-2 bg-black/60 text-white p-1.5 cursor-pointer rounded-full hover:text-red-500 shadow transition"
-                      aria-label="Remove from Watchlist"
+                      drag="x"
+                      dragConstraints={{ left: 0, right: 0 }}
+                      dragSnapToOrigin
+                      dragElastic={0.2}
+                      whileDrag={{ scale: 0.97, backgroundColor: "#7f1d1d" }}
+                      onDragEnd={(e, info) => {
+                        if (info.offset.x < -100) setToRemove(movie);
+                      }}
+                      className="relative group cursor-pointer rounded-xl overflow-hidden shadow-xl bg-black"
                     >
-                      <Trash2 size={16} strokeWidth={2} />
-                    </button>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-            </motion.div>
+                      <img
+                        src={
+                          movie.poster_path
+                            ? `${TMDB_IMAGE}${movie.poster_path}`
+                            : "/fallback.jpg"
+                        }
+                        alt={movie.title}
+                        className="w-full object-cover"
+                        onError={(e) =>
+                          ((e.target as HTMLImageElement).src = "/fallback.jpg")
+                        }
+                      />
+
+                      {movie.isNew && (
+                        <div className="absolute top-2 left-2 bg-amber-400 text-black shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15] text-xs font-bold px-2 py-1 rounded">
+                          NEW
+                        </div>
+                      )}
+
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setToRemove(movie);
+                        }}
+                        className="absolute top-2 right-2 bg-black/60 text-white p-1.5 cursor-pointer rounded-full hover:text-red-500 shadow transition"
+                        aria-label="Remove from Watchlist"
+                      >
+                        <Trash2 size={16} strokeWidth={2} />
+                      </button>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </motion.div>
+            </>
           )}
 
           {toRemove && (
