@@ -12,6 +12,8 @@ import type { Movie } from "@/types/movie";
 import ConfirmModal from "@/components/ConfirmModal";
 import { TMDB_IMAGE } from "@/lib/tmdb";
 
+const LONG_PRESS_DELAY = 600;
+
 type FilterState = {
   type: "all" | "movie" | "tv";
   sortBy: "title-asc" | "title-desc" | "rating-desc" | "newest";
@@ -182,56 +184,75 @@ export default function Watchlist({
                 className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4"
               >
                 <AnimatePresence mode="sync">
-                  {filteredList.map((movie) => (
-                    <motion.div
-                      key={movie.id}
-                      layout
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.95 }}
-                      transition={{ duration: 0.25, ease: "easeOut" }}
-                      onClick={() => onSelect(movie)}
-                      whileHover={{
-                        scale: 1.03,
-                        transition: {
-                          type: "spring",
-                          stiffness: 300,
-                          damping: 20,
-                        },
-                      }}
-                      className="relative group cursor-pointer rounded-xl overflow-hidden shadow-xl bg-black"
-                    >
-                      <img
-                        src={
-                          movie.poster_path
-                            ? `${TMDB_IMAGE}${movie.poster_path}`
-                            : "/fallback.jpg"
-                        }
-                        alt={movie.title}
-                        className="w-full object-cover"
-                        onError={(e) =>
-                          ((e.target as HTMLImageElement).src = "/fallback.jpg")
-                        }
-                      />
-
-                      {movie.isNew && (
-                        <div className="absolute top-2 left-2 bg-amber-400 text-black shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15] text-xs font-bold px-2 py-1 rounded">
-                          NEW
-                        </div>
-                      )}
-
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setToRemove(movie);
+                  {filteredList.map((movie) => {
+                    let pressTimer: NodeJS.Timeout;
+                    return (
+                      <motion.div
+                        key={movie.id}
+                        layout
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        transition={{ duration: 0.25, ease: "easeOut" }}
+                        onClick={() => onSelect(movie)}
+                        onPointerDown={() => {
+                          pressTimer = setTimeout(() => {
+                            setToRemove(movie);
+                          }, LONG_PRESS_DELAY);
                         }}
-                        className="absolute top-2 right-2 bg-black/60 text-white p-1.5 cursor-pointer rounded-full hover:text-red-500 shadow transition"
-                        aria-label="Remove from Watchlist"
+                        onPointerUp={() => clearTimeout(pressTimer)}
+                        onPointerLeave={() => clearTimeout(pressTimer)}
+                        drag="x"
+                        dragConstraints={{ left: 0, right: 0 }}
+                        dragSnapToOrigin
+                        dragElastic={0.2}
+                        whileDrag={{ scale: 0.97, backgroundColor: "#7f1d1d" }}
+                        onDragEnd={(e, info) => {
+                          if (info.offset.x < -100) setToRemove(movie);
+                        }}
+                        whileHover={{
+                          scale: 1.03,
+                          transition: {
+                            type: "spring",
+                            stiffness: 300,
+                            damping: 20,
+                          },
+                        }}
+                        className="relative group cursor-pointer rounded-xl overflow-hidden shadow-xl bg-black"
                       >
-                        <Trash2 size={16} strokeWidth={2} />
-                      </button>
-                    </motion.div>
-                  ))}
+                        <img
+                          src={
+                            movie.poster_path
+                              ? `${TMDB_IMAGE}${movie.poster_path}`
+                              : "/fallback.jpg"
+                          }
+                          alt={movie.title}
+                          className="w-full object-cover"
+                          onError={(e) =>
+                            ((e.target as HTMLImageElement).src =
+                              "/fallback.jpg")
+                          }
+                        />
+
+                        {movie.isNew && (
+                          <div className="absolute top-2 left-2 bg-amber-400 text-black shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15] text-xs font-bold px-2 py-1 rounded">
+                            NEW
+                          </div>
+                        )}
+
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setToRemove(movie);
+                          }}
+                          className="absolute top-2 right-2 bg-black/60 text-white p-1.5 cursor-pointer rounded-full hover:text-red-500 shadow transition"
+                          aria-label="Remove from Watchlist"
+                        >
+                          <Trash2 size={16} strokeWidth={2} />
+                        </button>
+                      </motion.div>
+                    );
+                  })}
                 </AnimatePresence>
               </motion.div>
             </>
