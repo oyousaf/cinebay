@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Heart, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
@@ -16,6 +16,27 @@ import StarringList from "./modal/StarringList";
 import KnownForSlider from "./modal/KnownForSlider";
 import Recommendations from "./modal/Recommendations";
 import Similar from "./modal/Similar";
+
+const formatDate = (dateStr?: string) =>
+  dateStr
+    ? new Date(dateStr).toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      })
+    : null;
+
+const shortBio = (bio: string) =>
+  bio.length > 600 ? bio.slice(0, 600) + "..." : bio;
+
+const getAge = (birth: Date, death?: Date) => {
+  const end = death ?? new Date();
+  let age = end.getFullYear() - birth.getFullYear();
+  if (end < new Date(end.getFullYear(), birth.getMonth(), birth.getDate())) {
+    age--;
+  }
+  return age;
+};
 
 export default function Modal({
   movie,
@@ -36,41 +57,21 @@ export default function Modal({
 
   const title = movie.title || movie.name || "Untitled";
   const poster = movie.profile_path || movie.poster_path || "";
-  const displayPoster = poster ? `${TMDB_IMAGE}${poster}` : "/fallback.jpg";
+  const displayPoster = useMemo(
+    () => (poster ? `${TMDB_IMAGE}${poster}` : "/fallback.jpg"),
+    [poster]
+  );
 
   const cast = movie.credits?.cast ?? [];
   const knownFor = movie.known_for ?? [];
-
-  const formatDate = (dateStr?: string) =>
-    dateStr
-      ? new Date(dateStr).toLocaleDateString("en-GB", {
-          day: "numeric",
-          month: "long",
-          year: "numeric",
-        })
-      : null;
-
   const releaseDate = formatDate(movie.release_date);
 
-  const genderLabel =
-    movie.known_for_department === "Acting"
-      ? movie.gender === 1
-        ? "Actress"
-        : "Actor"
-      : movie.known_for_department;
-
-  const calculateAge = () => {
-    if (!movie.birthday) return null;
-    const birth = new Date(movie.birthday);
-    const death = movie.deathday ? new Date(movie.deathday) : new Date();
-    let age = death.getFullYear() - birth.getFullYear();
-    if (
-      death < new Date(death.getFullYear(), birth.getMonth(), birth.getDate())
-    ) {
-      age--;
+  const genderLabel = useMemo(() => {
+    if (movie.known_for_department === "Acting") {
+      return movie.gender === 1 ? "Actress" : "Actor";
     }
-    return age;
-  };
+    return movie.known_for_department;
+  }, [movie]);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -78,6 +79,17 @@ export default function Modal({
     },
     [onClose]
   );
+
+  const handleSelectWithDetails = async (item: Movie) => {
+    const mediaType = item.media_type || movie.media_type || "movie";
+    if (!item.id) return;
+    try {
+      const full = await fetchDetails(item.id, mediaType as "movie" | "tv" | "person");
+      if (full) onSelect?.(full);
+    } catch (error) {
+      console.error("Error fetching details:", error);
+    }
+  };
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -99,7 +111,6 @@ export default function Modal({
 
   useEffect(() => {
     if (isPerson) return;
-
     const domains = [
       "vidsrc.io",
       "vidsrc.to",
@@ -117,16 +128,13 @@ export default function Modal({
           await fetch(url, { method: "HEAD", mode: "no-cors" });
           setEmbedUrl(url);
           return;
-        } catch {
-          continue;
-        }
+        } catch {}
       }
-
       toast.error("No working stream found.");
     };
 
     testEmbed();
-  }, [movie]);
+  }, [movie, isPerson]);
 
   const toggleWatchlist = () => {
     if (isSaved) {
@@ -139,82 +147,40 @@ export default function Modal({
     setIsSaved(!isSaved);
   };
 
-  const handleSelectWithDetails = async (item: Movie) => {
-    const mediaType = item.media_type || movie.media_type || "movie";
-    if (!item.id) return;
-    try {
-      const full = await fetchDetails(
-        item.id,
-        mediaType as "movie" | "tv" | "person"
-      );
-      if (full) onSelect?.(full);
-    } catch (error) {
-      console.error("Error fetching details:", error);
-    }
-  };
-
-  const renderPersonInfo = isPerson && (
+  const personInfo = (
     <>
-      {movie.biography && (
-        <p className="text-md text-zinc-200 leading-relaxed whitespace-pre-line">
-          {movie.biography.length > 600
-            ? movie.biography.slice(0, 600) + "..."
-            : movie.biography}
-        </p>
-      )}
+      {movie.biography && <p className="text-md text-zinc-200 leading-relaxed whitespace-pre-line">{shortBio(movie.biography)}</p>}
       <div className="flex flex-wrap gap-2 sm:gap-3 text-sm sm:text-base text-zinc-300 pt-2">
         {movie.birthday && (
           <span>
-            🎂 {formatDate(movie.birthday)} ({calculateAge()} yrs
-            {movie.deathday ? ", deceased" : ""})
+            🎂 {formatDate(movie.birthday)} ({getAge(new Date(movie.birthday), movie.deathday ? new Date(movie.deathday) : undefined)} yrs{movie.deathday ? ", deceased" : ""})
           </span>
         )}
         {movie.place_of_birth && <span>📍 {movie.place_of_birth}</span>}
-        {movie.popularity && (
-          <span>⭐ {movie.popularity.toFixed(1)} popularity</span>
-        )}
-        {genderLabel && (
-          <span className="italic text-zinc-400">{genderLabel}</span>
-        )}
+        {movie.popularity && <span>⭐ {movie.popularity.toFixed(1)} popularity</span>}
+        {genderLabel && <span className="italic text-zinc-400">{genderLabel}</span>}
       </div>
     </>
   );
 
-  const renderMovieInfo = !isPerson && (
+  const movieInfo = (
     <>
-      {movie.overview && (
-        <p className="text-md text-zinc-200 leading-relaxed">
-          {movie.overview}
-        </p>
-      )}
+      {movie.overview && <p className="text-md text-zinc-200 leading-relaxed">{movie.overview}</p>}
       <div className="flex flex-wrap gap-2 sm:gap-3 text-sm sm:text-base text-zinc-300 pt-2 justify-center sm:justify-start text-center sm:text-left">
-        {movie.isNew && (
-          <span className="bg-amber-400 text-black text-sm font-bold px-2 py-[2px] rounded shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15] uppercase">
-            NEW
-          </span>
-        )}
-        {movie.genres?.length && (
-          <span className="italic truncate">{movie.genres.join(", ")}</span>
-        )}
+        {movie.isNew && <span className="bg-amber-400 text-black text-sm font-bold px-2 py-[2px] rounded shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15] uppercase">NEW</span>}
+        {movie.genres?.length && <span className="italic truncate">{movie.genres.join(", ")}</span>}
         {releaseDate && <span>· {releaseDate}</span>}
         {movie.runtime && <span>· {movie.runtime} mins</span>}
         {movie.original_language && (
           <span className="capitalize">
-            ·{" "}
-            {new Intl.DisplayNames(["en"], {
-              type: "language",
-            }).of(movie.original_language)}
+            · {new Intl.DisplayNames(["en"], { type: "language" }).of(movie.original_language)}
           </span>
         )}
         {typeof movie.vote_average === "number" && movie.vote_average > 0 && (
-          <span className="bg-yellow-400 shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15] text-sm text-black font-bold px-2 py-[2px] rounded">
-            {movie.vote_average.toFixed(1)}
-          </span>
+          <span className="bg-yellow-400 shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15] text-sm text-black font-bold px-2 py-[2px] rounded">{movie.vote_average.toFixed(1)}</span>
         )}
       </div>
-
       {cast.length > 0 && <StarringList cast={cast} onSelect={onSelect} />}
-
       <div className="pt-4 text-center sm:text-left">
         <button
           type="button"
@@ -228,16 +194,11 @@ export default function Modal({
   );
 
   const relatedContent =
-    !isPerson &&
-    (Array.isArray(movie.similar) && movie.similar.length > 0 ? (
+    Array.isArray(movie.similar) && movie.similar.length > 0 ? (
       <Similar items={movie.similar} onSelect={handleSelectWithDetails} />
-    ) : Array.isArray(movie.recommendations) &&
-      movie.recommendations.length > 0 ? (
-      <Recommendations
-        items={movie.recommendations}
-        onSelect={handleSelectWithDetails}
-      />
-    ) : null);
+    ) : Array.isArray(movie.recommendations) && movie.recommendations.length > 0 ? (
+      <Recommendations items={movie.recommendations} onSelect={handleSelectWithDetails} />
+    ) : null;
 
   return (
     <AnimatePresence>
@@ -248,9 +209,7 @@ export default function Modal({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className={`fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm ${
-          mounting ? "pointer-events-none" : ""
-        }`}
+        className={`fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm ${mounting ? "pointer-events-none" : ""}`}
       >
         <motion.div
           initial={{ scale: 0.95, opacity: 0 }}
@@ -262,49 +221,31 @@ export default function Modal({
           {/* Top Control Bar */}
           <div className="absolute top-3 left-3 right-3 z-50 flex justify-between items-center">
             {onBack ? (
-              <button
-                type="button"
-                onClick={onBack}
-                className="text-white hover:text-yellow-400 cursor-pointer"
-              >
+              <button type="button" onClick={onBack} className="text-white hover:text-yellow-400 cursor-pointer">
                 <ArrowLeft className="w-6 h-6 bg-black/60 rounded-full p-1" />
               </button>
             ) : (
               <span />
             )}
-
             <div className="flex gap-2">
               {!isPerson && (
                 <motion.button
                   whileTap={{ scale: 0.9 }}
                   onClick={toggleWatchlist}
                   type="button"
-                  className={`${
-                    isSaved ? "text-yellow-400" : "text-white"
-                  } hover:text-yellow-400 bg-black/60 backdrop-blur p-2 rounded-full shadow-md cursor-pointer`}
-                  aria-label={
-                    isSaved ? "Remove from Watchlist" : "Add to Watchlist"
-                  }
+                  className={`${isSaved ? "text-yellow-400" : "text-white"} hover:text-yellow-400 bg-black/60 backdrop-blur p-2 rounded-full shadow-md cursor-pointer`}
+                  aria-label={isSaved ? "Remove from Watchlist" : "Add to Watchlist"}
                 >
                   <Heart
                     size={20}
                     strokeWidth={isSaved ? 3 : 2}
                     fill={isSaved ? "currentColor" : "none"}
-                    className={`transition-all duration-300 ${
-                      isSaved ? "drop-shadow-[0_0_6px_#fbbf24]" : ""
-                    }`}
+                    className={`transition-all duration-300 ${isSaved ? "drop-shadow-[0_0_6px_#fbbf24]" : ""}`}
                   />
                 </motion.button>
               )}
-              <button
-                type="button"
-                onClick={onClose}
-                className="text-white hover:text-yellow-400 cursor-pointer"
-              >
-                <X
-                  size={28}
-                  className="bg-black/60 rounded-full backdrop-blur"
-                />
+              <button type="button" onClick={onClose} className="text-white hover:text-yellow-400 cursor-pointer">
+                <X size={28} className="bg-black/60 rounded-full backdrop-blur" />
               </button>
             </div>
           </div>
@@ -322,18 +263,14 @@ export default function Modal({
               </div>
               <div className="flex-1 space-y-4 mt-4 sm:mt-0 text-center sm:text-left">
                 <h2 className="text-3xl sm:text-4xl font-bold">{title}</h2>
-                {renderPersonInfo}
-                {renderMovieInfo}
+                {isPerson ? personInfo : movieInfo}
               </div>
             </div>
 
-            {!isPerson && relatedContent}
-
-            {isPerson && knownFor.length > 0 && (
-              <KnownForSlider
-                items={knownFor}
-                onSelect={handleSelectWithDetails}
-              />
+            {isPerson ? (
+              knownFor.length > 0 && <KnownForSlider items={knownFor} onSelect={handleSelectWithDetails} />
+            ) : (
+              relatedContent
             )}
           </div>
 
