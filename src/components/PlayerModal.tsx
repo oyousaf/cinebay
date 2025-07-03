@@ -65,7 +65,7 @@ export default function PlayerModal({
 
           <button
             onClick={onClose}
-            className="absolute top-3 right-3 text-white hover:text-yellow-400 z-20"
+            className="absolute top-3 right-3 text-white hover:text-yellow-400 z-20 cursor-pointer"
           >
             <X
               size={28}

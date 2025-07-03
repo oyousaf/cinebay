@@ -14,19 +14,28 @@ import { TMDB_IMAGE } from "@/lib/tmdb";
 
 type FilterState = {
   type: "all" | "movie" | "tv";
-  sortBy: "title-asc" | "rating-desc" | "newest";
+  sortBy: "title-asc" | "title-desc" | "rating-desc" | "newest";
 };
 
-export default function Watchlist({ onSelect }: { onSelect: (movie: Movie) => void }) {
+const defaultFilters: FilterState = {
+  type: "all",
+  sortBy: "title-asc",
+};
+
+export default function Watchlist({
+  onSelect,
+}: {
+  onSelect: (movie: Movie) => void;
+}) {
   const [watchlist, setWatchlist] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(true);
   const [toRemove, setToRemove] = useState<Movie | null>(null);
   const [filters, setFilters] = useState<FilterState>(() => {
     try {
       const stored = localStorage.getItem("watchlistFilters");
-      return stored ? JSON.parse(stored) : { type: "all", sortBy: "title-asc" };
+      return stored ? JSON.parse(stored) : defaultFilters;
     } catch {
-      return { type: "all", sortBy: "title-asc" };
+      return defaultFilters;
     }
   });
 
@@ -35,7 +44,9 @@ export default function Watchlist({ onSelect }: { onSelect: (movie: Movie) => vo
       setWatchlist(getWatchlist());
       setLoading(false);
     };
-    "requestIdleCallback" in window ? requestIdleCallback(load) : setTimeout(load, 250);
+    "requestIdleCallback" in window
+      ? requestIdleCallback(load)
+      : setTimeout(load, 250);
   }, []);
 
   useEffect(() => {
@@ -71,9 +82,13 @@ export default function Watchlist({ onSelect }: { onSelect: (movie: Movie) => vo
   const filteredList = watchlist
     .filter((m) => filters.type === "all" || m.media_type === filters.type)
     .sort((a, b) => {
+      const titleA = a.title || a.name || "";
+      const titleB = b.title || b.name || "";
       switch (filters.sortBy) {
         case "title-asc":
-          return (a.title || a.name || "").localeCompare(b.title || b.name || "");
+          return titleA.localeCompare(titleB);
+        case "title-desc":
+          return titleB.localeCompare(titleA);
         case "rating-desc":
           return (b.vote_average ?? 0) - (a.vote_average ?? 0);
         case "newest":
@@ -116,7 +131,13 @@ export default function Watchlist({ onSelect }: { onSelect: (movie: Movie) => vo
             </motion.p>
           ) : (
             <>
-              <div className="mb-6 flex flex-wrap justify-center items-center gap-4 text-sm sm:text-base">
+              <motion.div
+                layout
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, ease: "easeOut" }}
+                className="mb-6 flex flex-wrap justify-center items-center gap-4 text-sm sm:text-base"
+              >
                 <select
                   value={filters.type}
                   onChange={(e) =>
@@ -143,16 +164,24 @@ export default function Watchlist({ onSelect }: { onSelect: (movie: Movie) => vo
                   className="bg-zinc-900 text-white border border-zinc-700 rounded px-3 py-1 focus:outline-none focus:ring-2 focus:ring-yellow-500"
                 >
                   <option value="title-asc">Title A–Z</option>
+                  <option value="title-desc">Title Z–A</option>
                   <option value="rating-desc">Top Rated</option>
                   <option value="newest">Newest First</option>
                 </select>
-              </div>
+
+                <button
+                  onClick={() => setFilters(defaultFilters)}
+                  className="text-sm text-white bg-zinc-800 px-3 py-1 rounded border border-zinc-700 hover:bg-zinc-700 transition"
+                >
+                  Reset
+                </button>
+              </motion.div>
 
               <motion.div
                 layout
                 className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4"
               >
-                <AnimatePresence>
+                <AnimatePresence mode="sync">
                   {filteredList.map((movie) => (
                     <motion.div
                       key={movie.id}
@@ -160,7 +189,7 @@ export default function Watchlist({ onSelect }: { onSelect: (movie: Movie) => vo
                       initial={{ opacity: 0, scale: 0.95 }}
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.95 }}
-                      transition={{ layout: { duration: 0.3 } }}
+                      transition={{ duration: 0.25, ease: "easeOut" }}
                       onClick={() => onSelect(movie)}
                       whileHover={{
                         scale: 1.03,
@@ -169,14 +198,6 @@ export default function Watchlist({ onSelect }: { onSelect: (movie: Movie) => vo
                           stiffness: 300,
                           damping: 20,
                         },
-                      }}
-                      drag="x"
-                      dragConstraints={{ left: 0, right: 0 }}
-                      dragSnapToOrigin
-                      dragElastic={0.2}
-                      whileDrag={{ scale: 0.97, backgroundColor: "#7f1d1d" }}
-                      onDragEnd={(e, info) => {
-                        if (info.offset.x < -100) setToRemove(movie);
                       }}
                       className="relative group cursor-pointer rounded-xl overflow-hidden shadow-xl bg-black"
                     >
