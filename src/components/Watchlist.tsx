@@ -15,13 +15,13 @@ import { TMDB_IMAGE } from "@/lib/tmdb";
 const LONG_PRESS_DELAY = 600;
 
 type FilterState = {
-  type: "all" | "movie" | "tv";
   sortBy: "title-asc" | "title-desc" | "rating-desc" | "newest";
+  type: "all" | "movie" | "tv";
 };
 
 const defaultFilters: FilterState = {
+  sortBy: "rating-desc",
   type: "all",
-  sortBy: "title-asc",
 };
 
 export default function Watchlist({
@@ -87,10 +87,6 @@ export default function Watchlist({
       const titleA = a.title || a.name || "";
       const titleB = b.title || b.name || "";
       switch (filters.sortBy) {
-        case "title-asc":
-          return titleA.localeCompare(titleB);
-        case "title-desc":
-          return titleB.localeCompare(titleA);
         case "rating-desc":
           return (b.vote_average ?? 0) - (a.vote_average ?? 0);
         case "newest":
@@ -98,6 +94,10 @@ export default function Watchlist({
             new Date(b.release_date || "").getTime() -
             new Date(a.release_date || "").getTime()
           );
+        case "title-asc":
+          return titleA.localeCompare(titleB);
+        case "title-desc":
+          return titleB.localeCompare(titleA);
         default:
           return 0;
       }
@@ -141,6 +141,22 @@ export default function Watchlist({
                 className="mb-6 flex flex-wrap justify-center items-center gap-4 text-sm sm:text-base"
               >
                 <select
+                  value={filters.sortBy}
+                  onChange={(e) =>
+                    setFilters((f) => ({
+                      ...f,
+                      sortBy: e.target.value as FilterState["sortBy"],
+                    }))
+                  }
+                  className="bg-zinc-900 text-white border border-zinc-700 rounded px-3 py-1 focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                >
+                  <option value="rating-desc">Top Rated</option>
+                  <option value="newest">Newest</option>
+                  <option value="title-asc">Title A–Z</option>
+                  <option value="title-desc">Title Z–A</option>
+                </select>
+
+                <select
                   value={filters.type}
                   onChange={(e) =>
                     setFilters((f) => ({
@@ -153,22 +169,6 @@ export default function Watchlist({
                   <option value="all">All Types</option>
                   <option value="movie">Movies</option>
                   <option value="tv">TV Shows</option>
-                </select>
-
-                <select
-                  value={filters.sortBy}
-                  onChange={(e) =>
-                    setFilters((f) => ({
-                      ...f,
-                      sortBy: e.target.value as FilterState["sortBy"],
-                    }))
-                  }
-                  className="bg-zinc-900 text-white border border-zinc-700 rounded px-3 py-1 focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                >
-                  <option value="title-asc">Title A–Z</option>
-                  <option value="title-desc">Title Z–A</option>
-                  <option value="rating-desc">Top Rated</option>
-                  <option value="newest">Newest First</option>
                 </select>
 
                 <button
