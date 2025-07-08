@@ -13,7 +13,6 @@ export const DEVS_PICK_LIST = [
   276907, // Legend
   4836, // Layer Cake
   522627, // The Gentlemen
-  10394, // Gangster No. 1
   100, // Lock, Stock and Two Smoking Barrels
   6075, // Carlito's Way
   4982, // American Gangster
@@ -44,15 +43,11 @@ export const DEVS_PICK_LIST = [
   604, // The Matrix Reloaded
   605, // The Matrix Revolutions
   11129, // Human Traffic
-  9991, // Mean Machine
-  10296, // The Football Factory
   5145, // The Business
-  13054, // Rise of the Footsoldier
   13809, // RocknRolla
   12877, // Dead Man's Shoes
   11798, // This Is England
   10557, // East Is East
-  63943, // West Is West
   12481, // The Big Boss
   11713, // Fist of Fury
   9462, // The Way of the Dragon
@@ -79,11 +74,8 @@ export const DEVS_PICK_LIST = [
   10222, // Kickboxer
   13672, // JCVD
   36647, // Blade
-  10158, // White Men Can't Jump
   36586, // Blade II
   10027, // Unleashed
-  76163, // The Expendables 2
   2140, // Kiss of the Dragon
-  2085, // Romeo Must Die
   10623, // Cradle 2 the Grave
 ];
