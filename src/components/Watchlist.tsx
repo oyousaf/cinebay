@@ -138,7 +138,7 @@ export default function Watchlist({
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, ease: "easeOut" }}
-                className="mb-6 flex flex-wrap justify-center items-center gap-4 text-sm sm:text-base"
+                className="mb-6 flex flex-wrap justify-center items-center gap-4 text-lg md:text-xl"
               >
                 <select
                   value={filters.sortBy}
@@ -173,7 +173,7 @@ export default function Watchlist({
 
                 <button
                   onClick={() => setFilters(defaultFilters)}
-                  className="text-sm text-white bg-zinc-800 px-3 py-1 rounded border border-zinc-700 hover:bg-zinc-700 transition"
+                  className="text-white bg-zinc-800 px-3 py-1 rounded border border-zinc-700 hover:bg-zinc-700 transition"
                 >
                   Reset
                 </button>
@@ -239,6 +239,10 @@ export default function Watchlist({
                             NEW
                           </div>
                         )}
+
+                        <div className="absolute bottom-2 right-2 bg-yellow-400 shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15] text-black text-xs md:text-sm px-1.5 py-0.5 rounded font-semibold z-10">
+                          {movie.vote_average?.toFixed(1) ?? "N/A"}
+                        </div>
 
                         <button
                           onClick={(e) => {
