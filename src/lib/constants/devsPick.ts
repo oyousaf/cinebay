@@ -46,7 +46,6 @@ export const DEVS_PICK_LIST = [
   5145, // The Business
   13809, // RocknRolla
   12877, // Dead Man's Shoes
-  11798, // This Is England
   10557, // East Is East
   12481, // The Big Boss
   11713, // Fist of Fury
