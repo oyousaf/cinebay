@@ -60,15 +60,9 @@ export const DEVS_PICK_LIST = [
   10999, // Commando
   865, // The Running Man
   36955, // True Lies
-  1366, // Rocky
-  1367, // Rocky II
-  1371, // Rocky III
-  1374, // Rocky IV
   1368, // First Blood
   9350, // Cliffhanger
   9739, // Demolition Man
-  312221, // Creed
-  480530, // Creed II
   11690, // Bloodsport
   10222, // Kickboxer
   13672, // JCVD
