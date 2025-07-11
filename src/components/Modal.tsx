@@ -16,7 +16,7 @@ import StarringList from "./modal/StarringList";
 import KnownForSlider from "./modal/KnownForSlider";
 import Recommendations from "./modal/Recommendations";
 import Similar from "./modal/Similar";
-import { useVideoEmbed } from "@/hooks/useVideoEmbed"; // 🔥 import hook
+import { useVideoEmbed } from "@/hooks/useVideoEmbed";
 
 const formatDate = (dateStr?: string) =>
   dateStr
