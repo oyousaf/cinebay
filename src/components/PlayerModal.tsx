@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { X, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -12,17 +12,14 @@ export default function PlayerModal({
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
   const [stillLoading, setStillLoading] = useState(false);
-  const timeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
-    timeoutRef.current = window.setTimeout(() => {
+    const timeoutId = window.setTimeout(() => {
       if (!loaded) setStillLoading(true);
     }, 15000);
 
-    return () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    };
-  }, [url]);
+    return () => clearTimeout(timeoutId);
+  }, [url, loaded]);
 
   return (
     <AnimatePresence>
