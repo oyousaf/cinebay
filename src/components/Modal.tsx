@@ -3,12 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Heart, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 
-import PlayerModal from "@/components/PlayerModal";
-import StarringList from "./modal/StarringList";
-import KnownForSlider from "./modal/KnownForSlider";
-import Recommendations from "./modal/Recommendations";
-import Similar from "./modal/Similar";
-
+import type { Movie } from "@/types/movie";
 import { TMDB_IMAGE, fetchDetails } from "@/lib/tmdb";
 import {
   isInWatchlist,
@@ -16,8 +11,11 @@ import {
   saveToWatchlist,
 } from "@/lib/watchlist";
 
-import { useVideoEmbed } from "@/hooks/useVideoEmbed";
-import type { Movie } from "@/types/movie";
+import PlayerModal from "@/components/PlayerModal";
+import StarringList from "./modal/StarringList";
+import KnownForSlider from "./modal/KnownForSlider";
+import Recommendations from "./modal/Recommendations";
+import Similar from "./modal/Similar";
 
 const formatDate = (dateStr?: string) =>
   dateStr
@@ -40,6 +38,8 @@ const getAge = (birth: Date, death?: Date) => {
   return age;
 };
 
+const embedCache = new Map<number, string>();
+
 export default function Modal({
   movie,
   onClose,
@@ -55,8 +55,7 @@ export default function Modal({
   const [isSaved, setIsSaved] = useState(false);
   const [showPlayer, setShowPlayer] = useState(false);
   const [mounting, setMounting] = useState(true);
-
-  const embedUrl = useVideoEmbed(movie, isPerson);
+  const [embedUrl, setEmbedUrl] = useState<string | null>(null);
 
   const title = movie.title || movie.name || "Untitled";
   const poster = movie.profile_path || movie.poster_path || "";
@@ -87,7 +86,10 @@ export default function Modal({
     const mediaType = item.media_type || movie.media_type || "movie";
     if (!item.id) return;
     try {
-      const full = await fetchDetails(item.id, mediaType);
+      const full = await fetchDetails(
+        item.id,
+        mediaType as "movie" | "tv" | "person"
+      );
       if (full) onSelect?.(full);
     } catch (error) {
       console.error("Error fetching details:", error);
@@ -111,6 +113,68 @@ export default function Modal({
   useEffect(() => {
     setIsSaved(isInWatchlist(movie.id));
   }, [movie.id]);
+
+  useEffect(() => {
+    if (isPerson || !movie?.id) return;
+
+    const localKey = `embedCache:${movie.id}`;
+    const stored = localStorage.getItem(localKey);
+    if (stored) {
+      embedCache.set(movie.id, stored);
+      setEmbedUrl(stored);
+      return;
+    }
+
+    const domains = [
+      "vidsrc.to",
+      "vidsrc.xyz",
+      "vidsrc.net",
+      "vidsrc.vc",
+      "vidsrc.pm",
+      "vidsrc.in",
+      "vidsrc.io",
+    ];
+
+    let iframe: HTMLIFrameElement | null = null;
+    let index = 0;
+    let timeoutId: ReturnType<typeof setTimeout>;
+
+    const tryNextDomain = () => {
+      if (index >= domains.length) {
+        toast.error("No working stream found.");
+        return;
+      }
+
+      const url = `https://${domains[index]}/embed/${movie.media_type}/${movie.id}`;
+      iframe!.src = url;
+
+      timeoutId = setTimeout(() => {
+        index++;
+        tryNextDomain();
+      }, 2500);
+    };
+
+    iframe = document.createElement("iframe");
+    iframe.style.display = "none";
+    iframe.onload = () => {
+      clearTimeout(timeoutId);
+      embedCache.set(movie.id, iframe!.src);
+      localStorage.setItem(localKey, iframe!.src);
+      setEmbedUrl(iframe!.src);
+    };
+    iframe.onerror = () => {
+      index++;
+      tryNextDomain();
+    };
+
+    document.body.appendChild(iframe);
+    tryNextDomain();
+
+    return () => {
+      clearTimeout(timeoutId);
+      if (iframe && iframe.parentNode) iframe.parentNode.removeChild(iframe);
+    };
+  }, [movie, isPerson]);
 
   const toggleWatchlist = () => {
     if (isSaved) {
@@ -228,15 +292,18 @@ export default function Modal({
           transition={{ duration: 0.3 }}
           className="relative w-[95vw] sm:w-full max-w-4xl mx-auto rounded-2xl overflow-hidden shadow-2xl"
         >
-          {/* Header */}
           <div className="absolute top-3 left-3 right-3 z-50 flex justify-between items-center">
-            <button
-              type="button"
-              onClick={() => (onBack ? onBack() : onClose())}
-              className="text-white hover:text-yellow-400 cursor-pointer"
-            >
-              <ArrowLeft className="w-6 h-6 bg-black/60 rounded-full p-1" />
-            </button>
+            {onBack ? (
+              <button
+                type="button"
+                onClick={onBack}
+                className="text-white hover:text-yellow-400 cursor-pointer"
+              >
+                <ArrowLeft className="w-6 h-6 bg-black/60 rounded-full p-1" />
+              </button>
+            ) : (
+              <span />
+            )}
             <div className="flex gap-2">
               {!isPerson && (
                 <motion.button
@@ -273,7 +340,6 @@ export default function Modal({
             </div>
           </div>
 
-          {/* Content */}
           <div className="relative z-10 px-4 py-8 sm:p-8 bg-gradient-to-b from-black/80 via-black/60 to-black/90 text-white max-h-[90vh] overflow-y-auto space-y-6">
             <div className="flex flex-col sm:flex-row gap-6 sm:items-start pt-6 sm:pt-0">
               <div className="flex justify-center sm:block">

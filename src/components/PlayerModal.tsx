@@ -2,12 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import { X, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
-type PlayerModalProps = {
+export default function PlayerModal({
+  url,
+  onClose,
+}: {
   url: string;
   onClose: () => void;
-};
-
-export default function PlayerModal({ url, onClose }: PlayerModalProps) {
+}) {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
   const [stillLoading, setStillLoading] = useState(false);
