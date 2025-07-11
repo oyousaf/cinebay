@@ -16,6 +16,7 @@ import StarringList from "./modal/StarringList";
 import KnownForSlider from "./modal/KnownForSlider";
 import Recommendations from "./modal/Recommendations";
 import Similar from "./modal/Similar";
+import { useVideoEmbed } from "@/hooks/useVideoEmbed"; // 🔥 import hook
 
 const formatDate = (dateStr?: string) =>
   dateStr
@@ -38,8 +39,6 @@ const getAge = (birth: Date, death?: Date) => {
   return age;
 };
 
-const embedCache = new Map<number, string>();
-
 export default function Modal({
   movie,
   onClose,
@@ -55,7 +54,11 @@ export default function Modal({
   const [isSaved, setIsSaved] = useState(false);
   const [showPlayer, setShowPlayer] = useState(false);
   const [mounting, setMounting] = useState(true);
-  const [embedUrl, setEmbedUrl] = useState<string | null>(null);
+
+  const embedUrl = useVideoEmbed(
+    !isPerson ? movie.id : undefined,
+    !isPerson ? movie.media_type : undefined
+  );
 
   const title = movie.title || movie.name || "Untitled";
   const poster = movie.profile_path || movie.poster_path || "";
@@ -113,68 +116,6 @@ export default function Modal({
   useEffect(() => {
     setIsSaved(isInWatchlist(movie.id));
   }, [movie.id]);
-
-  useEffect(() => {
-    if (isPerson || !movie?.id) return;
-
-    const localKey = `embedCache:${movie.id}`;
-    const stored = localStorage.getItem(localKey);
-    if (stored) {
-      embedCache.set(movie.id, stored);
-      setEmbedUrl(stored);
-      return;
-    }
-
-    const domains = [
-      "vidsrc.to",
-      "vidsrc.xyz",
-      "vidsrc.net",
-      "vidsrc.vc",
-      "vidsrc.pm",
-      "vidsrc.in",
-      "vidsrc.io",
-    ];
-
-    let iframe: HTMLIFrameElement | null = null;
-    let index = 0;
-    let timeoutId: ReturnType<typeof setTimeout>;
-
-    const tryNextDomain = () => {
-      if (index >= domains.length) {
-        toast.error("No working stream found.");
-        return;
-      }
-
-      const url = `https://${domains[index]}/embed/${movie.media_type}/${movie.id}`;
-      iframe!.src = url;
-
-      timeoutId = setTimeout(() => {
-        index++;
-        tryNextDomain();
-      }, 2500);
-    };
-
-    iframe = document.createElement("iframe");
-    iframe.style.display = "none";
-    iframe.onload = () => {
-      clearTimeout(timeoutId);
-      embedCache.set(movie.id, iframe!.src);
-      localStorage.setItem(localKey, iframe!.src);
-      setEmbedUrl(iframe!.src);
-    };
-    iframe.onerror = () => {
-      index++;
-      tryNextDomain();
-    };
-
-    document.body.appendChild(iframe);
-    tryNextDomain();
-
-    return () => {
-      clearTimeout(timeoutId);
-      if (iframe && iframe.parentNode) iframe.parentNode.removeChild(iframe);
-    };
-  }, [movie, isPerson]);
 
   const toggleWatchlist = () => {
     if (isSaved) {

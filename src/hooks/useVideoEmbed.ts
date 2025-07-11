@@ -1,79 +1,60 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import type { Movie } from "@/types/movie";
 
 const embedCache = new Map<number, string>();
 
-export function useVideoEmbed(movie: Movie, isPerson: boolean): string | null {
+const domains = [
+  "vidsrc.to",
+  "vidsrc.xyz",
+  "vidsrc.net",
+  "vidsrc.vc",
+  "vidsrc.pm",
+  "vidsrc.in",
+  "vidsrc.io",
+];
+
+export function useVideoEmbed(id?: number, type?: string) {
   const [embedUrl, setEmbedUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    if (isPerson || !movie?.id) return;
+    if (!id || !type) return;
 
-    const localKey = `embedCache:${movie.id}`;
+    const localKey = `embedCache:${id}`;
     const stored = localStorage.getItem(localKey);
     if (stored) {
-      embedCache.set(movie.id, stored);
+      embedCache.set(id, stored);
       setEmbedUrl(stored);
       return;
     }
 
-    const domains = [
-      "vidsrc.to",
-      "vidsrc.xyz",
-      "vidsrc.net",
-      "vidsrc.vc",
-      "vidsrc.pm",
-      "vidsrc.in",
-      "vidsrc.io",
-    ];
+    let iframe: HTMLIFrameElement | null = document.createElement("iframe");
+    iframe.style.display = "none";
+    document.body.appendChild(iframe);
 
-    const iframe = document.createElement("iframe");
     let index = 0;
     let timeoutId: ReturnType<typeof setTimeout>;
 
     const tryNextDomain = () => {
-      if (index >= domains.length) {
+      if (!iframe || index >= domains.length) {
         toast.error("No working stream found.");
         return;
       }
 
-      const url = `https://${domains[index]}/embed/${movie.media_type}/${movie.id}`;
+      const url = `https://${domains[index]}/embed/${type}/${id}`;
       iframe.src = url;
 
       timeoutId = setTimeout(() => {
         index++;
         tryNextDomain();
-      }, 4000);
+      }, 2500);
     };
-
-    iframe.style.display = "none";
 
     iframe.onload = () => {
       clearTimeout(timeoutId);
-
-      setTimeout(() => {
-        try {
-          const doc = iframe.contentDocument || iframe.contentWindow?.document;
-          const text = doc?.body?.innerText?.toLowerCase() || "";
-
-          if (
-            text.includes("this media is unavailable") ||
-            doc?.title?.toLowerCase().includes("unavailable")
-          ) {
-            index++;
-            tryNextDomain();
-            return;
-          }
-
-          embedCache.set(movie.id, iframe.src);
-          localStorage.setItem(localKey, iframe.src);
-          setEmbedUrl(iframe.src);
-        } catch {
-          index++;
-          tryNextDomain();
-        }
-      }, 1500);
+      if (!iframe) return;
+      embedCache.set(id, iframe.src);
+      localStorage.setItem(localKey, iframe.src);
+      setEmbedUrl(iframe.src);
     };
 
     iframe.onerror = () => {
@@ -81,16 +62,14 @@ export function useVideoEmbed(movie: Movie, isPerson: boolean): string | null {
       tryNextDomain();
     };
 
-    document.body.appendChild(iframe);
     tryNextDomain();
 
     return () => {
       clearTimeout(timeoutId);
-      if (iframe && iframe.parentNode) {
-        iframe.parentNode.removeChild(iframe);
-      }
+      if (iframe && iframe.parentNode) iframe.parentNode.removeChild(iframe);
+      iframe = null;
     };
-  }, [movie, isPerson]);
+  }, [id, type]);
 
   return embedUrl;
 }
