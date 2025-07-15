@@ -9,6 +9,7 @@ export const DEVS_PICK_LIST = [
   650, // Boyz n the Hood
   500, // Reservoir Dogs
   9366, // Donnie Brasco
+  9475, // Scent of a Woman
   107, // Snatch
   276907, // Legend
   4836, // Layer Cake
