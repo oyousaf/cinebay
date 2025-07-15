@@ -192,7 +192,7 @@ export default function ScrollGallery({
                           : "/fallback.png"
                       }
                       alt={movie.title}
-                      className="h-52 w-36 md:h-72 md:w-52 lg:h-80 lg:w-56 object-cover rounded-lg shadow pointer-events-none"
+                      className="h-52 w-36 md:h-72 md:w-52 lg:h-80 lg:w-56 object-cover rounded-lg pointer-events-none shadow-[0_4px_12px_rgba(255,255,255,0.05)] hover:shadow-[0_6px_20px_rgba(255,255,255,0.1)] transition-shadow duration-300"
                       draggable={false}
                     />
 
