@@ -69,5 +69,4 @@ export const DEVS_PICK_LIST = [
   36586, // Blade II
   10027, // Unleashed
   2140, // Kiss of the Dragon
-  10623, // Cradle 2 the Grave
 ];
