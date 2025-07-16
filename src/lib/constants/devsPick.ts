@@ -6,16 +6,24 @@ export const DEVS_PICK_LIST = [
   1422, // The Departed
   629, // The Usual Suspects
   398978, // The Irishman
-  650, // Boyz n the Hood
   500, // Reservoir Dogs
   9366, // Donnie Brasco
   9475, // Scent of a Woman
+  9008, // The Insider
+  949, // Heat
+  968, // Dog Day Afternoon
+  6075, // Carlito's Way
+  9040, // Serpico
+  31587, // Scarecrow
+  320, // Insomnia
+  42314, // Looking For Richard
+  1813, // The Devil's Advocate
+  650, // Boyz n the Hood
   107, // Snatch
   276907, // Legend
   4836, // Layer Cake
   522627, // The Gentlemen
   100, // Lock, Stock and Two Smoking Barrels
-  6075, // Carlito's Way
   4982, // American Gangster
   2034, // Training Day
   9516, // Menace II Society
