@@ -85,6 +85,7 @@ export default function App() {
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: view === "home" ? 40 : -40 }}
           transition={{ duration: 0.25, ease: "easeOut" }}
+          className="flex-1 overflow-y-auto scrollbar-hide min-h-0"
         >
           {view === "watchlist" ? (
             <Watchlist onSelect={handleSelect} />

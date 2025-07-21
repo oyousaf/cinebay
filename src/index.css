@@ -4,6 +4,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* Theme Fonts */
 @theme inline {
   --font-sans: "Concert One", ui-sans-serif, system-ui, sans-serif;
   --font-heading: "Permanent Marker", cursive;
@@ -20,18 +21,39 @@
   --foreground: 157 100% 75%;
 }
 
-/* Base body styles */
+/* Base layout & smooth scrolling */
+html,
 body {
+  height: 100%;
+  overflow-x: hidden;
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));
   transition: background-color 0.3s, color 0.2s;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
 }
 
-/* Hide scrollbar for galleries */
-.scrollbar-hide::-webkit-scrollbar {
+/* Always allow vertical scroll without visible scrollbars */
+body {
+  overflow-y: scroll;
+}
+
+/* Global scrollbar hiding */
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+*::-webkit-scrollbar {
   display: none;
 }
+
+/* Optional: for targeted elements */
 .scrollbar-hide {
-  -ms-overflow-style: none;
   scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
 }
