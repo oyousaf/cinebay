@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
-import { Trash2, Loader2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 
 import type { Movie } from "@/types/movie";
 import ConfirmModal from "@/components/ConfirmModal";
@@ -26,7 +26,7 @@ export default function Watchlist({
 }: {
   items: Movie[];
   onSelect: (movie: Movie) => void;
-  onUpdate: (updated: Movie[]) => void; // ⬅️ parent updater
+  onUpdate: (updated: Movie[]) => void;
 }) {
   const [toRemove, setToRemove] = useState<Movie | null>(null);
   const [filters, setFilters] = useState<FilterState>(() => {
@@ -38,9 +38,13 @@ export default function Watchlist({
     }
   });
 
+  // Persist filters on change
+  useEffect(() => {
+    localStorage.setItem("watchlistFilters", JSON.stringify(filters));
+  }, [filters]);
+
   const confirmRemove = () => {
     if (!toRemove) return;
-
     const updated = items.filter((m) => m.id !== toRemove.id);
     onUpdate(updated);
 
