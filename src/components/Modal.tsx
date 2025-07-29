@@ -141,38 +141,20 @@ export default function Modal({
     touchEndX.current = null;
   };
 
-  const trapFocus = useCallback((e: KeyboardEvent) => {
-    if (e.key !== "Tab" || !modalRef.current) return;
-    const focusable = modalRef.current.querySelectorAll<HTMLElement>(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-    );
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-    if (!e.shiftKey && document.activeElement === last) {
-      e.preventDefault();
-      first.focus();
-    } else if (e.shiftKey && document.activeElement === first) {
-      e.preventDefault();
-      last.focus();
-    }
-  }, []);
-
   useEffect(() => {
     document.body.style.overflow = "hidden";
     window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("keydown", trapFocus);
     window.addEventListener("touchstart", handleTouchStart);
     window.addEventListener("touchend", handleTouchEnd);
     const id = requestAnimationFrame(() => setMounting(false));
     return () => {
       document.body.style.overflow = "";
       window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("keydown", trapFocus);
       window.removeEventListener("touchstart", handleTouchStart);
       window.removeEventListener("touchend", handleTouchEnd);
       cancelAnimationFrame(id);
     };
-  }, [handleKeyDown, trapFocus]);
+  }, [handleKeyDown]);
 
   useEffect(() => {
     setIsSaved(isInWatchlist(movie.id));
@@ -337,7 +319,7 @@ export default function Modal({
                     )}
                     <div className="flex flex-wrap gap-2 sm:gap-3 text-sm sm:text-base text-zinc-300 pt-2 justify-center sm:justify-start text-center sm:text-left">
                       {movie.isNew && (
-                        <span className="bg-amber-400 text-black text-sm font-bold px-2 py-[2px] rounded shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15] uppercase">
+                        <span className="bg-amber-400 text-black text-xs md:text-sm font-bold px-2 py-[2px] rounded-full shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15] uppercase">
                           NEW
                         </span>
                       )}
@@ -358,7 +340,7 @@ export default function Modal({
                       )}
                       {typeof movie.vote_average === "number" &&
                         movie.vote_average > 0 && (
-                          <span className="bg-yellow-400 shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15] text-sm text-black font-bold px-2 py-[2px] rounded">
+                          <span className="bg-yellow-400 text-black text-xs md:text-sm font-semibold px-2 py-[2px] rounded-full shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15]">
                             {movie.vote_average.toFixed(1)}
                           </span>
                         )}
@@ -369,7 +351,7 @@ export default function Modal({
                     <div className="pt-4 text-center sm:text-left">
                       <button
                         type="button"
-                        className="bg-yellow-400 hover:bg-yellow-300 shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15] text-black text-xl cursor-pointer uppercase font-semibold px-6 py-2 rounded-xl transition"
+                        className="bg-yellow-400 hover:bg-yellow-300 shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15] text-black text-xl cursor-pointer uppercase font-semibold px-6 py-2 rounded-full transition"
                         onClick={() => setShowPlayer(true)}
                       >
                         Watch

@@ -161,7 +161,7 @@ export default function ScrollGallery({
                   key={`${movie.id}-${idx}`}
                   role="button"
                   tabIndex={0}
-                  className="relative cursor-pointer shrink-0 snap-start outline-none focus:ring-2 focus:ring-amber-400 rounded-lg"
+                  className="relative cursor-pointer shrink-0 snap-start outline-none rounded-lg"
                   data-observe={
                     idx === 0
                       ? "start"
@@ -198,12 +198,12 @@ export default function ScrollGallery({
                     />
 
                     {movie.isNew && (
-                      <div className="absolute top-2 left-2 bg-amber-400 text-black text-[10px] md:text-xs px-1.5 py-0.5 rounded font-bold shadow-md">
+                      <div className="absolute top-2 left-2 bg-amber-400 text-black text-[10px] md:text-xs px-2 py-0.5 rounded-full font-bold shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15]">
                         NEW
                       </div>
                     )}
 
-                    <div className="absolute bottom-2 right-2 bg-yellow-400 text-black text-xs md:text-sm px-1.5 py-0.5 rounded font-semibold shadow-md">
+                    <div className="absolute bottom-2 right-2 bg-yellow-400 text-black text-xs md:text-sm px-2 py-0.5 rounded-full font-semibold shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15]">
                       {movie.vote_average?.toFixed(1) ?? "N/A"}
                     </div>
                   </div>
