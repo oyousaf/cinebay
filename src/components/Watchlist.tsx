@@ -131,7 +131,7 @@ export default function Watchlist({
                       sortBy: e.target.value as FilterState["sortBy"],
                     }))
                   }
-                  className="bg-zinc-900 text-white border border-zinc-700 rounded px-3 py-1 focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                  className="bg-zinc-900 text-yellow-400 border border-zinc-700 rounded px-3 py-1 focus:outline-none focus:ring-2 focus:ring-yellow-500"
                 >
                   <option value="rating-desc">Top Rated</option>
                   <option value="newest">Newest</option>
@@ -147,7 +147,7 @@ export default function Watchlist({
                       type: e.target.value as FilterState["type"],
                     }))
                   }
-                  className="bg-zinc-900 text-white border border-zinc-700 rounded px-3 py-1 focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                  className="bg-zinc-900 text-yellow-400 border border-zinc-700 rounded px-3 py-1 focus:outline-none focus:ring-2 focus:ring-yellow-500"
                 >
                   <option value="all">All Types</option>
                   <option value="movie">Movies</option>
@@ -156,7 +156,7 @@ export default function Watchlist({
 
                 <button
                   onClick={() => setFilters(defaultFilters)}
-                  className="text-white bg-zinc-800 px-3 py-1 rounded border border-zinc-700 hover:bg-zinc-700 transition"
+                  className="bg-yellow-400 text-zinc-700 hover:text-black cursor-pointer px-3 py-1 rounded border border-yellow-700 hover:bg-yellow-300 transition"
                 >
                   Reset
                 </button>
