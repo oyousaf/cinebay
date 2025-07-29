@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { motion, useAnimation } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import type { Movie } from "@/types/movie";
@@ -22,7 +22,7 @@ export default function ScrollGallery({
   const observerRef = useRef<IntersectionObserver | null>(null);
   let dragStartX = 0;
 
-  const tripledItems = [...items, ...items, ...items];
+  const tripledItems = useMemo(() => [...items, ...items, ...items], [items]);
 
   const pause = () => {
     running.current = false;
@@ -66,7 +66,7 @@ export default function ScrollGallery({
         container.scrollLeft = itemWidth * items.length;
       }, 50);
     }
-  }, [items]);
+  }, [items, tripledItems]);
 
   useEffect(() => {
     const container = galleryRef.current;
@@ -93,8 +93,11 @@ export default function ScrollGallery({
     observer.observe(cards[cards.length - 1]);
     observerRef.current = observer;
 
-    return () => observer.disconnect();
-  }, [items]);
+    return () => {
+      cards.forEach((card) => observer.unobserve(card));
+      observer.disconnect();
+    };
+  }, [items, tripledItems]);
 
   useEffect(() => {
     const container = galleryRef.current;
@@ -129,12 +132,7 @@ export default function ScrollGallery({
 
       {items.length === 0 ? (
         <div className="flex justify-center items-center py-16">
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-          >
-            <Loader2 className="h-6 w-6 text-muted-foreground animate-spin" />
-          </motion.div>
+          <Loader2 className="h-6 w-6 text-yellow-400 animate-spin" />
         </div>
       ) : (
         <div
@@ -142,6 +140,7 @@ export default function ScrollGallery({
           className="relative w-full overflow-x-auto scrollbar-hide"
           style={{
             WebkitOverflowScrolling: "touch",
+            touchAction: "pan-y pan-x",
             maskImage:
               "linear-gradient(to right, transparent 0%, black 5%, black 95%, transparent 100%)",
             WebkitMaskImage:
@@ -156,12 +155,13 @@ export default function ScrollGallery({
             <motion.div
               className="flex gap-4 sm:gap-6 px-2 pt-6 pb-4"
               animate={controls}
-              style={{ touchAction: "pan-x" }}
             >
               {tripledItems.map((movie, idx) => (
                 <motion.div
                   key={`${movie.id}-${idx}`}
-                  className="relative cursor-pointer shrink-0 snap-start"
+                  role="button"
+                  tabIndex={0}
+                  className="relative cursor-pointer shrink-0 snap-start outline-none focus:ring-2 focus:ring-amber-400 rounded-lg"
                   data-observe={
                     idx === 0
                       ? "start"
@@ -171,7 +171,7 @@ export default function ScrollGallery({
                   }
                   whileHover={{
                     scale: 1.07,
-                    transition: { type: "spring", stiffness: 300, damping: 20 },
+                    transition: { type: "spring", stiffness: 250, damping: 18 },
                   }}
                   onClick={() => {
                     pause();
@@ -192,17 +192,18 @@ export default function ScrollGallery({
                           : "/fallback.png"
                       }
                       alt={movie.title}
-                      className="h-52 w-36 md:h-72 md:w-52 lg:h-80 lg:w-56 object-cover rounded-lg pointer-events-none shadow-[0_4px_12px_rgba(255,255,255,0.05)] hover:shadow-[0_6px_20px_rgba(255,255,255,0.1)] transition-shadow duration-300"
+                      loading="lazy"
+                      className="h-52 w-36 md:h-72 md:w-52 lg:h-80 lg:w-56 object-cover rounded-lg pointer-events-none shadow-lg hover:shadow-amber-400/30 transition duration-300"
                       draggable={false}
                     />
 
                     {movie.isNew && (
-                      <div className="absolute top-2 left-2 bg-amber-400 shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15] text-black text-[10px] md:text-xs px-1.5 py-0.5 rounded font-bold z-10">
+                      <div className="absolute top-2 left-2 bg-amber-400 text-black text-[10px] md:text-xs px-1.5 py-0.5 rounded font-bold shadow-md">
                         NEW
                       </div>
                     )}
 
-                    <div className="absolute bottom-2 right-2 bg-yellow-400 shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15] text-black text-xs md:text-sm px-1.5 py-0.5 rounded font-semibold z-10">
+                    <div className="absolute bottom-2 right-2 bg-yellow-400 text-black text-xs md:text-sm px-1.5 py-0.5 rounded font-semibold shadow-md">
                       {movie.vote_average?.toFixed(1) ?? "N/A"}
                     </div>
                   </div>
