@@ -319,7 +319,7 @@ export default function Modal({
                     )}
                     <div className="flex flex-wrap gap-2 sm:gap-3 text-sm sm:text-base text-zinc-300 pt-2 justify-center sm:justify-start text-center sm:text-left">
                       {movie.isNew && (
-                        <span className="bg-amber-400 text-black text-xs md:text-sm font-bold px-2 py-[2px] rounded-full shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15] uppercase">
+                        <span className="bg-amber-400 text-black text-xs md:text-sm font-bold px-2 py-[2px] rounded-full shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15] uppercase shadow-pulse">
                           NEW
                         </span>
                       )}

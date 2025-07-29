@@ -57,3 +57,18 @@ body {
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
+/* Shadow Pulse */
+@keyframes shadow-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 6px #fbbf24, 0 0 12px #facc15;
+  }
+  50% {
+    box-shadow: 0 0 12px #fbbf24, 0 0 24px #facc15;
+  }
+}
+
+.shadow-pulse {
+  animation: shadow-pulse 2s ease-in-out infinite;
+}

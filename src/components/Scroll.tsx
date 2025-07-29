@@ -198,7 +198,7 @@ export default function ScrollGallery({
                     />
 
                     {movie.isNew && (
-                      <div className="absolute top-2 left-2 bg-amber-400 text-black text-[10px] md:text-xs px-2 py-0.5 rounded-full font-bold shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15]">
+                      <div className="absolute top-2 left-2 bg-amber-400 text-black text-[10px] md:text-xs px-2 py-0.5 rounded-full font-bold shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15] shadow-pulse">
                         NEW
                       </div>
                     )}
