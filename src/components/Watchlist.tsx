@@ -1,13 +1,8 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { Trash2, Loader2 } from "lucide-react";
 
-import {
-  getWatchlist,
-  removeFromWatchlist,
-  saveToWatchlist,
-} from "@/lib/watchlist";
 import type { Movie } from "@/types/movie";
 import ConfirmModal from "@/components/ConfirmModal";
 import { TMDB_IMAGE } from "@/lib/tmdb";
@@ -25,12 +20,14 @@ const defaultFilters: FilterState = {
 };
 
 export default function Watchlist({
+  items,
   onSelect,
+  onUpdate,
 }: {
+  items: Movie[];
   onSelect: (movie: Movie) => void;
+  onUpdate: (updated: Movie[]) => void; // ⬅️ parent updater
 }) {
-  const [watchlist, setWatchlist] = useState<Movie[]>([]);
-  const [loading, setLoading] = useState(true);
   const [toRemove, setToRemove] = useState<Movie | null>(null);
   const [filters, setFilters] = useState<FilterState>(() => {
     try {
@@ -41,24 +38,11 @@ export default function Watchlist({
     }
   });
 
-  useEffect(() => {
-    const load = () => {
-      setWatchlist(getWatchlist());
-      setLoading(false);
-    };
-    "requestIdleCallback" in window
-      ? requestIdleCallback(load)
-      : setTimeout(load, 250);
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem("watchlistFilters", JSON.stringify(filters));
-  }, [filters]);
-
   const confirmRemove = () => {
     if (!toRemove) return;
-    removeFromWatchlist(toRemove.id);
-    setWatchlist((prev) => prev.filter((m) => m.id !== toRemove.id));
+
+    const updated = items.filter((m) => m.id !== toRemove.id);
+    onUpdate(updated);
 
     toast.custom((id) => (
       <div className="bg-zinc-900 text-white px-4 py-3 rounded shadow-lg flex items-center justify-between gap-4 w-full max-w-sm">
@@ -68,8 +52,7 @@ export default function Watchlist({
         <button
           onClick={() => {
             toast.dismiss(id);
-            saveToWatchlist(toRemove);
-            setWatchlist((prev) => [toRemove!, ...prev]);
+            onUpdate([toRemove!, ...updated]);
           }}
           className="text-yellow-400 hover:underline flex-shrink-0 whitespace-nowrap cursor-pointer"
         >
@@ -81,7 +64,7 @@ export default function Watchlist({
     setToRemove(null);
   };
 
-  const filteredList = watchlist
+  const filteredList = items
     .filter((m) => filters.type === "all" || m.media_type === filters.type)
     .sort((a, b) => {
       const titleA = a.title || a.name || "";
@@ -118,11 +101,7 @@ export default function Watchlist({
             Watchlist
           </h1>
 
-          {loading ? (
-            <div className="flex justify-center pt-8">
-              <Loader2 className="animate-spin h-6 w-6 text-muted-foreground" />
-            </div>
-          ) : watchlist.length === 0 ? (
+          {items.length === 0 ? (
             <motion.p
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -234,13 +213,7 @@ export default function Watchlist({
                           }
                         />
 
-                        {movie.isNew && (
-                          <div className="absolute top-2 left-2 bg-amber-400 text-black shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15] text-xs font-bold px-2 py-1 rounded">
-                            NEW
-                          </div>
-                        )}
-
-                        <div className="absolute bottom-2 right-2 bg-yellow-400 shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15] text-black text-xs md:text-sm px-1.5 py-0.5 rounded font-semibold z-10">
+                        <div className="absolute bottom-2 right-2 bg-yellow-400 text-black text-xs md:text-sm px-1.5 py-0.5 rounded font-semibold z-10">
                           {movie.vote_average?.toFixed(1) ?? "N/A"}
                         </div>
 

@@ -10,6 +10,8 @@ import Watchlist from "@/components/Watchlist";
 import type { Movie } from "@/types/movie";
 import { Loader2 } from "lucide-react";
 
+import { getWatchlist } from "@/lib/watchlist";
+
 // Lazy load heavy components
 const DevsPick = lazy(() => import("@/components/DevsPick"));
 const Modal = lazy(() => import("@/components/Modal"));
@@ -25,6 +27,7 @@ if (typeof window !== "undefined") {
 export default function App() {
   const [selectedItem, setSelectedItem] = useState<Movie | null>(null);
   const [modalHistory, setModalHistory] = useState<Movie[]>([]);
+  const [watchlist, setWatchlist] = useState<Movie[]>(() => getWatchlist());
 
   const [view, setView] = useState<"home" | "watchlist">(() => {
     if (typeof window !== "undefined") {
@@ -78,6 +81,7 @@ export default function App() {
     <div className="min-h-screen w-full flex flex-col bg-background text-foreground">
       <Toaster richColors position="bottom-center" theme="dark" />
       <Navbar onViewChange={setView} currentView={view} />
+
       <AnimatePresence mode="wait">
         <motion.div
           key={view}
@@ -88,7 +92,11 @@ export default function App() {
           className="flex-1 overflow-y-auto scrollbar-hide min-h-0"
         >
           {view === "watchlist" ? (
-            <Watchlist onSelect={handleSelect} />
+            <Watchlist
+              items={watchlist}
+              onSelect={handleSelect}
+              onUpdate={setWatchlist}
+            />
           ) : (
             renderHome()
           )}
@@ -105,6 +113,13 @@ export default function App() {
             }}
             onSelect={handleSelect}
             onBack={modalHistory.length > 0 ? handleBackInModal : undefined}
+            onWatchlistChange={(id, isSaved) => {
+              setWatchlist((prev) =>
+                isSaved
+                  ? [...prev, selectedItem!]
+                  : prev.filter((m) => m.id !== id)
+              );
+            }}
           />
         </Suspense>
       )}

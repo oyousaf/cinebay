@@ -53,11 +53,13 @@ export default function Modal({
   onClose,
   onSelect,
   onBack,
+  onWatchlistChange,
 }: {
   movie: Movie;
   onClose: () => void;
   onSelect?: (item: Movie) => void;
   onBack?: () => void;
+  onWatchlistChange?: (movieId: number, isSaved: boolean) => void;
 }) {
   const isPerson = movie.media_type === "person";
   const [isSaved, setIsSaved] = useState(false);
@@ -129,7 +131,7 @@ export default function Modal({
     if (touchStartX.current !== null && touchEndX.current !== null) {
       const deltaX = touchEndX.current - touchStartX.current;
       if (Math.abs(deltaX) > 50) {
-        if (deltaX > 0 && onBack) onBack(); // swipe right
+        if (deltaX > 0 && onBack) onBack();
         else if (deltaX < 0 && movie.recommendations?.[0]) {
           handleSelectWithDetails(movie.recommendations[0]); // swipe left
         }
@@ -184,7 +186,11 @@ export default function Modal({
       saveToWatchlist(movie);
       toast.success("Added to Watchlist");
     }
-    setIsSaved((prev) => !prev);
+
+    const newState = !isSaved;
+    setIsSaved(newState);
+
+    onWatchlistChange?.(movie.id, newState);
   };
 
   return (
