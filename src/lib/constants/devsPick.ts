@@ -45,7 +45,6 @@ export const DEVS_PICK_LIST = [
   640, // Catch Me If You Can
   273248, // The Hateful Eight
   281957, // The Revenant
-  410718, // Before the Flood
   19092, // Above the Rim
   8291, // Poetic Justice
   603, // The Matrix

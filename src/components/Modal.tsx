@@ -8,7 +8,7 @@ import {
   useRef,
 } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Heart, ArrowLeft } from "lucide-react";
+import { ArrowLeft, Bookmark, X } from "lucide-react";
 import { toast } from "sonner";
 
 import type { Movie } from "@/types/movie";
@@ -214,56 +214,75 @@ export default function Modal({
           transition={{ duration: 0.3 }}
           className="relative w-[95vw] sm:w-full max-w-4xl mx-auto rounded-2xl overflow-hidden shadow-2xl"
         >
-          {/* header buttons */}
+          {/* Header Buttons */}
           <div className="absolute top-3 left-3 right-3 z-50 flex justify-between items-center">
             {onBack ? (
-              <button
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.9 }}
                 type="button"
                 onClick={onBack}
-                className="text-white hover:text-yellow-400 cursor-pointer"
+                className="p-2 bg-black/40 backdrop-blur-md rounded-full 
+                 text-white hover:text-yellow-400 hover:bg-black/60 
+                 shadow-md transition-all duration-200"
               >
-                <ArrowLeft className="w-6 h-6 bg-black/60 rounded-full p-1" />
-              </button>
+                <ArrowLeft size={22} strokeWidth={2.5} />
+              </motion.button>
             ) : (
               <span />
             )}
+
             <div className="flex gap-2">
               {!isPerson && (
                 <motion.button
+                  whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.9 }}
                   onClick={toggleWatchlist}
                   type="button"
-                  className={`${
-                    isSaved ? "text-yellow-400" : "text-white"
-                  } hover:text-yellow-400 bg-black/60 backdrop-blur p-2 rounded-full shadow-md cursor-pointer`}
+                  className="relative p-2 backdrop-blur-md rounded-full shadow-md transition-all duration-200
+          bg-black/40 text-white hover:bg-black/60"
                   aria-label={
                     isSaved ? "Remove from Watchlist" : "Add to Watchlist"
                   }
                 >
-                  <Heart
-                    size={20}
-                    strokeWidth={isSaved ? 3 : 2}
-                    fill={isSaved ? "currentColor" : "none"}
-                    className={`transition-all duration-300 ${
-                      isSaved ? "drop-shadow-[0_0_6px_#fbbf24]" : ""
-                    }`}
-                  />
+                  <motion.div
+                    animate={{
+                      scale: isSaved ? 1.2 : 1,
+                      color: isSaved ? "#fbbf24" : "#ffffff",
+                      textShadow: isSaved
+                        ? "0px 0px 8px rgba(251,191,36,0.8)"
+                        : "0px 0px 0px transparent",
+                    }}
+                    transition={{
+                      type: "spring",
+                      stiffness: 300,
+                      damping: 20,
+                    }}
+                  >
+                    <Bookmark
+                      size={22}
+                      strokeWidth={isSaved ? 3 : 2}
+                      fill={isSaved ? "currentColor" : "none"}
+                    />
+                  </motion.div>
                 </motion.button>
               )}
-              <button
+
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.9 }}
                 type="button"
                 onClick={onClose}
-                className="text-white hover:text-yellow-400 cursor-pointer"
+                className="p-2 bg-black/40 backdrop-blur-md rounded-full 
+                 text-white hover:text-red-400 hover:bg-black/60 
+                 shadow-md hover:shadow-[0_0_8px_#ef4444] transition-all duration-200"
               >
-                <X
-                  size={28}
-                  className="bg-black/60 rounded-full backdrop-blur"
-                />
-              </button>
+                <X size={22} strokeWidth={2.5} />
+              </motion.button>
             </div>
           </div>
 
-          {/* modal content */}
+          {/* Modal Content */}
           <div className="relative z-10 px-4 py-8 sm:p-8 bg-gradient-to-b from-black/80 via-black/60 to-black/90 text-white max-h-[90vh] overflow-y-auto space-y-6">
             <div className="flex flex-col sm:flex-row gap-6 sm:items-start pt-6 sm:pt-0">
               <div className="flex justify-center sm:block">

@@ -21,40 +21,62 @@ export default function Navbar({ onViewChange, currentView }: NavbarProps) {
         <div className="grid grid-cols-3 items-center">
           {/* Watchlist Button */}
           <div className="flex justify-start">
-            <button
+            <motion.button
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.95 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
               onClick={() => onViewChange("watchlist")}
-              className={`flex items-center gap-2 transition cursor-pointer ${
+              className={`flex items-center gap-2 rounded-full transition-colors ${
                 currentView === "watchlist"
-                  ? "text-amber-400"
-                  : "hover:text-amber-400"
+                  ? "text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.7)] dark:drop-shadow-[0_0_10px_rgba(147,51,234,0.6)]"
+                  : "hover:text-amber-400 hover:drop-shadow-[0_0_8px_rgba(251,191,36,0.5)] dark:hover:drop-shadow-[0_0_10px_rgba(147,51,234,0.6)]"
               }`}
               aria-label="Go to Watchlist"
             >
-              <Bookmark size={30} />
-            </button>
+              <Bookmark
+                size={30}
+                strokeWidth={currentView === "watchlist" ? 3 : 2}
+                fill={currentView === "watchlist" ? "currentColor" : "none"}
+                className="transition-colors duration-300"
+              />
+            </motion.button>
           </div>
 
           {/* Logo */}
           <div className="flex justify-center">
-            <button
+            <motion.button
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.95 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
               onClick={() => onViewChange("home")}
-              className="inline-block cursor-pointer"
               aria-label="Go to Home"
+              className="relative group rounded-full"
             >
               <motion.img
                 src={logo}
                 alt="CineBay"
-                className="w-20 h-20 object-contain drop-shadow-[0_0_12px_rgba(192,132,252,0.35)] dark:drop-shadow-[0_0_14px_rgba(255,255,255,0.25)]"
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, ease: "easeOut" }}
+                className="w-20 h-20 object-contain drop-shadow-[0_0_12px_rgba(192,132,252,0.35)] 
+                           dark:drop-shadow-[0_0_14px_rgba(255,255,255,0.25)]
+                           group-hover:drop-shadow-[0_0_16px_rgba(251,191,36,0.6)]
+                           dark:group-hover:drop-shadow-[0_0_18px_rgba(147,51,234,0.7)] 
+                           rounded-full transition-all duration-300 ease-out"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.4, ease: "easeOut" }}
               />
-            </button>
+            </motion.button>
           </div>
 
           {/* Dark Mode Toggle */}
           <div className="flex justify-end">
-            <DarkModeToggle />
+            <motion.div
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.95 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+              className="rounded-full hover:drop-shadow-[0_0_8px_rgba(251,191,36,0.5)] dark:hover:drop-shadow-[0_0_10px_rgba(147,51,234,0.6)]"
+            >
+              <DarkModeToggle />
+            </motion.div>
           </div>
         </div>
       </div>

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
-import { Trash2 } from "lucide-react";
+import { X } from "lucide-react";
 
 import type { Movie } from "@/types/movie";
 import ConfirmModal from "@/components/ConfirmModal";
@@ -221,16 +221,20 @@ export default function Watchlist({
                           {movie.vote_average?.toFixed(1) ?? "N/A"}
                         </div>
 
-                        <button
+                        <motion.button
                           onClick={(e) => {
                             e.stopPropagation();
                             setToRemove(movie);
                           }}
-                          className="absolute top-2 right-2 bg-black/60 text-white p-1.5 cursor-pointer rounded-full hover:text-red-500 shadow transition"
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          className="absolute top-2 right-2 bg-red-400/10 backdrop-blur-md text-white p-2 sm:p-2.5 
+                          rounded-full shadow-md cursor-pointer hover:bg-red-500/20 hover:text-red-400 hover:shadow-[0_0_8px_#ef4444] 
+                          transition duration-200"
                           aria-label="Remove from Watchlist"
                         >
-                          <Trash2 size={16} strokeWidth={2} />
-                        </button>
+                          <X size={25} strokeWidth={3} />
+                        </motion.button>
                       </motion.div>
                     );
                   })}
