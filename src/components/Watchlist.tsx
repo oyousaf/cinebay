@@ -121,8 +121,9 @@ export default function Watchlist({
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, ease: "easeOut" }}
-                className="mb-6 flex flex-wrap justify-center items-center gap-4 text-lg md:text-xl"
+                className="mb-6 flex flex-wrap justify-center items-center gap-4 text-base md:text-lg"
               >
+                {/* Sort Select */}
                 <select
                   value={filters.sortBy}
                   onChange={(e) =>
@@ -131,7 +132,9 @@ export default function Watchlist({
                       sortBy: e.target.value as FilterState["sortBy"],
                     }))
                   }
-                  className="bg-zinc-900 text-yellow-400 border border-zinc-700 rounded px-3 py-1 focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                  className="rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] border border-[hsl(var(--foreground))]/40 
+               px-3 py-2 shadow-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-[hsl(var(--foreground))]/60 transition"
+                  aria-label="Sort by"
                 >
                   <option value="rating-desc">Top Rated</option>
                   <option value="newest">Newest</option>
@@ -139,6 +142,7 @@ export default function Watchlist({
                   <option value="title-desc">Title Z–A</option>
                 </select>
 
+                {/* Type Select */}
                 <select
                   value={filters.type}
                   onChange={(e) =>
@@ -147,16 +151,20 @@ export default function Watchlist({
                       type: e.target.value as FilterState["type"],
                     }))
                   }
-                  className="bg-zinc-900 text-yellow-400 border border-zinc-700 rounded px-3 py-1 focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                  className="rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))]  border border-[hsl(var(--foreground))]/40 
+               px-3 py-2 shadow-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-[hsl(var(--foreground))]/60 transition"
+                  aria-label="Filter by type"
                 >
                   <option value="all">All Types</option>
                   <option value="movie">Movies</option>
                   <option value="tv">TV Shows</option>
                 </select>
 
+                {/* Reset Button */}
                 <button
                   onClick={() => setFilters(defaultFilters)}
-                  className="bg-yellow-400 text-zinc-700 hover:text-black cursor-pointer px-3 py-1 rounded border border-yellow-700 hover:bg-yellow-300 transition"
+                  className="rounded-md px-3 py-2 border bg-[hsl(var(--foreground))] text-[hsl(var(--background))] hover:bg-[hsl(var(--foreground))]/90 
+               hover:shadow-[0_0_8px_hsla(var(--foreground)/0.4)] transition"
                 >
                   Reset
                 </button>
@@ -217,7 +225,16 @@ export default function Watchlist({
                           }
                         />
 
-                        <div className="absolute bottom-2 right-2 bg-yellow-400 text-black text-xs md:text-sm px-1.5 py-0.5 rounded font-semibold z-10">
+                        {movie.isNew && (
+                          <div className="absolute top-2 left-2 bg-[hsl(var(--foreground))] text-[hsl(var(--background))] text-[10px] sm:text-xs md:text-sm font-bold px-2 py-0.5 rounded-full uppercase shadow-pulse">
+                            NEW
+                          </div>
+                        )}
+
+                        <div
+                          className="absolute bottom-2 right-2 bg-[hsl(var(--foreground))] text-[hsl(var(--background))] text-xs sm:text-sm md:text-base 
+                        font-semibold px-2.5 py-1 rounded-full shadow-md flex items-center justify-center"
+                        >
                           {movie.vote_average?.toFixed(1) ?? "N/A"}
                         </div>
 
@@ -227,13 +244,17 @@ export default function Watchlist({
                             setToRemove(movie);
                           }}
                           whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                          className="absolute top-2 right-2 bg-red-400/10 backdrop-blur-md text-white p-2 sm:p-2.5 
-                          rounded-full shadow-md cursor-pointer hover:bg-red-500/20 hover:text-red-400 hover:shadow-[0_0_8px_#ef4444] 
+                          whileTap={{ scale: 0.92 }}
+                          className="absolute top-2 right-2 p-2 sm:p-2.5 md:p-3 bg-red-500/20 backdrop-blur-md text-red-400 rounded-full shadow-md 
+                          cursor-pointer hover:bg-red-500/30 hover:shadow-[0_0_8px_#ef4444] focus:outline-none focus:ring-2 focus:ring-red-400/60 
                           transition duration-200"
                           aria-label="Remove from Watchlist"
                         >
-                          <X size={25} strokeWidth={3} />
+                          <X
+                            size={20}
+                            className="sm:w-6 sm:h-6 md:w-7 md:h-7"
+                            strokeWidth={2.5}
+                          />
                         </motion.button>
                       </motion.div>
                     );

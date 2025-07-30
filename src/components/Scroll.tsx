@@ -132,7 +132,7 @@ export default function ScrollGallery({
 
       {items.length === 0 ? (
         <div className="flex justify-center items-center py-16">
-          <Loader2 className="h-6 w-6 text-yellow-400 animate-spin" />
+          <Loader2 className="h-6 w-6 text-[hsl(var(--foreground))] animate-spin" />
         </div>
       ) : (
         <div
@@ -193,17 +193,17 @@ export default function ScrollGallery({
                       }
                       alt={movie.title}
                       loading="lazy"
-                      className="h-52 w-36 md:h-72 md:w-52 lg:h-80 lg:w-56 object-cover rounded-lg pointer-events-none shadow-lg hover:shadow-amber-400/30 transition duration-300"
+                      className="h-52 w-36 md:h-72 md:w-52 lg:h-80 lg:w-56 object-cover rounded-lg pointer-events-none shadow-lg hover:shadow-[0_0_12px_hsla(var(--foreground)/0.4)] transition duration-300"
                       draggable={false}
                     />
 
                     {movie.isNew && (
-                      <div className="absolute top-2 left-2 bg-amber-400 text-black text-[10px] md:text-xs px-2 py-0.5 rounded-full font-bold shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15] shadow-pulse">
+                      <div className="absolute top-2 left-2 bg-[hsl(var(--foreground))] text-[hsl(var(--background))] text-[10px] md:text-xs font-bold px-2 py-0.5 rounded-full shadow-[0_0_6px_hsla(var(--foreground)/0.6),0_0_12px_hsla(var(--foreground)/0.4)] shadow-pulse">
                         NEW
                       </div>
                     )}
 
-                    <div className="absolute bottom-2 right-2 bg-yellow-400 text-black text-xs md:text-sm px-2 py-0.5 rounded-full font-semibold shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15]">
+                    <div className="absolute bottom-2 right-2 bg-[hsl(var(--foreground))] text-[hsl(var(--background))] text-xs md:text-sm font-semibold px-2.5 py-1 rounded-full shadow-[0_0_6px_hsla(var(--foreground)/0.6),0_0_12px_hsla(var(--foreground)/0.4)]">
                       {movie.vote_average?.toFixed(1) ?? "N/A"}
                     </div>
                   </div>

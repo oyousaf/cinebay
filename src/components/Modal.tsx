@@ -201,12 +201,14 @@ export default function Modal({
             {onBack ? (
               <motion.button
                 whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.9 }}
+                whileTap={{ scale: 0.95 }}
                 type="button"
                 onClick={onBack}
-                className="p-2 bg-black/40 backdrop-blur-md rounded-full 
-                 text-white hover:text-yellow-400 hover:bg-black/60 
-                 shadow-md transition-all duration-200"
+                aria-label="Go back"
+                className="p-2 rounded-full backdrop-blur-md shadow-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] 
+             transition-colors duration-200 ease-out
+             hover:bg-[hsl(var(--background))]/90 
+             hover:shadow-[0_0_8px_hsla(var(--foreground)/0.4)]"
               >
                 <ArrowLeft size={22} strokeWidth={2.5} />
               </motion.button>
@@ -326,10 +328,11 @@ export default function Modal({
                     )}
                     <div className="flex flex-wrap gap-2 sm:gap-3 text-sm sm:text-base text-zinc-300 pt-2 justify-center sm:justify-start text-center sm:text-left">
                       {movie.isNew && (
-                        <span className="bg-amber-400 text-black text-xs md:text-sm font-bold px-2 py-[2px] rounded-full shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15] uppercase shadow-pulse">
+                        <span className="bg-[hsl(var(--foreground))] text-[hsl(var(--background))] text-xs md:text-sm font-bold px-2 py-[2px] rounded-full uppercase shadow-pulse">
                           NEW
                         </span>
                       )}
+
                       {movie.genres?.length && (
                         <span className="italic truncate">
                           {movie.genres.join(", ")}
@@ -347,7 +350,7 @@ export default function Modal({
                       )}
                       {typeof movie.vote_average === "number" &&
                         movie.vote_average > 0 && (
-                          <span className="bg-yellow-400 text-black text-xs md:text-sm font-semibold px-2 py-[2px] rounded-full shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15]">
+                          <span className="bg-[hsl(var(--foreground))] text-[hsl(var(--background))] text-xs md:text-sm font-semibold px-2 py-[2px] rounded-full shadow-[0_0_6px_hsl(var(--foreground)/0.6),0_0_12px_hsl(var(--foreground)/0.4)]">
                             {movie.vote_average.toFixed(1)}
                           </span>
                         )}
@@ -358,7 +361,7 @@ export default function Modal({
                     <div className="pt-4 text-center sm:text-left">
                       <button
                         type="button"
-                        className="bg-yellow-400 hover:bg-yellow-300 shadow-[0_0_6px_#fbbf24,0_0_12px_#facc15] text-black text-xl cursor-pointer uppercase font-semibold px-6 py-2 rounded-full transition"
+                        className="bg-[hsl(var(--foreground))] hover:bg-[hsl(var(--foreground))]/90 text-[hsl(var(--background))] text-xl cursor-pointer uppercase font-semibold px-6 py-2 rounded-full transition shadow-[0_0_6px_hsl(var(--foreground)/0.6),0_0_12px_hsl(var(--foreground)/0.4)]"
                         onClick={() => setShowPlayer(true)}
                       >
                         Watch
