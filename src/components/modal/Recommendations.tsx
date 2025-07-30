@@ -49,21 +49,6 @@ const RecommendationList: React.FC<Props & { label: string }> = ({
                 draggable={false}
               />
 
-              {/* NEW Badge */}
-              {item.isNew && (
-                <span className="absolute top-2 left-2 bg-[hsl(var(--foreground))] text-[hsl(var(--background))] text-[10px] font-bold px-2 py-[1px] rounded-full uppercase shadow-pulse">
-                  NEW
-                </span>
-              )}
-
-              {/* Vote Badge */}
-              {typeof item.vote_average === "number" &&
-                item.vote_average > 0 && (
-                  <span className="absolute bottom-2 right-2 bg-[hsl(var(--foreground))] text-[hsl(var(--background))] text-[10px] font-semibold px-2 py-[1px] rounded-full shadow-[0_0_6px_hsl(var(--foreground)/0.6),0_0_12px_hsl(var(--foreground)/0.4)]">
-                    {item.vote_average.toFixed(1)}
-                  </span>
-                )}
-
               <div className="text-xs text-zinc-300 font-medium truncate">
                 {title}
               </div>
