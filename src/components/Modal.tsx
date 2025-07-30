@@ -207,7 +207,7 @@ export default function Modal({
                   aria-label={
                     isSaved ? "Remove from Watchlist" : "Add to Watchlist"
                   }
-                  className="p-2 rounded-full backdrop-blur-md shadow-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))]"
+                  className="p-2 rounded-full backdrop-blur-md shadow-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] hover:shadow-[0_0_8px_hsla(var(--foreground)/0.4)]"
                 >
                   <Bookmark
                     size={22}
