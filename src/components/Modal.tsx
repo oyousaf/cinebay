@@ -112,6 +112,8 @@ export default function Modal({
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
+      if ((e.target as HTMLElement).closest(".carousel")) return;
+      
       if (e.key === "Escape") onClose();
       if (e.key === "ArrowLeft" && onBack) onBack();
       if (e.key === "ArrowRight" && movie.recommendations?.[0]) {
