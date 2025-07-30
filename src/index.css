@@ -48,6 +48,13 @@ body {
   display: none;
 }
 
+/* Protect images */
+img {
+  user-select: none;
+  -webkit-user-drag: none;
+  pointer-events: none;
+}
+
 /* Optional: for targeted elements */
 .scrollbar-hide {
   scrollbar-width: none;

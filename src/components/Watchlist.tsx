@@ -226,14 +226,17 @@ export default function Watchlist({
                         />
 
                         {movie.isNew && (
-                          <div className="absolute top-2 left-2 bg-[hsl(var(--foreground))] text-[hsl(var(--background))] text-[10px] sm:text-xs md:text-sm font-bold px-2 py-0.5 rounded-full uppercase shadow-pulse">
+                          <div
+                            className="absolute top-2 left-2 bg-[hsl(var(--foreground))] text-[hsl(var(--background))] text-[10px] sm:text-xs md:text-sm font-bold 
+                          px-2 py-0.5 rounded-full uppercase shadow-[0_0_6px_hsl(var(--foreground)/0.6),0_0_12px_hsl(var(--foreground)/0.4)] shadow-pulse"
+                          >
                             NEW
                           </div>
                         )}
 
                         <div
-                          className="absolute bottom-2 right-2 bg-[hsl(var(--foreground))] text-[hsl(var(--background))] text-xs sm:text-sm md:text-base 
-                        font-semibold px-2.5 py-1 rounded-full shadow-md flex items-center justify-center"
+                          className="absolute bottom-2 right-2 bg-[hsl(var(--foreground))] text-[hsl(var(--background))] text-xs sm:text-sm md:text-base font-semibold 
+                          px-2.5 py-1 rounded-full shadow-[0_0_6px_hsl(var(--foreground)/0.6),0_0_12px_hsl(var(--foreground)/0.4)] flex items-center justify-center"
                         >
                           {movie.vote_average?.toFixed(1) ?? "N/A"}
                         </div>
