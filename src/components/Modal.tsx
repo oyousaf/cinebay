@@ -126,6 +126,8 @@ export default function Modal({
   };
 
   const handleTouchEnd = (e: TouchEvent) => {
+    // 🚫 Ignore swipes inside carousels
+    if ((e.target as HTMLElement).closest(".carousel")) return;
     touchEndX.current = e.changedTouches[0].clientX;
     if (touchStartX.current !== null && touchEndX.current !== null) {
       const deltaX = touchEndX.current - touchStartX.current;

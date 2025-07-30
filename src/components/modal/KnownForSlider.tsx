@@ -5,7 +5,6 @@ import type { KnownForItem, Movie } from "@/types/movie";
 type Props = {
   items: KnownForItem[];
   onSelect?: (item: Movie) => void;
-  className?: string;
 };
 
 const KnownForSlider: React.FC<Props> = ({ items, onSelect }) => {

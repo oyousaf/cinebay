@@ -5,7 +5,6 @@ import type { Movie } from "@/types/movie";
 type Props = {
   items: Movie[];
   onSelect?: (item: Movie) => void;
-  className?: string;
 };
 
 const RecommendationList: React.FC<Props & { label: string }> = ({
