@@ -38,7 +38,6 @@ export default function Watchlist({
     }
   });
 
-  // Persist filters on change
   useEffect(() => {
     localStorage.setItem("watchlistFilters", JSON.stringify(filters));
   }, [filters]);
@@ -48,22 +47,26 @@ export default function Watchlist({
     const updated = items.filter((m) => m.id !== toRemove.id);
     onUpdate(updated);
 
-    toast.custom((id) => (
-      <div className="bg-zinc-900 text-white px-4 py-3 rounded shadow-lg flex items-center justify-between gap-4 w-full max-w-sm">
-        <span className="flex-1 truncate">
-          Removed <strong className="font-semibold">{toRemove.title}</strong>
+    toast.error(
+      <div className="flex items-center justify-between gap-4 w-full">
+        <span>
+          Removed <strong>{toRemove.title}</strong>
         </span>
         <button
           onClick={() => {
-            toast.dismiss(id);
             onUpdate([toRemove!, ...updated]);
+            toast.success(
+              <span>
+                Restored <strong>{toRemove.title}</strong>
+              </span>
+            );
           }}
-          className="text-yellow-400 hover:underline flex-shrink-0 whitespace-nowrap cursor-pointer"
+          className="text-yellow-400 hover:underline whitespace-nowrap"
         >
           Undo
         </button>
       </div>
-    ));
+    );
 
     setToRemove(null);
   };
@@ -123,7 +126,6 @@ export default function Watchlist({
                 transition={{ duration: 0.4, ease: "easeOut" }}
                 className="mb-6 flex flex-wrap justify-center items-center gap-4 text-base md:text-lg"
               >
-                {/* Sort Select */}
                 <select
                   value={filters.sortBy}
                   onChange={(e) =>
@@ -132,8 +134,7 @@ export default function Watchlist({
                       sortBy: e.target.value as FilterState["sortBy"],
                     }))
                   }
-                  className="rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] border border-[hsl(var(--foreground))]/40 
-               px-3 py-2 shadow-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-[hsl(var(--foreground))]/60 transition"
+                  className="rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] border border-[hsl(var(--foreground))]/40 px-3 py-2 shadow-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-[hsl(var(--foreground))]/60 transition"
                   aria-label="Sort by"
                 >
                   <option value="rating-desc">Top Rated</option>
@@ -142,7 +143,6 @@ export default function Watchlist({
                   <option value="title-desc">Title Z–A</option>
                 </select>
 
-                {/* Type Select */}
                 <select
                   value={filters.type}
                   onChange={(e) =>
@@ -151,8 +151,7 @@ export default function Watchlist({
                       type: e.target.value as FilterState["type"],
                     }))
                   }
-                  className="rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))]  border border-[hsl(var(--foreground))]/40 
-               px-3 py-2 shadow-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-[hsl(var(--foreground))]/60 transition"
+                  className="rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] border border-[hsl(var(--foreground))]/40 px-3 py-2 shadow-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-[hsl(var(--foreground))]/60 transition"
                   aria-label="Filter by type"
                 >
                   <option value="all">All Types</option>
@@ -160,13 +159,9 @@ export default function Watchlist({
                   <option value="tv">TV Shows</option>
                 </select>
 
-                {/* Reset Button */}
                 <button
                   onClick={() => setFilters(defaultFilters)}
-                  className="p-2 rounded-full border bg-[hsl(var(--foreground))] text-[hsl(var(--background))] 
-             hover:bg-[hsl(var(--foreground))]/90 
-             hover:shadow-[0_0_8px_hsla(var(--foreground)/0.4)] 
-             transition flex items-center justify-center"
+                  className="p-2 rounded-full border bg-[hsl(var(--foreground))] text-[hsl(var(--background))] hover:bg-[hsl(var(--foreground))]/90 hover:shadow-[0_0_8px_hsla(var(--foreground)/0.4)] transition flex items-center justify-center"
                   aria-label="Reset filters"
                 >
                   <RefreshCw className="w-5 h-5" strokeWidth={2.5} />
@@ -227,16 +222,11 @@ export default function Watchlist({
                               "/fallback.jpg")
                           }
                         />
-
                         {movie.isNew && (
-                          <div
-                            className="absolute top-2 left-2 bg-[hsl(var(--foreground))] text-[hsl(var(--background))] text-[10px] sm:text-xs md:text-sm font-bold 
-                          px-2 py-0.5 rounded-full uppercase shadow-[0_0_6px_hsl(var(--foreground)/0.6),0_0_12px_hsl(var(--foreground)/0.4)] shadow-pulse"
-                          >
+                          <div className="absolute top-2 left-2 bg-[hsl(var(--foreground))] text-[hsl(var(--background))] text-[10px] sm:text-xs md:text-sm font-bold px-2 py-0.5 rounded-full uppercase shadow-pulse">
                             NEW
                           </div>
                         )}
-
                         <motion.button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -244,9 +234,7 @@ export default function Watchlist({
                           }}
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.92 }}
-                          className="absolute top-2 right-2 p-2 sm:p-2.5 md:p-3 bg-red-500/20 backdrop-blur-md text-red-400 rounded-full shadow-md 
-                          cursor-pointer hover:bg-red-500/30 hover:shadow-[0_0_8px_#ef4444] focus:outline-none focus:ring-2 focus:ring-red-400/60 
-                          transition duration-200"
+                          className="absolute top-2 right-2 p-2 sm:p-2.5 md:p-3 bg-red-500/20 backdrop-blur-md text-red-400 rounded-full shadow-md hover:bg-red-500/30 hover:shadow-[0_0_8px_#ef4444] focus:outline-none focus:ring-2 focus:ring-red-400/60 transition duration-200"
                           aria-label="Remove from Watchlist"
                         >
                           <X

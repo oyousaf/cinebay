@@ -1,6 +1,6 @@
 import { useState, useEffect, lazy, Suspense } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Toaster } from "sonner";
+import { Toaster, toast } from "sonner";
 
 import Navbar from "@/components/Navbar";
 import SearchBar from "@/components/SearchBar";
@@ -9,14 +9,11 @@ import Shows from "@/components/Shows";
 import Watchlist from "@/components/Watchlist";
 import type { Movie } from "@/types/movie";
 import { Loader2 } from "lucide-react";
-
 import { getWatchlist } from "@/lib/watchlist";
 
-// Lazy load heavy components
 const DevsPick = lazy(() => import("@/components/DevsPick"));
 const Modal = lazy(() => import("@/components/Modal"));
 
-// Prefetch DevsPick on idle
 if (typeof window !== "undefined") {
   const prefetch = () => import("@/components/DevsPick");
   "requestIdleCallback" in window
@@ -40,12 +37,15 @@ export default function App() {
     localStorage.setItem("view", view);
   }, [view]);
 
+  useEffect(() => {
+    localStorage.setItem("watchlist", JSON.stringify(watchlist));
+  }, [watchlist]);
+
   const handleSelect = (() => {
     let lastId: number | null = null;
     return (item: Movie) => {
       if (item.id === lastId) return;
       lastId = item.id;
-
       if (selectedItem && selectedItem.id !== item.id) {
         setModalHistory((prev) => [...prev, selectedItem]);
       }
@@ -58,6 +58,43 @@ export default function App() {
     if (!last) return;
     setModalHistory((prev) => prev.slice(0, -1));
     setSelectedItem(last);
+  };
+
+  const handleWatchlistChange = (movie: Movie, isSaved: boolean) => {
+    let updated: Movie[];
+    if (isSaved) {
+      updated = [movie, ...watchlist.filter((m) => m.id !== movie.id)];
+      setWatchlist(updated);
+      toast.success(
+        <span>
+          Added <strong>{movie.title || movie.name}</strong> to Watchlist
+        </span>
+      );
+    } else {
+      updated = watchlist.filter((m) => m.id !== movie.id);
+      setWatchlist(updated);
+      toast.error(
+        <div className="flex items-center justify-between gap-4 w-full">
+          <span>
+            Removed{" "}
+            <strong>{movie.title || movie.name} from the Watchlist</strong>
+          </span>
+          <button
+            onClick={() => {
+              setWatchlist([movie, ...updated]);
+              toast.success(
+                <span>
+                  Restored <strong>{movie.title || movie.name}</strong>
+                </span>
+              );
+            }}
+            className="text-yellow-400 hover:underline whitespace-nowrap"
+          >
+            Undo
+          </button>
+        </div>
+      );
+    }
   };
 
   const renderHome = () => (
@@ -107,19 +144,14 @@ export default function App() {
         <Suspense fallback={null}>
           <Modal
             movie={selectedItem}
+            watchlist={watchlist}
             onClose={() => {
               setSelectedItem(null);
               setModalHistory([]);
             }}
             onSelect={handleSelect}
             onBack={modalHistory.length > 0 ? handleBackInModal : undefined}
-            onWatchlistChange={(id, isSaved) => {
-              setWatchlist((prev) =>
-                isSaved
-                  ? [...prev, selectedItem!]
-                  : prev.filter((m) => m.id !== id)
-              );
-            }}
+            onWatchlistChange={handleWatchlistChange}
           />
         </Suspense>
       )}

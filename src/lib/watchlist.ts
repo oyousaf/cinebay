@@ -1,6 +1,6 @@
 import type { Movie } from "@/types/movie";
 
-const STORAGE_KEY = "cinebay-watchlist";
+const STORAGE_KEY = "watchlist";
 
 export function getWatchlist(): Movie[] {
   if (typeof window === "undefined") return [];
