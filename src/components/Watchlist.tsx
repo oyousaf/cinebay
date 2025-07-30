@@ -4,7 +4,6 @@ import { toast } from "sonner";
 import { X, RefreshCw } from "lucide-react";
 
 import type { Movie } from "@/types/movie";
-import ConfirmModal from "@/components/ConfirmModal";
 import { TMDB_IMAGE } from "@/lib/tmdb";
 
 const LONG_PRESS_DELAY = 600;
@@ -28,7 +27,6 @@ export default function Watchlist({
   onSelect: (movie: Movie) => void;
   onUpdate: (updated: Movie[]) => void;
 }) {
-  const [toRemove, setToRemove] = useState<Movie | null>(null);
   const [filters, setFilters] = useState<FilterState>(() => {
     try {
       const stored = localStorage.getItem("watchlistFilters");
@@ -42,22 +40,21 @@ export default function Watchlist({
     localStorage.setItem("watchlistFilters", JSON.stringify(filters));
   }, [filters]);
 
-  const confirmRemove = () => {
-    if (!toRemove) return;
-    const updated = items.filter((m) => m.id !== toRemove.id);
+  const handleRemove = (movie: Movie) => {
+    const updated = items.filter((m) => m.id !== movie.id);
     onUpdate(updated);
 
     toast.error(
       <div className="flex items-center justify-between gap-4 w-full">
         <span>
-          Removed <strong>{toRemove.title}</strong>
+          Removed <strong>{movie.title} from Watchlist</strong>
         </span>
         <button
           onClick={() => {
-            onUpdate([toRemove!, ...updated]);
+            onUpdate([movie, ...updated]);
             toast.success(
               <span>
-                Restored <strong>{toRemove.title}</strong>
+                Restored <strong>{movie.title}</strong>
               </span>
             );
           }}
@@ -65,10 +62,9 @@ export default function Watchlist({
         >
           Undo
         </button>
-      </div>
+      </div>,
+      { duration: 6000 }
     );
-
-    setToRemove(null);
   };
 
   const filteredList = items
@@ -181,12 +177,12 @@ export default function Watchlist({
                         layout
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
+                        exit={{ opacity: 0, scale: 0.95, x: -50 }}
                         transition={{ duration: 0.25, ease: "easeOut" }}
                         onClick={() => onSelect(movie)}
                         onPointerDown={() => {
                           pressTimer = setTimeout(() => {
-                            setToRemove(movie);
+                            handleRemove(movie);
                           }, LONG_PRESS_DELAY);
                         }}
                         onPointerUp={() => clearTimeout(pressTimer)}
@@ -197,7 +193,7 @@ export default function Watchlist({
                         dragElastic={0.2}
                         whileDrag={{ scale: 0.97, backgroundColor: "#7f1d1d" }}
                         onDragEnd={(e, info) => {
-                          if (info.offset.x < -100) setToRemove(movie);
+                          if (info.offset.x < -100) handleRemove(movie);
                         }}
                         whileHover={{
                           scale: 1.03,
@@ -230,7 +226,7 @@ export default function Watchlist({
                         <motion.button
                           onClick={(e) => {
                             e.stopPropagation();
-                            setToRemove(movie);
+                            handleRemove(movie);
                           }}
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.92 }}
@@ -249,14 +245,6 @@ export default function Watchlist({
                 </AnimatePresence>
               </motion.div>
             </>
-          )}
-
-          {toRemove && (
-            <ConfirmModal
-              message={`Remove "${toRemove.title}" from your Watchlist?`}
-              onConfirm={confirmRemove}
-              onCancel={() => setToRemove(null)}
-            />
           )}
         </motion.main>
       </AnimatePresence>

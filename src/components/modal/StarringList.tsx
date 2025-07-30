@@ -18,7 +18,7 @@ export default function StarringList({
       {mainCast.map((actor, i) => (
         <span key={actor.id}>
           <span
-            className="underline cursor-pointer hover:text-yellow-400 transition-colors"
+            className="underline cursor-pointer hover:text-[hsl(var(--foreground))] transition-colors"
             onClick={() =>
               fetchDetails(actor.id, "person").then(
                 (res) => res && onSelect?.(res)

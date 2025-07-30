@@ -258,26 +258,40 @@ export default function Modal({
                         {movie.overview}
                       </p>
                     )}
-                    <div className="flex flex-wrap gap-2 text-sm sm:text-base text-zinc-300 pt-2 justify-center sm:justify-start">
+                    <div className="flex flex-wrap gap-2 sm:gap-3 text-sm sm:text-base text-zinc-300 pt-2 justify-center sm:justify-start text-center sm:text-left items-center">
                       {movie.isNew && (
-                        <span className="bg-[hsl(var(--foreground))] text-[hsl(var(--background))] text-xs font-bold px-2 py-[2px] rounded-full uppercase shadow-pulse">
+                        <span className="bg-[hsl(var(--foreground))] text-[hsl(var(--background))] text-sm font-bold px-2 py-0.5 rounded-full uppercase shadow-[0_0_6px_hsl(var(--foreground)/0.6),0_0_12px_hsl(var(--foreground)/0.4)] shadow-pulse">
                           NEW
                         </span>
                       )}
+
                       {movie.genres?.length && (
                         <span className="italic truncate">
                           {movie.genres.join(", ")}
                         </span>
                       )}
+
                       {releaseDate && <span>· {releaseDate}</span>}
+
                       {movie.runtime && <span>· {movie.runtime} mins</span>}
+
+                      {movie.original_language && (
+                        <span className="capitalize">
+                          ·{" "}
+                          {new Intl.DisplayNames(["en"], {
+                            type: "language",
+                          }).of(movie.original_language)}
+                        </span>
+                      )}
+
                       {typeof movie.vote_average === "number" &&
                         movie.vote_average > 0 && (
-                          <span className="bg-[hsl(var(--foreground))] text-[hsl(var(--background))] text-xs font-semibold px-2 py-[2px] rounded-full shadow-[0_0_6px_hsl(var(--foreground)/0.6),0_0_12px_hsl(var(--foreground)/0.4)]">
+                          <span className="bg-[hsl(var(--foreground))] text-[hsl(var(--background))] text-sm font-semibold px-2 py-0.5 rounded-full shadow-[0_0_6px_hsl(var(--foreground)/0.6),0_0_12px_hsl(var(--foreground)/0.4)]">
                             {movie.vote_average.toFixed(1)}
                           </span>
                         )}
                     </div>
+
                     {cast.length > 0 && (
                       <StarringList cast={cast} onSelect={onSelect} />
                     )}
