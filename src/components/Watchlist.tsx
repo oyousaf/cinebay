@@ -91,7 +91,7 @@ export default function Watchlist({
     });
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-b from-foreground via-foreground to-black text-white">
+    <div className="min-h-screen w-full bg-gradient-to-b from-foreground via-foreground to-black">
       <AnimatePresence mode="wait">
         <motion.main
           key="watchlist"
@@ -101,7 +101,7 @@ export default function Watchlist({
           transition={{ duration: 0.6, ease: "easeOut" }}
           className="pt-[176px] px-4 max-w-6xl mx-auto pb-12"
         >
-          <h1 className="text-3xl sm:text-4xl font-bold mb-6 drop-shadow-md text-center">
+          <h1 className="text-3xl sm:text-4xl font-bold font-heading mb-6 drop-shadow-md text-center">
             Watchlist
           </h1>
 
