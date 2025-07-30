@@ -21,8 +21,7 @@ import {
 
 import StarringList from "./modal/StarringList";
 import KnownForSlider from "./modal/KnownForSlider";
-import Recommendations from "./modal/Recommendations";
-import Similar from "./modal/Similar";
+import { Recommendations, Similar } from "./modal/Recommendations";
 import { useVideoEmbed } from "@/hooks/useVideoEmbed";
 
 const PlayerModal = lazy(() => import("@/components/PlayerModal"));

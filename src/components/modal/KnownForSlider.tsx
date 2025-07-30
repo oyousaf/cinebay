@@ -5,6 +5,7 @@ import type { KnownForItem, Movie } from "@/types/movie";
 type Props = {
   items: KnownForItem[];
   onSelect?: (item: Movie) => void;
+  className?: string;
 };
 
 const KnownForSlider: React.FC<Props> = ({ items, onSelect }) => {
@@ -18,7 +19,7 @@ const KnownForSlider: React.FC<Props> = ({ items, onSelect }) => {
   return (
     <div className="pt-4">
       <h3 className="text-md font-semibold text-zinc-300 mb-2">Known For</h3>
-      <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+      <div className="carousel flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
         {filtered.map((item) => {
           const title = item.title || item.name || "Untitled";
           const poster = item.poster_path
