@@ -101,7 +101,7 @@ export default function Watchlist({
           transition={{ duration: 0.6, ease: "easeOut" }}
           className="pt-[176px] px-4 max-w-6xl mx-auto pb-12"
         >
-          <h1 className="text-3xl sm:text-4xl font-bold font-heading mb-6 drop-shadow-md text-center">
+          <h1 className="font-heading text-3xl md:text-5xl font-bold mb-8 text-center tracking-wide drop-shadow-md">
             Watchlist
           </h1>
 
@@ -110,7 +110,7 @@ export default function Watchlist({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.2 }}
-              className="text-background italic text-center"
+              className="italic text-center"
             >
               Plot twist: you haven’t added anything yet.
             </motion.p>

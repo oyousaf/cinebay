@@ -218,33 +218,36 @@ export default function Modal({
               {!isPerson && (
                 <motion.button
                   whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.9 }}
+                  whileTap={{ scale: 0.95 }}
                   onClick={toggleWatchlist}
                   type="button"
-                  className="relative p-2 backdrop-blur-md rounded-full shadow-md transition-all duration-200
-          bg-black/40 text-white hover:bg-black/60"
+                  aria-pressed={isSaved}
                   aria-label={
                     isSaved ? "Remove from Watchlist" : "Add to Watchlist"
                   }
+                  className="relative p-2 rounded-full backdrop-blur-md shadow-md 
+                 bg-[hsl(var(--background))] 
+                 text-[hsl(var(--foreground))] 
+                 transition-colors duration-200 ease-out
+                 hover:bg-[hsl(var(--background))]/90 
+                 hover:shadow-[0_0_8px_hsla(var(--foreground)/0.4)]"
                 >
                   <motion.div
                     animate={{
-                      scale: isSaved ? 1.2 : 1,
-                      color: isSaved ? "#fbbf24" : "#ffffff",
+                      scale: isSaved ? 1.15 : 1,
+                      color: "hsl(var(--foreground))",
                       textShadow: isSaved
-                        ? "0px 0px 8px rgba(251,191,36,0.8)"
+                        ? "0px 0px 6px hsla(var(--foreground)/0.6)"
                         : "0px 0px 0px transparent",
                     }}
-                    transition={{
-                      type: "spring",
-                      stiffness: 300,
-                      damping: 20,
-                    }}
+                    transition={{ type: "spring", stiffness: 250, damping: 18 }}
                   >
                     <Bookmark
                       size={22}
                       strokeWidth={isSaved ? 3 : 2}
-                      fill={isSaved ? "currentColor" : "none"}
+                      className={
+                        isSaved ? "fill-[hsl(var(--foreground))]" : "fill-none"
+                      }
                     />
                   </motion.div>
                 </motion.button>
@@ -252,12 +255,16 @@ export default function Modal({
 
               <motion.button
                 whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.9 }}
+                whileTap={{ scale: 0.95 }}
                 type="button"
                 onClick={onClose}
-                className="p-2 bg-black/40 backdrop-blur-md rounded-full 
-                 text-white hover:text-red-400 hover:bg-black/60 
-                 shadow-md hover:shadow-[0_0_8px_#ef4444] transition-all duration-200"
+                aria-label="Close modal"
+                className="p-2 rounded-full backdrop-blur-md shadow-md 
+               bg-[hsl(var(--background))] 
+               text-[hsl(var(--foreground))] 
+               transition-colors duration-200 ease-out
+               hover:text-red-500 hover:bg-[hsl(var(--background))]/90 
+               hover:shadow-[0_0_8px_#ef4444]"
               >
                 <X size={22} strokeWidth={2.5} />
               </motion.button>

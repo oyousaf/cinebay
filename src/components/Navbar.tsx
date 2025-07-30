@@ -28,16 +28,19 @@ export default function Navbar({ onViewChange, currentView }: NavbarProps) {
               onClick={() => onViewChange("watchlist")}
               className={`flex items-center gap-2 rounded-full transition-colors ${
                 currentView === "watchlist"
-                  ? "text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.7)] dark:drop-shadow-[0_0_10px_rgba(147,51,234,0.6)]"
-                  : "hover:text-amber-400 hover:drop-shadow-[0_0_8px_rgba(251,191,36,0.5)] dark:hover:drop-shadow-[0_0_10px_rgba(147,51,234,0.6)]"
+                  ? "text-[hsl(var(--foreground))] drop-shadow-[0_0_8px_hsla(var(--foreground)/0.7)]"
+                  : "hover:text-[hsl(var(--foreground))] hover:drop-shadow-[0_0_8px_hsla(var(--foreground)/0.5)]"
               }`}
               aria-label="Go to Watchlist"
             >
               <Bookmark
                 size={30}
                 strokeWidth={currentView === "watchlist" ? 3 : 2}
-                fill={currentView === "watchlist" ? "currentColor" : "none"}
-                className="transition-colors duration-300"
+                className={`transition-colors duration-300 ${
+                  currentView === "watchlist"
+                    ? "fill-[hsl(var(--foreground))]"
+                    : "fill-none"
+                }`}
               />
             </motion.button>
           </div>

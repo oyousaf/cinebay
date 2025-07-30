@@ -126,7 +126,7 @@ export default function ScrollGallery({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
     >
-      <h2 className="font-heading text-3xl md:text-5xl font-bold mb-8 text-center tracking-wide">
+      <h2 className="font-heading text-3xl md:text-5xl font-bold mb-8 text-center tracking-wide drop-shadow-md">
         {title}
       </h2>
 
