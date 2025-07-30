@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
-import { X } from "lucide-react";
+import { X, RefreshCw } from "lucide-react";
 
 import type { Movie } from "@/types/movie";
 import ConfirmModal from "@/components/ConfirmModal";
@@ -163,10 +163,13 @@ export default function Watchlist({
                 {/* Reset Button */}
                 <button
                   onClick={() => setFilters(defaultFilters)}
-                  className="rounded-md px-3 py-2 border bg-[hsl(var(--foreground))] text-[hsl(var(--background))] hover:bg-[hsl(var(--foreground))]/90 
-               hover:shadow-[0_0_8px_hsla(var(--foreground)/0.4)] transition"
+                  className="p-2 rounded-full border bg-[hsl(var(--foreground))] text-[hsl(var(--background))] 
+             hover:bg-[hsl(var(--foreground))]/90 
+             hover:shadow-[0_0_8px_hsla(var(--foreground)/0.4)] 
+             transition flex items-center justify-center"
+                  aria-label="Reset filters"
                 >
-                  Reset
+                  <RefreshCw className="w-5 h-5" strokeWidth={2.5} />
                 </button>
               </motion.div>
 
