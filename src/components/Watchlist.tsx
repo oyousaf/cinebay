@@ -234,13 +234,6 @@ export default function Watchlist({
                           </div>
                         )}
 
-                        <div
-                          className="absolute bottom-2 right-2 bg-[hsl(var(--foreground))] text-[hsl(var(--background))] text-xs sm:text-sm md:text-base font-semibold 
-                          px-2.5 py-1 rounded-full shadow-[0_0_6px_hsl(var(--foreground)/0.6),0_0_12px_hsl(var(--foreground)/0.4)] flex items-center justify-center"
-                        >
-                          {movie.vote_average?.toFixed(1) ?? "N/A"}
-                        </div>
-
                         <motion.button
                           onClick={(e) => {
                             e.stopPropagation();
