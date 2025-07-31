@@ -18,7 +18,7 @@
 - 🎞️ **Latest Movies**: Auto-scrolling marquee of top-rated movies
 - 🍿 **Latest TV Shows**: A curated list of top-rated TV Shows
 - 🎯 **Dev's Pick**: A dynamic, curated stream of developer favorites
-- 🔍 **Search & Filter**: From timeless classics to today’s hits — discover movies, TV shows, or actors with ease
+- 🔍 **Search & Filter**: From timeless classics to the latest hits — discover movies, TV shows, or actors with ease
 - 📁 **Watchlist**: Save favourites with persistent user state
 - 📱 **Touch & Swipe Support**: Smooth experience on tablets and mobile
 - 🌀 **Looping Autoplay Carousels**: Seamless animation with pause/resume on hover/touch
