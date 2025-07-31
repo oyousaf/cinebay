@@ -82,13 +82,6 @@ export default function Modal({
   const knownFor = movie.known_for ?? [];
   const releaseDate = formatDate(movie.release_date);
 
-  const genderLabel = useMemo(() => {
-    if (movie.known_for_department === "Acting") {
-      return movie.gender === 1 ? "Actress" : "Actor";
-    }
-    return movie.known_for_department;
-  }, [movie]);
-
   const handleSelectWithDetails = useCallback(
     async (item: Movie) => {
       if (!item?.id) return;

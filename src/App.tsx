@@ -67,7 +67,7 @@ export default function App() {
       setWatchlist(updated);
       toast.success(
         <span>
-          Added <strong>{movie.title || movie.name}</strong> to Watchlist
+          Added <strong>{movie.title || movie.name}</strong> to the Watchlist
         </span>
       );
     } else {
