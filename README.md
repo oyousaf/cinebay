@@ -13,19 +13,13 @@
 
 ---
 
-## ✨ Features (so far)
+## ✨ Features
 
-- 🎞️ **Latest Movies**: Auto-scrolling marquee of top-rated movies 
+- 🎞️ **Latest Movies**: Auto-scrolling marquee of top-rated movies
 - 🍿 **Latest TV Shows**: A curated list of top-rated TV Shows
 - 🎯 **Dev's Pick**: A dynamic, curated stream of developer favorites
+- 🔍 **Search & Filter**: Browse by genre, decade, or theme with lightning-fast filtering
+- 📁 **Watchlist**: Save favourites with persistent user state
 - 📱 **Touch & Swipe Support**: Smooth experience on tablets and mobile
 - 🌀 **Looping Autoplay Carousels**: Seamless animation with pause/resume on hover/touch
 - 🌄 **Responsive UI**: Looks great across devices and screen sizes
-
----
-
-## 🔜 Coming Soon
-
-- 🔍 Search and filter by genre, decade, or theme
-- 📁 Watchlists and persistent user state
-- 💅 Polish: gradients, background effects, and accessibility refinements
