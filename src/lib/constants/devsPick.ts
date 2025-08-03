@@ -32,7 +32,6 @@ export const DEVS_PICK_LIST = [
   16136, // Juice
   12489, // Gridlock'd
   14398, // Gang Related
-  14469, // Bullet
   24, // Kill Bill: Vol. 1
   393, // Kill Bill: Vol. 2
   466272, // Once Upon a Time in Hollywood
@@ -65,16 +64,12 @@ export const DEVS_PICK_LIST = [
   106, // Predator
   861, // Total Recall
   10999, // Commando
-  865, // The Running Man
-  36955, // True Lies
   1368, // First Blood
   9350, // Cliffhanger
   9739, // Demolition Man
   11690, // Bloodsport
   10222, // Kickboxer
   13672, // JCVD
-  36647, // Blade
-  36586, // Blade II
   10027, // Unleashed
   2140, // Kiss of the Dragon
 ];
