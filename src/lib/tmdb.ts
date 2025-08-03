@@ -234,6 +234,7 @@ export async function fetchShows(): Promise<Movie[]> {
 
   return filtered.length ? filtered : [emptyPlaceholder("tv")];
 }
+
 export async function fetchDevsPick(): Promise<Movie[]> {
   const enriched = await Promise.all(
     DEVS_PICK_LIST.map(async (id) => {
