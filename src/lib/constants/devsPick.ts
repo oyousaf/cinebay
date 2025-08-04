@@ -52,7 +52,6 @@ export const DEVS_PICK_LIST = [
   11129, // Human Traffic
   13809, // RocknRolla
   12877, // Dead Man's Shoes
-  10557, // East Is East
   12481, // The Big Boss
   11713, // Fist of Fury
   9462, // The Way of the Dragon
