@@ -27,7 +27,6 @@ export const DEVS_PICK_LIST = [
   4982, // American Gangster
   2034, // Training Day
   9516, // Menace II Society
-  10952, // New Jack City
   1607, // A Bronx Tale
   16136, // Juice
   12489, // Gridlock'd
