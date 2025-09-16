@@ -62,7 +62,6 @@ export const DEVS_PICK_LIST = [
   861, // Total Recall
   10999, // Commando
   1368, // First Blood
-  9739, // Demolition Man
   11690, // Bloodsport
   10222, // Kickboxer
   13672, // JCVD
