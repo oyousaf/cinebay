@@ -199,6 +199,12 @@ function emptyPlaceholder(type: "movie" | "tv"): Movie {
   };
 }
 
+function sortByRatingThenPopularity(a: Movie, b: Movie) {
+  const ratingDiff = (b.vote_average ?? 0) - (a.vote_average ?? 0);
+  if (ratingDiff !== 0) return ratingDiff;
+  return (b.popularity ?? 0) - (a.popularity ?? 0);
+}
+
 export async function fetchMovies(): Promise<Movie[]> {
   const data = await fetchFromProxy(
     `/discover/movie?language=en&sort_by=popularity.desc&vote_average.gte=6.5&include_adult=false&release_date.gte=${MIN_DATE_STR}`
@@ -214,7 +220,8 @@ export async function fetchMovies(): Promise<Movie[]> {
       isAllowedContent(m.genres, m.release_date) && m.original_language === "en"
   );
 
-  return filtered.length ? filtered : [emptyPlaceholder("movie")];
+  const sorted = filtered.sort(sortByRatingThenPopularity);
+  return sorted.length ? sorted : [emptyPlaceholder("movie")];
 }
 
 export async function fetchShows(): Promise<Movie[]> {
@@ -232,7 +239,8 @@ export async function fetchShows(): Promise<Movie[]> {
       isAllowedContent(s.genres, s.release_date) && s.original_language === "en"
   );
 
-  return filtered.length ? filtered : [emptyPlaceholder("tv")];
+  const sorted = filtered.sort(sortByRatingThenPopularity);
+  return sorted.length ? sorted : [emptyPlaceholder("tv")];
 }
 
 export async function fetchDevsPick(): Promise<Movie[]> {
@@ -248,7 +256,5 @@ export async function fetchDevsPick(): Promise<Movie[]> {
     })
   );
 
-  return (enriched.filter(Boolean) as Movie[]).sort(
-    (a, b) => b.vote_average - a.vote_average
-  );
+  return (enriched.filter(Boolean) as Movie[]).sort(sortByRatingThenPopularity);
 }

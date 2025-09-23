@@ -2,7 +2,7 @@ import { useState, useEffect, lazy, Suspense } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Toaster, toast } from "sonner";
 
-import Navbar from "@/components/Navbar";
+import Layout from "@/components/Layout";
 import SearchBar from "@/components/SearchBar";
 import Movies from "@/components/Movies";
 import Shows from "@/components/Shows";
@@ -26,16 +26,25 @@ export default function App() {
   const [modalHistory, setModalHistory] = useState<Movie[]>([]);
   const [watchlist, setWatchlist] = useState<Movie[]>(() => getWatchlist());
 
-  const [view, setView] = useState<"home" | "watchlist">(() => {
+  const [activeTab, setActiveTab] = useState<
+    "movies" | "tvshows" | "search" | "devspick" | "watchlist"
+  >(() => {
     if (typeof window !== "undefined") {
-      return (localStorage.getItem("view") as "home" | "watchlist") || "home";
+      return (
+        (localStorage.getItem("activeTab") as
+          | "movies"
+          | "tvshows"
+          | "search"
+          | "devspick"
+          | "watchlist") || "movies"
+      );
     }
-    return "home";
+    return "movies";
   });
 
   useEffect(() => {
-    localStorage.setItem("view", view);
-  }, [view]);
+    localStorage.setItem("activeTab", activeTab);
+  }, [activeTab]);
 
   useEffect(() => {
     localStorage.setItem("watchlist", JSON.stringify(watchlist));
@@ -97,46 +106,63 @@ export default function App() {
     }
   };
 
-  const renderHome = () => (
-    <>
-      <SearchBar onSelectMovie={handleSelect} onSelectPerson={handleSelect} />
-      <main className="w-full max-w-7xl flex-1 mx-auto flex flex-col items-center px-4 sm:px-6 pt-[176px] pb-6">
-        <Movies onSelect={handleSelect} />
-        <Shows onSelect={handleSelect} />
-        <Suspense
-          fallback={
-            <Loader2 className="h-6 w-6 text-muted-foreground animate-spin" />
-          }
-        >
-          <DevsPick onSelect={handleSelect} />
-        </Suspense>
-      </main>
-    </>
-  );
+  const renderContent = () => {
+    switch (activeTab) {
+      case "movies":
+        return (
+          <>
+            <SearchBar
+              onSelectMovie={handleSelect}
+              onSelectPerson={handleSelect}
+            />
+            <Movies onSelect={handleSelect} />
+          </>
+        );
+      case "tvshows":
+        return <Shows onSelect={handleSelect} />;
+      case "search":
+        return (
+          <SearchBar
+            onSelectMovie={handleSelect}
+            onSelectPerson={handleSelect}
+          />
+        );
+      case "devspick":
+        return (
+          <Suspense
+            fallback={
+              <Loader2 className="h-6 w-6 text-muted-foreground animate-spin" />
+            }
+          >
+            <DevsPick onSelect={handleSelect} />
+          </Suspense>
+        );
+      case "watchlist":
+        return (
+          <Watchlist
+            items={watchlist}
+            onSelect={handleSelect}
+            onUpdate={setWatchlist}
+          />
+        );
+      default:
+        return null;
+    }
+  };
 
   return (
-    <div className="min-h-screen w-full flex flex-col bg-background text-foreground">
+    <Layout activeTab={activeTab} onTabChange={setActiveTab}>
       <Toaster richColors position="bottom-center" theme="dark" />
-      <Navbar onViewChange={setView} currentView={view} />
-
       <AnimatePresence mode="wait">
         <motion.div
-          key={view}
-          initial={{ opacity: 0, x: view === "home" ? -40 : 40 }}
+          key={activeTab}
+          initial={{ opacity: 0, x: -40 }}
           animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: view === "home" ? 40 : -40 }}
+          exit={{ opacity: 0, x: 40 }}
           transition={{ duration: 0.25, ease: "easeOut" }}
           className="flex-1 overflow-y-auto scrollbar-hide min-h-0"
         >
-          {view === "watchlist" ? (
-            <Watchlist
-              items={watchlist}
-              onSelect={handleSelect}
-              onUpdate={setWatchlist}
-            />
-          ) : (
-            renderHome()
-          )}
+          {renderContent()}
         </motion.div>
       </AnimatePresence>
 
@@ -155,6 +181,6 @@ export default function App() {
           />
         </Suspense>
       )}
-    </div>
+    </Layout>
   );
 }

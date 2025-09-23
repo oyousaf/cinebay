@@ -1,14 +1,8 @@
 import { DarkModeToggle } from "../DarkModeToggle";
 import logo from "/logo.png";
 import { motion } from "framer-motion";
-import { Bookmark } from "lucide-react";
 
-type NavbarProps = {
-  onViewChange: (view: "home" | "watchlist") => void;
-  currentView: "home" | "watchlist";
-};
-
-export default function Navbar({ onViewChange, currentView }: NavbarProps) {
+export default function Navbar() {
   return (
     <header
       className="fixed top-0 left-0 w-full z-50 shadow-md shadow-violet-300/20 backdrop-blur-sm"
@@ -19,40 +13,15 @@ export default function Navbar({ onViewChange, currentView }: NavbarProps) {
     >
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3">
         <div className="grid grid-cols-3 items-center">
-          {/* Watchlist Button */}
-          <div className="flex justify-start">
-            <motion.button
-              whileHover={{ scale: 1.08 }}
-              whileTap={{ scale: 0.95 }}
-              transition={{ duration: 0.25, ease: "easeOut" }}
-              onClick={() => onViewChange("watchlist")}
-              className={`flex items-center gap-2 rounded-full transition-colors ${
-                currentView === "watchlist"
-                  ? "text-[hsl(var(--foreground))] drop-shadow-[0_0_8px_hsla(var(--foreground)/0.7)]"
-                  : "hover:text-[hsl(var(--foreground))] hover:drop-shadow-[0_0_8px_hsla(var(--foreground)/0.5)]"
-              }`}
-              aria-label="Go to Watchlist"
-            >
-              <Bookmark
-                size={30}
-                strokeWidth={currentView === "watchlist" ? 3 : 2}
-                className={`transition-colors duration-300 ${
-                  currentView === "watchlist"
-                    ? "fill-[hsl(var(--foreground))]"
-                    : "fill-none"
-                }`}
-              />
-            </motion.button>
-          </div>
+          <div></div>
 
           {/* Logo */}
           <div className="flex justify-center">
-            <motion.button
+            <motion.div
               whileHover={{ scale: 1.08 }}
               whileTap={{ scale: 0.95 }}
               transition={{ duration: 0.25, ease: "easeOut" }}
-              onClick={() => onViewChange("home")}
-              aria-label="Go to Home"
+              aria-label="CineBay Logo"
               className="relative group rounded-full"
             >
               <motion.img
@@ -67,7 +36,7 @@ export default function Navbar({ onViewChange, currentView }: NavbarProps) {
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.4, ease: "easeOut" }}
               />
-            </motion.button>
+            </motion.div>
           </div>
 
           {/* Dark Mode Toggle */}
