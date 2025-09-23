@@ -43,8 +43,8 @@ export default function ContentRail({
         <Banner item={activeItem} onSelect={onSelect} title={title} />
       )}
 
-      {/* Tiles */}
-      <div className="relative mt-6 px-4 md:px-8">
+      {/* Tiles (sit fully below banner, constrained + unclipped) */}
+      <div className="relative z-30 mt-6 px-4 md:px-8 max-w-6xl mx-auto">
         <div className="flex overflow-x-auto gap-4 scrollbar-hide pb-6">
           {items.map((movie) => {
             const isActive = activeItem?.id === movie.id;
@@ -71,13 +71,6 @@ export default function ContentRail({
                   className="h-40 w-28 md:h-60 md:w-44 lg:h-72 lg:w-52 object-cover rounded-lg shadow-lg"
                   loading="lazy"
                 />
-
-                {/* Rating badge */}
-                {movie.vote_average && (
-                  <div className="absolute bottom-2 right-2 bg-[#80ffcc] text-[hsl(var(--background))] text-sm font-semibold px-2 py-0.5 rounded-full shadow-[0_0_6px_#80ffcc,0_0_12px_#80ffcc]">
-                    {movie.vote_average.toFixed(1)}
-                  </div>
-                )}
               </motion.div>
             );
           })}
@@ -118,12 +111,11 @@ function Banner({
           className="w-full h-full object-cover"
           loading="lazy"
         />
-        {/* Gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent" />
       </div>
 
       {/* Overlay content */}
-      <div className="relative z-20 px-6 md:px-12 py-10 max-w-4xl">
+      <div className="relative z-20 px-6 md:px-12 py-10 max-w-6xl mx-auto">
         <h2 className="text-3xl md:text-5xl font-bold mb-4 drop-shadow-md text-[#80ffcc]">
           {item.title || item.name}
         </h2>
@@ -142,11 +134,10 @@ function Banner({
           )}
         </div>
 
-        {/* Actions: Dual buttons */}
+        {/* Actions */}
         <div className="flex gap-4">
           <button
             onClick={() => {
-              // TODO: hook up PlayerModal
               console.log("▶ Watch clicked", item.title);
             }}
             className="bg-[hsl(var(--foreground))] hover:bg-[hsl(var(--foreground))]/90 text-[hsl(var(--background))] text-xl cursor-pointer uppercase font-semibold px-6 py-2 rounded-full transition shadow-[0_0_6px_hsl(var(--foreground)/0.6),0_0_12px_hsl(var(--foreground)/0.4)]"
@@ -162,7 +153,7 @@ function Banner({
         </div>
       </div>
 
-      {/* Title overlay in corner */}
+      {/* Title overlay */}
       <span className="absolute top-6 left-6 text-xs uppercase tracking-widest bg-black/40 px-3 py-1 rounded-md text-gray-200 z-20">
         {title}
       </span>

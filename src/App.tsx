@@ -3,10 +3,10 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Toaster, toast } from "sonner";
 
 import Layout from "@/components/Layout";
-import SearchBar from "@/components/SearchBar";
 import Movies from "@/components/Movies";
 import Shows from "@/components/Shows";
 import Watchlist from "@/components/Watchlist";
+import SearchBar from "@/components/SearchBar";
 import type { Movie } from "@/types/movie";
 import { Loader2 } from "lucide-react";
 import { getWatchlist } from "@/lib/watchlist";
@@ -14,6 +14,7 @@ import { getWatchlist } from "@/lib/watchlist";
 const DevsPick = lazy(() => import("@/components/DevsPick"));
 const Modal = lazy(() => import("@/components/Modal"));
 
+// Prefetch DevsPick when idle
 if (typeof window !== "undefined") {
   const prefetch = () => import("@/components/DevsPick");
   "requestIdleCallback" in window
@@ -42,14 +43,17 @@ export default function App() {
     return "movies";
   });
 
+  // persist activeTab
   useEffect(() => {
     localStorage.setItem("activeTab", activeTab);
   }, [activeTab]);
 
+  // persist watchlist
   useEffect(() => {
     localStorage.setItem("watchlist", JSON.stringify(watchlist));
   }, [watchlist]);
 
+  // handle selection + modal history
   const handleSelect = (() => {
     let lastId: number | null = null;
     return (item: Movie) => {
@@ -69,6 +73,7 @@ export default function App() {
     setSelectedItem(last);
   };
 
+  // handle watchlist add/remove
   const handleWatchlistChange = (movie: Movie, isSaved: boolean) => {
     let updated: Movie[];
     if (isSaved) {
@@ -106,26 +111,23 @@ export default function App() {
     }
   };
 
+  // render based on active tab
   const renderContent = () => {
     switch (activeTab) {
       case "movies":
-        return (
-          <>
-            <SearchBar
-              onSelectMovie={handleSelect}
-              onSelectPerson={handleSelect}
-            />
-            <Movies onSelect={handleSelect} />
-          </>
-        );
+        return <Movies onSelect={handleSelect} />;
       case "tvshows":
         return <Shows onSelect={handleSelect} />;
       case "search":
         return (
-          <SearchBar
-            onSelectMovie={handleSelect}
-            onSelectPerson={handleSelect}
-          />
+          <div className="flex items-center justify-center h-full px-4">
+            <div className="w-full max-w-md">
+              <SearchBar
+                onSelectMovie={handleSelect}
+                onSelectPerson={handleSelect}
+              />
+            </div>
+          </div>
         );
       case "devspick":
         return (
