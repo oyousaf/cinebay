@@ -124,7 +124,7 @@ export default function App() {
         return <Shows onSelect={handleSelect} onWatch={handleWatch} />;
       case "search":
         return (
-          <div className="flex items-center justify-center min-h-[70vh] px-4">
+          <div className="flex items-center justify-center min-h-screen px-4">
             <div className="w-full max-w-md">
               <SearchBar
                 onSelectMovie={handleSelect}
