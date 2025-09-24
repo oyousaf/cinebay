@@ -1,4 +1,4 @@
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, Variants } from "framer-motion";
 import type { Movie } from "@/types/movie";
 import { useVideoEmbed } from "@/hooks/useVideoEmbed";
 
@@ -15,6 +15,25 @@ export default function Banner({
 }) {
   const embedUrl = useVideoEmbed(item.id, item.media_type);
 
+  // Variants for staggered fade-in
+  const containerVariants: Variants = {
+    hidden: { opacity: 0, y: 15 },
+    show: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.35,
+        ease: [0.25, 0.1, 0.25, 1],
+        staggerChildren: 0.05,
+      },
+    },
+  };
+
+  const childVariants: Variants = {
+    hidden: { opacity: 0, y: 10 },
+    show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: "easeOut" } },
+  };
+
   return (
     <div className="relative w-full min-h-[70vh] flex flex-col justify-end overflow-hidden shadow-2xl">
       <AnimatePresence mode="popLayout">
@@ -22,10 +41,11 @@ export default function Banner({
           key={item.id}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.3, ease: "easeOut" }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
           className="absolute inset-0"
         >
-          {/* Backdrop with subtle zoom */}
+          {/* Backdrop with quick zoom */}
           <motion.img
             key={item.backdrop_path || "fallback"}
             src={
@@ -35,7 +55,7 @@ export default function Banner({
             }
             alt={item.title || item.name}
             className="w-full h-full object-cover"
-            initial={{ scale: 1.02 }}
+            initial={{ scale: 1.05 }}
             animate={{ scale: 1 }}
             transition={{ duration: 0.6, ease: "easeOut" }}
             loading="lazy"
@@ -46,22 +66,31 @@ export default function Banner({
 
       {/* Overlay */}
       <motion.div
-        key={`${item.id}-overlay`}
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.25, ease: "easeOut" }}
         className="relative z-20 px-6 md:px-12 py-10 max-w-6xl mx-auto"
+        variants={containerVariants}
+        initial="hidden"
+        animate="show"
+        key={`overlay-${item.id}`}
       >
-        <h2 className="text-4xl sm:text-6xl font-extrabold mb-4 text-[#80ffcc] drop-shadow-md">
+        <motion.h2
+          className="text-4xl sm:text-6xl font-extrabold mb-4 text-[#80ffcc] drop-shadow-md"
+          variants={childVariants}
+        >
           {item.title || item.name}
-        </h2>
+        </motion.h2>
 
-        <p className="text-sm md:text-xl text-gray-200 max-w-2xl mb-6 line-clamp-4">
+        <motion.p
+          className="text-sm md:text-xl text-gray-200 max-w-2xl mb-6 line-clamp-4"
+          variants={childVariants}
+        >
           {item.overview}
-        </p>
+        </motion.p>
 
         {/* Meta info row */}
-        <div className="flex flex-wrap gap-2 sm:gap-3 text-sm sm:text-base text-zinc-300 mb-6 items-center">
+        <motion.div
+          className="flex flex-wrap gap-2 sm:gap-3 text-sm sm:text-base text-zinc-300 mb-6 items-center"
+          variants={childVariants}
+        >
           {item.isNew && (
             <span className="bg-[hsl(var(--foreground))] text-[hsl(var(--background))] text-sm font-bold px-2 py-0.5 rounded-full uppercase shadow-pulse">
               NEW
@@ -77,10 +106,10 @@ export default function Banner({
               {item.vote_average.toFixed(1)}
             </span>
           )}
-        </div>
+        </motion.div>
 
         {/* Actions */}
-        <div className="flex gap-4">
+        <motion.div className="flex gap-4" variants={childVariants}>
           <button
             onClick={() => embedUrl && onWatch(item)}
             className="bg-[hsl(var(--foreground))] hover:bg-[hsl(var(--foreground))]/90 text-[hsl(var(--background))] uppercase text-lg sm:text-xl font-semibold px-6 py-2 rounded-full transition shadow-[0_0_6px_hsl(var(--foreground)/0.6),0_0_12px_hsl(var(--foreground)/0.4)]"
@@ -93,7 +122,7 @@ export default function Banner({
           >
             More Info
           </button>
-        </div>
+        </motion.div>
       </motion.div>
 
       {/* Section label */}

@@ -81,7 +81,7 @@ export default function ContentRail({
                 className={`relative shrink-0 snap-start rounded-lg overflow-hidden focus:outline-none transition-all duration-300
                   ${
                     isActive
-                      ? "scale-105 ring-2 ring-[#80ffcc] shadow-[0_0_6px_#80ffcc,0_0_12px_#80ffcc] shadow-pulse"
+                      ? "scale-105 ring-2 ring-[hsl(var(--foreground))] shadow-[hsl(var(--foreground))] shadow-pulse"
                       : "hover:shadow-[0_0_6px_#80ffcc,0_0_12px_#80ffcc]"
                   }`}
                 whileHover={!isActive ? { scale: 1.07 } : {}}
