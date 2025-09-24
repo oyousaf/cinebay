@@ -19,12 +19,6 @@ const SearchBar: React.FC<{
 
   const iconControls = useAnimation();
   const resultsRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  // 🔹 Autofocus when mounted
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
 
   // 🔹 Debounced TMDB search
   const debouncedSearch = useRef(
@@ -112,7 +106,6 @@ const SearchBar: React.FC<{
         }}
       >
         <motion.input
-          ref={inputRef}
           type="text"
           name="search"
           placeholder="Search movies, shows, people..."
