@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { motion, useAnimation } from "framer-motion";
+import { motion, AnimatePresence, useAnimation } from "framer-motion";
 import { Search, Loader2 } from "lucide-react";
 import debounce from "lodash.debounce";
 
@@ -30,11 +30,13 @@ const SearchBar: React.FC<{
         delayChildren: 0.1,
       },
     },
+    exit: { opacity: 0, transition: { duration: 0.2 } },
   };
 
   const itemVariants = {
     hidden: { opacity: 0, y: 6 },
     show: { opacity: 1, y: 0 },
+    exit: { opacity: 0, y: 6 },
   };
 
   // 🔹 Debounced TMDB search
@@ -157,68 +159,70 @@ const SearchBar: React.FC<{
       </motion.form>
 
       {/* Dropdown Results */}
-      {dropdownOpen && (
-        <motion.div
-          ref={resultsRef}
-          className="absolute top-full mt-2 w-full max-h-80 overflow-y-auto rounded-lg shadow-lg bg-[hsl(var(--background))] text-[hsl(var(--foreground))] z-50 divide-y divide-[hsl(var(--foreground))]/10"
-          role="listbox"
-          initial="hidden"
-          animate="show"
-          variants={listVariants}
-        >
-          {loading && (
-            <div className="p-6 text-center">
-              <Loader2 className="h-6 w-6 animate-spin mx-auto text-[hsl(var(--foreground))]" />
-            </div>
-          )}
-          {!loading && results.length === 0 && query.trim() && (
-            <div className="p-3 text-sm text-center">No results found.</div>
-          )}
-          {results.map((item) => {
-            const image =
-              item.media_type === "person"
-                ? item.profile_path
-                : item.poster_path;
-            const name = item.title || item.name || "Unknown";
-            return (
-              <motion.div
-                key={`${item.media_type}-${item.id}`}
-                role="option"
-                tabIndex={0}
-                className="flex items-center gap-3 px-4 py-2 hover:bg-[hsl(var(--foreground))]/10 cursor-pointer"
-                onClick={() => handleSelect(item)}
-                variants={itemVariants}
-              >
-                <img
-                  src={
-                    image
-                      ? `https://image.tmdb.org/t/p/w92${image}`
-                      : "/fallback.jpg"
-                  }
-                  alt={name}
-                  loading="lazy"
-                  className={`w-10 h-14 object-cover rounded-md ${
-                    image ? "" : "opacity-70 blur-sm"
-                  }`}
-                />
-                <div className="flex flex-col">
-                  <span className="font-medium text-sm">{name}</span>
-                  <span className="text-xs text-zinc-400 uppercase">
-                    {item.media_type}
-                  </span>
-                </div>
-              </motion.div>
-            );
-          })}
-        </motion.div>
-      )}
+      <AnimatePresence>
+        {dropdownOpen && (
+          <motion.div
+            ref={resultsRef}
+            className="absolute top-full mt-2 w-full max-h-80 overflow-y-auto rounded-lg shadow-lg bg-[hsl(var(--background))] text-[hsl(var(--foreground))] z-50 divide-y divide-[hsl(var(--foreground))]/10"
+            role="listbox"
+            initial="hidden"
+            animate="show"
+            exit="exit"
+            variants={listVariants}
+          >
+            {loading && (
+              <div className="p-6 text-center">
+                <Loader2 className="h-6 w-6 animate-spin mx-auto text-[hsl(var(--foreground))]" />
+              </div>
+            )}
+            {!loading && results.length === 0 && query.trim() && (
+              <div className="p-3 text-sm text-center">No results found.</div>
+            )}
+            {results.map((item) => {
+              const image =
+                item.media_type === "person"
+                  ? item.profile_path
+                  : item.poster_path;
+              const name = item.title || item.name || "Unknown";
+              return (
+                <motion.div
+                  key={`${item.media_type}-${item.id}`}
+                  role="option"
+                  tabIndex={0}
+                  className="flex items-center gap-3 px-4 py-2 hover:bg-[hsl(var(--foreground))]/10 cursor-pointer"
+                  onClick={() => handleSelect(item)}
+                  variants={itemVariants}
+                >
+                  <img
+                    src={
+                      image
+                        ? `https://image.tmdb.org/t/p/w92${image}`
+                        : "/fallback.jpg"
+                    }
+                    alt={name}
+                    loading="lazy"
+                    className={`w-10 h-14 object-cover rounded-md ${
+                      image ? "" : "opacity-70 blur-sm"
+                    }`}
+                  />
+                  <div className="flex flex-col">
+                    <span className="font-medium text-sm">{name}</span>
+                    <span className="text-xs text-zinc-400 uppercase">
+                      {item.media_type}
+                    </span>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 });
 
 export default SearchBar;
 
-// TMDB result type
 type TMDBResult = {
   id: number;
   title?: string;
