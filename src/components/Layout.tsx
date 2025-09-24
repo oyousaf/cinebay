@@ -17,7 +17,9 @@ const Layout: React.FC<LayoutProps> = ({
 }) => {
   return (
     <div className="min-h-screen w-full flex flex-col bg-background text-foreground">
-      <Navbar />
+      <header>
+        <Navbar />
+      </header>
       <HybridNav activeTab={activeTab} onTabChange={onTabChange} />
       <main className="flex-1 overflow-y-auto">{children}</main>
     </div>

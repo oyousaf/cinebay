@@ -1,15 +1,12 @@
 import React, { JSX, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { FaFilm, FaTv, FaSearch, FaStar, FaBookmark } from "react-icons/fa";
-import SearchBar from "@/components/SearchBar";
 
 type Tab = "movies" | "tvshows" | "search" | "devspick" | "watchlist";
 
 interface HybridNavProps {
   activeTab: Tab;
   onTabChange: (tab: Tab) => void;
-  onSelectMovie: (movie: any) => void;
-  onSelectPerson?: (person: any) => void;
 }
 
 const navItems: { id: Tab; icon: JSX.Element; label: string }[] = [
@@ -20,12 +17,7 @@ const navItems: { id: Tab; icon: JSX.Element; label: string }[] = [
   { id: "watchlist", icon: <FaBookmark size={22} />, label: "Watchlist" },
 ];
 
-const HybridNav: React.FC<HybridNavProps> = ({
-  activeTab,
-  onTabChange,
-  onSelectMovie,
-  onSelectPerson,
-}) => {
+const HybridNav: React.FC<HybridNavProps> = ({ activeTab, onTabChange }) => {
   // Escape closes search and goes back to movies
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -56,7 +48,6 @@ const HybridNav: React.FC<HybridNavProps> = ({
                 transition={{ type: "spring", stiffness: 300, damping: 25 }}
               />
             )}
-            {/* Tooltip */}
             <span className="absolute left-10 px-2 py-1 text-xs bg-[hsl(var(--foreground))] text-[hsl(var(--background))] rounded opacity-0 group-hover:opacity-100 whitespace-nowrap pointer-events-none">
               {item.label}
             </span>
@@ -81,33 +72,12 @@ const HybridNav: React.FC<HybridNavProps> = ({
                 transition={{ type: "spring", stiffness: 300, damping: 25 }}
               />
             )}
-            {/* Tooltip (purple/mint theme) */}
             <span className="absolute bottom-10 px-2 py-1 text-xs bg-[hsl(var(--foreground))] text-black rounded opacity-0 group-hover:opacity-100 pointer-events-none">
               {item.label}
             </span>
           </button>
         ))}
       </nav>
-
-      {/* Search View */}
-      <AnimatePresence>
-        {activeTab === "search" && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            className="fixed inset-0 z-30 flex items-center justify-center bg-[hsl(var(--background))]"
-          >
-            <div className="w-full max-w-2xl px-4">
-              <SearchBar
-                onSelectMovie={onSelectMovie}
-                onSelectPerson={onSelectPerson}
-              />
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </>
   );
 };
