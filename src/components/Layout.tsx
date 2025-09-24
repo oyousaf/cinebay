@@ -16,12 +16,12 @@ const Layout: React.FC<LayoutProps> = ({
   onTabChange,
 }) => {
   return (
-    <div className="min-h-screen w-full flex flex-col bg-background text-foreground">
-      <header>
-        <Navbar />
-      </header>
+    <div className="h-screen w-full flex flex-col overflow-hidden">
+      <Navbar />
+
       <HybridNav activeTab={activeTab} onTabChange={onTabChange} />
-      <main className="flex-1 overflow-y-auto">{children}</main>
+
+      <main className="flex-1 min-h-0 overflow-y-auto">{children}</main>
     </div>
   );
 };
