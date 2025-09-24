@@ -33,7 +33,6 @@ export default function Shows({ onSelect, onWatch }: ShowsProps) {
       items={shows}
       onSelect={onSelect}
       onWatch={onWatch}
-      infoPosition="prime"
     />
   );
 }

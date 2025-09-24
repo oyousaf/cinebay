@@ -33,7 +33,6 @@ export default function Movies({ onSelect, onWatch }: MoviesProps) {
       items={movies}
       onSelect={onSelect}
       onWatch={onWatch}
-      infoPosition="prime"
     />
   );
 }

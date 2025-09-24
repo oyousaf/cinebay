@@ -33,7 +33,6 @@ export default function DevsPick({ onSelect, onWatch }: DevsPickProps) {
       items={movies}
       onSelect={onSelect}
       onWatch={onWatch}
-      infoPosition="prime"
     />
   );
 }
