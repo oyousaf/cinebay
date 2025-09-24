@@ -146,7 +146,11 @@ const SearchBar: React.FC<{
           className="absolute top-full mt-2 w-full max-h-80 overflow-y-auto rounded-lg shadow-lg bg-[hsl(var(--background))] text-[hsl(var(--foreground))] z-50 divide-y divide-[hsl(var(--foreground))]/10"
           role="listbox"
         >
-          {loading && <div className="p-6 text-sm text-center">Loading...</div>}
+          {loading && (
+            <div className="p-6 text-center">
+              <Loader2 className="h-6 w-6 animate-spin mx-auto text-[hsl(var(--foreground))]" />
+            </div>
+          )}
           {!loading && results.length === 0 && query.trim() && (
             <div className="p-3 text-sm text-center">No results found.</div>
           )}
