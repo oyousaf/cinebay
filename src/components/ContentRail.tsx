@@ -58,7 +58,7 @@ export default function ContentRail({
                     ${
                       isActive
                         ? "scale-105 ring-2 ring-[#80ffcc] shadow-pulse"
-                        : "hover:shadow-[0_0_6px_#80ffcc,0_0_12px_#80ffcc]"
+                        : "hover:shadow-[hsl(var(--background))] dark:hover:shadow-[hsl(var(--foreground))]"
                     }`}
                   whileHover={!isActive ? { scale: 1.07 } : {}}
                   animate={isActive ? { scale: 1.05 } : { scale: 1 }}

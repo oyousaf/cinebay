@@ -41,7 +41,7 @@ const SearchBar: React.FC<{
       } finally {
         setLoading(false);
       }
-    }, 400)
+    }, 300)
   ).current;
 
   useEffect(() => {
@@ -72,17 +72,6 @@ const SearchBar: React.FC<{
       document.removeEventListener("keydown", handleEsc);
     };
   }, []);
-
-  // 🔹 Lock body scroll when dropdown is open
-  useEffect(() => {
-    if (dropdownOpen) {
-      const original = document.body.style.overflow;
-      document.body.style.overflow = "hidden";
-      return () => {
-        document.body.style.overflow = original;
-      };
-    }
-  }, [dropdownOpen]);
 
   // 🔹 Handle selection → fetch details → open modal
   const handleSelect = useCallback(
@@ -145,7 +134,8 @@ const SearchBar: React.FC<{
       {dropdownOpen && (
         <div
           ref={resultsRef}
-          className="w-full mt-4 rounded-lg shadow-lg overflow-hidden bg-[hsl(var(--background))] text-[hsl(var(--foreground))] z-50 absolute top-full"
+          className="absolute top-full mt-2 w-full max-h-80 overflow-y-auto rounded-lg shadow-lg bg-[hsl(var(--background))] text-[hsl(var(--foreground))] z-50 divide-y divide-[hsl(var(--foreground))]/10"
+          role="listbox"
         >
           {loading && <div className="p-6 text-sm text-center">Loading...</div>}
           {!loading && results.length === 0 && query.trim() && (
@@ -160,6 +150,8 @@ const SearchBar: React.FC<{
             return (
               <div
                 key={`${item.media_type}-${item.id}`}
+                role="option"
+                tabIndex={0}
                 className="flex items-center gap-3 px-4 py-2 hover:bg-[hsl(var(--foreground))]/10 cursor-pointer"
                 onClick={() => handleSelect(item)}
               >
