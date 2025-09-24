@@ -46,7 +46,7 @@ export default function Banner({
           {item.overview}
         </p>
 
-        <div className="flex gap-4">
+        <div className="flex gap-4 ">
           <button
             onClick={() => embedUrl && onWatch(item)}
             className="bg-[hsl(var(--foreground))] hover:bg-[hsl(var(--foreground))]/90 uppercase text-[hsl(var(--background))] text-xl font-semibold px-6 py-2 rounded-full transition"
@@ -55,7 +55,7 @@ export default function Banner({
           </button>
           <button
             onClick={() => onSelect(item)}
-            className="px-6 py-2 bg-neutral-800 hover:bg-neutral-700 rounded-lg font-semibold text-white"
+            className="bg-[hsl(var(--foreground))] hover:bg-[hsl(var(--foreground))]/90 uppercase text-[hsl(var(--background))] text-xl font-semibold px-6 py-2 rounded-lg transition"
           >
             More Info
           </button>
