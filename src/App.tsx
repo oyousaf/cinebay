@@ -10,7 +10,7 @@ import Watchlist from "@/components/Watchlist";
 import SearchBar from "@/components/SearchBar";
 import type { Movie } from "@/types/movie";
 import { getWatchlist } from "@/lib/watchlist";
-import { useVideoEmbed } from "@/hooks/useVideoEmbed"; // ✅ import hook
+import { useVideoEmbed } from "@/hooks/useVideoEmbed";
 
 const DevsPick = lazy(() => import("@/components/DevsPick"));
 const Modal = lazy(() => import("@/components/Modal"));
