@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { motion, useAnimation } from "framer-motion";
-import { Search } from "lucide-react";
+import { Search, Loader2 } from "lucide-react";
 import debounce from "lodash.debounce";
 
 import { fetchDetails, fetchFromProxy } from "@/lib/tmdb";
@@ -99,7 +99,11 @@ const SearchBar: React.FC<{
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ delay: 0.2, duration: 0.4, ease: "easeOut" }}
-        onSubmit={(e) => e.preventDefault()}
+        onSubmit={(e) => {
+          e.preventDefault();
+          debouncedSearch.cancel();
+          debouncedSearch(query);
+        }}
         className="w-full flex items-center gap-2 rounded-xl shadow-md border px-4 py-2 z-50"
         style={{
           backgroundColor: "hsl(var(--background))",
@@ -121,12 +125,17 @@ const SearchBar: React.FC<{
           type="submit"
           whileTap={{ scale: 0.97 }}
           whileHover={{ scale: 1.12 }}
+          disabled={loading}
           className="h-10 w-10 flex items-center justify-center rounded-full"
           style={{ color: "hsl(var(--foreground))" }}
         >
-          <motion.span animate={iconControls}>
-            <Search className="h-5 w-5" />
-          </motion.span>
+          {loading ? (
+            <Loader2 className="h-5 w-5 animate-spin" />
+          ) : (
+            <motion.span animate={iconControls}>
+              <Search className="h-5 w-5" />
+            </motion.span>
+          )}
         </motion.button>
       </motion.form>
 
