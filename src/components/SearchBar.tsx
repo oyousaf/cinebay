@@ -20,6 +20,23 @@ const SearchBar: React.FC<{
   const iconControls = useAnimation();
   const resultsRef = useRef<HTMLDivElement>(null);
 
+  // 🔹 Animation variants
+  const listVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.08,
+        delayChildren: 0.1,
+      },
+    },
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 6 },
+    show: { opacity: 1, y: 0 },
+  };
+
   // 🔹 Debounced TMDB search
   const debouncedSearch = useRef(
     debounce(async (term: string) => {
@@ -141,10 +158,13 @@ const SearchBar: React.FC<{
 
       {/* Dropdown Results */}
       {dropdownOpen && (
-        <div
+        <motion.div
           ref={resultsRef}
           className="absolute top-full mt-2 w-full max-h-80 overflow-y-auto rounded-lg shadow-lg bg-[hsl(var(--background))] text-[hsl(var(--foreground))] z-50 divide-y divide-[hsl(var(--foreground))]/10"
           role="listbox"
+          initial="hidden"
+          animate="show"
+          variants={listVariants}
         >
           {loading && (
             <div className="p-6 text-center">
@@ -161,12 +181,13 @@ const SearchBar: React.FC<{
                 : item.poster_path;
             const name = item.title || item.name || "Unknown";
             return (
-              <div
+              <motion.div
                 key={`${item.media_type}-${item.id}`}
                 role="option"
                 tabIndex={0}
                 className="flex items-center gap-3 px-4 py-2 hover:bg-[hsl(var(--foreground))]/10 cursor-pointer"
                 onClick={() => handleSelect(item)}
+                variants={itemVariants}
               >
                 <img
                   src={
@@ -186,10 +207,10 @@ const SearchBar: React.FC<{
                     {item.media_type}
                   </span>
                 </div>
-              </div>
+              </motion.div>
             );
           })}
-        </div>
+        </motion.div>
       )}
     </div>
   );
