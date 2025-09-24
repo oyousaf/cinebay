@@ -35,8 +35,12 @@ export default function ContentRail({
             title={title}
           />
         ) : (
-          <div className="w-full h-full bg-black/50 animate-pulse flex items-center justify-center">
-            <span className="text-zinc-400">Loading {title}…</span>
+          <div className="relative w-full h-full flex items-center justify-center overflow-hidden bg-[hsl(var(--background))]">
+            <div className="absolute inset-0 bg-gradient-to-t from-[hsl(var(--background))] via-[hsl(var(--background))]/70 to-transparent" />
+            <div className="w-full h-full bg-gradient-to-r from-zinc-800 via-zinc-700 to-zinc-800 animate-pulse" />
+            <span className="absolute text-zinc-400 text-sm tracking-wide">
+              Loading {title}…
+            </span>
           </div>
         )}
       </div>
@@ -50,10 +54,10 @@ export default function ContentRail({
                 <motion.button
                   key={movie.id}
                   aria-label={movie.title}
-                  className={`relative shrink-0 snap-start rounded-lg overflow-hidden transition-all duration-300
+                  className={`relative shrink-0 snap-start rounded-lg overflow-hidden focus:outline-none transition-all duration-300
                     ${
                       isActive
-                        ? "scale-105 ring-2 ring-[#80ffcc] shadow-[0_0_6px_#80ffcc,0_0_12px_#80ffcc] shadow-pulse"
+                        ? "scale-105 ring-2 ring-[#80ffcc] shadow-pulse"
                         : "hover:shadow-[0_0_6px_#80ffcc,0_0_12px_#80ffcc]"
                     }`}
                   whileHover={!isActive ? { scale: 1.07 } : {}}
