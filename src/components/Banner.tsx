@@ -1,15 +1,19 @@
+import { motion } from "framer-motion";
+import type { Movie } from "@/types/movie";
+import { useVideoEmbed } from "@/hooks/useVideoEmbed";
+
 export default function Banner({
   item,
   onSelect,
+  onWatch,
   title,
 }: {
   item: Movie;
   onSelect: (movie: Movie) => void;
+  onWatch: (movie: Movie) => void;
   title: string;
 }) {
-  const backdrop = item.backdrop_path
-    ? `https://image.tmdb.org/t/p/original${item.backdrop_path}`
-    : "/fallback-bg.png";
+  const embedUrl = useVideoEmbed(item.id, item.media_type);
 
   return (
     <motion.div
@@ -21,15 +25,19 @@ export default function Banner({
       {/* Backdrop */}
       <div className="absolute inset-0">
         <img
-          src={backdrop}
-          alt={item.title}
+          src={
+            item.backdrop_path
+              ? `https://image.tmdb.org/t/p/original${item.backdrop_path}`
+              : "/fallback-bg.png"
+          }
+          alt={item.title || item.name}
           className="w-full h-full object-cover"
           loading="lazy"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent" />
       </div>
 
-      {/* Overlay content */}
+      {/* Overlay */}
       <div className="relative z-20 px-6 md:px-12 py-10 max-w-6xl mx-auto">
         <h2 className="text-3xl md:text-5xl font-bold mb-4 drop-shadow-md text-[#80ffcc]">
           {item.title || item.name}
@@ -38,24 +46,10 @@ export default function Banner({
           {item.overview}
         </p>
 
-        <div className="flex flex-wrap gap-4 text-sm text-gray-300 mb-6 items-center">
-          {item.release_date && (
-            <span>{new Date(item.release_date).getFullYear()}</span>
-          )}
-          {item.vote_average && (
-            <span className="bg-[hsl(var(--foreground))] text-[hsl(var(--background))] text-sm font-semibold px-2 py-0.5 rounded-full shadow-[0_0_6px_hsl(var(--foreground)/0.6),0_0_12px_hsl(var(--foreground)/0.4)]">
-              {item.vote_average.toFixed(1)}
-            </span>
-          )}
-        </div>
-
-        {/* Actions */}
         <div className="flex gap-4">
           <button
-            onClick={() => {
-              console.log("▶ Watch clicked", item.title);
-            }}
-            className="bg-[hsl(var(--foreground))] hover:bg-[hsl(var(--foreground))]/90 text-[hsl(var(--background))] text-xl cursor-pointer uppercase font-semibold px-6 py-2 rounded-full transition shadow-[0_0_6px_hsl(var(--foreground)/0.6),0_0_12px_hsl(var(--foreground)/0.4)]"
+            onClick={() => embedUrl && onWatch(item)}
+            className="bg-[hsl(var(--foreground))] hover:bg-[hsl(var(--foreground))]/90 uppercase text-[hsl(var(--background))] text-xl font-semibold px-6 py-2 rounded-full transition"
           >
             ▶ Watch
           </button>

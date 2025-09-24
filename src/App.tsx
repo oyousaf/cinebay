@@ -1,6 +1,7 @@
 import { useState, useEffect, lazy, Suspense } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Toaster, toast } from "sonner";
+import { Loader2 } from "lucide-react";
 
 import Layout from "@/components/Layout";
 import Movies from "@/components/Movies";
@@ -8,11 +9,12 @@ import Shows from "@/components/Shows";
 import Watchlist from "@/components/Watchlist";
 import SearchBar from "@/components/SearchBar";
 import type { Movie } from "@/types/movie";
-import { Loader2 } from "lucide-react";
 import { getWatchlist } from "@/lib/watchlist";
+import { useVideoEmbed } from "@/hooks/useVideoEmbed"; // ✅ import hook
 
 const DevsPick = lazy(() => import("@/components/DevsPick"));
 const Modal = lazy(() => import("@/components/Modal"));
+const PlayerModal = lazy(() => import("@/components/PlayerModal"));
 
 // Prefetch DevsPick when idle
 if (typeof window !== "undefined") {
@@ -26,6 +28,7 @@ export default function App() {
   const [selectedItem, setSelectedItem] = useState<Movie | null>(null);
   const [modalHistory, setModalHistory] = useState<Movie[]>([]);
   const [watchlist, setWatchlist] = useState<Movie[]>(() => getWatchlist());
+  const [playerItem, setPlayerItem] = useState<Movie | null>(null);
 
   const [activeTab, setActiveTab] = useState<
     "movies" | "tvshows" | "search" | "devspick" | "watchlist"
@@ -43,17 +46,14 @@ export default function App() {
     return "movies";
   });
 
-  // persist activeTab
   useEffect(() => {
     localStorage.setItem("activeTab", activeTab);
   }, [activeTab]);
 
-  // persist watchlist
   useEffect(() => {
     localStorage.setItem("watchlist", JSON.stringify(watchlist));
   }, [watchlist]);
 
-  // handle selection + modal history
   const handleSelect = (() => {
     let lastId: number | null = null;
     return (item: Movie) => {
@@ -73,7 +73,6 @@ export default function App() {
     setSelectedItem(last);
   };
 
-  // handle watchlist add/remove
   const handleWatchlistChange = (movie: Movie, isSaved: boolean) => {
     let updated: Movie[];
     if (isSaved) {
@@ -111,13 +110,18 @@ export default function App() {
     }
   };
 
-  // render based on active tab
+  const handleWatch = (movie: Movie) => {
+    setPlayerItem(movie);
+  };
+
+  const embedUrl = useVideoEmbed(playerItem?.id, playerItem?.media_type);
+
   const renderContent = () => {
     switch (activeTab) {
       case "movies":
-        return <Movies onSelect={handleSelect} />;
+        return <Movies onSelect={handleSelect} onWatch={handleWatch} />;
       case "tvshows":
-        return <Shows onSelect={handleSelect} />;
+        return <Shows onSelect={handleSelect} onWatch={handleWatch} />;
       case "search":
         return (
           <div className="flex items-center justify-center h-full px-4">
@@ -130,15 +134,7 @@ export default function App() {
           </div>
         );
       case "devspick":
-        return (
-          <Suspense
-            fallback={
-              <Loader2 className="h-6 w-6 text-muted-foreground animate-spin" />
-            }
-          >
-            <DevsPick onSelect={handleSelect} />
-          </Suspense>
-        );
+        return <DevsPick onSelect={handleSelect} onWatch={handleWatch} />;
       case "watchlist":
         return (
           <Watchlist
@@ -155,6 +151,7 @@ export default function App() {
   return (
     <Layout activeTab={activeTab} onTabChange={setActiveTab}>
       <Toaster richColors position="bottom-center" theme="dark" />
+
       <AnimatePresence mode="wait">
         <motion.div
           key={activeTab}
@@ -164,7 +161,15 @@ export default function App() {
           transition={{ duration: 0.25, ease: "easeOut" }}
           className="flex-1 overflow-y-auto scrollbar-hide min-h-0"
         >
-          {renderContent()}
+          <Suspense
+            fallback={
+              <div className="flex items-center justify-center h-full min-h-[70vh]">
+                <Loader2 className="h-10 w-10 animate-spin text-[hsl(var(--foreground))] z-50" />
+              </div>
+            }
+          >
+            {renderContent()}
+          </Suspense>
         </motion.div>
       </AnimatePresence>
 
@@ -181,6 +186,12 @@ export default function App() {
             onBack={modalHistory.length > 0 ? handleBackInModal : undefined}
             onWatchlistChange={handleWatchlistChange}
           />
+        </Suspense>
+      )}
+
+      {playerItem && embedUrl && (
+        <Suspense fallback={null}>
+          <PlayerModal url={embedUrl} onClose={() => setPlayerItem(null)} />
         </Suspense>
       )}
     </Layout>

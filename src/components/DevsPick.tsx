@@ -3,15 +3,28 @@ import ContentRail from "@/components/ContentRail";
 import { fetchDevsPick } from "@/lib/tmdb";
 import type { Movie } from "@/types/movie";
 
-export default function DevsPick({
-  onSelect,
-}: {
+interface DevsPickProps {
   onSelect: (movie: Movie) => void;
-}) {
+  onWatch: (movie: Movie) => void;
+}
+
+export default function DevsPick({ onSelect, onWatch }: DevsPickProps) {
   const [movies, setMovies] = useState<Movie[]>([]);
 
   useEffect(() => {
-    fetchDevsPick().then(setMovies);
+    let mounted = true;
+
+    fetchDevsPick()
+      .then((data) => {
+        if (mounted) setMovies(data);
+      })
+      .catch((err) => {
+        console.error("Failed to fetch dev’s picks:", err);
+      });
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   return (
@@ -19,6 +32,7 @@ export default function DevsPick({
       title="Dev’s Pick"
       items={movies}
       onSelect={onSelect}
+      onWatch={onWatch}
       infoPosition="prime"
     />
   );

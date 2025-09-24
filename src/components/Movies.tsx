@@ -3,15 +3,28 @@ import ContentRail from "@/components/ContentRail";
 import { fetchMovies } from "@/lib/tmdb";
 import type { Movie } from "@/types/movie";
 
-export default function Movies({
-  onSelect,
-}: {
+interface MoviesProps {
   onSelect: (movie: Movie) => void;
-}) {
+  onWatch: (movie: Movie) => void;
+}
+
+export default function Movies({ onSelect, onWatch }: MoviesProps) {
   const [movies, setMovies] = useState<Movie[]>([]);
 
   useEffect(() => {
-    fetchMovies().then(setMovies);
+    let mounted = true;
+
+    fetchMovies()
+      .then((data) => {
+        if (mounted) setMovies(data);
+      })
+      .catch((err) => {
+        console.error("Failed to fetch movies:", err);
+      });
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   return (
@@ -19,6 +32,7 @@ export default function Movies({
       title="Movies"
       items={movies}
       onSelect={onSelect}
+      onWatch={onWatch}
       infoPosition="prime"
     />
   );
