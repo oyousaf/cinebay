@@ -58,8 +58,6 @@ export const DEVS_PICK_LIST = [
   84383, // I Am Bruce Lee
   218, // The Terminator
   280, // Terminator 2: Judgment Day
-  106, // Predator
-  861, // Total Recall
   1368, // First Blood
   11690, // Bloodsport
   10222, // Kickboxer
