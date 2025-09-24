@@ -30,13 +30,16 @@ const SearchBar: React.FC<{
         delayChildren: 0.1,
       },
     },
-    exit: { opacity: 0, transition: { duration: 0.2 } },
+    exit: {
+      opacity: 0,
+      transition: { duration: 0.25, staggerDirection: -1 },
+    },
   };
 
   const itemVariants = {
     hidden: { opacity: 0, y: 6 },
     show: { opacity: 1, y: 0 },
-    exit: { opacity: 0, y: 6 },
+    exit: { opacity: 0, y: -6 },
   };
 
   // 🔹 Debounced TMDB search
