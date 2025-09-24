@@ -43,7 +43,7 @@ export default function ContentRail({
         <Banner item={activeItem} onSelect={onSelect} title={title} />
       )}
 
-      {/* Tiles (sit fully below banner, constrained + unclipped) */}
+      {/* Tiles */}
       <div className="relative z-30 mt-6 px-4 md:px-8 max-w-6xl mx-auto">
         <div className="flex overflow-x-auto gap-4 scrollbar-hide pb-6">
           {items.map((movie) => {

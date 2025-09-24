@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { motion, useAnimation } from "framer-motion";
 import { Search } from "lucide-react";
 import debounce from "lodash.debounce";
@@ -18,24 +18,15 @@ const SearchBar: React.FC<{
   const [loading, setLoading] = useState(false);
 
   const iconControls = useAnimation();
-  const barControls = useAnimation();
-  const lastScroll = useRef(0);
   const resultsRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
+  // 🔹 Autofocus when mounted
   useEffect(() => {
-    const handleScroll = () => {
-      const current = window.scrollY;
-      barControls.start({
-        y: current > lastScroll.current && current > 80 ? -80 : 0,
-        opacity: current > lastScroll.current && current > 80 ? 0 : 1,
-      });
-      lastScroll.current = current;
-    };
+    inputRef.current?.focus();
+  }, []);
 
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [barControls]);
-
+  // 🔹 Debounced TMDB search
   const debouncedSearch = useRef(
     debounce(async (term: string) => {
       if (!term.trim()) {
@@ -63,6 +54,7 @@ const SearchBar: React.FC<{
     debouncedSearch(query);
   }, [query]);
 
+  // 🔹 Close on outside click or ESC
   useEffect(() => {
     const clickOutside = (e: MouseEvent) => {
       if (
@@ -87,39 +79,40 @@ const SearchBar: React.FC<{
     };
   }, []);
 
-  const handleSelect = useCallback(async (item: TMDBResult) => {
-    const full = await fetchDetails(item.id, item.media_type);
-    if (!full) return;
+  const handleSelect = useCallback(
+    async (item: TMDBResult) => {
+      const full = await fetchDetails(item.id, item.media_type);
+      if (!full) return;
 
-    if (item.media_type === "person" && onSelectPerson) {
-      onSelectPerson(full);
-    } else {
-      onSelectMovie(full);
-    }
+      if (item.media_type === "person" && onSelectPerson) {
+        onSelectPerson(full);
+      } else {
+        onSelectMovie(full);
+      }
 
-    setQuery("");
-    setResults([]);
-    setDropdownOpen(false);
-  }, [onSelectMovie, onSelectPerson]);
+      setQuery("");
+      setResults([]);
+      setDropdownOpen(false);
+    },
+    [onSelectMovie, onSelectPerson]
+  );
 
   return (
-    <motion.div
-      animate={barControls}
-      initial={{ y: 0, opacity: 1 }}
-      className="fixed top-[88px] left-0 w-full z-40 flex flex-col items-center px-4 sm:px-6 py-8"
-    >
+    <div className="w-full flex flex-col items-center">
+      {/* Search Input */}
       <motion.form
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        transition={{ delay: 0.3, duration: 0.5, ease: "easeOut" }}
+        transition={{ delay: 0.2, duration: 0.4, ease: "easeOut" }}
         onSubmit={(e) => e.preventDefault()}
-        className="w-full max-w-md flex items-center gap-2 rounded-xl shadow-md border px-4 py-2"
+        className="w-full flex items-center gap-2 rounded-xl shadow-md border px-4 py-2"
         style={{
           backgroundColor: "hsl(var(--background))",
           borderColor: "hsl(var(--foreground))",
         }}
       >
         <motion.input
+          ref={inputRef}
           type="text"
           name="search"
           placeholder="Search movies, shows, people..."
@@ -142,12 +135,13 @@ const SearchBar: React.FC<{
         </motion.button>
       </motion.form>
 
+      {/* Dropdown Results */}
       {dropdownOpen && (
         <div
           ref={resultsRef}
-          className="w-full max-w-md mt-2 rounded-lg shadow-lg overflow-hidden bg-[hsl(var(--background))] text-[hsl(var(--foreground))]"
+          className="w-full mt-4 rounded-lg shadow-lg overflow-hidden bg-[hsl(var(--background))] text-[hsl(var(--foreground))]"
         >
-          {loading && <div className="p-3 text-sm text-center">Loading...</div>}
+          {loading && <div className="p-6 text-sm text-center">Loading...</div>}
           {!loading && results.length === 0 && query.trim() && (
             <div className="p-3 text-sm text-center">No results found.</div>
           )}
@@ -186,13 +180,13 @@ const SearchBar: React.FC<{
           })}
         </div>
       )}
-    </motion.div>
+    </div>
   );
 });
 
 export default SearchBar;
 
-// Type below to avoid hoisting errors
+// TMDB result type
 type TMDBResult = {
   id: number;
   title?: string;

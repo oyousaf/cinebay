@@ -56,8 +56,8 @@ const HybridNav: React.FC<HybridNavProps> = ({
                 transition={{ type: "spring", stiffness: 300, damping: 25 }}
               />
             )}
-            {/* Tooltip (purple/mint theme) */}
-            <span className="absolute left-14 px-2 py-1 text-xs bg-[hsl(var(--foreground))] text-[hsl(var(--background))] rounded opacity-0 group-hover:opacity-100 whitespace-nowrap pointer-events-none">
+            {/* Tooltip */}
+            <span className="absolute left-10 px-2 py-1 text-xs bg-[hsl(var(--foreground))] text-[hsl(var(--background))] rounded opacity-0 group-hover:opacity-100 whitespace-nowrap pointer-events-none">
               {item.label}
             </span>
           </button>
