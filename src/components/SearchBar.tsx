@@ -73,6 +73,18 @@ const SearchBar: React.FC<{
     };
   }, []);
 
+  // 🔹 Lock body scroll when dropdown is open
+  useEffect(() => {
+    if (dropdownOpen) {
+      const original = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = original;
+      };
+    }
+  }, [dropdownOpen]);
+
+  // 🔹 Handle selection → fetch details → open modal
   const handleSelect = useCallback(
     async (item: TMDBResult) => {
       const full = await fetchDetails(item.id, item.media_type);
@@ -92,14 +104,14 @@ const SearchBar: React.FC<{
   );
 
   return (
-    <div className="w-full flex flex-col items-center">
+    <div className="w-full flex flex-col items-center relative">
       {/* Search Input */}
       <motion.form
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ delay: 0.2, duration: 0.4, ease: "easeOut" }}
         onSubmit={(e) => e.preventDefault()}
-        className="w-full flex items-center gap-2 rounded-xl shadow-md border px-4 py-2"
+        className="w-full flex items-center gap-2 rounded-xl shadow-md border px-4 py-2 z-50"
         style={{
           backgroundColor: "hsl(var(--background))",
           borderColor: "hsl(var(--foreground))",
@@ -111,6 +123,7 @@ const SearchBar: React.FC<{
           placeholder="Search movies, shows, people..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          autoFocus
           whileFocus={{ scale: 1.02 }}
           className="flex-1 bg-transparent outline-none text-base md:text-lg placeholder:text-gray-500"
           style={{ color: "hsl(var(--foreground))" }}
@@ -132,7 +145,7 @@ const SearchBar: React.FC<{
       {dropdownOpen && (
         <div
           ref={resultsRef}
-          className="w-full mt-4 rounded-lg shadow-lg overflow-hidden bg-[hsl(var(--background))] text-[hsl(var(--foreground))]"
+          className="w-full mt-4 rounded-lg shadow-lg overflow-hidden bg-[hsl(var(--background))] text-[hsl(var(--foreground))] z-50 absolute top-full"
         >
           {loading && <div className="p-6 text-sm text-center">Loading...</div>}
           {!loading && results.length === 0 && query.trim() && (
