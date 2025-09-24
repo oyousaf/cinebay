@@ -48,7 +48,7 @@ export default function ContentRail({
                 key={movie.id}
                 className={`relative cursor-pointer shrink-0 snap-start rounded-lg overflow-hidden transition-all duration-300 ${
                   isActive
-                    ? "scale-105 ring-2 ring-[#80ffcc] shadow-lg shadow-[#80ffcc]/40"
+                    ? "scale-105 ring-2 dark:ring-[hsl(var(--foreground))] ring-[hsl(var(--background))] shadow-2xl shadow-pulse"
                     : ""
                 }`}
                 whileHover={!isActive ? { scale: 1.07 } : {}}
