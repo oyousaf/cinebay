@@ -53,17 +53,14 @@ export default function Banner({
           {/* Backdrop with responsive sources */}
           {item.backdrop_path ? (
             <picture>
-              {/* Mobile */}
               <source
                 media="(max-width: 640px)"
                 srcSet={`https://image.tmdb.org/t/p/w780${item.backdrop_path}`}
               />
-              {/* Tablet */}
               <source
                 media="(max-width: 1280px)"
                 srcSet={`https://image.tmdb.org/t/p/w1280${item.backdrop_path}`}
               />
-              {/* Desktop/4K */}
               <img
                 src={`https://image.tmdb.org/t/p/original${item.backdrop_path}`}
                 alt={item.title || item.name}
@@ -84,24 +81,6 @@ export default function Banner({
           <div className="absolute inset-0 bg-gradient-to-t from-black via-black/70 to-transparent" />
         </motion.div>
       </AnimatePresence>
-
-      {/* Bookmark Button */}
-      <motion.button
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        onClick={() => toggleWatchlist(item)}
-        aria-label={isSaved ? "Remove from Watchlist" : "Add to Watchlist"}
-        aria-pressed={isSaved}
-        className="absolute top-6 right-6 z-30 p-2 rounded-full backdrop-blur-md shadow-md 
-                   bg-[hsl(var(--background))] text-[hsl(var(--foreground))] 
-                   hover:shadow-[0_0_8px_hsl(var(--foreground)/0.4)] transition"
-      >
-        <Bookmark
-          size={22}
-          strokeWidth={isSaved ? 3 : 2}
-          className={isSaved ? "fill-[hsl(var(--foreground))]" : "fill-none"}
-        />
-      </motion.button>
 
       {/* Overlay content */}
       <motion.div
@@ -147,20 +126,46 @@ export default function Banner({
           )}
         </motion.div>
 
-        {/* Actions */}
-        <motion.div className="flex gap-4" variants={childVariants}>
+        {/* Actions row */}
+        <motion.div
+          className="flex gap-4 items-center"
+          variants={childVariants}
+        >
           <button
             onClick={() => embedUrl && onWatch(item)}
-            className="bg-[hsl(var(--foreground))] hover:bg-[hsl(var(--foreground))]/90 text-[hsl(var(--background))] uppercase text-lg sm:text-xl font-semibold px-6 py-2 rounded-full transition shadow-[0_0_6px_hsl(var(--foreground)/0.6),0_0_12px_hsl(var(--foreground)/0.4)]"
+            className="bg-[hsl(var(--foreground))] hover:bg-[hsl(var(--foreground))]/90 
+                       text-[hsl(var(--background))] uppercase text-lg sm:text-xl 
+                       font-semibold px-6 py-2 rounded-full transition 
+                       shadow-[0_0_6px_hsl(var(--foreground)/0.6),0_0_12px_hsl(var(--foreground)/0.4)]"
           >
             <FaPlay />
           </button>
           <button
             onClick={() => onSelect(item)}
-            className="bg-[hsl(var(--foreground))] hover:bg-[hsl(var(--foreground))]/90 text-[hsl(var(--background))] uppercase text-lg sm:text-xl font-semibold px-6 py-2 rounded-lg transition shadow-md"
+            className="bg-[hsl(var(--foreground))] hover:bg-[hsl(var(--foreground))]/90 
+                       text-[hsl(var(--background))] uppercase text-lg sm:text-xl 
+                       font-semibold px-6 py-2 rounded-lg transition shadow-md"
           >
             <FaInfoCircle />
           </button>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => toggleWatchlist(item)}
+            aria-label={isSaved ? "Remove from Watchlist" : "Add to Watchlist"}
+            aria-pressed={isSaved}
+            className="bg-[hsl(var(--foreground))] hover:bg-[hsl(var(--foreground))]/90 
+                       text-[hsl(var(--background))] uppercase text-lg sm:text-xl 
+                       font-semibold p-2 rounded-full transition shadow-md"
+          >
+            <Bookmark
+              size={22}
+              strokeWidth={isSaved ? 3 : 2}
+              className={
+                isSaved ? "fill-[hsl(var(--background))]" : "fill-none"
+              }
+            />
+          </motion.button>
         </motion.div>
       </motion.div>
 
