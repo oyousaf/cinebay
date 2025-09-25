@@ -56,7 +56,6 @@ export default function Modal({
     !isPerson ? movie.media_type : undefined
   );
 
-  // 🔑 use context for watchlist state
   const { toggleWatchlist, isInWatchlist } = useWatchlist();
   const isSaved = isInWatchlist(movie.id);
 
@@ -93,7 +92,6 @@ export default function Modal({
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if ((e.target as HTMLElement).closest(".carousel")) return;
-
       if (e.key === "Escape") onClose();
       if (e.key === "ArrowLeft" && onBack) onBack();
       if (e.key === "ArrowRight" && movie.recommendations?.[0]) {
@@ -120,6 +118,7 @@ export default function Modal({
         key={movie.id}
         role="dialog"
         aria-modal="true"
+        aria-label={title}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -264,7 +263,7 @@ export default function Modal({
               </div>
             </div>
 
-            {/* Related content */}
+            {/* Related */}
             {isPerson ? (
               knownFor.length > 0 && (
                 <KnownForSlider

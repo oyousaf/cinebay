@@ -23,7 +23,7 @@ export default function Watchlist({
 }: {
   onSelect: (movie: Movie) => void;
 }) {
-  const { watchlist, removeFromWatchlist } = useWatchlist();
+  const { watchlist, toggleWatchlist } = useWatchlist();
 
   const [filters, setFilters] = useState<FilterState>(() => {
     try {
@@ -164,7 +164,7 @@ export default function Watchlist({
                           if ((e.target as HTMLElement).closest(".remove-btn"))
                             return;
                           pressTimer = setTimeout(() => {
-                            removeFromWatchlist(movie.id);
+                            toggleWatchlist(movie);
                           }, LONG_PRESS_DELAY);
                         }}
                         onPointerUp={() => clearTimeout(pressTimer)}
@@ -175,8 +175,7 @@ export default function Watchlist({
                         dragElastic={0.2}
                         whileDrag={{ scale: 0.97, backgroundColor: "#7f1d1d" }}
                         onDragEnd={(e, info) => {
-                          if (info.offset.x < -100)
-                            removeFromWatchlist(movie.id);
+                          if (info.offset.x < -100) toggleWatchlist(movie);
                         }}
                         whileHover={{
                           scale: 1.03,
@@ -209,7 +208,7 @@ export default function Watchlist({
                         <motion.button
                           onClick={(e) => {
                             e.stopPropagation();
-                            removeFromWatchlist(movie.id);
+                            toggleWatchlist(movie);
                           }}
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.92 }}
