@@ -2,6 +2,8 @@ import { motion, AnimatePresence, Variants } from "framer-motion";
 import type { Movie } from "@/types/movie";
 import { useVideoEmbed } from "@/hooks/useVideoEmbed";
 import { FaInfoCircle, FaPlay } from "react-icons/fa";
+import { Bookmark } from "lucide-react";
+import { useWatchlist } from "@/context/WatchlistContext";
 
 export default function Banner({
   item,
@@ -15,6 +17,8 @@ export default function Banner({
   title: string;
 }) {
   const embedUrl = useVideoEmbed(item.id, item.media_type);
+  const { toggleWatchlist, isInWatchlist } = useWatchlist();
+  const isSaved = isInWatchlist(item.id);
 
   // Variants for staggered fade-in
   const containerVariants: Variants = {
@@ -64,6 +68,24 @@ export default function Banner({
           <div className="absolute inset-0 bg-gradient-to-t from-black via-black/70 to-transparent" />
         </motion.div>
       </AnimatePresence>
+
+      {/* Bookmark Button */}
+      <motion.button
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        onClick={() => toggleWatchlist(item)}
+        aria-label={isSaved ? "Remove from Watchlist" : "Add to Watchlist"}
+        aria-pressed={isSaved}
+        className="absolute top-6 right-6 z-30 p-2 rounded-full backdrop-blur-md shadow-md 
+                   bg-[hsl(var(--background))] text-[hsl(var(--foreground))] 
+                   hover:shadow-[0_0_8px_hsl(var(--foreground)/0.4)] transition"
+      >
+        <Bookmark
+          size={22}
+          strokeWidth={isSaved ? 3 : 2}
+          className={isSaved ? "fill-[hsl(var(--foreground))]" : "fill-none"}
+        />
+      </motion.button>
 
       {/* Overlay */}
       <motion.div

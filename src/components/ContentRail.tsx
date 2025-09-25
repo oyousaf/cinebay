@@ -55,8 +55,7 @@ export default function ContentRail({
                   key={movie.id}
                   aria-label={movie.title}
                   className={`relative shrink-0 snap-start rounded-lg overflow-hidden focus:outline-none transition-all duration-300
-    ${isActive ? "scale-105 shadow-pulse" : ""}
-  `}
+                    ${isActive ? "scale-105 shadow-pulse" : ""}`}
                   whileHover={
                     !isActive
                       ? {

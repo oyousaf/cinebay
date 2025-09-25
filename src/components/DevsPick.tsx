@@ -12,18 +12,19 @@ export default function DevsPick({ onSelect, onWatch }: DevsPickProps) {
   const [movies, setMovies] = useState<Movie[]>([]);
 
   useEffect(() => {
-    let mounted = true;
+    let active = true;
 
-    fetchDevsPick()
-      .then((data) => {
-        if (mounted) setMovies(data);
-      })
-      .catch((err) => {
-        console.error("Failed to fetch dev’s picks:", err);
-      });
+    (async () => {
+      try {
+        const data = await fetchDevsPick();
+        if (active) setMovies(data);
+      } catch (err) {
+        console.error("Failed to fetch Dev’s Pick:", err);
+      }
+    })();
 
     return () => {
-      mounted = false;
+      active = false;
     };
   }, []);
 

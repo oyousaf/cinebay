@@ -1,6 +1,6 @@
-import { useState, useEffect, lazy, Suspense } from "react";
+import { useState, lazy, Suspense } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Toaster, toast } from "sonner";
+import { Toaster } from "sonner";
 import { Loader2 } from "lucide-react";
 
 import Layout from "@/components/Layout";
@@ -9,7 +9,6 @@ import Shows from "@/components/Shows";
 import Watchlist from "@/components/Watchlist";
 import SearchBar from "@/components/SearchBar";
 import type { Movie } from "@/types/movie";
-import { getWatchlist } from "@/lib/watchlist";
 import { useVideoEmbed } from "@/hooks/useVideoEmbed";
 
 const DevsPick = lazy(() => import("@/components/DevsPick"));
@@ -27,7 +26,6 @@ if (typeof window !== "undefined") {
 export default function App() {
   const [selectedItem, setSelectedItem] = useState<Movie | null>(null);
   const [modalHistory, setModalHistory] = useState<Movie[]>([]);
-  const [watchlist, setWatchlist] = useState<Movie[]>(() => getWatchlist());
   const [playerItem, setPlayerItem] = useState<Movie | null>(null);
 
   const [activeTab, setActiveTab] = useState<
@@ -46,13 +44,13 @@ export default function App() {
     return "movies";
   });
 
-  useEffect(() => {
-    localStorage.setItem("activeTab", activeTab);
-  }, [activeTab]);
-
-  useEffect(() => {
-    localStorage.setItem("watchlist", JSON.stringify(watchlist));
-  }, [watchlist]);
+  // persist active tab
+  const persistTab = (tab: typeof activeTab) => {
+    setActiveTab(tab);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("activeTab", tab);
+    }
+  };
 
   const handleSelect = (() => {
     let lastId: number | null = null;
@@ -71,43 +69,6 @@ export default function App() {
     if (!last) return;
     setModalHistory((prev) => prev.slice(0, -1));
     setSelectedItem(last);
-  };
-
-  const handleWatchlistChange = (movie: Movie, isSaved: boolean) => {
-    let updated: Movie[];
-    if (isSaved) {
-      updated = [movie, ...watchlist.filter((m) => m.id !== movie.id)];
-      setWatchlist(updated);
-      toast.success(
-        <span>
-          Added <strong>{movie.title || movie.name}</strong> to the Watchlist
-        </span>
-      );
-    } else {
-      updated = watchlist.filter((m) => m.id !== movie.id);
-      setWatchlist(updated);
-      toast.error(
-        <div className="flex items-center justify-between gap-4 w-full">
-          <span>
-            Removed{" "}
-            <strong>{movie.title || movie.name} from the Watchlist</strong>
-          </span>
-          <button
-            onClick={() => {
-              setWatchlist([movie, ...updated]);
-              toast.success(
-                <span>
-                  Restored <strong>{movie.title || movie.name}</strong>
-                </span>
-              );
-            }}
-            className="text-yellow-400 hover:underline whitespace-nowrap"
-          >
-            Undo
-          </button>
-        </div>
-      );
-    }
   };
 
   const handleWatch = (movie: Movie) => {
@@ -136,20 +97,14 @@ export default function App() {
       case "devspick":
         return <DevsPick onSelect={handleSelect} onWatch={handleWatch} />;
       case "watchlist":
-        return (
-          <Watchlist
-            items={watchlist}
-            onSelect={handleSelect}
-            onUpdate={setWatchlist}
-          />
-        );
+        return <Watchlist onSelect={handleSelect} />;
       default:
         return null;
     }
   };
 
   return (
-    <Layout activeTab={activeTab} onTabChange={setActiveTab}>
+    <Layout activeTab={activeTab} onTabChange={persistTab}>
       <Toaster richColors position="bottom-center" theme="dark" />
 
       <AnimatePresence mode="wait">
@@ -177,14 +132,12 @@ export default function App() {
         <Suspense fallback={null}>
           <Modal
             movie={selectedItem}
-            watchlist={watchlist}
             onClose={() => {
               setSelectedItem(null);
               setModalHistory([]);
             }}
             onSelect={handleSelect}
             onBack={modalHistory.length > 0 ? handleBackInModal : undefined}
-            onWatchlistChange={handleWatchlistChange}
           />
         </Suspense>
       )}

@@ -5,6 +5,7 @@ import { X, RefreshCw } from "lucide-react";
 
 import type { Movie } from "@/types/movie";
 import { TMDB_IMAGE } from "@/lib/tmdb";
+import { useWatchlist } from "@/context/WatchlistContext";
 
 const LONG_PRESS_DELAY = 600;
 
@@ -19,14 +20,12 @@ const defaultFilters: FilterState = {
 };
 
 export default function Watchlist({
-  items,
   onSelect,
-  onUpdate,
 }: {
-  items: Movie[];
   onSelect: (movie: Movie) => void;
-  onUpdate: (updated: Movie[]) => void;
 }) {
+  const { watchlist, removeFromWatchlist, addToWatchlist } = useWatchlist();
+
   const [filters, setFilters] = useState<FilterState>(() => {
     try {
       const stored = localStorage.getItem("watchlistFilters");
@@ -41,20 +40,19 @@ export default function Watchlist({
   }, [filters]);
 
   const handleRemove = (movie: Movie) => {
-    const updated = items.filter((m) => m.id !== movie.id);
-    onUpdate(updated);
+    removeFromWatchlist(movie.id);
 
     toast.error(
       <div className="flex items-center justify-between gap-4 w-full">
         <span>
-          Removed <strong>{movie.title} from Watchlist</strong>
+          Removed <strong>{movie.title || movie.name}</strong> from Watchlist
         </span>
         <button
           onClick={() => {
-            onUpdate([movie, ...updated]);
+            addToWatchlist(movie);
             toast.success(
               <span>
-                Restored <strong>{movie.title}</strong>
+                Restored <strong>{movie.title || movie.name}</strong>
               </span>
             );
           }}
@@ -67,7 +65,7 @@ export default function Watchlist({
     );
   };
 
-  const filteredList = items
+  const filteredList = watchlist
     .filter((m) => filters.type === "all" || m.media_type === filters.type)
     .sort((a, b) => {
       const titleA = a.title || a.name || "";
@@ -104,7 +102,7 @@ export default function Watchlist({
             Watchlist
           </h1>
 
-          {items.length === 0 ? (
+          {watchlist.length === 0 ? (
             <motion.p
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -115,6 +113,7 @@ export default function Watchlist({
             </motion.p>
           ) : (
             <>
+              {/* Filter controls */}
               <motion.div
                 layout
                 initial={{ opacity: 0, y: 10 }}
@@ -164,6 +163,7 @@ export default function Watchlist({
                 </button>
               </motion.div>
 
+              {/* Grid of watchlist items */}
               <motion.div
                 layout
                 className="grid grid-cols-3 md:grid-cols-5 gap-4"
@@ -211,7 +211,7 @@ export default function Watchlist({
                               ? `${TMDB_IMAGE}${movie.poster_path}`
                               : "/fallback.jpg"
                           }
-                          alt={movie.title}
+                          alt={movie.title || movie.name}
                           className="w-full object-cover"
                           onError={(e) =>
                             ((e.target as HTMLImageElement).src =

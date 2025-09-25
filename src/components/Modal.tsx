@@ -18,6 +18,7 @@ import KnownForSlider from "./modal/KnownForSlider";
 import { Recommendations, Similar } from "./modal/Recommendations";
 import { useVideoEmbed } from "@/hooks/useVideoEmbed";
 import { FaPlay } from "react-icons/fa";
+import { useWatchlist } from "@/context/WatchlistContext";
 
 const PlayerModal = lazy(() => import("@/components/PlayerModal"));
 
@@ -33,44 +34,31 @@ const formatDate = (dateStr?: string) =>
 const shortBio = (bio: string) =>
   bio.length > 600 ? bio.slice(0, 600) + "..." : bio;
 
-const getAge = (birth: Date, death?: Date) => {
-  const end = death ?? new Date();
-  let age = end.getFullYear() - birth.getFullYear();
-  if (end < new Date(end.getFullYear(), birth.getMonth(), birth.getDate())) {
-    age--;
-  }
-  return age;
-};
-
 export default function Modal({
   movie,
-  watchlist,
   onClose,
   onSelect,
   onBack,
-  onWatchlistChange,
 }: {
   movie: Movie;
-  watchlist: Movie[];
   onClose: () => void;
   onSelect?: (item: Movie) => void;
   onBack?: () => void;
-  onWatchlistChange: (movie: Movie, isSaved: boolean) => void;
 }) {
   const isPerson = movie.media_type === "person";
   const [showPlayer, setShowPlayer] = useState(false);
   const [mounting, setMounting] = useState(true);
   const modalRef = useRef<HTMLDivElement>(null);
   const historyStack = useRef<Movie[]>([]);
-  const touchStartX = useRef<number | null>(null);
-  const touchEndX = useRef<number | null>(null);
 
   const embedUrl = useVideoEmbed(
     !isPerson ? movie.id : undefined,
     !isPerson ? movie.media_type : undefined
   );
 
-  const isSaved = watchlist.some((m) => m.id === movie.id);
+  // 🔑 use context instead of props
+  const { toggleWatchlist, isInWatchlist } = useWatchlist();
+  const isSaved = isInWatchlist(movie.id);
 
   const title = movie.title || movie.name || "Untitled";
   const poster = movie.profile_path || movie.poster_path || "";
@@ -112,47 +100,19 @@ export default function Modal({
         handleSelectWithDetails(movie.recommendations[0]);
       }
     },
-    [movie, onBack, handleSelectWithDetails]
+    [movie, onBack, handleSelectWithDetails, onClose]
   );
-
-  const handleTouchStart = (e: TouchEvent) => {
-    touchStartX.current = e.changedTouches[0].clientX;
-  };
-
-  const handleTouchEnd = (e: TouchEvent) => {
-    if ((e.target as HTMLElement).closest(".carousel")) return;
-    touchEndX.current = e.changedTouches[0].clientX;
-    if (touchStartX.current !== null && touchEndX.current !== null) {
-      const deltaX = touchEndX.current - touchStartX.current;
-      if (Math.abs(deltaX) > 50) {
-        if (deltaX > 0 && onBack) onBack();
-        else if (deltaX < 0 && movie.recommendations?.[0]) {
-          handleSelectWithDetails(movie.recommendations[0]);
-        }
-      }
-    }
-    touchStartX.current = null;
-    touchEndX.current = null;
-  };
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
     window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("touchstart", handleTouchStart);
-    window.addEventListener("touchend", handleTouchEnd);
     const id = requestAnimationFrame(() => setMounting(false));
     return () => {
       document.body.style.overflow = "";
       window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("touchstart", handleTouchStart);
-      window.removeEventListener("touchend", handleTouchEnd);
       cancelAnimationFrame(id);
     };
   }, [handleKeyDown]);
-
-  const toggleWatchlist = () => {
-    onWatchlistChange(movie, !isSaved);
-  };
 
   return (
     <AnimatePresence>
@@ -196,7 +156,7 @@ export default function Modal({
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  onClick={toggleWatchlist}
+                  onClick={() => toggleWatchlist(movie)}
                   aria-pressed={isSaved}
                   aria-label={
                     isSaved ? "Remove from Watchlist" : "Add to Watchlist"
@@ -226,6 +186,7 @@ export default function Modal({
 
           {/* Content */}
           <div className="relative z-10 px-4 py-8 sm:p-8 bg-gradient-to-b from-black/80 via-black/60 to-black/90 text-[#80ffcc] max-h-[90vh] overflow-y-auto space-y-6">
+            {/* Poster + Info */}
             <div className="flex flex-col sm:flex-row gap-6 sm:items-start pt-6 sm:pt-0">
               <div className="flex justify-center sm:block">
                 <img
@@ -238,13 +199,11 @@ export default function Modal({
               <div className="flex-1 space-y-4 mt-4 sm:mt-0 text-center sm:text-left">
                 <h2 className="text-3xl sm:text-4xl font-bold">{title}</h2>
                 {isPerson ? (
-                  <>
-                    {movie.biography && (
-                      <p className="text-md text-zinc-200 leading-relaxed whitespace-pre-line">
-                        {shortBio(movie.biography)}
-                      </p>
-                    )}
-                  </>
+                  movie.biography && (
+                    <p className="text-md text-zinc-200 leading-relaxed whitespace-pre-line">
+                      {shortBio(movie.biography)}
+                    </p>
+                  )
                 ) : (
                   <>
                     {movie.overview && (
@@ -252,7 +211,8 @@ export default function Modal({
                         {movie.overview}
                       </p>
                     )}
-                    <div className="flex flex-wrap gap-2 sm:gap-3 text-sm sm:text-base text-zinc-300 pt-2 justify-center sm:justify-start text-center sm:text-left items-center">
+                    {/* Meta row */}
+                    <div className="flex flex-wrap gap-2 sm:gap-3 text-sm sm:text-base text-zinc-300 pt-2 justify-center sm:justify-start items-center">
                       {movie.isNew && (
                         <span className="bg-[hsl(var(--foreground))] text-[hsl(var(--background))] text-sm font-bold px-2 py-0.5 rounded-full uppercase shadow-pulse">
                           NEW
@@ -289,6 +249,7 @@ export default function Modal({
                     {cast.length > 0 && (
                       <StarringList cast={cast} onSelect={onSelect} />
                     )}
+
                     <div className="pt-4">
                       <button
                         type="button"
@@ -303,6 +264,7 @@ export default function Modal({
               </div>
             </div>
 
+            {/* Related content */}
             {isPerson ? (
               knownFor.length > 0 && (
                 <KnownForSlider
@@ -324,6 +286,7 @@ export default function Modal({
             ) : null}
           </div>
 
+          {/* Trailer Player */}
           {!isPerson && showPlayer && embedUrl && (
             <Suspense
               fallback={<div className="text-white p-4">Loading Player...</div>}
