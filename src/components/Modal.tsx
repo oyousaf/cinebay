@@ -17,6 +17,7 @@ import StarringList from "./modal/StarringList";
 import KnownForSlider from "./modal/KnownForSlider";
 import { Recommendations, Similar } from "./modal/Recommendations";
 import { useVideoEmbed } from "@/hooks/useVideoEmbed";
+import { FaPlay } from "react-icons/fa";
 
 const PlayerModal = lazy(() => import("@/components/PlayerModal"));
 
@@ -294,7 +295,7 @@ export default function Modal({
                         onClick={() => setShowPlayer(true)}
                         className="bg-[hsl(var(--foreground))] hover:bg-[hsl(var(--foreground))]/90 text-[hsl(var(--background))] text-xl cursor-pointer uppercase font-semibold px-6 py-2 rounded-full transition shadow-[0_0_6px_hsl(var(--foreground)/0.6),0_0_12px_hsl(var(--foreground)/0.4)]"
                       >
-                        ▶ Watch
+                        <FaPlay />
                       </button>
                     </div>
                   </>
