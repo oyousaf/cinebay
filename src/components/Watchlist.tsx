@@ -86,7 +86,7 @@ export default function Watchlist({
             </motion.p>
           ) : (
             <>
-              {/* Filter controls */}
+              {/* Filters */}
               <motion.div
                 layout
                 initial={{ opacity: 0, y: 10 }}
@@ -136,7 +136,7 @@ export default function Watchlist({
                 </button>
               </motion.div>
 
-              {/* Grid of watchlist items */}
+              {/* Grid */}
               <motion.div
                 layout
                 className="grid grid-cols-3 md:grid-cols-5 gap-4"
