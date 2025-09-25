@@ -1,6 +1,7 @@
 import { motion, AnimatePresence, Variants } from "framer-motion";
 import type { Movie } from "@/types/movie";
 import { useVideoEmbed } from "@/hooks/useVideoEmbed";
+import { FaInfoCircle, FaPlay } from "react-icons/fa";
 
 export default function Banner({
   item,
@@ -114,13 +115,13 @@ export default function Banner({
             onClick={() => embedUrl && onWatch(item)}
             className="bg-[hsl(var(--foreground))] hover:bg-[hsl(var(--foreground))]/90 text-[hsl(var(--background))] uppercase text-lg sm:text-xl font-semibold px-6 py-2 rounded-full transition shadow-[0_0_6px_hsl(var(--foreground)/0.6),0_0_12px_hsl(var(--foreground)/0.4)]"
           >
-            ▶ Watch
+            <FaPlay />
           </button>
           <button
             onClick={() => onSelect(item)}
             className="bg-[hsl(var(--foreground))] hover:bg-[hsl(var(--foreground))]/90 text-[hsl(var(--background))] uppercase text-lg sm:text-xl font-semibold px-6 py-2 rounded-lg transition shadow-md"
           >
-            More Info
+            <FaInfoCircle />
           </button>
         </motion.div>
       </motion.div>

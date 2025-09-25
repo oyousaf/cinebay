@@ -55,12 +55,16 @@ export default function ContentRail({
                   key={movie.id}
                   aria-label={movie.title}
                   className={`relative shrink-0 snap-start rounded-lg overflow-hidden focus:outline-none transition-all duration-300
-                    ${
-                      isActive
-                        ? "scale-105 ring-2 ring-[#80ffcc] shadow-pulse"
-                        : "hover:shadow-[hsl(var(--background))] dark:hover:shadow-[hsl(var(--foreground))]"
-                    }`}
-                  whileHover={!isActive ? { scale: 1.07 } : {}}
+    ${isActive ? "scale-105 shadow-pulse" : ""}
+  `}
+                  whileHover={
+                    !isActive
+                      ? {
+                          scale: 1.07,
+                          boxShadow: "0 0 15px hsl(var(--foreground))",
+                        }
+                      : {}
+                  }
                   animate={isActive ? { scale: 1.05 } : { scale: 1 }}
                   transition={{ type: "spring", stiffness: 300, damping: 25 }}
                   onClick={() => setActiveItem(movie)}

@@ -67,13 +67,16 @@ img {
 
 /* Shadow Pulse */
 @keyframes shadow-pulse {
-  0%,
-  100% {
-    box-shadow: 0 0 6px hsl(var(--foreground) / 0.6),
+  0%, 100% {
+    box-shadow:
+      0 0 0 2px hsl(var(--foreground)),
+      0 0 6px hsl(var(--foreground) / 0.6),
       0 0 12px hsl(var(--foreground) / 0.4);
   }
   50% {
-    box-shadow: 0 0 12px hsl(var(--foreground) / 0.8),
+    box-shadow:
+      0 0 0 2px hsl(var(--foreground)),
+      0 0 12px hsl(var(--foreground) / 0.8),
       0 0 24px hsl(var(--foreground) / 0.6);
   }
 }
