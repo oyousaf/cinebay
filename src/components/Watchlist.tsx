@@ -152,8 +152,17 @@ export default function Watchlist({
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.95, x: -50 }}
                         transition={{ duration: 0.25, ease: "easeOut" }}
-                        onClick={() => onSelect(movie)}
-                        onPointerDown={() => {
+                        tabIndex={0}
+                        onClick={(e) => {
+                          if (
+                            !(e.target as HTMLElement).closest(".remove-btn")
+                          ) {
+                            onSelect(movie);
+                          }
+                        }}
+                        onPointerDown={(e) => {
+                          if ((e.target as HTMLElement).closest(".remove-btn"))
+                            return;
                           pressTimer = setTimeout(() => {
                             removeFromWatchlist(movie.id);
                           }, LONG_PRESS_DELAY);
@@ -204,7 +213,7 @@ export default function Watchlist({
                           }}
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.92 }}
-                          className="absolute top-2 right-2 p-2 sm:p-2.5 md:p-3 bg-red-500/20 backdrop-blur-md text-red-400 rounded-full shadow-md hover:bg-red-500/30 hover:shadow-[0_0_8px_#ef4444] focus:outline-none focus:ring-2 focus:ring-red-400/60 transition duration-200"
+                          className="remove-btn absolute top-2 right-2 p-2 sm:p-2.5 md:p-3 bg-red-500/20 backdrop-blur-md text-red-400 rounded-full shadow-md hover:bg-red-500/30 hover:shadow-[0_0_8px_#ef4444] focus:outline-none focus:ring-2 focus:ring-red-400/60 transition duration-200"
                           aria-label="Remove from Watchlist"
                         >
                           <X
