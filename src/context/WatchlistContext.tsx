@@ -25,23 +25,22 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
     typeof window !== "undefined" ? getWatchlist() : []
   );
 
-  // Sync localStorage whenever watchlist changes
+  // Sync with localStorage
   useEffect(() => {
     if (typeof window !== "undefined") {
       localStorage.setItem("watchlist", JSON.stringify(watchlist));
     }
   }, [watchlist]);
 
-  /** 🔔 Helpers for toast notifications */
-  const notifyAdd = (movie: Movie) => {
+  /** 🔔 Toast helpers */
+  const notifyAdd = (movie: Movie) =>
     toast.success(
       <span>
         Added <strong>{movie.title || movie.name}</strong> to Watchlist
       </span>
     );
-  };
 
-  const notifyRemove = (movie: Movie, restore: () => void) => {
+  const notifyRemove = (movie: Movie, restore: () => void) =>
     toast.error(
       <div className="flex items-center justify-between gap-4 w-full">
         <span>
@@ -56,17 +55,15 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
       </div>,
       { duration: 6000 }
     );
-  };
 
-  const notifyRestore = (movie: Movie) => {
+  const notifyRestore = (movie: Movie) =>
     toast.success(
       <span>
         Restored <strong>{movie.title || movie.name}</strong>
       </span>
     );
-  };
 
-  /** 📌 Add to Watchlist */
+  /** 📌 Add */
   const addToWatchlist = useCallback((movie: Movie) => {
     setWatchlist((prev) => {
       if (prev.some((m) => m.id === movie.id)) return prev;
@@ -75,7 +72,7 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  /** 📌 Remove from Watchlist */
+  /** 📌 Remove */
   const removeFromWatchlist = useCallback((id: number) => {
     setWatchlist((prev) => {
       const movie = prev.find((m) => m.id === id);
@@ -92,11 +89,11 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  /** 📌 Toggle Add/Remove */
+  /** 📌 Toggle */
   const toggleWatchlist = useCallback((movie: Movie) => {
     setWatchlist((prev) => {
       if (prev.some((m) => m.id === movie.id)) {
-        // Remove
+        // remove
         const updated = prev.filter((m) => m.id !== movie.id);
 
         notifyRemove(movie, () => {
@@ -106,14 +103,14 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
 
         return updated;
       } else {
-        // Add
+        // add
         notifyAdd(movie);
         return [movie, ...prev];
       }
     });
   }, []);
 
-  /** 📌 Check if in Watchlist */
+  /** 📌 Check */
   const isInWatchlist = useCallback(
     (id: number) => watchlist.some((m) => m.id === id),
     [watchlist]
