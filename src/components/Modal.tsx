@@ -31,9 +31,6 @@ const formatDate = (dateStr?: string) =>
       })
     : null;
 
-const shortBio = (bio: string) =>
-  bio.length > 600 ? bio.slice(0, 600) + "..." : bio;
-
 export default function Modal({
   movie,
   onClose,
