@@ -150,37 +150,15 @@ export default function Modal({
               <span />
             )}
 
-            <div className="flex gap-2">
-              {!isPerson && (
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => toggleWatchlist(movie)}
-                  aria-pressed={isSaved}
-                  aria-label={
-                    isSaved ? "Remove from Watchlist" : "Add to Watchlist"
-                  }
-                  className="p-2 rounded-full backdrop-blur-md shadow-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] hover:shadow-[0_0_8px_hsla(var(--foreground)/0.4)]"
-                >
-                  <Bookmark
-                    size={22}
-                    strokeWidth={isSaved ? 3 : 2}
-                    className={
-                      isSaved ? "fill-[hsl(var(--foreground))]" : "fill-none"
-                    }
-                  />
-                </motion.button>
-              )}
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={onClose}
-                aria-label="Close modal"
-                className="p-2 rounded-full backdrop-blur-md shadow-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] hover:text-red-500 hover:shadow-[0_0_8px_#ef4444]"
-              >
-                <X size={22} strokeWidth={2.5} />
-              </motion.button>
-            </div>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={onClose}
+              aria-label="Close modal"
+              className="p-2 rounded-full backdrop-blur-md shadow-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] hover:text-red-500 hover:shadow-[0_0_8px_#ef4444]"
+            >
+              <X size={22} strokeWidth={2.5} />
+            </motion.button>
           </div>
 
           {/* Content */}
@@ -197,68 +175,95 @@ export default function Modal({
               </div>
               <div className="flex-1 space-y-4 mt-4 sm:mt-0 text-center sm:text-left">
                 <h2 className="text-3xl sm:text-4xl font-bold">{title}</h2>
-                {isPerson ? (
-                  movie.biography && (
-                    <p className="text-md text-zinc-200 leading-relaxed whitespace-pre-line">
-                      {shortBio(movie.biography)}
-                    </p>
-                  )
-                ) : (
-                  <>
-                    {movie.overview && (
-                      <p className="text-md text-zinc-200 leading-relaxed">
-                        {movie.overview}
-                      </p>
-                    )}
-                    {/* Meta row */}
-                    <div className="flex flex-wrap gap-2 sm:gap-3 text-sm sm:text-base text-zinc-300 pt-2 justify-center sm:justify-start items-center">
-                      {movie.isNew && (
-                        <span className="bg-[hsl(var(--foreground))] text-[hsl(var(--background))] text-sm font-bold px-2 py-0.5 rounded-full uppercase shadow-pulse">
-                          NEW
-                        </span>
-                      )}
 
-                      {movie.genres?.length && (
-                        <span className="italic truncate">
-                          {movie.genres.join(", ")}
-                        </span>
-                      )}
+                {!isPerson && movie.overview && (
+                  <p className="text-md text-zinc-200 leading-relaxed">
+                    {movie.overview}
+                  </p>
+                )}
 
-                      {releaseDate && <span>· {releaseDate}</span>}
-
-                      {movie.runtime && <span>· {movie.runtime} mins</span>}
-
-                      {movie.original_language && (
-                        <span className="capitalize">
-                          ·{" "}
-                          {new Intl.DisplayNames(["en"], {
-                            type: "language",
-                          }).of(movie.original_language)}
-                        </span>
-                      )}
-
-                      {typeof movie.vote_average === "number" &&
-                        movie.vote_average > 0 && (
-                          <span className="bg-[hsl(var(--foreground))] text-[hsl(var(--background))] text-sm font-semibold px-2 py-0.5 rounded-full shadow-[0_0_6px_hsl(var(--foreground)/0.6),0_0_12px_hsl(var(--foreground)/0.4)]">
-                            {movie.vote_average.toFixed(1)}
-                          </span>
-                        )}
-                    </div>
-
-                    {cast.length > 0 && (
-                      <StarringList cast={cast} onSelect={onSelect} />
+                {/* Meta row */}
+                {!isPerson && (
+                  <div className="flex flex-wrap gap-2 sm:gap-3 text-sm sm:text-base text-zinc-300 pt-2 justify-center sm:justify-start items-center">
+                    {movie.isNew && (
+                      <span className="bg-[hsl(var(--foreground))] text-[hsl(var(--background))] text-sm font-bold px-2 py-0.5 rounded-full uppercase shadow-pulse">
+                        NEW
+                      </span>
                     )}
 
-                    <div className="pt-4">
-                      <button
-                        type="button"
-                        onClick={() => setShowPlayer(true)}
-                        className="bg-[hsl(var(--foreground))] hover:bg-[hsl(var(--foreground))]/90 text-[hsl(var(--background))] text-xl cursor-pointer uppercase font-semibold px-6 py-2 rounded-full transition shadow-[0_0_6px_hsl(var(--foreground)/0.6),0_0_12px_hsl(var(--foreground)/0.4)]"
-                      >
-                        <FaPlay />
-                      </button>
-                    </div>
-                  </>
+                    {movie.genres?.length && (
+                      <span className="italic truncate">
+                        {movie.genres.join(", ")}
+                      </span>
+                    )}
+
+                    {releaseDate && <span>· {releaseDate}</span>}
+
+                    {movie.runtime && <span>· {movie.runtime} mins</span>}
+
+                    {movie.original_language && (
+                      <span className="capitalize">
+                        ·{" "}
+                        {new Intl.DisplayNames(["en"], {
+                          type: "language",
+                        }).of(movie.original_language)}
+                      </span>
+                    )}
+
+                    {typeof movie.vote_average === "number" &&
+                      movie.vote_average > 0 && (
+                        <span className="bg-[hsl(var(--foreground))] text-[hsl(var(--background))] text-sm font-semibold px-2 py-0.5 rounded-full shadow-[0_0_6px_hsl(var(--foreground)/0.6),0_0_12px_hsl(var(--foreground)/0.4)]">
+                          {movie.vote_average.toFixed(1)}
+                        </span>
+                      )}
+                  </div>
+                )}
+
+                {/* Actions row */}
+                {!isPerson && (
+                  <div className="pt-4 flex gap-4 justify-center sm:justify-start">
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      type="button"
+                      onClick={() => setShowPlayer(true)}
+                      className="bg-[hsl(var(--foreground))] hover:bg-[hsl(var(--foreground))]/90 
+                                 text-[hsl(var(--background))] text-xl cursor-pointer uppercase 
+                                 font-semibold px-6 py-2 rounded-full transition 
+                                 shadow-[0_0_6px_hsl(var(--foreground)/0.6),0_0_12px_hsl(var(--foreground)/0.4)]"
+                    >
+                      <FaPlay />
+                    </motion.button>
+
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => toggleWatchlist(movie)}
+                      aria-pressed={isSaved}
+                      aria-label={
+                        isSaved ? "Remove from Watchlist" : "Add to Watchlist"
+                      }
+                      className="bg-[hsl(var(--foreground))] hover:bg-[hsl(var(--foreground))]/90 
+                                 text-[hsl(var(--background))] text-xl cursor-pointer uppercase 
+                                 font-semibold p-2 rounded-full transition 
+                                 shadow-[0_0_6px_hsl(var(--foreground)/0.6),0_0_12px_hsl(var(--foreground)/0.4)]"
+                    >
+                      <Bookmark
+                        size={22}
+                        strokeWidth={isSaved ? 3 : 2}
+                        className={
+                          isSaved
+                            ? "fill-[hsl(var(--background))]"
+                            : "fill-none"
+                        }
+                      />
+                    </motion.button>
+                  </div>
+                )}
+
+                {/* Cast list */}
+                {!isPerson && cast.length > 0 && (
+                  <StarringList cast={cast} onSelect={onSelect} />
                 )}
               </div>
             </div>

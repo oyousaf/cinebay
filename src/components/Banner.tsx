@@ -131,7 +131,9 @@ export default function Banner({
           className="flex gap-4 items-center"
           variants={childVariants}
         >
-          <button
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
             onClick={() => embedUrl && onWatch(item)}
             className="bg-[hsl(var(--foreground))] hover:bg-[hsl(var(--foreground))]/90 
                        text-[hsl(var(--background))] uppercase text-lg sm:text-xl 
@@ -139,15 +141,19 @@ export default function Banner({
                        shadow-[0_0_6px_hsl(var(--foreground)/0.6),0_0_12px_hsl(var(--foreground)/0.4)]"
           >
             <FaPlay />
-          </button>
-          <button
+          </motion.button>
+
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
             onClick={() => onSelect(item)}
             className="bg-[hsl(var(--foreground))] hover:bg-[hsl(var(--foreground))]/90 
                        text-[hsl(var(--background))] uppercase text-lg sm:text-xl 
-                       font-semibold px-6 py-2 rounded-lg transition shadow-md"
+                       font-semibold p-2 rounded-full transition shadow-md"
           >
             <FaInfoCircle />
-          </button>
+          </motion.button>
+
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
