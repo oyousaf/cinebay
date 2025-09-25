@@ -11,6 +11,7 @@ import SearchBar from "@/components/SearchBar";
 import type { Movie } from "@/types/movie";
 import { useVideoEmbed } from "@/hooks/useVideoEmbed";
 
+// Lazy-loaded sections
 const DevsPick = lazy(() => import("@/components/DevsPick"));
 const Modal = lazy(() => import("@/components/Modal"));
 const PlayerModal = lazy(() => import("@/components/PlayerModal"));
@@ -44,7 +45,7 @@ export default function App() {
     return "movies";
   });
 
-  // persist active tab
+  // Persist active tab to localStorage
   const persistTab = (tab: typeof activeTab) => {
     setActiveTab(tab);
     if (typeof window !== "undefined") {
@@ -52,11 +53,13 @@ export default function App() {
     }
   };
 
+  // Modal select with history
   const handleSelect = (() => {
     let lastId: number | null = null;
     return (item: Movie) => {
       if (item.id === lastId) return;
       lastId = item.id;
+
       if (selectedItem && selectedItem.id !== item.id) {
         setModalHistory((prev) => [...prev, selectedItem]);
       }
@@ -77,6 +80,7 @@ export default function App() {
 
   const embedUrl = useVideoEmbed(playerItem?.id, playerItem?.media_type);
 
+  // Tab rendering
   const renderContent = () => {
     switch (activeTab) {
       case "movies":
@@ -105,6 +109,7 @@ export default function App() {
 
   return (
     <Layout activeTab={activeTab} onTabChange={persistTab}>
+      {/* Global toaster for context notifications */}
       <Toaster richColors position="bottom-center" theme="dark" />
 
       <AnimatePresence mode="wait">
@@ -128,6 +133,7 @@ export default function App() {
         </motion.div>
       </AnimatePresence>
 
+      {/* Details Modal */}
       {selectedItem && (
         <Suspense fallback={null}>
           <Modal
@@ -142,6 +148,7 @@ export default function App() {
         </Suspense>
       )}
 
+      {/* Player Modal */}
       {playerItem && embedUrl && (
         <Suspense fallback={null}>
           <PlayerModal url={embedUrl} onClose={() => setPlayerItem(null)} />
