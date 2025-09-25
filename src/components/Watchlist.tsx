@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { toast } from "sonner";
 import { X, RefreshCw } from "lucide-react";
 
 import type { Movie } from "@/types/movie";
@@ -24,7 +23,7 @@ export default function Watchlist({
 }: {
   onSelect: (movie: Movie) => void;
 }) {
-  const { watchlist, removeFromWatchlist, addToWatchlist } = useWatchlist();
+  const { watchlist, removeFromWatchlist } = useWatchlist();
 
   const [filters, setFilters] = useState<FilterState>(() => {
     try {
@@ -38,32 +37,6 @@ export default function Watchlist({
   useEffect(() => {
     localStorage.setItem("watchlistFilters", JSON.stringify(filters));
   }, [filters]);
-
-  const handleRemove = (movie: Movie) => {
-    removeFromWatchlist(movie.id);
-
-    toast.error(
-      <div className="flex items-center justify-between gap-4 w-full">
-        <span>
-          Removed <strong>{movie.title || movie.name}</strong> from Watchlist
-        </span>
-        <button
-          onClick={() => {
-            addToWatchlist(movie);
-            toast.success(
-              <span>
-                Restored <strong>{movie.title || movie.name}</strong>
-              </span>
-            );
-          }}
-          className="text-yellow-400 hover:underline whitespace-nowrap"
-        >
-          Undo
-        </button>
-      </div>,
-      { duration: 6000 }
-    );
-  };
 
   const filteredList = watchlist
     .filter((m) => filters.type === "all" || m.media_type === filters.type)
@@ -182,7 +155,7 @@ export default function Watchlist({
                         onClick={() => onSelect(movie)}
                         onPointerDown={() => {
                           pressTimer = setTimeout(() => {
-                            handleRemove(movie);
+                            removeFromWatchlist(movie.id);
                           }, LONG_PRESS_DELAY);
                         }}
                         onPointerUp={() => clearTimeout(pressTimer)}
@@ -193,7 +166,8 @@ export default function Watchlist({
                         dragElastic={0.2}
                         whileDrag={{ scale: 0.97, backgroundColor: "#7f1d1d" }}
                         onDragEnd={(e, info) => {
-                          if (info.offset.x < -100) handleRemove(movie);
+                          if (info.offset.x < -100)
+                            removeFromWatchlist(movie.id);
                         }}
                         whileHover={{
                           scale: 1.03,
@@ -226,7 +200,7 @@ export default function Watchlist({
                         <motion.button
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleRemove(movie);
+                            removeFromWatchlist(movie.id);
                           }}
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.92 }}

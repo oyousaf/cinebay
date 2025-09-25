@@ -25,100 +25,95 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
     typeof window !== "undefined" ? getWatchlist() : []
   );
 
-  // Keep localStorage in sync
+  // Sync localStorage whenever watchlist changes
   useEffect(() => {
     if (typeof window !== "undefined") {
       localStorage.setItem("watchlist", JSON.stringify(watchlist));
     }
   }, [watchlist]);
 
+  /** 🔔 Helpers for toast notifications */
+  const notifyAdd = (movie: Movie) => {
+    toast.success(
+      <span>
+        Added <strong>{movie.title || movie.name}</strong> to Watchlist
+      </span>
+    );
+  };
+
+  const notifyRemove = (movie: Movie, restore: () => void) => {
+    toast.error(
+      <div className="flex items-center justify-between gap-4 w-full">
+        <span>
+          Removed <strong>{movie.title || movie.name}</strong> from Watchlist
+        </span>
+        <button
+          onClick={restore}
+          className="text-yellow-400 hover:underline whitespace-nowrap"
+        >
+          Undo
+        </button>
+      </div>,
+      { duration: 6000 }
+    );
+  };
+
+  const notifyRestore = (movie: Movie) => {
+    toast.success(
+      <span>
+        Restored <strong>{movie.title || movie.name}</strong>
+      </span>
+    );
+  };
+
+  /** 📌 Add to Watchlist */
   const addToWatchlist = useCallback((movie: Movie) => {
     setWatchlist((prev) => {
       if (prev.some((m) => m.id === movie.id)) return prev;
-
-      toast.success(
-        <span>
-          Added <strong>{movie.title || movie.name}</strong> to Watchlist
-        </span>
-      );
+      notifyAdd(movie);
       return [movie, ...prev];
     });
   }, []);
 
+  /** 📌 Remove from Watchlist */
   const removeFromWatchlist = useCallback((id: number) => {
     setWatchlist((prev) => {
       const movie = prev.find((m) => m.id === id);
+      if (!movie) return prev;
+
       const updated = prev.filter((m) => m.id !== id);
 
-      if (movie) {
-        toast.error(
-          <div className="flex items-center justify-between gap-4 w-full">
-            <span>
-              Removed <strong>{movie.title || movie.name}</strong> from
-              Watchlist
-            </span>
-            <button
-              onClick={() => {
-                setWatchlist([movie, ...updated]);
-                toast.success(
-                  <span>
-                    Restored <strong>{movie.title || movie.name}</strong>
-                  </span>
-                );
-              }}
-              className="text-yellow-400 hover:underline whitespace-nowrap"
-            >
-              Undo
-            </button>
-          </div>,
-          { duration: 6000 }
-        );
-      }
+      notifyRemove(movie, () => {
+        setWatchlist([movie, ...updated]);
+        notifyRestore(movie);
+      });
 
       return updated;
     });
   }, []);
 
+  /** 📌 Toggle Add/Remove */
   const toggleWatchlist = useCallback((movie: Movie) => {
     setWatchlist((prev) => {
       if (prev.some((m) => m.id === movie.id)) {
         // Remove
         const updated = prev.filter((m) => m.id !== movie.id);
-        toast.error(
-          <div className="flex items-center justify-between gap-4 w-full">
-            <span>
-              Removed <strong>{movie.title || movie.name}</strong> from
-              Watchlist
-            </span>
-            <button
-              onClick={() => {
-                setWatchlist([movie, ...updated]);
-                toast.success(
-                  <span>
-                    Restored <strong>{movie.title || movie.name}</strong>
-                  </span>
-                );
-              }}
-              className="text-yellow-400 hover:underline whitespace-nowrap"
-            >
-              Undo
-            </button>
-          </div>,
-          { duration: 6000 }
-        );
+
+        notifyRemove(movie, () => {
+          setWatchlist([movie, ...updated]);
+          notifyRestore(movie);
+        });
+
         return updated;
       } else {
         // Add
-        toast.success(
-          <span>
-            Added <strong>{movie.title || movie.name}</strong> to Watchlist
-          </span>
-        );
+        notifyAdd(movie);
         return [movie, ...prev];
       }
     });
   }, []);
 
+  /** 📌 Check if in Watchlist */
   const isInWatchlist = useCallback(
     (id: number) => watchlist.some((m) => m.id === id),
     [watchlist]

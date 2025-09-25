@@ -50,21 +50,37 @@ export default function Banner({
           transition={{ duration: 0.4, ease: "easeOut" }}
           className="absolute inset-0"
         >
-          {/* Backdrop with quick zoom */}
-          <motion.img
-            key={item.backdrop_path || "fallback"}
-            src={
-              item.backdrop_path
-                ? `https://image.tmdb.org/t/p/original${item.backdrop_path}`
-                : "/fallback-bg.png"
-            }
-            alt={item.title || item.name}
-            className="w-full h-full object-cover"
-            initial={{ scale: 1.05 }}
-            animate={{ scale: 1 }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
-            loading="lazy"
-          />
+          {/* Backdrop with responsive sources */}
+          {item.backdrop_path ? (
+            <picture>
+              {/* Mobile */}
+              <source
+                media="(max-width: 640px)"
+                srcSet={`https://image.tmdb.org/t/p/w780${item.backdrop_path}`}
+              />
+              {/* Tablet */}
+              <source
+                media="(max-width: 1280px)"
+                srcSet={`https://image.tmdb.org/t/p/w1280${item.backdrop_path}`}
+              />
+              {/* Desktop/4K */}
+              <img
+                src={`https://image.tmdb.org/t/p/original${item.backdrop_path}`}
+                alt={item.title || item.name}
+                className="w-full h-full object-cover"
+                loading="lazy"
+              />
+            </picture>
+          ) : (
+            <img
+              src="/fallback-bg.png"
+              alt="Fallback background"
+              className="w-full h-full object-cover"
+              loading="lazy"
+            />
+          )}
+
+          {/* Gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-black via-black/70 to-transparent" />
         </motion.div>
       </AnimatePresence>
@@ -87,7 +103,7 @@ export default function Banner({
         />
       </motion.button>
 
-      {/* Overlay */}
+      {/* Overlay content */}
       <motion.div
         className="relative z-20 px-6 md:px-12 py-10 max-w-6xl mx-auto"
         variants={containerVariants}

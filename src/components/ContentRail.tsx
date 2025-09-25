@@ -53,7 +53,7 @@ export default function ContentRail({
               return (
                 <motion.button
                   key={movie.id}
-                  aria-label={movie.title}
+                  aria-label={movie.title || movie.name}
                   className={`relative shrink-0 snap-start rounded-lg overflow-hidden focus:outline-none transition-all duration-300
                     ${isActive ? "scale-105 shadow-pulse" : ""}`}
                   whileHover={
@@ -74,7 +74,7 @@ export default function ContentRail({
                         ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
                         : "/fallback.png"
                     }
-                    alt={movie.title}
+                    alt={movie.title || movie.name}
                     className="h-40 w-28 md:h-56 md:w-40 lg:h-64 lg:w-44 object-cover rounded-lg shadow-lg"
                     loading="lazy"
                   />

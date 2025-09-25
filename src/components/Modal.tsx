@@ -56,7 +56,7 @@ export default function Modal({
     !isPerson ? movie.media_type : undefined
   );
 
-  // 🔑 use context instead of props
+  // 🔑 use context for watchlist state
   const { toggleWatchlist, isInWatchlist } = useWatchlist();
   const isSaved = isInWatchlist(movie.id);
 
