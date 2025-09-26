@@ -76,7 +76,7 @@ export default function Watchlist({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.2 }}
-              className="italic font-heading text-3xl md:text-5xl font-bold mb-8 text-center tracking-wide drop-shadow-md"
+              className="italic font-heading text-3xl md:text-4xl font-bold mb-8 text-center tracking-wide drop-shadow-md"
             >
               Plot twist: you haven’t added anything yet.
             </motion.p>
