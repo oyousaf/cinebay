@@ -4,15 +4,15 @@ import { Toaster } from "sonner";
 import { Loader2 } from "lucide-react";
 
 import Layout from "@/components/Layout";
-import Movies from "@/components/Movies";
-import Shows from "@/components/Shows";
-import Watchlist from "@/components/Watchlist";
-import SearchBar from "@/components/SearchBar";
 import type { Movie } from "@/types/movie";
 import { useVideoEmbed } from "@/hooks/useVideoEmbed";
 
 // Lazy-loaded sections
+const Movies = lazy(() => import("@/components/Movies"));
+const Shows = lazy(() => import("@/components/Shows"));
 const DevsPick = lazy(() => import("@/components/DevsPick"));
+const SearchBar = lazy(() => import("@/components/SearchBar"));
+const Watchlist = lazy(() => import("@/components/Watchlist"));
 const Modal = lazy(() => import("@/components/Modal"));
 const PlayerModal = lazy(() => import("@/components/PlayerModal"));
 
@@ -45,7 +45,7 @@ export default function App() {
     return "movies";
   });
 
-  // Persist active tab to localStorage
+  // Persist active tab
   const persistTab = (tab: typeof activeTab) => {
     setActiveTab(tab);
     if (typeof window !== "undefined") {
