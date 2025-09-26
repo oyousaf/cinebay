@@ -71,9 +71,6 @@ export default function Watchlist({
           transition={{ duration: 0.6, ease: "easeOut" }}
           className="pt-[150px] px-4 max-w-6xl mx-auto pb-12"
         >
-          <h1 className="font-heading text-3xl md:text-5xl font-bold mb-8 text-center tracking-wide drop-shadow-md">
-            Watchlist
-          </h1>
 
           {watchlist.length === 0 ? (
             <motion.p
