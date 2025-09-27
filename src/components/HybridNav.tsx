@@ -1,5 +1,7 @@
-import React, { useEffect } from "react";
-import { motion } from "framer-motion";
+"use client";
+
+import React, { useEffect, useState, useRef } from "react";
+import { motion, Variants, TargetAndTransition } from "framer-motion";
 import { FaFilm, FaTv, FaSearch, FaStar, FaBookmark } from "react-icons/fa";
 
 type Tab = "movies" | "tvshows" | "search" | "devspick" | "watchlist";
@@ -17,88 +19,147 @@ const navItems: { id: Tab; icon: React.ReactElement; label: string }[] = [
   { id: "watchlist", icon: <FaBookmark size={22} />, label: "Watchlist" },
 ];
 
+/* Icon load-in */
+const iconVariants: Variants = {
+  hidden: { opacity: 0, y: 20, scale: 0.8 },
+  visible: (i: number): TargetAndTransition => ({
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: {
+      delay: i * 0.08,
+      type: "spring",
+      stiffness: 400,
+      damping: 22,
+    },
+  }),
+};
+
 const HybridNav: React.FC<HybridNavProps> = ({ activeTab, onTabChange }) => {
-  // Keyboard controls
+  const [pressedLabel, setPressedLabel] = useState<Tab | null>(null);
+  const pressTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  // keyboard nav
   useEffect(() => {
     const handleKeys = (e: KeyboardEvent) => {
       if (activeTab === "search" && e.key === "Escape") {
         onTabChange("movies");
         return;
       }
-
       const currentIndex = navItems.findIndex((n) => n.id === activeTab);
-
-      // previous tab
-      if (e.key === "ArrowUp" || e.key === "w" || e.key === "W") {
+      if (["ArrowUp", "w", "W"].includes(e.key)) {
         const prev = (currentIndex - 1 + navItems.length) % navItems.length;
         onTabChange(navItems[prev].id);
       }
-
-      // next tab
-      if (e.key === "ArrowDown" || e.key === "s" || e.key === "S") {
+      if (["ArrowDown", "s", "S"].includes(e.key)) {
         const next = (currentIndex + 1) % navItems.length;
         onTabChange(navItems[next].id);
       }
     };
-
     window.addEventListener("keydown", handleKeys);
     return () => window.removeEventListener("keydown", handleKeys);
   }, [activeTab, onTabChange]);
+
+  // touch long-press
+  const handleTouchStart = (id: Tab) => {
+    pressTimeout.current = setTimeout(() => setPressedLabel(id), 400);
+  };
+  const handleTouchEnd = () => {
+    if (pressTimeout.current) clearTimeout(pressTimeout.current);
+    setTimeout(() => setPressedLabel(null), 150); // fade-out delay
+  };
 
   return (
     <>
       {/* Sidebar for desktop */}
       <aside className="hidden md:flex fixed left-0 top-0 h-screen w-16 flex-col items-center justify-center gap-6 bg-[hsl(var(--background))] border-r border-border z-40">
-        {navItems.map((item) => {
+        {navItems.map((item, i) => {
           const isActive = activeTab === item.id;
           return (
-            <button
+            <motion.button
               key={item.id}
               onClick={() => onTabChange(item.id)}
+              variants={iconVariants}
+              initial="hidden"
+              animate="visible"
+              custom={i}
               className={`relative group p-2 rounded-lg transition-colors ${
                 isActive
-                  ? "text-[hsl(var(--foreground))]"
-                  : "text-muted-foreground hover:text-[hsl(var(--foreground))]"
+                  ? "text-[hsl(var(--foreground))] opacity-100"
+                  : "text-muted-foreground opacity-60 hover:opacity-100"
               }`}
               aria-label={item.label}
             >
               {item.icon}
-              {isActive && (
-                <motion.div
-                  layoutId="active-indicator"
-                  className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-full bg-[hsl(var(--foreground))]"
-                  transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                />
-              )}
-            </button>
+
+              {/* Active indicator */}
+              <motion.div
+                layoutId="active-indicator"
+                animate={{
+                  opacity: isActive ? 1 : 0,
+                  scaleY: isActive ? 1 : 0.4,
+                }}
+                transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-full bg-[hsl(var(--foreground))]"
+              />
+
+              {/* Tooltip: hover (group-hover) + long-press */}
+              <span
+                className={`absolute left-10 px-2 py-1 text-xs bg-[hsl(var(--foreground))] text-[hsl(var(--background))] rounded whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity ${
+                  pressedLabel === item.id ? "opacity-100" : ""
+                }`}
+              >
+                {item.label}
+              </span>
+            </motion.button>
           );
         })}
       </aside>
 
       {/* Bottom nav for mobile */}
       <nav className="md:hidden fixed bottom-0 left-0 w-full h-16 bg-[hsl(var(--background))] border-t border-border flex justify-around items-center z-40">
-        {navItems.map((item) => {
+        {navItems.map((item, i) => {
           const isActive = activeTab === item.id;
           return (
-            <button
+            <motion.button
               key={item.id}
               onClick={() => onTabChange(item.id)}
+              onTouchStart={() => handleTouchStart(item.id)}
+              onTouchEnd={handleTouchEnd}
+              onContextMenu={(e) => e.preventDefault()}
+              variants={iconVariants}
+              initial="hidden"
+              animate="visible"
+              custom={i}
               className={`relative group flex flex-col items-center justify-center ${
                 isActive
-                  ? "text-[hsl(var(--foreground))]"
-                  : "text-muted-foreground hover:text-[hsl(var(--foreground))]"
+                  ? "text-[hsl(var(--foreground))] opacity-100"
+                  : "text-muted-foreground opacity-60 hover:opacity-100"
               }`}
               aria-label={item.label}
             >
               {item.icon}
-              {isActive && (
-                <motion.div
-                  layoutId="active-indicator"
-                  className="absolute -bottom-1.5 w-8 h-1 rounded-full bg-[hsl(var(--foreground))]"
-                  transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                />
-              )}
-            </button>
+
+              {/* Active indicator */}
+              <motion.div
+                layoutId="active-indicator-mobile"
+                animate={{
+                  opacity: isActive ? 1 : 0,
+                  scaleX: isActive ? 1 : 0.4,
+                }}
+                transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                className="absolute -bottom-1.5 w-8 h-1 rounded-full bg-[hsl(var(--foreground))]"
+              />
+
+              {/* Tooltip */}
+              <span
+                className={`absolute bottom-10 px-2 py-1 text-xs bg-[hsl(var(--foreground))] text-black rounded whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity ${
+                  pressedLabel === item.id ? "opacity-100" : ""
+                }`}
+              >
+                {item.label}
+              </span>
+            </motion.button>
           );
         })}
       </nav>
