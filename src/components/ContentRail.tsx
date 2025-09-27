@@ -67,7 +67,7 @@ export default function ContentRail({
   return (
     <section className="relative w-full">
       {/* Banner */}
-      <div className="min-h-[55vh] w-full">
+      <div className="min-h-[70vh] w-full">
         {activeItem ? (
           <Banner
             item={activeItem}
@@ -87,11 +87,7 @@ export default function ContentRail({
       {/* Tiles */}
       {items.length > 0 && railIndex !== null && (
         <div className="relative z-30 mt-4 px-4 md:px-8 max-w-6xl mx-auto">
-          <div
-            className="flex overflow-x-auto overflow-y-hidden gap-4 scroll-smooth 
-             px-4 md:px-6 pt-4 md:pt-6 pb-12
-             overscroll-x-contain no-scrollbar"
-          >
+          <div className="flex overflow-x-auto gap-4 pb-6 scroll-smooth px-2">
             {items.map((movie, idx) => {
               const isFocused =
                 focus.section === railIndex && focus.index === idx;
@@ -103,12 +99,12 @@ export default function ContentRail({
                     tileRefs.current[idx] = el;
                   }}
                   aria-label={movie.title || movie.name}
-                  className={`relative shrink-0 snap-start focus:outline-none transition-all duration-300
-          ${
-            isFocused
-              ? "ring-4 ring-[#80ffcc] scale-105 shadow-pulse rounded-xl"
-              : "hover:scale-105 hover:shadow-lg rounded-xl"
-          }`}
+                  className={`relative shrink-0 snap-start rounded-lg focus:outline-none transition-all duration-300
+                    ${
+                      isFocused
+                        ? "ring-4 ring-[#80ffcc] scale-105 shadow-pulse"
+                        : "hover:scale-105 hover:shadow-lg"
+                    }`}
                   animate={isFocused ? { scale: 1.07 } : { scale: 1 }}
                   transition={{ type: "spring", stiffness: 300, damping: 25 }}
                   onClick={() => {
@@ -125,7 +121,7 @@ export default function ContentRail({
                         : "/fallback.png"
                     }
                     alt={movie.title || movie.name}
-                    className="h-40 w-28 md:h-56 md:w-40 lg:h-64 lg:w-44 object-cover rounded-xl shadow-lg"
+                    className="h-40 w-28 md:h-56 md:w-40 lg:h-64 lg:w-44 object-cover rounded-lg shadow-lg"
                     loading="lazy"
                   />
                 </motion.button>
