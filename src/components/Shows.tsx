@@ -10,20 +10,24 @@ interface ShowsProps {
 
 export default function Shows({ onSelect, onWatch }: ShowsProps) {
   const [shows, setShows] = useState<Movie[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let mounted = true;
+    let active = true;
 
-    fetchShows()
-      .then((data) => {
-        if (mounted) setShows(data);
-      })
-      .catch((err) => {
+    (async () => {
+      try {
+        const data = await fetchShows();
+        if (active) setShows(data);
+      } catch (err) {
         console.error("Failed to fetch shows:", err);
-      });
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
 
     return () => {
-      mounted = false;
+      active = false;
     };
   }, []);
 

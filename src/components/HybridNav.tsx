@@ -1,4 +1,4 @@
-import React, { JSX, useEffect } from "react";
+import React, { useEffect } from "react";
 import { motion } from "framer-motion";
 import { FaFilm, FaTv, FaSearch, FaStar, FaBookmark } from "react-icons/fa";
 
@@ -9,7 +9,7 @@ interface HybridNavProps {
   onTabChange: (tab: Tab) => void;
 }
 
-const navItems: { id: Tab; icon: JSX.Element; label: string }[] = [
+const navItems: { id: Tab; icon: React.ReactElement; label: string }[] = [
   { id: "movies", icon: <FaFilm size={22} />, label: "Movies" },
   { id: "tvshows", icon: <FaTv size={22} />, label: "TV Shows" },
   { id: "search", icon: <FaSearch size={22} />, label: "Search" },
@@ -18,65 +18,89 @@ const navItems: { id: Tab; icon: JSX.Element; label: string }[] = [
 ];
 
 const HybridNav: React.FC<HybridNavProps> = ({ activeTab, onTabChange }) => {
-  // Escape closes search and goes back to movies
+  // Keyboard controls
   useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
+    const handleKeys = (e: KeyboardEvent) => {
       if (activeTab === "search" && e.key === "Escape") {
         onTabChange("movies");
+        return;
+      }
+
+      const currentIndex = navItems.findIndex((n) => n.id === activeTab);
+
+      // previous tab
+      if (e.key === "ArrowUp" || e.key === "w" || e.key === "W") {
+        const prev = (currentIndex - 1 + navItems.length) % navItems.length;
+        onTabChange(navItems[prev].id);
+      }
+
+      // next tab
+      if (e.key === "ArrowDown" || e.key === "s" || e.key === "S") {
+        const next = (currentIndex + 1) % navItems.length;
+        onTabChange(navItems[next].id);
       }
     };
-    window.addEventListener("keydown", handleEsc);
-    return () => window.removeEventListener("keydown", handleEsc);
+
+    window.addEventListener("keydown", handleKeys);
+    return () => window.removeEventListener("keydown", handleKeys);
   }, [activeTab, onTabChange]);
 
   return (
     <>
-      {/* Sidebar for large screens */}
+      {/* Sidebar for desktop */}
       <aside className="hidden md:flex fixed left-0 top-0 h-screen w-16 flex-col items-center justify-center gap-6 bg-[hsl(var(--background))] border-r border-border z-40">
-        {navItems.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => onTabChange(item.id)}
-            className="relative group p-2 rounded-lg transition-colors text-muted-foreground hover:text-[hsl(var(--foreground))]"
-            aria-label={item.label}
-          >
-            {item.icon}
-            {activeTab === item.id && (
-              <motion.div
-                layoutId="active-indicator"
-                className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-full bg-[hsl(var(--foreground))]"
-                transition={{ type: "spring", stiffness: 300, damping: 25 }}
-              />
-            )}
-            <span className="absolute left-10 px-2 py-1 text-xs bg-[hsl(var(--foreground))] text-[hsl(var(--background))] rounded opacity-0 group-hover:opacity-100 whitespace-nowrap pointer-events-none">
-              {item.label}
-            </span>
-          </button>
-        ))}
+        {navItems.map((item) => {
+          const isActive = activeTab === item.id;
+          return (
+            <button
+              key={item.id}
+              onClick={() => onTabChange(item.id)}
+              className={`relative group p-2 rounded-lg transition-colors ${
+                isActive
+                  ? "text-[hsl(var(--foreground))]"
+                  : "text-muted-foreground hover:text-[hsl(var(--foreground))]"
+              }`}
+              aria-label={item.label}
+            >
+              {item.icon}
+              {isActive && (
+                <motion.div
+                  layoutId="active-indicator"
+                  className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-full bg-[hsl(var(--foreground))]"
+                  transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                />
+              )}
+            </button>
+          );
+        })}
       </aside>
 
-      {/* Bottom nav for small screens */}
+      {/* Bottom nav for mobile */}
       <nav className="md:hidden fixed bottom-0 left-0 w-full h-16 bg-[hsl(var(--background))] border-t border-border flex justify-around items-center z-40">
-        {navItems.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => onTabChange(item.id)}
-            className="relative group flex flex-col items-center justify-center text-muted-foreground hover:text-[hsl(var(--foreground))]"
-            aria-label={item.label}
-          >
-            {item.icon}
-            {activeTab === item.id && (
-              <motion.div
-                layoutId="active-indicator"
-                className="absolute -bottom-1 w-8 h-1 rounded-full bg-[hsl(var(--foreground))]"
-                transition={{ type: "spring", stiffness: 300, damping: 25 }}
-              />
-            )}
-            <span className="absolute bottom-10 px-2 py-1 text-xs bg-[hsl(var(--foreground))] text-black rounded opacity-0 group-hover:opacity-100 pointer-events-none">
-              {item.label}
-            </span>
-          </button>
-        ))}
+        {navItems.map((item) => {
+          const isActive = activeTab === item.id;
+          return (
+            <button
+              key={item.id}
+              onClick={() => onTabChange(item.id)}
+              className={`relative group flex flex-col items-center justify-center ${
+                isActive
+                  ? "text-[hsl(var(--foreground))]"
+                  : "text-muted-foreground hover:text-[hsl(var(--foreground))]"
+              }`}
+              aria-label={item.label}
+            >
+              {item.icon}
+              {isActive && (
+                <motion.div
+                  layoutId="active-indicator"
+                  className="absolute -bottom-1.5 w-8 h-1 rounded-full bg-[hsl(var(--foreground))]"
+                  transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                />
+              )}
+            </button>
+          );
+        })}
       </nav>
     </>
   );

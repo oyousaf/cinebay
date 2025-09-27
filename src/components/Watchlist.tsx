@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, RefreshCw } from "lucide-react";
 
 import type { Movie } from "@/types/movie";
 import { TMDB_IMAGE } from "@/lib/tmdb";
 import { useWatchlist } from "@/context/WatchlistContext";
+import { useNavigation } from "@/hooks/useNavigation";
 
 const LONG_PRESS_DELAY = 600;
 
@@ -59,6 +60,35 @@ export default function Watchlist({
           return 0;
       }
     });
+
+  // 🟢 Navigation integration
+  const { focus, setFocus, registerRail, updateRailLength } = useNavigation();
+  const [railIndex, setRailIndex] = useState<number | null>(null);
+  const tileRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  // Register this grid as a "rail"
+  useEffect(() => {
+    if (railIndex === null) {
+      const idx = registerRail(filteredList.length);
+      setRailIndex(idx);
+    } else {
+      updateRailLength(railIndex, filteredList.length);
+    }
+  }, [filteredList.length, railIndex, registerRail, updateRailLength]);
+
+  // Auto-scroll focused tile into view
+  useEffect(() => {
+    if (railIndex !== null && focus.section === railIndex) {
+      const el = tileRefs.current[focus.index];
+      if (el) {
+        el.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest",
+          inline: "nearest",
+        });
+      }
+    }
+  }, [focus, railIndex]);
 
   return (
     <div className="min-h-screen w-full bg-gradient-to-b from-foreground via-foreground to-black">
@@ -138,11 +168,19 @@ export default function Watchlist({
                 className="grid grid-cols-3 md:grid-cols-5 gap-4"
               >
                 <AnimatePresence mode="sync">
-                  {filteredList.map((movie) => {
+                  {filteredList.map((movie, idx) => {
                     let pressTimer: NodeJS.Timeout;
+                    const isFocused =
+                      railIndex !== null &&
+                      focus.section === railIndex &&
+                      focus.index === idx;
+
                     return (
                       <motion.div
                         key={movie.id}
+                        ref={(el) => {
+                          tileRefs.current[idx] = el;
+                        }}
                         layout
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
@@ -153,6 +191,9 @@ export default function Watchlist({
                           if (
                             !(e.target as HTMLElement).closest(".remove-btn")
                           ) {
+                            if (railIndex !== null) {
+                              setFocus({ section: railIndex, index: idx });
+                            }
                             onSelect(movie);
                           }
                         }}
@@ -181,7 +222,11 @@ export default function Watchlist({
                             damping: 20,
                           },
                         }}
-                        className="relative group cursor-pointer rounded-xl overflow-hidden shadow-xl bg-black"
+                        className={`relative group cursor-pointer rounded-xl overflow-hidden shadow-xl bg-black transition-all duration-300 ${
+                          isFocused
+                            ? "ring-4 ring-[#80ffcc] scale-105 shadow-pulse"
+                            : ""
+                        }`}
                       >
                         <img
                           src={

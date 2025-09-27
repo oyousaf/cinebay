@@ -87,6 +87,10 @@ export default function App() {
         return <Movies onSelect={handleSelect} onWatch={handleWatch} />;
       case "tvshows":
         return <Shows onSelect={handleSelect} onWatch={handleWatch} />;
+      case "devspick":
+        return <DevsPick onSelect={handleSelect} onWatch={handleWatch} />;
+      case "watchlist":
+        return <Watchlist onSelect={handleSelect} />;
       case "search":
         return (
           <div className="flex items-center justify-center min-h-screen px-4">
@@ -98,10 +102,6 @@ export default function App() {
             </div>
           </div>
         );
-      case "devspick":
-        return <DevsPick onSelect={handleSelect} onWatch={handleWatch} />;
-      case "watchlist":
-        return <Watchlist onSelect={handleSelect} />;
       default:
         return null;
     }

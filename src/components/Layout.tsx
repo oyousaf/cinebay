@@ -1,6 +1,7 @@
-import React, { ReactNode } from "react";
+import React, { ReactNode, useEffect } from "react";
 import Navbar from "./Navbar";
 import HybridNav from "./HybridNav";
+import { useNavigation } from "@/hooks/useNavigation";
 
 type Tab = "movies" | "tvshows" | "search" | "devspick" | "watchlist";
 
@@ -15,6 +16,13 @@ const Layout: React.FC<LayoutProps> = ({
   activeTab,
   onTabChange,
 }) => {
+  const { resetNavigation } = useNavigation();
+
+  // 🔑 Reset navigation whenever the active tab changes
+  useEffect(() => {
+    resetNavigation();
+  }, [activeTab, resetNavigation]);
+
   return (
     <div className="h-screen w-full flex flex-col overflow-hidden">
       <Navbar />

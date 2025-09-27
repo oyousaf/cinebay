@@ -10,6 +10,7 @@ interface DevsPickProps {
 
 export default function DevsPick({ onSelect, onWatch }: DevsPickProps) {
   const [movies, setMovies] = useState<Movie[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let active = true;
@@ -20,6 +21,8 @@ export default function DevsPick({ onSelect, onWatch }: DevsPickProps) {
         if (active) setMovies(data);
       } catch (err) {
         console.error("Failed to fetch Dev’s Pick:", err);
+      } finally {
+        if (active) setLoading(false);
       }
     })();
 

@@ -10,20 +10,24 @@ interface MoviesProps {
 
 export default function Movies({ onSelect, onWatch }: MoviesProps) {
   const [movies, setMovies] = useState<Movie[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let mounted = true;
+    let active = true;
 
-    fetchMovies()
-      .then((data) => {
-        if (mounted) setMovies(data);
-      })
-      .catch((err) => {
+    (async () => {
+      try {
+        const data = await fetchMovies();
+        if (active) setMovies(data);
+      } catch (err) {
         console.error("Failed to fetch movies:", err);
-      });
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
 
     return () => {
-      mounted = false;
+      active = false;
     };
   }, []);
 

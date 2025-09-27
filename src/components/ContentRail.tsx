@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import type { Movie } from "@/types/movie";
 import Banner from "./Banner";
+import { useNavigation } from "@/hooks/useNavigation";
 
 interface ContentRailProps {
   title: string;
@@ -17,15 +18,55 @@ export default function ContentRail({
   onWatch,
 }: ContentRailProps) {
   const [activeItem, setActiveItem] = useState<Movie | null>(null);
+  const tileRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
+  const { focus, setFocus, registerRail, updateRailLength } = useNavigation();
+  const [railIndex, setRailIndex] = useState<number | null>(null);
+
+  // Register this rail once
   useEffect(() => {
-    if (items.length > 0 && !activeItem) {
-      setActiveItem(items[0]);
+    if (railIndex === null) {
+      const idx = registerRail(items.length);
+      setRailIndex(idx);
     }
-  }, [items, activeItem]);
+  }, [railIndex, registerRail, items.length]);
+
+  // Update length + sync active item + scroll
+  useEffect(() => {
+    if (railIndex !== null) {
+      updateRailLength(railIndex, items.length);
+
+      if (items.length > 0 && focus.section === railIndex) {
+        const focusedMovie = items[focus.index];
+        if (focusedMovie && focusedMovie.id !== activeItem?.id) {
+          setActiveItem(focusedMovie);
+        }
+
+        const el = tileRefs.current[focus.index];
+        if (el) {
+          el.scrollIntoView({
+            behavior: "smooth",
+            inline: "center",
+            block: "nearest",
+          });
+        }
+      }
+    }
+  }, [items, focus, railIndex, updateRailLength, activeItem]);
+
+  // Default active when items load
+  useEffect(() => {
+    if (!activeItem && items.length > 0) {
+      setActiveItem(items[0]);
+      if (railIndex !== null) {
+        setFocus({ section: railIndex, index: 0 });
+      }
+    }
+  }, [items, activeItem, railIndex, setFocus]);
 
   return (
     <section className="relative w-full">
+      {/* Banner */}
       <div className="min-h-[70vh] w-full">
         {activeItem ? (
           <Banner
@@ -35,38 +76,43 @@ export default function ContentRail({
             title={title}
           />
         ) : (
-          <div className="relative w-full h-full flex items-center justify-center overflow-hidden bg-[hsl(var(--background))]">
-            <div className="absolute inset-0 bg-gradient-to-t from-[hsl(var(--background))] via-[hsl(var(--background))]/70 to-transparent" />
-            <div className="w-full h-full bg-gradient-to-r from-zinc-800 via-zinc-700 to-zinc-800 animate-pulse" />
-            <span className="absolute text-zinc-400 text-sm tracking-wide">
+          <div className="relative w-full h-full flex items-center justify-center bg-[hsl(var(--background))]">
+            <span className="text-zinc-400 text-sm tracking-wide">
               Loading {title}…
             </span>
           </div>
         )}
       </div>
 
-      {items.length > 0 && (
+      {/* Tiles */}
+      {items.length > 0 && railIndex !== null && (
         <div className="relative z-30 mt-4 px-4 md:px-8 max-w-6xl mx-auto">
-          <div className="flex overflow-x-auto gap-4 scrollbar-hide pb-6 overscroll-x-contain snap-x snap-mandatory scroll-smooth px-2">
-            {items.map((movie) => {
-              const isActive = activeItem?.id === movie.id;
+          <div className="flex overflow-x-auto gap-4 pb-6 scroll-smooth px-2">
+            {items.map((movie, idx) => {
+              const isFocused =
+                focus.section === railIndex && focus.index === idx;
+
               return (
                 <motion.button
                   key={movie.id}
+                  ref={(el) => {
+                    tileRefs.current[idx] = el;
+                  }}
                   aria-label={movie.title || movie.name}
-                  className={`relative shrink-0 snap-start rounded-lg overflow-hidden focus:outline-none transition-all duration-300
-                    ${isActive ? "scale-105 shadow-pulse" : ""}`}
-                  whileHover={
-                    !isActive
-                      ? {
-                          scale: 1.07,
-                          boxShadow: "0 0 15px hsl(var(--foreground))",
-                        }
-                      : {}
-                  }
-                  animate={isActive ? { scale: 1.05 } : { scale: 1 }}
+                  className={`relative shrink-0 snap-start rounded-lg focus:outline-none transition-all duration-300
+                    ${
+                      isFocused
+                        ? "ring-4 ring-[#80ffcc] scale-105 shadow-pulse"
+                        : "hover:scale-105 hover:shadow-lg"
+                    }`}
+                  animate={isFocused ? { scale: 1.07 } : { scale: 1 }}
                   transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                  onClick={() => setActiveItem(movie)}
+                  onClick={() => {
+                    setActiveItem(movie); // only updates banner
+                    if (railIndex !== null) {
+                      setFocus({ section: railIndex, index: idx });
+                    }
+                  }}
                 >
                   <img
                     src={
