@@ -9,6 +9,7 @@ type Tab = "movies" | "tvshows" | "search" | "devspick" | "watchlist";
 interface HybridNavProps {
   activeTab: Tab;
   onTabChange: (tab: Tab) => void;
+  isModalOpen?: boolean;
 }
 
 const navItems: { id: Tab; icon: React.ReactElement; label: string }[] = [
@@ -35,7 +36,11 @@ const iconVariants: Variants = {
   }),
 };
 
-const HybridNav: React.FC<HybridNavProps> = ({ activeTab, onTabChange }) => {
+const HybridNav: React.FC<HybridNavProps> = ({
+  activeTab,
+  onTabChange,
+  isModalOpen,
+}) => {
   const [pressedLabel, setPressedLabel] = useState<Tab | null>(null);
   const pressTimeout = useRef<NodeJS.Timeout | null>(null);
   const startY = useRef<number | null>(null); // swipe start position
@@ -44,6 +49,8 @@ const HybridNav: React.FC<HybridNavProps> = ({ activeTab, onTabChange }) => {
      Keyboard nav (W/S + arrows)
   ------------------------------ */
   useEffect(() => {
+    if (isModalOpen) return;
+
     const handleKeys = (e: KeyboardEvent) => {
       if (activeTab === "search" && e.key === "Escape") {
         onTabChange("movies");
@@ -69,6 +76,8 @@ const HybridNav: React.FC<HybridNavProps> = ({ activeTab, onTabChange }) => {
      Swipe up/down for navigation
   ------------------------------ */
   useEffect(() => {
+    if (isModalOpen) return;
+
     const handleTouchStart = (e: TouchEvent) => {
       startY.current = e.touches[0].clientY;
     };
@@ -109,7 +118,7 @@ const HybridNav: React.FC<HybridNavProps> = ({ activeTab, onTabChange }) => {
   };
   const handleTouchEnd = () => {
     if (pressTimeout.current) clearTimeout(pressTimeout.current);
-    setTimeout(() => setPressedLabel(null), 150); // fade-out delay
+    setTimeout(() => setPressedLabel(null), 150);
   };
 
   return (

@@ -107,8 +107,14 @@ export default function App() {
     }
   };
 
+  const isModalOpen = Boolean(selectedItem || playerItem);
+
   return (
-    <Layout activeTab={activeTab} onTabChange={persistTab}>
+    <Layout
+      activeTab={activeTab}
+      onTabChange={persistTab}
+      isModalOpen={isModalOpen}
+    >
       {/* Global toaster for context notifications */}
       <Toaster richColors position="bottom-center" theme="dark" />
 
