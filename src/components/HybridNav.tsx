@@ -38,8 +38,11 @@ const iconVariants: Variants = {
 const HybridNav: React.FC<HybridNavProps> = ({ activeTab, onTabChange }) => {
   const [pressedLabel, setPressedLabel] = useState<Tab | null>(null);
   const pressTimeout = useRef<NodeJS.Timeout | null>(null);
+  const startY = useRef<number | null>(null); // swipe start position
 
-  // keyboard nav
+  /* ------------------------------
+     Keyboard nav (W/S + arrows)
+  ------------------------------ */
   useEffect(() => {
     const handleKeys = (e: KeyboardEvent) => {
       if (activeTab === "search" && e.key === "Escape") {
@@ -47,6 +50,7 @@ const HybridNav: React.FC<HybridNavProps> = ({ activeTab, onTabChange }) => {
         return;
       }
       const currentIndex = navItems.findIndex((n) => n.id === activeTab);
+
       if (["ArrowUp", "w", "W"].includes(e.key)) {
         const prev = (currentIndex - 1 + navItems.length) % navItems.length;
         onTabChange(navItems[prev].id);
@@ -56,11 +60,50 @@ const HybridNav: React.FC<HybridNavProps> = ({ activeTab, onTabChange }) => {
         onTabChange(navItems[next].id);
       }
     };
+
     window.addEventListener("keydown", handleKeys);
     return () => window.removeEventListener("keydown", handleKeys);
   }, [activeTab, onTabChange]);
 
-  // touch long-press
+  /* ------------------------------
+     Swipe up/down for navigation
+  ------------------------------ */
+  useEffect(() => {
+    const handleTouchStart = (e: TouchEvent) => {
+      startY.current = e.touches[0].clientY;
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      if (startY.current === null) return;
+      const endY = e.changedTouches[0].clientY;
+      const diffY = startY.current - endY;
+
+      if (Math.abs(diffY) > 50) {
+        const currentIndex = navItems.findIndex((n) => n.id === activeTab);
+        if (diffY > 0) {
+          // swipe up → next tab
+          const next = (currentIndex + 1) % navItems.length;
+          onTabChange(navItems[next].id);
+        } else {
+          // swipe down → previous tab
+          const prev = (currentIndex - 1 + navItems.length) % navItems.length;
+          onTabChange(navItems[prev].id);
+        }
+      }
+      startY.current = null;
+    };
+
+    window.addEventListener("touchstart", handleTouchStart);
+    window.addEventListener("touchend", handleTouchEnd);
+    return () => {
+      window.removeEventListener("touchstart", handleTouchStart);
+      window.removeEventListener("touchend", handleTouchEnd);
+    };
+  }, [activeTab, onTabChange]);
+
+  /* ------------------------------
+     Long-press for labels (mobile)
+  ------------------------------ */
   const handleTouchStart = (id: Tab) => {
     pressTimeout.current = setTimeout(() => setPressedLabel(id), 400);
   };
@@ -103,7 +146,7 @@ const HybridNav: React.FC<HybridNavProps> = ({ activeTab, onTabChange }) => {
                 className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-full bg-[hsl(var(--foreground))]"
               />
 
-              {/* Tooltip: hover (group-hover) + long-press */}
+              {/* Tooltip */}
               <span
                 className={`absolute left-10 px-2 py-1 text-xs bg-[hsl(var(--foreground))] text-[hsl(var(--background))] rounded whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity ${
                   pressedLabel === item.id ? "opacity-100" : ""
