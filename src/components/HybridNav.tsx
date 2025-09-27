@@ -43,7 +43,7 @@ const HybridNav: React.FC<HybridNavProps> = ({
 }) => {
   const [pressedLabel, setPressedLabel] = useState<Tab | null>(null);
   const pressTimeout = useRef<NodeJS.Timeout | null>(null);
-  const startY = useRef<number | null>(null); // swipe start position
+  const startY = useRef<number | null>(null);
 
   /* ------------------------------
      Keyboard nav (W/S + arrows)
