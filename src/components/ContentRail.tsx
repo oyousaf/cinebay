@@ -108,7 +108,7 @@ export default function ContentRail({
                   animate={isFocused ? { scale: 1.07 } : { scale: 1 }}
                   transition={{ type: "spring", stiffness: 300, damping: 25 }}
                   onClick={() => {
-                    setActiveItem(movie); // only updates banner
+                    setActiveItem(movie);
                     if (railIndex !== null) {
                       setFocus({ section: railIndex, index: idx });
                     }
