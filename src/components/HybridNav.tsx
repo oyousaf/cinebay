@@ -156,7 +156,7 @@ const HybridNav: React.FC<HybridNavProps> = ({
                 className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-full bg-[hsl(var(--foreground))] shadow-[0_0_6px_hsl(var(--foreground)/0.8)]"
               />
 
-              {/* Tooltip (always solid when visible) */}
+              {/* Tooltip */}
               <span
                 className={`absolute left-10 px-2 py-1 text-xs text-[hsl(var(--background))] rounded whitespace-nowrap pointer-events-none shadow-lg transition-opacity
                   ${
