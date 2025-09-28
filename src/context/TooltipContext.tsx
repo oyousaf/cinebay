@@ -34,7 +34,7 @@ export const TooltipProvider = ({ children }: { children: ReactNode }) => {
 
       if (position === "top") {
         x = rect.left + rect.width / 2;
-        y = rect.top - 12;
+        y = rect.top - 6;
       }
 
       setTooltip({ text, x, y, position });
