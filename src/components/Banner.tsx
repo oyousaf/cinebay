@@ -98,7 +98,7 @@ export default function Banner({
         </motion.h2>
 
         <motion.p
-          className="text-sm md:text-xl text-gray-200 max-w-2xl mb-6 line-clamp-4"
+          className="text-sm md:text-xl text-gray-200 max-w-3xl mb-8 leading-relaxed"
           variants={childVariants}
         >
           {item.overview}
