@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from "react";
-import { motion, Variants, TargetAndTransition } from "framer-motion";
+import { motion, Variants } from "framer-motion";
 import { FaFilm, FaTv, FaSearch, FaStar, FaBookmark } from "react-icons/fa";
 
 type Tab = "movies" | "tvshows" | "search" | "devspick" | "watchlist";
@@ -20,27 +20,32 @@ const navItems: { id: Tab; icon: React.ReactElement; label: string }[] = [
   { id: "watchlist", icon: <FaBookmark size={22} />, label: "Watchlist" },
 ];
 
-/* Motion variants: opacity + scale */
+/* Parent container for staggered entrance */
+const containerVariants: Variants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.08 },
+  },
+};
+
+/* Icon variants */
 const iconVariants: Variants = {
-  inactive: (i: number) => ({
+  hidden: { opacity: 0, y: 20, scale: 0.8 },
+  inactive: {
     opacity: 0.5,
-    scale: 1,
     y: 0,
-    transition: {
-      delay: i * 0.05,
-      type: "spring",
-      stiffness: 400,
-      damping: 22,
-    },
-  }),
+    scale: 1,
+    transition: { type: "spring", stiffness: 400, damping: 22 },
+  },
   hover: {
     opacity: 0.8,
-    scale: 1.20,
+    scale: 1.15,
     transition: { type: "spring", stiffness: 400, damping: 22 },
   },
   active: {
     opacity: 1,
-    scale: 1.1,
+    scale: 1.2,
     transition: { type: "spring", stiffness: 400, damping: 22 },
   },
 };
@@ -118,7 +123,12 @@ const HybridNav: React.FC<HybridNavProps> = ({
   return (
     <>
       {/* Sidebar */}
-      <aside className="hidden md:flex fixed left-0 top-0 h-screen w-16 flex-col items-center justify-center gap-6 bg-[hsl(var(--background))] border-r border-border z-40">
+      <motion.aside
+        className="hidden md:flex fixed left-0 top-0 h-screen w-16 flex-col items-center justify-center gap-6 bg-[hsl(var(--background))] border-r border-border z-40"
+        variants={containerVariants}
+        initial="hidden"
+        animate="show"
+      >
         {navItems.map((item, i) => {
           const isActive = activeTab === item.id;
           return (
@@ -126,7 +136,6 @@ const HybridNav: React.FC<HybridNavProps> = ({
               key={item.id}
               onClick={() => onTabChange(item.id)}
               variants={iconVariants}
-              initial="inactive"
               animate={isActive ? "active" : "inactive"}
               whileHover="hover"
               custom={i}
@@ -136,7 +145,7 @@ const HybridNav: React.FC<HybridNavProps> = ({
             >
               {item.icon}
 
-              {/* Active indicator with glow */}
+              {/* Active indicator */}
               <motion.div
                 layoutId="active-indicator"
                 animate={{
@@ -147,21 +156,30 @@ const HybridNav: React.FC<HybridNavProps> = ({
                 className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-full bg-[hsl(var(--foreground))] shadow-[0_0_6px_hsl(var(--foreground)/0.8)]"
               />
 
-              {/* Tooltip */}
+              {/* Tooltip (always solid when visible) */}
               <span
-                className={`absolute left-10 px-2 py-1 text-xs bg-[hsl(var(--foreground))] text-[hsl(var(--background))] rounded whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity
-                  ${pressedLabel === item.id ? "opacity-100" : ""}
-                `}
+                className={`absolute left-10 px-2 py-1 text-xs text-[hsl(var(--background))] rounded whitespace-nowrap pointer-events-none shadow-lg transition-opacity
+                  ${
+                    pressedLabel === item.id
+                      ? "opacity-100"
+                      : "opacity-0 group-hover:opacity-100"
+                  }`}
+                style={{ backgroundColor: "hsl(var(--foreground))" }}
               >
                 {item.label}
               </span>
             </motion.button>
           );
         })}
-      </aside>
+      </motion.aside>
 
       {/* Bottom nav */}
-      <nav className="md:hidden fixed bottom-0 left-0 w-full h-16 bg-[hsl(var(--background))] border-t border-border flex justify-around items-center z-40">
+      <motion.nav
+        className="md:hidden fixed bottom-0 left-0 w-full h-16 bg-[hsl(var(--background))] border-t border-border flex justify-around items-center z-40"
+        variants={containerVariants}
+        initial="hidden"
+        animate="show"
+      >
         {navItems.map((item, i) => {
           const isActive = activeTab === item.id;
           return (
@@ -172,7 +190,6 @@ const HybridNav: React.FC<HybridNavProps> = ({
               onTouchEnd={handleTouchEnd}
               onContextMenu={(e) => e.preventDefault()}
               variants={iconVariants}
-              initial="inactive"
               animate={isActive ? "active" : "inactive"}
               whileHover="hover"
               custom={i}
@@ -182,7 +199,7 @@ const HybridNav: React.FC<HybridNavProps> = ({
             >
               {item.icon}
 
-              {/* Active indicator with glow */}
+              {/* Active indicator */}
               <motion.div
                 layoutId="active-indicator-mobile"
                 animate={{
@@ -195,16 +212,20 @@ const HybridNav: React.FC<HybridNavProps> = ({
 
               {/* Tooltip */}
               <span
-                className={`absolute bottom-10 px-2 py-1 text-xs bg-[hsl(var(--foreground))] text-black rounded whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity
-                  ${pressedLabel === item.id ? "opacity-100" : ""}
-                `}
+                className={`absolute bottom-10 px-2 py-1 text-xs text-[hsl(var(--background))] rounded whitespace-nowrap pointer-events-none shadow-lg transition-opacity
+                  ${
+                    pressedLabel === item.id
+                      ? "opacity-100"
+                      : "opacity-0 group-hover:opacity-100"
+                  }`}
+                style={{ backgroundColor: "hsl(var(--foreground))" }}
               >
                 {item.label}
               </span>
             </motion.button>
           );
         })}
-      </nav>
+      </motion.nav>
     </>
   );
 };
