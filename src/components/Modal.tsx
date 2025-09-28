@@ -179,13 +179,35 @@ export default function Modal({
               <div className="flex-1 space-y-4 mt-4 sm:mt-0 text-center sm:text-left">
                 <h2 className="text-3xl sm:text-4xl font-bold">{title}</h2>
 
+                {/* Person details */}
+                {isPerson && movie.biography && (
+                  <p className="text-md text-zinc-200 leading-relaxed max-h-[200px] overflow-y-auto pr-2">
+                    {movie.biography}
+                  </p>
+                )}
+
+                {isPerson && (
+                  <div className="flex flex-col gap-1 text-sm text-zinc-300 pt-2 items-center sm:items-start">
+                    {movie.birthday && (
+                      <span>🎂 Born: {formatDate(movie.birthday)}</span>
+                    )}
+                    {movie.place_of_birth && (
+                      <span>📍 {movie.place_of_birth}</span>
+                    )}
+                    {typeof movie.popularity === "number" && (
+                      <span>⭐ Popularity: {movie.popularity.toFixed(1)}</span>
+                    )}
+                  </div>
+                )}
+
+                {/* Movie/TV overview */}
                 {!isPerson && movie.overview && (
                   <p className="text-md text-zinc-200 leading-relaxed">
                     {movie.overview}
                   </p>
                 )}
 
-                {/* Meta row */}
+                {/* Movie/TV meta row */}
                 {!isPerson && (
                   <div className="flex flex-wrap gap-2 sm:gap-3 text-sm sm:text-base text-zinc-300 pt-2 justify-center sm:justify-start items-center">
                     {movie.isNew && (
@@ -193,17 +215,13 @@ export default function Modal({
                         NEW
                       </span>
                     )}
-
                     {movie.genres?.length && (
                       <span className="italic truncate">
                         {movie.genres.join(", ")}
                       </span>
                     )}
-
                     {releaseDate && <span>· {releaseDate}</span>}
-
                     {movie.runtime && <span>· {movie.runtime} mins</span>}
-
                     {movie.original_language && (
                       <span className="capitalize">
                         ·{" "}
@@ -212,7 +230,6 @@ export default function Modal({
                         }).of(movie.original_language)}
                       </span>
                     )}
-
                     {typeof movie.vote_average === "number" &&
                       movie.vote_average > 0 && (
                         <span className="bg-[hsl(var(--foreground))] text-[hsl(var(--background))] text-sm font-semibold px-2 py-0.5 rounded-full shadow-[0_0_6px_hsl(var(--foreground)/0.6),0_0_12px_hsl(var(--foreground)/0.4)]">
@@ -222,7 +239,7 @@ export default function Modal({
                   </div>
                 )}
 
-                {/* Actions row */}
+                {/* Actions row (movies/TV only) */}
                 {!isPerson && (
                   <div className="pt-4 flex gap-4 justify-center sm:justify-start">
                     <motion.button
@@ -264,7 +281,7 @@ export default function Modal({
                   </div>
                 )}
 
-                {/* Cast list */}
+                {/* Cast list (movies/TV only) */}
                 {!isPerson && cast.length > 0 && (
                   <StarringList cast={cast} onSelect={onSelect} />
                 )}
