@@ -1,6 +1,6 @@
 "use client";
 
-import React, {
+import {
   createContext,
   useContext,
   useState,
@@ -29,7 +29,7 @@ export const TooltipProvider = ({ children }: { children: ReactNode }) => {
   const showTooltip = useCallback(
     (text: string, position: Position, target: HTMLElement) => {
       const rect = target.getBoundingClientRect();
-      let x = rect.right + 12;
+      let x = rect.right;
       let y = rect.top + rect.height / 2;
 
       if (position === "top") {
