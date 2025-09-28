@@ -204,19 +204,21 @@ export default function Modal({
                 )}
 
                 {isPerson && (
-                  <div className="flex flex-col gap-1 text-sm text-zinc-300 pt-2 items-center sm:items-start">
-                    {movie.birthday && (
-                      <span>🎂 Born: {formatDate(movie.birthday)}</span>
-                    )}
-                    {movie.place_of_birth && (
-                      <span>📍 {movie.place_of_birth}</span>
-                    )}
-                    {typeof movie.popularity === "number" && (
-                      <span>⭐ Popularity: {movie.popularity.toFixed(1)}</span>
-                    )}
-                  </div>
-                )}
-
+  <div className="flex flex-col gap-1 text-sm text-zinc-300 pt-2 items-center sm:items-start">
+    {movie.birthday && (
+      <span>🎂 Born: {formatDate(movie.birthday)}</span>
+    )}
+    {movie.deathday && (
+      <span>🕊️ Passed: {formatDate(movie.deathday)}</span>
+    )}
+    {movie.place_of_birth && (
+      <span>📍 {movie.place_of_birth}</span>
+    )}
+    {typeof movie.popularity === "number" && (
+      <span>⭐ Popularity: {movie.popularity.toFixed(1)}</span>
+    )}
+  </div>
+)}
                 {/* Movie/TV overview */}
                 {!isPerson && movie.overview && (
                   <p className="text-md text-zinc-200 leading-relaxed">
