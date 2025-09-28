@@ -183,9 +183,15 @@ export default function Modal({
                 {/* Person details */}
                 {isPerson && movie.biography && (
                   <div className="text-md text-zinc-200 leading-relaxed">
-                    <p className={showFullBio ? "" : "line-clamp-4"}>
-                      {movie.biography}
-                    </p>
+                    <motion.div
+                      initial={false}
+                      animate={{ height: showFullBio ? "auto" : "6rem" }}
+                      transition={{ duration: 0.3, ease: "easeInOut" }}
+                      className="overflow-hidden"
+                    >
+                      <p className="whitespace-pre-line">{movie.biography}</p>
+                    </motion.div>
+
                     {movie.biography.length > 300 && (
                       <button
                         onClick={() => setShowFullBio((prev) => !prev)}
