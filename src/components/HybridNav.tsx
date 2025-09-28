@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
-import { motion, Variants } from "framer-motion";
+import { useEffect, useRef } from "react";
+import { motion } from "framer-motion";
 import { FaFilm, FaTv, FaSearch, FaStar, FaBookmark } from "react-icons/fa";
 import { useTooltip } from "@/context/TooltipContext";
 
@@ -20,20 +20,6 @@ const navItems: { id: Tab; icon: React.ReactElement; label: string }[] = [
   { id: "devspick", icon: <FaStar size={22} />, label: "Dev’s Pick" },
   { id: "watchlist", icon: <FaBookmark size={22} />, label: "Watchlist" },
 ];
-
-/* Parent container entrance */
-const containerVariants: Variants = {
-  hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { staggerChildren: 0.08 } },
-};
-
-/* Icon animation states */
-const iconVariants: Variants = {
-  hidden: { opacity: 0, y: 20, scale: 0.8 },
-  inactive: { opacity: 0.5, scale: 1 },
-  hover: { opacity: 0.8, scale: 1.15 },
-  active: { opacity: 1, scale: 1.2 },
-};
 
 const HybridNav: React.FC<HybridNavProps> = ({
   activeTab,
@@ -80,13 +66,8 @@ const HybridNav: React.FC<HybridNavProps> = ({
   return (
     <>
       {/* Desktop sidebar */}
-      <motion.aside
-        className="hidden md:flex fixed left-0 top-0 h-screen w-16 flex-col items-center justify-center gap-6 bg-[hsl(var(--background))] border-r border-border z-40"
-        variants={containerVariants}
-        initial="hidden"
-        animate="show"
-      >
-        {navItems.map((item, i) => {
+      <aside className="hidden md:flex fixed left-0 top-0 h-screen w-16 flex-col items-center justify-center gap-6 bg-[hsl(var(--background))] border-r border-border z-40">
+        {navItems.map((item) => {
           const isActive = activeTab === item.id;
           return (
             <motion.button
@@ -96,13 +77,12 @@ const HybridNav: React.FC<HybridNavProps> = ({
                 showTooltip(item.label, "side", e.currentTarget)
               }
               onMouseLeave={hideTooltip}
-              variants={iconVariants}
-              animate={isActive ? "active" : "inactive"}
-              whileHover="hover"
-              custom={i}
+              whileHover={{ scale: 1.15 }}
               aria-current={isActive ? "page" : undefined}
               aria-label={item.label}
-              className="relative group p-2 rounded-lg"
+              className={`relative group p-2 rounded-lg transition-colors ${
+                isActive ? "text-[hsl(var(--foreground))]" : "opacity-50"
+              }`}
             >
               {item.icon}
               {/* Active indicator */}
@@ -119,16 +99,11 @@ const HybridNav: React.FC<HybridNavProps> = ({
             </motion.button>
           );
         })}
-      </motion.aside>
+      </aside>
 
       {/* Mobile bottom nav */}
-      <motion.nav
-        className="md:hidden fixed bottom-0 left-0 w-full h-16 bg-[hsl(var(--background))] border-t border-border flex justify-around items-center z-40"
-        variants={containerVariants}
-        initial="hidden"
-        animate="show"
-      >
-        {navItems.map((item, i) => {
+      <nav className="md:hidden fixed bottom-0 left-0 w-full h-16 bg-[hsl(var(--background))] border-t border-border flex justify-around items-center z-40">
+        {navItems.map((item) => {
           const isActive = activeTab === item.id;
           return (
             <motion.button
@@ -137,13 +112,12 @@ const HybridNav: React.FC<HybridNavProps> = ({
               onTouchStart={(e) => handleTouchStart(item.id, e)}
               onTouchEnd={handleTouchEnd}
               onContextMenu={(e) => e.preventDefault()}
-              variants={iconVariants}
-              animate={isActive ? "active" : "inactive"}
-              whileHover="hover"
-              custom={i}
+              whileHover={{ scale: 1.15 }}
               aria-current={isActive ? "page" : undefined}
               aria-label={item.label}
-              className="relative group flex flex-col items-center justify-center"
+              className={`relative group flex flex-col items-center justify-center transition-colors ${
+                isActive ? "text-[hsl(var(--foreground))]" : "opacity-50"
+              }`}
             >
               {item.icon}
               {/* Active indicator */}
@@ -160,7 +134,7 @@ const HybridNav: React.FC<HybridNavProps> = ({
             </motion.button>
           );
         })}
-      </motion.nav>
+      </nav>
     </>
   );
 };
