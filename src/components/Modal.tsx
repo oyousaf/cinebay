@@ -88,19 +88,25 @@ export default function Modal({
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
-      if ((e.target as HTMLElement).closest(".carousel")) return;
-      if (e.key === "Escape") onClose();
-      if (e.key === "ArrowLeft" && onBack) onBack();
-      if (e.key === "ArrowRight" && movie.recommendations?.[0]) {
-        handleSelectWithDetails(movie.recommendations[0]);
+      if (["ArrowLeft", "ArrowRight", "Escape"].includes(e.key)) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+
+      if (e.key === "Escape") {
+        onClose();
+      }
+
+      if (e.key === "ArrowLeft" && onBack) {
+        onBack();
       }
     },
-    [movie, onBack, handleSelectWithDetails, onClose]
+    [onBack, onClose]
   );
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
-    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown, true);
     const id = requestAnimationFrame(() => setMounting(false));
     return () => {
       document.body.style.overflow = "";
