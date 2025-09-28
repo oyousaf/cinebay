@@ -64,6 +64,22 @@ export default function ContentRail({
     }
   }, [items, activeItem, railIndex, setFocus]);
 
+  // 🎮 Remote/keyboard Enter handler → play movie
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Enter" && railIndex !== null) {
+        if (focus.section === railIndex) {
+          const movie = items[focus.index];
+          if (movie) {
+            onWatch(movie);
+          }
+        }
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [focus, railIndex, items, onWatch]);
+
   return (
     <section className="relative w-full">
       {/* Banner */}
@@ -103,7 +119,7 @@ export default function ContentRail({
                     ${
                       isFocused
                         ? "ring-4 ring-[#80ffcc] scale-105 shadow-pulse"
-                        : "hover:scale-105 hover:shadow-lg"
+                        : "hover:scale-105 hover:shadow-lg opacity-50 hover:opacity-80"
                     }`}
                   animate={isFocused ? { scale: 1.07 } : { scale: 1 }}
                   transition={{ type: "spring", stiffness: 300, damping: 25 }}

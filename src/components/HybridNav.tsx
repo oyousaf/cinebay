@@ -20,20 +20,29 @@ const navItems: { id: Tab; icon: React.ReactElement; label: string }[] = [
   { id: "watchlist", icon: <FaBookmark size={22} />, label: "Watchlist" },
 ];
 
-/* Icon load-in */
+/* Motion variants: opacity + scale */
 const iconVariants: Variants = {
-  hidden: { opacity: 0, y: 20, scale: 0.8 },
-  visible: (i: number): TargetAndTransition => ({
-    opacity: 1,
-    y: 0,
+  inactive: (i: number) => ({
+    opacity: 0.5,
     scale: 1,
+    y: 0,
     transition: {
-      delay: i * 0.08,
+      delay: i * 0.05,
       type: "spring",
       stiffness: 400,
       damping: 22,
     },
   }),
+  hover: {
+    opacity: 0.8,
+    scale: 1.20,
+    transition: { type: "spring", stiffness: 400, damping: 22 },
+  },
+  active: {
+    opacity: 1,
+    scale: 1.1,
+    transition: { type: "spring", stiffness: 400, damping: 22 },
+  },
 };
 
 const HybridNav: React.FC<HybridNavProps> = ({
@@ -117,16 +126,13 @@ const HybridNav: React.FC<HybridNavProps> = ({
               key={item.id}
               onClick={() => onTabChange(item.id)}
               variants={iconVariants}
-              initial="hidden"
-              animate="visible"
+              initial="inactive"
+              animate={isActive ? "active" : "inactive"}
+              whileHover="hover"
               custom={i}
               aria-current={isActive ? "page" : undefined}
               aria-label={item.label}
-              className={`relative group p-2 rounded-lg transition-colors ${
-                isActive
-                  ? "text-[hsl(var(--foreground))] opacity-100"
-                  : "text-muted-foreground opacity-40 hover:opacity-80"
-              }`}
+              className="relative group p-2 rounded-lg"
             >
               {item.icon}
 
@@ -143,9 +149,9 @@ const HybridNav: React.FC<HybridNavProps> = ({
 
               {/* Tooltip */}
               <span
-                className={`absolute left-10 px-2 py-1 text-xs bg-[hsl(var(--foreground))] text-[hsl(var(--background))] rounded whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity ${
-                  pressedLabel === item.id ? "opacity-100" : ""
-                }`}
+                className={`absolute left-10 px-2 py-1 text-xs bg-[hsl(var(--foreground))] text-[hsl(var(--background))] rounded whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity
+                  ${pressedLabel === item.id ? "opacity-100" : ""}
+                `}
               >
                 {item.label}
               </span>
@@ -166,16 +172,13 @@ const HybridNav: React.FC<HybridNavProps> = ({
               onTouchEnd={handleTouchEnd}
               onContextMenu={(e) => e.preventDefault()}
               variants={iconVariants}
-              initial="hidden"
-              animate="visible"
+              initial="inactive"
+              animate={isActive ? "active" : "inactive"}
+              whileHover="hover"
               custom={i}
               aria-current={isActive ? "page" : undefined}
               aria-label={item.label}
-              className={`relative group flex flex-col items-center justify-center ${
-                isActive
-                  ? "text-[hsl(var(--foreground))] opacity-100"
-                  : "text-muted-foreground opacity-40 hover:opacity-80"
-              }`}
+              className="relative group flex flex-col items-center justify-center"
             >
               {item.icon}
 
@@ -192,9 +195,9 @@ const HybridNav: React.FC<HybridNavProps> = ({
 
               {/* Tooltip */}
               <span
-                className={`absolute bottom-10 px-2 py-1 text-xs bg-[hsl(var(--foreground))] text-black rounded whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity ${
-                  pressedLabel === item.id ? "opacity-100" : ""
-                }`}
+                className={`absolute bottom-10 px-2 py-1 text-xs bg-[hsl(var(--foreground))] text-black rounded whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity
+                  ${pressedLabel === item.id ? "opacity-100" : ""}
+                `}
               >
                 {item.label}
               </span>
