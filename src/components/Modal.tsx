@@ -66,6 +66,7 @@ export default function Modal({
   const cast = movie.credits?.cast ?? [];
   const knownFor = movie.known_for ?? [];
   const releaseDate = formatDate(movie.release_date);
+  const [showFullBio, setShowFullBio] = useState(false);
 
   const handleSelectWithDetails = useCallback(
     async (item: Movie) => {
@@ -181,9 +182,19 @@ export default function Modal({
 
                 {/* Person details */}
                 {isPerson && movie.biography && (
-                  <p className="text-md text-zinc-200 leading-relaxed max-h-[200px] overflow-y-auto pr-2">
-                    {movie.biography}
-                  </p>
+                  <div className="text-md text-zinc-200 leading-relaxed">
+                    <p className={showFullBio ? "" : "line-clamp-4"}>
+                      {movie.biography}
+                    </p>
+                    {movie.biography.length > 300 && (
+                      <button
+                        onClick={() => setShowFullBio((prev) => !prev)}
+                        className="mt-2 text-sm font-semibold text-[hsl(var(--foreground))] hover:underline"
+                      >
+                        {showFullBio ? "Read less" : "Read more"}
+                      </button>
+                    )}
+                  </div>
                 )}
 
                 {isPerson && (
