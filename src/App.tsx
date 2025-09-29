@@ -115,7 +115,7 @@ export default function App() {
       onTabChange={persistTab}
       isModalOpen={isModalOpen}
     >
-      {/* Global toaster for context notifications */}
+      {/* Global toaster for watchlist notifications */}
       <Toaster richColors position="bottom-center" theme="dark" />
 
       <AnimatePresence mode="wait">
