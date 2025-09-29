@@ -121,8 +121,13 @@ export default function ContentRail({
                         ? "ring-4 ring-[#80ffcc] scale-105 shadow-pulse"
                         : "hover:scale-105 hover:shadow-lg opacity-50 hover:opacity-80"
                     }`}
-                  animate={isFocused ? { scale: 1.07 } : { scale: 1 }}
-                  transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                  animate={isFocused ? { scale: 1.1 } : { scale: 1 }}
+                  transition={{
+                    type: "spring",
+                    stiffness: 300,
+                    damping: 20,
+                    mass: 1,
+                  }}
                   onClick={() => {
                     setActiveItem(movie);
                     if (railIndex !== null) {
