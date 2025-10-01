@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import type { Movie } from "@/types/movie";
 import Banner from "./Banner";
 import { useNavigation } from "@/hooks/useNavigation";
+import { Loader2 } from "lucide-react";
 
 interface ContentRailProps {
   title: string;
@@ -83,22 +84,17 @@ export default function ContentRail({
   return (
     <section className="relative w-full">
       {/* Banner */}
-      <div className="min-h-[70vh] w-full">
-        {activeItem ? (
-          <Banner
-            item={activeItem}
-            onSelect={onSelect}
-            onWatch={onWatch}
-            title={title}
-          />
-        ) : (
-          <div className="relative w-full h-full flex items-center justify-center bg-[hsl(var(--background))]">
-            <span className="text-zinc-400 text-sm tracking-wide">
-              Loading {title}…
-            </span>
-          </div>
-        )}
-      </div>
+      {activeItem ? (
+        <Banner
+          item={activeItem}
+          onSelect={onSelect}
+          onWatch={onWatch}
+        />
+      ) : (
+        <div className="fixed inset-0 h-full flex items-center justify-center">
+          <Loader2 className="animate-spin w-8 h-8 text-[hsl(var(--foreground))]" />
+        </div>
+      )}
 
       {/* Tiles */}
       {items.length > 0 && railIndex !== null && (

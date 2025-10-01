@@ -9,12 +9,10 @@ export default function Banner({
   item,
   onSelect,
   onWatch,
-  title,
 }: {
   item: Movie;
   onSelect: (movie: Movie) => void;
   onWatch: (movie: Movie) => void;
-  title: string;
 }) {
   const embedUrl = useVideoEmbed(item.id, item.media_type);
   const { toggleWatchlist, isInWatchlist } = useWatchlist();
@@ -174,11 +172,6 @@ export default function Banner({
           </motion.button>
         </motion.div>
       </motion.div>
-
-      {/* Section label */}
-      <span className="absolute top-6 left-6 text-xs uppercase tracking-widest bg-black/40 px-3 py-1 rounded-md text-gray-200 z-20">
-        {title}
-      </span>
     </div>
   );
 }
