@@ -21,6 +21,16 @@ const formatDate = (dateStr?: string) =>
       })
     : null;
 
+const calculateAge = (birthday?: string, deathday?: string) => {
+  if (!birthday) return null;
+  const birthDate = new Date(birthday);
+  const endDate = deathday ? new Date(deathday) : new Date();
+  const age = Math.floor(
+    (endDate.getTime() - birthDate.getTime()) / (1000 * 60 * 60 * 24 * 365.25)
+  );
+  return age;
+};
+
 export default function Modal({
   movie,
   onClose,
@@ -140,6 +150,37 @@ export default function Modal({
                 <h2 className="text-3xl sm:text-4xl font-bold">{title}</h2>
 
                 {/* Person details */}
+                {isPerson && (
+                  <div className="flex flex-col gap-1 text-sm text-zinc-300 pt-2 items-center sm:items-start">
+                    {movie.birthday && (
+                      <span>🎂 Born: {formatDate(movie.birthday)}</span>
+                    )}
+                    {movie.deathday ? (
+                      <span>
+                        🕊️ Passed: {formatDate(movie.deathday)}{" "}
+                        {movie.birthday &&
+                          `(aged ${calculateAge(
+                            movie.birthday,
+                            movie.deathday
+                          )})`}
+                      </span>
+                    ) : (
+                      movie.birthday && (
+                        <span>
+                          🎉 Age: {calculateAge(movie.birthday)} years
+                        </span>
+                      )
+                    )}
+                    {movie.place_of_birth && (
+                      <span>📍 {movie.place_of_birth}</span>
+                    )}
+                    {typeof movie.popularity === "number" && (
+                      <span>⭐ Popularity: {movie.popularity.toFixed(1)}</span>
+                    )}
+                  </div>
+                )}
+
+                {/* Biography */}
                 {isPerson && movie.biography && (
                   <div className="text-md text-zinc-200 leading-relaxed">
                     <p className="whitespace-pre-line">
@@ -158,6 +199,7 @@ export default function Modal({
                   </div>
                 )}
 
+                {/* Movie/TV overview */}
                 {!isPerson && movie.overview && (
                   <p className="text-md text-zinc-200 leading-relaxed">
                     {movie.overview}
@@ -189,7 +231,7 @@ export default function Modal({
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                       type="button"
-                      onClick={() => openPlayer(`/watch/${movie.id}`)} // ✅ context player
+                      onClick={() => openPlayer(`/watch/${movie.id}`)}
                       className="bg-[hsl(var(--foreground))] hover:bg-[hsl(var(--foreground))]/90 
                                  text-[hsl(var(--background))] text-xl cursor-pointer uppercase 
                                  font-semibold px-6 py-2 rounded-full transition 
@@ -223,6 +265,7 @@ export default function Modal({
                   </div>
                 )}
 
+                {/* Cast list */}
                 {!isPerson && cast.length > 0 && (
                   <StarringList cast={cast} onSelect={onSelect} />
                 )}
