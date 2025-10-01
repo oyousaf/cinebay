@@ -73,7 +73,7 @@ export default function App() {
       case "devspick":
         return <DevsPick onSelect={openContent} onWatch={openPlayer} />;
       case "watchlist":
-        return <Watchlist onSelect={openContent} />;
+        return <Watchlist onWatch={openPlayer} />;
       case "search":
         return (
           <div className="flex items-center justify-center min-h-screen px-4">
