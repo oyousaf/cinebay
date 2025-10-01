@@ -10,6 +10,7 @@ import SearchBar from "@/components/SearchBar";
 import Watchlist from "@/components/Watchlist";
 import Modal from "@/components/Modal";
 import PlayerModal from "@/components/PlayerModal";
+import ExitConfirmModal from "@/components/ExitConfirmModal";
 
 import type { Movie } from "@/types/movie";
 import { useVideoEmbed } from "@/hooks/useVideoEmbed";
@@ -18,6 +19,7 @@ export default function App() {
   const [selectedItem, setSelectedItem] = useState<Movie | null>(null);
   const [modalHistory, setModalHistory] = useState<Movie[]>([]);
   const [playerItem, setPlayerItem] = useState<Movie | null>(null);
+  const [exitConfirmOpen, setExitConfirmOpen] = useState(false);
 
   const [activeTab, setActiveTab] = useState<
     "movies" | "tvshows" | "search" | "devspick" | "watchlist"
@@ -55,7 +57,7 @@ export default function App() {
       }
       setSelectedItem(item);
 
-      // Push dummy state for back navigation
+      // push dummy state so back button knows modal is open
       window.history.pushState({ modal: true }, "");
     };
   })();
@@ -71,29 +73,44 @@ export default function App() {
     }
   };
 
-  const handleWatch = (movie: Movie) => {
-    setPlayerItem(movie);
-  };
+  const handleWatch = (movie: Movie) => setPlayerItem(movie);
 
   const embedUrl = useVideoEmbed(playerItem?.id, playerItem?.media_type);
 
-  // Device/browser back handling (popstate)
+  // Handle hardware/browser back + Esc
   useEffect(() => {
     const onPopState = (e: PopStateEvent) => {
-      if (!selectedItem) return;
+      if (selectedItem) {
+        e.preventDefault();
+        modalHistory.length > 0 ? handleBackInModal() : setSelectedItem(null);
+      } else if (!exitConfirmOpen) {
+        e.preventDefault();
+        setExitConfirmOpen(true);
+        window.history.pushState({ exitConfirm: true }, "");
+      }
+    };
 
-      e.preventDefault();
-      if (modalHistory.length > 0) {
-        handleBackInModal();
-      } else {
-        setSelectedItem(null);
-        setModalHistory([]);
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (
+        e.key === "Escape" &&
+        !selectedItem &&
+        !playerItem &&
+        !exitConfirmOpen
+      ) {
+        setExitConfirmOpen(true);
+        // push dummy state so back/forward stack stays consistent
+        window.history.pushState({ exitConfirm: true }, "");
       }
     };
 
     window.addEventListener("popstate", onPopState);
-    return () => window.removeEventListener("popstate", onPopState);
-  }, [selectedItem, modalHistory]);
+    window.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      window.removeEventListener("popstate", onPopState);
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [selectedItem, playerItem, modalHistory, exitConfirmOpen]);
 
   // Tab rendering
   const renderContent = () => {
@@ -145,7 +162,6 @@ export default function App() {
         </motion.div>
       </AnimatePresence>
 
-      {/* Details Modal */}
       {selectedItem && (
         <Modal
           movie={selectedItem}
@@ -158,10 +174,20 @@ export default function App() {
         />
       )}
 
-      {/* Player Modal */}
       {playerItem && embedUrl && (
         <PlayerModal url={embedUrl} onClose={() => setPlayerItem(null)} />
       )}
+
+      <ExitConfirmModal
+        open={exitConfirmOpen}
+        onCancel={() => setExitConfirmOpen(false)}
+        onExit={() => {
+          setExitConfirmOpen(false);
+          if (typeof window !== "undefined" && "close" in window) {
+            window.close();
+          }
+        }}
+      />
     </Layout>
   );
 }
