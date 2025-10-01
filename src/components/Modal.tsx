@@ -149,45 +149,63 @@ export default function Modal({
               <div className="flex-1 space-y-4 mt-4 sm:mt-0 text-center sm:text-left">
                 <h2 className="text-3xl sm:text-4xl font-bold">{title}</h2>
 
-                {/* Person details */}
+                {/* Person Info */}
                 {isPerson && (
-                  <div className="flex flex-col gap-1 text-sm text-zinc-300 pt-2 items-center sm:items-start">
-                    {movie.birthday && (
-                      <span>🎂 Born: {formatDate(movie.birthday)}</span>
-                    )}
-                    {movie.deathday ? (
-                      <span>
-                        🕊️ Passed: {formatDate(movie.deathday)}{" "}
-                        {movie.birthday &&
-                          `(aged ${calculateAge(
-                            movie.birthday,
-                            movie.deathday
-                          )})`}
-                      </span>
-                    ) : (
-                      movie.birthday && (
+                  <div className="mt-4 w-full rounded-xl bg-zinc-900/60 p-4 shadow-md border border-zinc-700">
+                    <h3 className="text-lg font-semibold text-[hsl(var(--foreground))] mb-2">
+                      Personal Info
+                    </h3>
+                    <div className="flex flex-col gap-2 text-sm text-zinc-300">
+                      {movie.birthday && (
                         <span>
-                          🎉 Age: {calculateAge(movie.birthday)} years
+                          🎂 <strong>Born:</strong> {formatDate(movie.birthday)}
                         </span>
-                      )
-                    )}
-                    {movie.place_of_birth && (
-                      <span>📍 {movie.place_of_birth}</span>
-                    )}
-                    {typeof movie.popularity === "number" && (
-                      <span>⭐ Popularity: {movie.popularity.toFixed(1)}</span>
-                    )}
+                      )}
+                      {movie.deathday ? (
+                        <span>
+                          🕊️ <strong>Passed:</strong>{" "}
+                          {formatDate(movie.deathday)}{" "}
+                          {movie.birthday &&
+                            `(aged ${calculateAge(
+                              movie.birthday,
+                              movie.deathday
+                            )})`}
+                        </span>
+                      ) : (
+                        movie.birthday && (
+                          <span>
+                            🎉 <strong>Age:</strong>{" "}
+                            {calculateAge(movie.birthday)} years
+                          </span>
+                        )
+                      )}
+                      {movie.place_of_birth && (
+                        <span>
+                          📍 <strong>Place of Birth:</strong>{" "}
+                          {movie.place_of_birth}
+                        </span>
+                      )}
+                      {typeof movie.popularity === "number" && (
+                        <span>
+                          ⭐ <strong>Popularity:</strong>{" "}
+                          {movie.popularity.toFixed(1)}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 )}
 
-                {/* Biography */}
+                {/* Biography with animation */}
                 {isPerson && movie.biography && (
                   <div className="text-md text-zinc-200 leading-relaxed">
-                    <p className="whitespace-pre-line">
-                      {showFullBio
-                        ? movie.biography
-                        : movie.biography.slice(0, 300)}
-                    </p>
+                    <motion.div
+                      initial={false}
+                      animate={{ height: showFullBio ? "auto" : "6rem" }}
+                      transition={{ duration: 0.3, ease: "easeInOut" }}
+                      className="overflow-hidden"
+                    >
+                      <p className="whitespace-pre-line">{movie.biography}</p>
+                    </motion.div>
                     {movie.biography.length > 300 && (
                       <button
                         onClick={() => setShowFullBio((prev) => !prev)}
