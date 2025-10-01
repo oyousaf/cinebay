@@ -83,18 +83,34 @@ export default function ContentRail({
 
   return (
     <section className="relative w-full">
-      {/* Banner */}
-      {activeItem ? (
-        <Banner
-          item={activeItem}
-          onSelect={onSelect}
-          onWatch={onWatch}
-        />
-      ) : (
-        <div className="fixed inset-0 h-full flex items-center justify-center">
-          <Loader2 className="animate-spin w-8 h-8 text-[hsl(var(--foreground))]" />
-        </div>
-      )}
+      {/* Banner Wrapper */}
+      <div className="relative min-h-[70vh] w-full flex items-center justify-center">
+        {/* Loader */}
+        {!activeItem && (
+          <motion.div
+            key="loader"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 flex items-center justify-center"
+          >
+            <Loader2 className="animate-spin w-8 h-8 text-[hsl(var(--foreground))]" />
+          </motion.div>
+        )}
+
+        {/* Banner */}
+        {activeItem && (
+          <motion.div
+            key="banner"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+            className="w-full h-full"
+          >
+            <Banner item={activeItem} onSelect={onSelect} onWatch={onWatch} />
+          </motion.div>
+        )}
+      </div>
 
       {/* Tiles */}
       {items.length > 0 && railIndex !== null && (
