@@ -114,9 +114,14 @@ const Navbar: React.FC<NavbarProps> = ({
         </div>
 
         {/* Bottom: Dark mode toggle */}
-        <div className="pb-6">
+        <motion.div
+          className="pb-6"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6, duration: 0.4, ease: "easeOut" }}
+        >
           <DarkModeToggle />
-        </div>
+        </motion.div>
       </aside>
 
       {/* Mobile bottom nav */}
