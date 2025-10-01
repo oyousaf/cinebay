@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Toaster } from "sonner";
+import { Toaster, toast } from "sonner";
 
 import Layout from "@/components/Layout";
 import Movies from "@/components/Movies";
@@ -12,15 +12,21 @@ import Modal from "@/components/Modal";
 import PlayerModal from "@/components/PlayerModal";
 import ExitConfirmModal from "@/components/ExitConfirmModal";
 
-import type { Movie } from "@/types/movie";
-import { useVideoEmbed } from "@/hooks/useVideoEmbed";
+import {
+  useModalManager,
+  ModalManagerProvider,
+} from "@/context/ModalContext";
 
-export default function App() {
-  const [selectedItem, setSelectedItem] = useState<Movie | null>(null);
-  const [modalHistory, setModalHistory] = useState<Movie[]>([]);
-  const [playerItem, setPlayerItem] = useState<Movie | null>(null);
-  const [exitConfirmOpen, setExitConfirmOpen] = useState(false);
+export default function AppWrapper() {
+  // Wrap the whole app in ModalManager
+  return (
+    <ModalManagerProvider>
+      <App />
+    </ModalManagerProvider>
+  );
+}
 
+function App() {
   const [activeTab, setActiveTab] = useState<
     "movies" | "tvshows" | "search" | "devspick" | "watchlist"
   >(() => {
@@ -37,6 +43,26 @@ export default function App() {
     return "movies";
   });
 
+  const {
+    activeModal,
+    selectedItem,
+    playerUrl,
+    openContent,
+    openPlayer,
+    openExit,
+    close,
+    goBackContent,
+  } = useModalManager();
+
+  // ✅ detect if running as standalone (PWA/TV mode)
+  const isStandalone = useMemo(() => {
+    if (typeof window === "undefined") return false;
+    return (
+      window.matchMedia("(display-mode: standalone)").matches ||
+      (window.navigator as any).standalone === true
+    );
+  }, []);
+
   // Persist active tab
   const persistTab = (tab: typeof activeTab) => {
     setActiveTab(tab);
@@ -45,91 +71,39 @@ export default function App() {
     }
   };
 
-  // Modal select with history
-  const handleSelect = (() => {
-    let lastId: number | null = null;
-    return (item: Movie) => {
-      if (item.id === lastId) return;
-      lastId = item.id;
-
-      if (selectedItem && selectedItem.id !== item.id) {
-        setModalHistory((prev) => [...prev, selectedItem]);
-      }
-      setSelectedItem(item);
-
-      // push dummy state so back button knows modal is open
-      window.history.pushState({ modal: true }, "");
-    };
-  })();
-
-  const handleBackInModal = () => {
-    const last = modalHistory.at(-1);
-    if (last) {
-      setModalHistory((prev) => prev.slice(0, -1));
-      setSelectedItem(last);
-    } else {
-      setSelectedItem(null);
-      setModalHistory([]);
-    }
-  };
-
-  const handleWatch = (movie: Movie) => setPlayerItem(movie);
-
-  const embedUrl = useVideoEmbed(playerItem?.id, playerItem?.media_type);
-
-  // Handle hardware/browser back + Esc
-  useEffect(() => {
-    const onPopState = (e: PopStateEvent) => {
-      if (selectedItem) {
-        e.preventDefault();
-        modalHistory.length > 0 ? handleBackInModal() : setSelectedItem(null);
-      } else if (!exitConfirmOpen) {
-        e.preventDefault();
-        setExitConfirmOpen(true);
-        window.history.pushState({ exitConfirm: true }, "");
-      }
-    };
-
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (
-        e.key === "Escape" &&
-        !selectedItem &&
-        !playerItem &&
-        !exitConfirmOpen
-      ) {
-        setExitConfirmOpen(true);
-        // push dummy state so back/forward stack stays consistent
-        window.history.pushState({ exitConfirm: true }, "");
-      }
-    };
-
-    window.addEventListener("popstate", onPopState);
-    window.addEventListener("keydown", onKeyDown);
-
-    return () => {
-      window.removeEventListener("popstate", onPopState);
-      window.removeEventListener("keydown", onKeyDown);
-    };
-  }, [selectedItem, playerItem, modalHistory, exitConfirmOpen]);
-
   // Tab rendering
   const renderContent = () => {
     switch (activeTab) {
       case "movies":
-        return <Movies onSelect={handleSelect} onWatch={handleWatch} />;
+        return (
+          <Movies
+            onSelect={openContent}
+            onWatch={(m) => openPlayer(`/watch/${m.id}`)}
+          />
+        );
       case "tvshows":
-        return <Shows onSelect={handleSelect} onWatch={handleWatch} />;
+        return (
+          <Shows
+            onSelect={openContent}
+            onWatch={(m) => openPlayer(`/watch/${m.id}`)}
+          />
+        );
       case "devspick":
-        return <DevsPick onSelect={handleSelect} onWatch={handleWatch} />;
+        return (
+          <DevsPick
+            onSelect={openContent}
+            onWatch={(m) => openPlayer(`/watch/${m.id}`)}
+          />
+        );
       case "watchlist":
-        return <Watchlist onSelect={handleSelect} />;
+        return <Watchlist onSelect={openContent} />;
       case "search":
         return (
           <div className="flex items-center justify-center min-h-screen px-4">
             <div className="w-full max-w-md">
               <SearchBar
-                onSelectMovie={handleSelect}
-                onSelectPerson={handleSelect}
+                onSelectMovie={openContent}
+                onSelectPerson={openContent}
               />
             </div>
           </div>
@@ -139,16 +113,15 @@ export default function App() {
     }
   };
 
-  const isModalOpen = Boolean(selectedItem || playerItem);
-
   return (
     <Layout
       activeTab={activeTab}
       onTabChange={persistTab}
-      isModalOpen={isModalOpen}
+      isModalOpen={Boolean(activeModal)}
     >
       <Toaster richColors position="bottom-center" theme="dark" />
 
+      {/* Page transition */}
       <AnimatePresence mode="wait">
         <motion.div
           key={activeTab}
@@ -162,32 +135,38 @@ export default function App() {
         </motion.div>
       </AnimatePresence>
 
-      {selectedItem && (
+      {/* Content Modal */}
+      {activeModal === "content" && selectedItem && (
         <Modal
           movie={selectedItem}
-          onClose={() => {
-            setSelectedItem(null);
-            setModalHistory([]);
-          }}
-          onSelect={handleSelect}
-          onBack={modalHistory.length > 0 ? handleBackInModal : undefined}
+          onClose={close}
+          onSelect={openContent}
+          onBack={goBackContent}
         />
       )}
 
-      {playerItem && embedUrl && (
-        <PlayerModal url={embedUrl} onClose={() => setPlayerItem(null)} />
+      {/* Player Modal */}
+      {activeModal === "player" && playerUrl && (
+        <PlayerModal url={playerUrl} onClose={close} />
       )}
 
-      <ExitConfirmModal
-        open={exitConfirmOpen}
-        onCancel={() => setExitConfirmOpen(false)}
-        onExit={() => {
-          setExitConfirmOpen(false);
-          if (typeof window !== "undefined" && "close" in window) {
-            window.close();
-          }
-        }}
-      />
+      {/* Exit Confirm Modal */}
+      {activeModal === "exit" && (
+        <ExitConfirmModal
+          open
+          onCancel={close}
+          onExit={() => {
+            if (isStandalone) {
+              window.close();
+            } else {
+              toast.error(
+                "Can’t auto-close in browser — please close this tab."
+              );
+              close();
+            }
+          }}
+        />
+      )}
     </Layout>
   );
 }
