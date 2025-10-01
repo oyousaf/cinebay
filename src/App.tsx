@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Toaster } from "sonner";
 
@@ -54,14 +54,21 @@ export default function App() {
         setModalHistory((prev) => [...prev, selectedItem]);
       }
       setSelectedItem(item);
+
+      // Push dummy state for back navigation
+      window.history.pushState({ modal: true }, "");
     };
   })();
 
   const handleBackInModal = () => {
     const last = modalHistory.at(-1);
-    if (!last) return;
-    setModalHistory((prev) => prev.slice(0, -1));
-    setSelectedItem(last);
+    if (last) {
+      setModalHistory((prev) => prev.slice(0, -1));
+      setSelectedItem(last);
+    } else {
+      setSelectedItem(null);
+      setModalHistory([]);
+    }
   };
 
   const handleWatch = (movie: Movie) => {
@@ -69,6 +76,24 @@ export default function App() {
   };
 
   const embedUrl = useVideoEmbed(playerItem?.id, playerItem?.media_type);
+
+  // Device/browser back handling (popstate)
+  useEffect(() => {
+    const onPopState = (e: PopStateEvent) => {
+      if (!selectedItem) return;
+
+      e.preventDefault();
+      if (modalHistory.length > 0) {
+        handleBackInModal();
+      } else {
+        setSelectedItem(null);
+        setModalHistory([]);
+      }
+    };
+
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [selectedItem, modalHistory]);
 
   // Tab rendering
   const renderContent = () => {
@@ -105,7 +130,6 @@ export default function App() {
       onTabChange={persistTab}
       isModalOpen={isModalOpen}
     >
-      {/* Global toaster for watchlist notifications */}
       <Toaster richColors position="bottom-center" theme="dark" />
 
       <AnimatePresence mode="wait">
