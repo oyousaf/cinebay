@@ -8,8 +8,8 @@ import { Loader2 } from "lucide-react";
 interface ContentRailProps {
   title: string;
   items: Movie[];
-  onSelect: (movie: Movie) => void;
-  onWatch: (movie: Movie) => void;
+  onSelect: (movie: Movie) => void;   // ✅ still selects a movie
+  onWatch: (url: string) => void;     // ✅ embedUrl for Banner only
 }
 
 export default function ContentRail({
@@ -65,21 +65,21 @@ export default function ContentRail({
     }
   }, [items, activeItem, railIndex, setFocus]);
 
-  // 🎮 Remote/keyboard Enter handler → play movie
+  // 🎮 Remote/keyboard Enter handler → open modal, not play
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === "Enter" && railIndex !== null) {
         if (focus.section === railIndex) {
           const movie = items[focus.index];
           if (movie) {
-            onWatch(movie);
+            onSelect(movie); // ✅ open modal, not play
           }
         }
       }
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [focus, railIndex, items, onWatch]);
+  }, [focus, railIndex, items, onSelect]);
 
   return (
     <section className="relative w-full">
@@ -104,6 +104,7 @@ export default function ContentRail({
             transition={{ duration: 0.4, ease: "easeOut" }}
             className="w-full h-full"
           >
+            {/* ✅ Banner handles Play with embedUrl */}
             <Banner item={activeItem} onSelect={onSelect} onWatch={onWatch} />
           </motion.div>
         )}
@@ -148,6 +149,7 @@ export default function ContentRail({
                     if (railIndex !== null) {
                       setFocus({ section: railIndex, index: idx });
                     }
+                    // ✅ Click = focus/select, not play
                   }}
                 >
                   <img

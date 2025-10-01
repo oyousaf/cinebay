@@ -5,7 +5,7 @@ import type { Movie } from "@/types/movie";
 
 interface ShowsProps {
   onSelect: (movie: Movie) => void;
-  onWatch: (movie: Movie) => void;
+  onWatch: (url: string) => void;
 }
 
 export default function Shows({ onSelect, onWatch }: ShowsProps) {

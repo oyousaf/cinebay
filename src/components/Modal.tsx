@@ -11,6 +11,7 @@ import { Recommendations, Similar } from "./modal/Recommendations";
 import { FaPlay } from "react-icons/fa";
 import { useWatchlist } from "@/context/WatchlistContext";
 import { useModalManager } from "@/context/ModalContext";
+import { useVideoEmbed } from "@/hooks/useVideoEmbed";
 
 const formatDate = (dateStr?: string) =>
   dateStr
@@ -49,6 +50,9 @@ export default function Modal({
   const { toggleWatchlist, isInWatchlist } = useWatchlist();
   const { openPlayer } = useModalManager();
   const isSaved = isInWatchlist(movie.id);
+
+  // ✅ fetch embed url for play button
+  const embedUrl = useVideoEmbed(movie.id, movie.media_type);
 
   const title = movie.title || movie.name || "Untitled";
   const poster = movie.profile_path || movie.poster_path || "";
@@ -245,19 +249,50 @@ export default function Modal({
                 {/* Actions */}
                 {!isPerson && (
                   <div className="pt-4 flex gap-4 justify-center sm:justify-start">
+                    {/* ✅ Play Button with loading/disabled state */}
                     <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
+                      whileHover={{ scale: embedUrl ? 1.05 : 1 }}
+                      whileTap={{ scale: embedUrl ? 0.95 : 1 }}
+                      disabled={!embedUrl}
                       type="button"
-                      onClick={() => openPlayer(`/watch/${movie.id}`)}
-                      className="bg-[hsl(var(--foreground))] hover:bg-[hsl(var(--foreground))]/90 
-                                 text-[hsl(var(--background))] text-xl cursor-pointer uppercase 
-                                 font-semibold px-6 py-2 rounded-full transition 
-                                 shadow-[0_0_6px_hsl(var(--foreground)/0.6),0_0_12px_hsl(var(--foreground)/0.4)]"
+                      onClick={() => embedUrl && openPlayer(embedUrl)}
+                      className={`flex items-center justify-center gap-2 px-6 py-2 rounded-full transition text-xl font-semibold 
+                        ${
+                          embedUrl
+                            ? "bg-[hsl(var(--foreground))] hover:bg-[hsl(var(--foreground))]/90 text-[hsl(var(--background))] shadow-[0_0_6px_hsl(var(--foreground)/0.6),0_0_12px_hsl(var(--foreground)/0.4)]"
+                            : "bg-gray-600/50 text-gray-400 cursor-not-allowed"
+                        }`}
                     >
-                      <FaPlay />
+                      {!embedUrl ? (
+                        <>
+                          <svg
+                            className="animate-spin h-5 w-5 text-gray-300"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                          >
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                            />
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8v4l3.5-3.5L12 0v4a8 8 0 00-8 8h4z"
+                            />
+                          </svg>
+                          <span className="text-sm">Loading…</span>
+                        </>
+                      ) : (
+                        <FaPlay />
+                      )}
                     </motion.button>
 
+                    {/* Watchlist */}
                     <motion.button
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}

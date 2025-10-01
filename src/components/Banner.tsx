@@ -12,7 +12,7 @@ export default function Banner({
 }: {
   item: Movie;
   onSelect: (movie: Movie) => void;
-  onWatch: (movie: Movie) => void;
+  onWatch: (url: string) => void;
 }) {
   const embedUrl = useVideoEmbed(item.id, item.media_type);
   const { toggleWatchlist, isInWatchlist } = useWatchlist();
@@ -48,7 +48,6 @@ export default function Banner({
           transition={{ duration: 0.4, ease: "easeOut" }}
           className="absolute inset-0"
         >
-          {/* Backdrop with responsive sources */}
           {item.backdrop_path ? (
             <picture>
               <source
@@ -75,7 +74,6 @@ export default function Banner({
             />
           )}
 
-          {/* Gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-black via-black/70 to-transparent" />
         </motion.div>
       </AnimatePresence>
@@ -129,18 +127,49 @@ export default function Banner({
           className="flex gap-4 items-center"
           variants={childVariants}
         >
+          {/* ✅ Play Button */}
           <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => embedUrl && onWatch(item)}
-            className="bg-[hsl(var(--foreground))] hover:bg-[hsl(var(--foreground))]/90 
-                       text-[hsl(var(--background))] uppercase text-lg sm:text-xl 
-                       font-semibold px-6 py-2 rounded-full transition 
-                       shadow-[0_0_6px_hsl(var(--foreground)/0.6),0_0_12px_hsl(var(--foreground)/0.4)]"
+            whileHover={{ scale: embedUrl ? 1.05 : 1 }}
+            whileTap={{ scale: embedUrl ? 0.95 : 1 }}
+            disabled={!embedUrl}
+            onClick={() => embedUrl && onWatch(embedUrl)}
+            className={`flex items-center justify-center gap-2 px-6 py-2 rounded-full transition text-lg sm:text-xl font-semibold 
+    ${
+      embedUrl
+        ? "bg-[hsl(var(--foreground))] hover:bg-[hsl(var(--foreground))]/90 text-[hsl(var(--background))] shadow-[0_0_6px_hsl(var(--foreground)/0.6),0_0_12px_hsl(var(--foreground)/0.4)]"
+        : "bg-gray-600/50 text-gray-400 cursor-not-allowed"
+    }`}
           >
-            <FaPlay />
+            {!embedUrl ? (
+              <>
+                <svg
+                  className="animate-spin h-5 w-5 text-gray-300"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8v4l3.5-3.5L12 0v4a8 8 0 00-8 8h4z"
+                  />
+                </svg>
+                <span className="text-sm">Loading…</span>
+              </>
+            ) : (
+              <FaPlay />
+            )}
           </motion.button>
 
+          {/* Info button */}
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
@@ -152,6 +181,7 @@ export default function Banner({
             <FaInfoCircle />
           </motion.button>
 
+          {/* Watchlist button */}
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}

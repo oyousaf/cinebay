@@ -93,7 +93,7 @@ export default function ExitConfirmModal({
                 className="px-5 py-2 rounded-full bg-red-600 
                            text-white hover:bg-red-500 transition"
               >
-                Exit Cinebay
+                Exit CineBay
               </button>
             </div>
           </motion.div>

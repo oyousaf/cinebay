@@ -12,21 +12,9 @@ import Modal from "@/components/Modal";
 import PlayerModal from "@/components/PlayerModal";
 import ExitConfirmModal from "@/components/ExitConfirmModal";
 
-import {
-  useModalManager,
-  ModalManagerProvider,
-} from "@/context/ModalContext";
+import { useModalManager } from "@/context/ModalContext";
 
-export default function AppWrapper() {
-  // Wrap the whole app in ModalManager
-  return (
-    <ModalManagerProvider>
-      <App />
-    </ModalManagerProvider>
-  );
-}
-
-function App() {
+export default function App() {
   const [activeTab, setActiveTab] = useState<
     "movies" | "tvshows" | "search" | "devspick" | "watchlist"
   >(() => {
@@ -63,11 +51,15 @@ function App() {
     );
   }, []);
 
-  // Persist active tab
+  // Persist active tab safely
   const persistTab = (tab: typeof activeTab) => {
     setActiveTab(tab);
     if (typeof window !== "undefined") {
-      localStorage.setItem("activeTab", tab);
+      try {
+        localStorage.setItem("activeTab", tab);
+      } catch (err) {
+        console.warn("Unable to persist tab to localStorage", err);
+      }
     }
   };
 
@@ -75,26 +67,11 @@ function App() {
   const renderContent = () => {
     switch (activeTab) {
       case "movies":
-        return (
-          <Movies
-            onSelect={openContent}
-            onWatch={(m) => openPlayer(`/watch/${m.id}`)}
-          />
-        );
+        return <Movies onSelect={openContent} onWatch={openPlayer} />;
       case "tvshows":
-        return (
-          <Shows
-            onSelect={openContent}
-            onWatch={(m) => openPlayer(`/watch/${m.id}`)}
-          />
-        );
+        return <Shows onSelect={openContent} onWatch={openPlayer} />;
       case "devspick":
-        return (
-          <DevsPick
-            onSelect={openContent}
-            onWatch={(m) => openPlayer(`/watch/${m.id}`)}
-          />
-        );
+        return <DevsPick onSelect={openContent} onWatch={openPlayer} />;
       case "watchlist":
         return <Watchlist onSelect={openContent} />;
       case "search":
@@ -158,12 +135,13 @@ function App() {
           onExit={() => {
             if (isStandalone) {
               window.close();
-            } else {
+            }
+            else {
               toast.error(
                 "Can’t auto-close in browser — please close this tab."
               );
-              close();
             }
+            close();
           }}
         />
       )}

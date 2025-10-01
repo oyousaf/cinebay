@@ -5,7 +5,7 @@ import type { Movie } from "@/types/movie";
 
 interface DevsPickProps {
   onSelect: (movie: Movie) => void;
-  onWatch: (movie: Movie) => void;
+  onWatch: (url: string) => void;
 }
 
 export default function DevsPick({ onSelect, onWatch }: DevsPickProps) {
