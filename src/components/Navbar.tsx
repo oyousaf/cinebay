@@ -16,11 +16,11 @@ interface NavbarProps {
 }
 
 const navItems: { id: Tab; icon: React.ReactElement; label: string }[] = [
-  { id: "movies", icon: <FaFilm size={22} />, label: "Movies" },
-  { id: "tvshows", icon: <FaTv size={22} />, label: "TV Shows" },
-  { id: "search", icon: <FaSearch size={22} />, label: "Search" },
-  { id: "devspick", icon: <FaStar size={22} />, label: "Dev’s Pick" },
-  { id: "watchlist", icon: <FaBookmark size={22} />, label: "Watchlist" },
+  { id: "movies", icon: <FaFilm size={30} />, label: "Movies" },
+  { id: "tvshows", icon: <FaTv size={30} />, label: "TV Shows" },
+  { id: "search", icon: <FaSearch size={30} />, label: "Search" },
+  { id: "devspick", icon: <FaStar size={30} />, label: "Dev’s Pick" },
+  { id: "watchlist", icon: <FaBookmark size={30} />, label: "Watchlist" },
 ];
 
 const Navbar: React.FC<NavbarProps> = ({
@@ -104,7 +104,7 @@ const Navbar: React.FC<NavbarProps> = ({
                 {isActive && (
                   <motion.div
                     layoutId="active-indicator"
-                    className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-full 
+                    className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-full 
                       bg-[hsl(var(--foreground))] shadow-[0_0_6px_hsl(var(--foreground)/0.8)]"
                   />
                 )}
