@@ -1,12 +1,4 @@
-import {
-  useEffect,
-  useState,
-  useCallback,
-  useMemo,
-  lazy,
-  Suspense,
-  useRef,
-} from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Bookmark, X } from "lucide-react";
 import { toast } from "sonner";
@@ -16,11 +8,9 @@ import { TMDB_IMAGE, fetchDetails } from "@/lib/tmdb";
 import StarringList from "./modal/StarringList";
 import KnownForSlider from "./modal/KnownForSlider";
 import { Recommendations, Similar } from "./modal/Recommendations";
-import { useVideoEmbed } from "@/hooks/useVideoEmbed";
 import { FaPlay } from "react-icons/fa";
 import { useWatchlist } from "@/context/WatchlistContext";
-
-const PlayerModal = lazy(() => import("@/components/PlayerModal"));
+import { useModalManager } from "@/context/ModalContext";
 
 const formatDate = (dateStr?: string) =>
   dateStr
@@ -43,17 +33,11 @@ export default function Modal({
   onBack?: () => void;
 }) {
   const isPerson = movie.media_type === "person";
-  const [showPlayer, setShowPlayer] = useState(false);
   const [mounting, setMounting] = useState(true);
   const modalRef = useRef<HTMLDivElement>(null);
-  const historyStack = useRef<Movie[]>([]);
-
-  const embedUrl = useVideoEmbed(
-    !isPerson ? movie.id : undefined,
-    !isPerson ? movie.media_type : undefined
-  );
 
   const { toggleWatchlist, isInWatchlist } = useWatchlist();
+  const { openPlayer } = useModalManager();
   const isSaved = isInWatchlist(movie.id);
 
   const title = movie.title || movie.name || "Untitled";
@@ -73,7 +57,6 @@ export default function Modal({
       if (!item?.id) return;
       const mediaType = item.media_type || movie.media_type || "movie";
       try {
-        historyStack.current.push(movie);
         const full = await fetchDetails(
           item.id,
           mediaType as "movie" | "tv" | "person"
@@ -87,34 +70,10 @@ export default function Modal({
     [movie, onSelect]
   );
 
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      if (["ArrowLeft", "ArrowRight", "Escape"].includes(e.key)) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-
-      if (e.key === "Escape") {
-        onClose();
-      }
-
-      if (e.key === "ArrowLeft" && onBack) {
-        onBack();
-      }
-    },
-    [onBack, onClose]
-  );
-
   useEffect(() => {
-    document.body.style.overflow = "hidden";
-    window.addEventListener("keydown", handleKeyDown, true);
     const id = requestAnimationFrame(() => setMounting(false));
-    return () => {
-      document.body.style.overflow = "";
-      window.removeEventListener("keydown", handleKeyDown);
-      cancelAnimationFrame(id);
-    };
-  }, [handleKeyDown]);
+    return () => cancelAnimationFrame(id);
+  }, []);
 
   return (
     <AnimatePresence>
@@ -183,15 +142,11 @@ export default function Modal({
                 {/* Person details */}
                 {isPerson && movie.biography && (
                   <div className="text-md text-zinc-200 leading-relaxed">
-                    <motion.div
-                      initial={false}
-                      animate={{ height: showFullBio ? "auto" : "6rem" }}
-                      transition={{ duration: 0.3, ease: "easeInOut" }}
-                      className="overflow-hidden"
-                    >
-                      <p className="whitespace-pre-line">{movie.biography}</p>
-                    </motion.div>
-
+                    <p className="whitespace-pre-line">
+                      {showFullBio
+                        ? movie.biography
+                        : movie.biography.slice(0, 300)}
+                    </p>
                     {movie.biography.length > 300 && (
                       <button
                         onClick={() => setShowFullBio((prev) => !prev)}
@@ -203,30 +158,13 @@ export default function Modal({
                   </div>
                 )}
 
-                {isPerson && (
-                  <div className="flex flex-col gap-1 text-sm text-zinc-300 pt-2 items-center sm:items-start">
-                    {movie.birthday && (
-                      <span>🎂 Born: {formatDate(movie.birthday)}</span>
-                    )}
-                    {movie.deathday && (
-                      <span>🕊️ Passed: {formatDate(movie.deathday)}</span>
-                    )}
-                    {movie.place_of_birth && (
-                      <span>📍 {movie.place_of_birth}</span>
-                    )}
-                    {typeof movie.popularity === "number" && (
-                      <span>⭐ Popularity: {movie.popularity.toFixed(1)}</span>
-                    )}
-                  </div>
-                )}
-                {/* Movie/TV overview */}
                 {!isPerson && movie.overview && (
                   <p className="text-md text-zinc-200 leading-relaxed">
                     {movie.overview}
                   </p>
                 )}
 
-                {/* Movie/TV meta row */}
+                {/* Meta row */}
                 {!isPerson && (
                   <div className="flex flex-wrap gap-2 sm:gap-3 text-sm sm:text-base text-zinc-300 pt-2 justify-center sm:justify-start items-center">
                     {movie.isNew && (
@@ -241,31 +179,17 @@ export default function Modal({
                     )}
                     {releaseDate && <span>· {releaseDate}</span>}
                     {movie.runtime && <span>· {movie.runtime} mins</span>}
-                    {movie.original_language && (
-                      <span className="capitalize">
-                        ·{" "}
-                        {new Intl.DisplayNames(["en"], {
-                          type: "language",
-                        }).of(movie.original_language)}
-                      </span>
-                    )}
-                    {typeof movie.vote_average === "number" &&
-                      movie.vote_average > 0 && (
-                        <span className="bg-[hsl(var(--foreground))] text-[hsl(var(--background))] text-sm font-semibold px-2 py-0.5 rounded-full shadow-[0_0_6px_hsl(var(--foreground)/0.6),0_0_12px_hsl(var(--foreground)/0.4)]">
-                          {movie.vote_average.toFixed(1)}
-                        </span>
-                      )}
                   </div>
                 )}
 
-                {/* Actions row (movies/TV only) */}
+                {/* Actions */}
                 {!isPerson && (
                   <div className="pt-4 flex gap-4 justify-center sm:justify-start">
                     <motion.button
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                       type="button"
-                      onClick={() => setShowPlayer(true)}
+                      onClick={() => openPlayer(`/watch/${movie.id}`)} // ✅ context player
                       className="bg-[hsl(var(--foreground))] hover:bg-[hsl(var(--foreground))]/90 
                                  text-[hsl(var(--background))] text-xl cursor-pointer uppercase 
                                  font-semibold px-6 py-2 rounded-full transition 
@@ -284,8 +208,7 @@ export default function Modal({
                       }
                       className="bg-[hsl(var(--foreground))] hover:bg-[hsl(var(--foreground))]/90 
                                  text-[hsl(var(--background))] text-xl cursor-pointer uppercase 
-                                 font-semibold p-2 rounded-full transition 
-                                 shadow-[0_0_6px_hsl(var(--foreground)/0.6),0_0_12px_hsl(var(--foreground)/0.4)]"
+                                 font-semibold p-2 rounded-full transition"
                     >
                       <Bookmark
                         size={22}
@@ -300,7 +223,6 @@ export default function Modal({
                   </div>
                 )}
 
-                {/* Cast list (movies/TV only) */}
                 {!isPerson && cast.length > 0 && (
                   <StarringList cast={cast} onSelect={onSelect} />
                 )}
@@ -328,18 +250,6 @@ export default function Modal({
               />
             ) : null}
           </div>
-
-          {/* Player */}
-          {!isPerson && showPlayer && embedUrl && (
-            <Suspense
-              fallback={<div className="text-white p-4">Loading Player...</div>}
-            >
-              <PlayerModal
-                url={embedUrl}
-                onClose={() => setShowPlayer(false)}
-              />
-            </Suspense>
-          )}
         </motion.div>
       </motion.div>
     </AnimatePresence>
