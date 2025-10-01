@@ -35,17 +35,17 @@ export default function Modal({
   movie,
   onClose,
   onSelect,
-  onBack,
 }: {
   movie: Movie;
   onClose: () => void;
   onSelect?: (item: Movie) => void;
-  onBack?: () => void;
 }) {
   const isPerson = movie.media_type === "person";
   const [showPlayer, setShowPlayer] = useState(false);
   const [mounting, setMounting] = useState(true);
   const modalRef = useRef<HTMLDivElement>(null);
+
+  // stack of visited movies/people
   const historyStack = useRef<Movie[]>([]);
 
   const embedUrl = useVideoEmbed(
@@ -68,12 +68,23 @@ export default function Modal({
   const releaseDate = formatDate(movie.release_date);
   const [showFullBio, setShowFullBio] = useState(false);
 
+  // 🔙 go back one step in history
+  const handleBack = useCallback(() => {
+    const prev = historyStack.current.pop();
+    if (prev) {
+      onSelect?.(prev);
+    } else {
+      onClose();
+    }
+  }, [onSelect, onClose]);
+
+  // when selecting new details, push current into stack
   const handleSelectWithDetails = useCallback(
     async (item: Movie) => {
       if (!item?.id) return;
       const mediaType = item.media_type || movie.media_type || "movie";
       try {
-        historyStack.current.push(movie);
+        historyStack.current.push(movie); // save current
         const full = await fetchDetails(
           item.id,
           mediaType as "movie" | "tv" | "person"
@@ -87,9 +98,10 @@ export default function Modal({
     [movie, onSelect]
   );
 
+  // keyboard + tv remote handling
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
-      if (["ArrowLeft", "ArrowRight", "Escape"].includes(e.key)) {
+      if (["ArrowLeft", "ArrowRight", "Escape", "Backspace"].includes(e.key)) {
         e.preventDefault();
         e.stopPropagation();
       }
@@ -98,23 +110,33 @@ export default function Modal({
         onClose();
       }
 
-      if (e.key === "ArrowLeft" && onBack) {
-        onBack();
+      if (e.key === "ArrowLeft" || e.key === "Backspace") {
+        handleBack();
       }
     },
-    [onBack, onClose]
+    [handleBack, onClose]
   );
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
     window.addEventListener("keydown", handleKeyDown, true);
+
+    // TV/Android back button → popstate
+    const onPopState = (e: PopStateEvent) => {
+      e.preventDefault();
+      handleBack();
+    };
+    window.addEventListener("popstate", onPopState);
+
     const id = requestAnimationFrame(() => setMounting(false));
+
     return () => {
       document.body.style.overflow = "";
       window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("popstate", onPopState);
       cancelAnimationFrame(id);
     };
-  }, [handleKeyDown]);
+  }, [handleKeyDown, handleBack]);
 
   return (
     <AnimatePresence>
@@ -140,19 +162,15 @@ export default function Modal({
         >
           {/* Header */}
           <div className="absolute top-3 left-3 right-3 z-50 flex justify-between items-center">
-            {onBack ? (
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={onBack}
-                aria-label="Go back"
-                className="p-2 rounded-full backdrop-blur-md shadow-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] hover:shadow-[0_0_8px_hsla(var(--foreground)/0.4)]"
-              >
-                <ArrowLeft size={22} strokeWidth={2.5} />
-              </motion.button>
-            ) : (
-              <span />
-            )}
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleBack}
+              aria-label="Go back"
+              className="p-2 rounded-full backdrop-blur-md shadow-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] hover:shadow-[0_0_8px_hsla(var(--foreground)/0.4)]"
+            >
+              <ArrowLeft size={22} strokeWidth={2.5} />
+            </motion.button>
 
             <motion.button
               whileHover={{ scale: 1.05 }}
@@ -191,7 +209,6 @@ export default function Modal({
                     >
                       <p className="whitespace-pre-line">{movie.biography}</p>
                     </motion.div>
-
                     {movie.biography.length > 300 && (
                       <button
                         onClick={() => setShowFullBio((prev) => !prev)}
@@ -204,29 +221,29 @@ export default function Modal({
                 )}
 
                 {isPerson && (
-  <div className="flex flex-col gap-1 text-sm text-zinc-300 pt-2 items-center sm:items-start">
-    {movie.birthday && (
-      <span>🎂 Born: {formatDate(movie.birthday)}</span>
-    )}
-    {movie.deathday && (
-      <span>🕊️ Passed: {formatDate(movie.deathday)}</span>
-    )}
-    {movie.place_of_birth && (
-      <span>📍 {movie.place_of_birth}</span>
-    )}
-    {typeof movie.popularity === "number" && (
-      <span>⭐ Popularity: {movie.popularity.toFixed(1)}</span>
-    )}
-  </div>
-)}
-                {/* Movie/TV overview */}
+                  <div className="flex flex-col gap-1 text-sm text-zinc-300 pt-2 items-center sm:items-start">
+                    {movie.birthday && (
+                      <span>🎂 Born: {formatDate(movie.birthday)}</span>
+                    )}
+                    {movie.deathday && (
+                      <span>🕊️ Passed: {formatDate(movie.deathday)}</span>
+                    )}
+                    {movie.place_of_birth && (
+                      <span>📍 {movie.place_of_birth}</span>
+                    )}
+                    {typeof movie.popularity === "number" && (
+                      <span>⭐ Popularity: {movie.popularity.toFixed(1)}</span>
+                    )}
+                  </div>
+                )}
+
                 {!isPerson && movie.overview && (
                   <p className="text-md text-zinc-200 leading-relaxed">
                     {movie.overview}
                   </p>
                 )}
 
-                {/* Movie/TV meta row */}
+                {/* Meta row */}
                 {!isPerson && (
                   <div className="flex flex-wrap gap-2 sm:gap-3 text-sm sm:text-base text-zinc-300 pt-2 justify-center sm:justify-start items-center">
                     {movie.isNew && (
@@ -258,7 +275,7 @@ export default function Modal({
                   </div>
                 )}
 
-                {/* Actions row (movies/TV only) */}
+                {/* Actions row */}
                 {!isPerson && (
                   <div className="pt-4 flex gap-4 justify-center sm:justify-start">
                     <motion.button
@@ -300,7 +317,7 @@ export default function Modal({
                   </div>
                 )}
 
-                {/* Cast list (movies/TV only) */}
+                {/* Cast list */}
                 {!isPerson && cast.length > 0 && (
                   <StarringList cast={cast} onSelect={onSelect} />
                 )}
@@ -329,7 +346,7 @@ export default function Modal({
             ) : null}
           </div>
 
-          {/* Trailer Player */}
+          {/* Player */}
           {!isPerson && showPlayer && embedUrl && (
             <Suspense
               fallback={<div className="text-white p-4">Loading Player...</div>}
