@@ -83,23 +83,20 @@ export default function ContentRail({
 
   return (
     <section className="relative w-full">
-      {/* Banner Wrapper */}
+      {/* Banner / Loader wrapper */}
       <div className="relative min-h-[70vh] w-full flex items-center justify-center">
-        {/* Loader */}
-        {!activeItem && (
+        {!activeItem ? (
           <motion.div
             key="loader"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 flex items-center justify-center"
+            transition={{ duration: 0.3 }}
+            className="flex items-center justify-center"
           >
             <Loader2 className="animate-spin w-8 h-8 text-[hsl(var(--foreground))]" />
           </motion.div>
-        )}
-
-        {/* Banner */}
-        {activeItem && (
+        ) : (
           <motion.div
             key="banner"
             initial={{ opacity: 0 }}
@@ -114,7 +111,13 @@ export default function ContentRail({
 
       {/* Tiles */}
       {items.length > 0 && railIndex !== null && (
-        <div className="relative z-30 mt-4 px-4 md:px-8 max-w-6xl mx-auto">
+        <motion.div
+          key="tiles"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
+          className="relative z-30 mt-4 px-4 md:px-8 max-w-6xl mx-auto"
+        >
           <div className="flex overflow-x-auto gap-4 pb-6 scroll-smooth px-2">
             {items.map((movie, idx) => {
               const isFocused =
@@ -161,7 +164,7 @@ export default function ContentRail({
               );
             })}
           </div>
-        </div>
+        </motion.div>
       )}
     </section>
   );

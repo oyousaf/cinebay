@@ -1,28 +1,18 @@
-import { useState, lazy, Suspense } from "react";
+import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Toaster } from "sonner";
-import { Loader2 } from "lucide-react";
 
 import Layout from "@/components/Layout";
+import Movies from "@/components/Movies";
+import Shows from "@/components/Shows";
+import DevsPick from "@/components/DevsPick";
+import SearchBar from "@/components/SearchBar";
+import Watchlist from "@/components/Watchlist";
+import Modal from "@/components/Modal";
+import PlayerModal from "@/components/PlayerModal";
+
 import type { Movie } from "@/types/movie";
 import { useVideoEmbed } from "@/hooks/useVideoEmbed";
-
-// Lazy-loaded sections
-const Movies = lazy(() => import("@/components/Movies"));
-const Shows = lazy(() => import("@/components/Shows"));
-const DevsPick = lazy(() => import("@/components/DevsPick"));
-const SearchBar = lazy(() => import("@/components/SearchBar"));
-const Watchlist = lazy(() => import("@/components/Watchlist"));
-const Modal = lazy(() => import("@/components/Modal"));
-const PlayerModal = lazy(() => import("@/components/PlayerModal"));
-
-// Prefetch DevsPick when idle
-if (typeof window !== "undefined") {
-  const prefetch = () => import("@/components/DevsPick");
-  "requestIdleCallback" in window
-    ? requestIdleCallback(prefetch)
-    : setTimeout(prefetch, 2000);
-}
 
 export default function App() {
   const [selectedItem, setSelectedItem] = useState<Movie | null>(null);
@@ -127,38 +117,26 @@ export default function App() {
           transition={{ duration: 0.25, ease: "easeOut" }}
           className="flex-1 overflow-y-auto scrollbar-hide min-h-0"
         >
-          <Suspense
-            fallback={
-              <div className="flex items-center justify-center h-full min-h-[70vh]">
-                <Loader2 className="h-10 w-10 animate-spin text-[hsl(var(--foreground))] z-50" />
-              </div>
-            }
-          >
-            {renderContent()}
-          </Suspense>
+          {renderContent()}
         </motion.div>
       </AnimatePresence>
 
       {/* Details Modal */}
       {selectedItem && (
-        <Suspense fallback={null}>
-          <Modal
-            movie={selectedItem}
-            onClose={() => {
-              setSelectedItem(null);
-              setModalHistory([]);
-            }}
-            onSelect={handleSelect}
-            onBack={modalHistory.length > 0 ? handleBackInModal : undefined}
-          />
-        </Suspense>
+        <Modal
+          movie={selectedItem}
+          onClose={() => {
+            setSelectedItem(null);
+            setModalHistory([]);
+          }}
+          onSelect={handleSelect}
+          onBack={modalHistory.length > 0 ? handleBackInModal : undefined}
+        />
       )}
 
       {/* Player Modal */}
       {playerItem && embedUrl && (
-        <Suspense fallback={null}>
-          <PlayerModal url={embedUrl} onClose={() => setPlayerItem(null)} />
-        </Suspense>
+        <PlayerModal url={embedUrl} onClose={() => setPlayerItem(null)} />
       )}
     </Layout>
   );
