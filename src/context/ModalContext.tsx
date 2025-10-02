@@ -30,16 +30,10 @@ export function ModalManagerProvider({ children }: { children: ReactNode }) {
   const [playerUrl, setPlayerUrl] = useState<string | null>(null);
   const historyStack = useRef<Movie[]>([]);
 
-  // ✅ Scroll lock when modal open
   useEffect(() => {
-    if (activeModal) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
+    document.body.style.overflow = activeModal ? "hidden" : "";
   }, [activeModal]);
 
-  // ✅ Open content modal
   const openContent = useCallback(
     (movie: Movie) => {
       if (selectedItem && selectedItem.id !== movie.id) {
@@ -47,71 +41,62 @@ export function ModalManagerProvider({ children }: { children: ReactNode }) {
       }
       setSelectedItem(movie);
       setActiveModal("content");
-      window.history.pushState({ modal: "content" }, "");
     },
     [selectedItem]
   );
 
-  // ✅ Open player modal
   const openPlayer = useCallback((url: string) => {
     setPlayerUrl(url);
     setActiveModal("player");
-    window.history.pushState({ modal: "player" }, "");
   }, []);
 
-  // ✅ Open exit modal
   const openExit = useCallback(() => {
     setActiveModal("exit");
-    window.history.pushState({ modal: "exit" }, "");
   }, []);
 
-  // ✅ Go back in content history
   const goBackContent = useCallback(() => {
     const last = historyStack.current.pop();
     if (last) {
       setSelectedItem(last);
     } else {
-      close();
+      setSelectedItem(null);
+      setActiveModal(null);
     }
   }, []);
 
-  // ✅ Close modal
   const close = useCallback(() => {
     setActiveModal(null);
     setSelectedItem(null);
     setPlayerUrl(null);
-    if (window.history.state?.modal) {
-      window.history.back();
-    }
   }, []);
 
-  // ✅ Global back/escape handling
+  // ✅ Unified Back/Escape handling
   useEffect(() => {
-    const onPopState = () => {
-      if (activeModal === "content" && historyStack.current.length > 0) {
-        goBackContent();
-      } else {
+    const handleBack = () => {
+      if (activeModal === "player") {
         close();
+      } else if (activeModal === "content") {
+        if (historyStack.current.length > 0) {
+          goBackContent();
+        } else {
+          close();
+        }
+      } else if (activeModal === "exit") {
+        close();
+      } else {
+        openExit();
       }
     };
 
+    const onPopState = (e: PopStateEvent) => {
+      e.preventDefault();
+      handleBack();
+    };
+
     const onKeyDown = (e: KeyboardEvent) => {
-      if (activeModal === "content") {
-        if (e.key === "Escape") {
-          e.preventDefault();
-          close();
-        } else if (e.key === "ArrowLeft" && historyStack.current.length > 0) {
-          e.preventDefault();
-          goBackContent();
-        }
-      } else if (activeModal === "player") {
-        if (e.key === "Escape") {
-          e.preventDefault();
-          close();
-        }
-      } else if (!activeModal && e.key === "Escape") {
+      if (e.key === "Escape") {
         e.preventDefault();
-        openExit();
+        handleBack();
       }
     };
 

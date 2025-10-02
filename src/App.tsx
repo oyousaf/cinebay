@@ -37,7 +37,6 @@ export default function App() {
     playerUrl,
     openContent,
     openPlayer,
-    openExit,
     close,
     goBackContent,
   } = useModalManager();
@@ -135,11 +134,8 @@ export default function App() {
           onExit={() => {
             if (isStandalone) {
               window.close();
-            }
-            else {
-              toast.error(
-                "Can’t auto-close in browser — please close this tab."
-              );
+            } else {
+              toast.error("Can’t auto-close in browser — please close this tab.");
             }
             close();
           }}
