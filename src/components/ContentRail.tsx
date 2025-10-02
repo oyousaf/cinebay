@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, useCallback } from "react";
+import { useRef, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import React from "react";
 import type { Movie } from "@/types/movie";
@@ -13,28 +13,29 @@ interface ContentRailProps {
   onWatch: (url: string) => void;
 }
 
-/* ------------------ Tile Component ------------------ */
 const Tile = React.memo(function Tile({
   movie,
   isFocused,
   onFocus,
+  refSetter,
 }: {
   movie: Movie;
   isFocused: boolean;
   onFocus: () => void;
+  refSetter: (el: HTMLButtonElement | null) => void;
 }) {
   return (
     <motion.button
-      key={movie.id}
+      ref={refSetter}
       aria-label={movie.title || movie.name}
-      className={`relative shrink-0 snap-start rounded-lg focus:outline-none transition-all duration-300
+      className={`relative shrink-0 rounded-lg focus:outline-none transition-all duration-300
         ${
           isFocused
-            ? "ring-4 ring-[#80ffcc] scale-105 shadow-pulse"
-            : "hover:scale-105 hover:shadow-lg opacity-50 hover:opacity-80"
+            ? "ring-4 ring-[#80ffcc] scale-105 shadow-pulse z-20"
+            : "opacity-50 hover:opacity-80 hover:scale-105 hover:shadow-lg"
         }`}
-      animate={isFocused ? { scale: 1.1 } : { scale: 1 }}
-      transition={{ type: "spring", stiffness: 300, damping: 20, mass: 1 }}
+      animate={isFocused ? { scale: 1.1 } : { scale: 0.95 }}
+      transition={{ type: "spring", stiffness: 280, damping: 22, mass: 1 }}
       onClick={onFocus}
     >
       <img
@@ -58,7 +59,8 @@ export default function ContentRail({
   onWatch,
 }: ContentRailProps) {
   const [activeItem, setActiveItem] = useState<Movie | null>(null);
-  const tileRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const tileRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const railRef = useRef<HTMLDivElement | null>(null);
 
   const { focus, setFocus, registerRail, updateRailLength } = useNavigation();
   const [railIndex, setRailIndex] = useState<number | null>(null);
@@ -71,7 +73,7 @@ export default function ContentRail({
     }
   }, [railIndex, registerRail, items.length]);
 
-  // Update length + sync active item + scroll
+  // Update + center scroll
   useEffect(() => {
     if (railIndex !== null) {
       updateRailLength(railIndex, items.length);
@@ -83,18 +85,19 @@ export default function ContentRail({
         }
 
         const el = tileRefs.current[focus.index];
-        if (el) {
-          el.scrollIntoView({
-            behavior: "smooth",
-            inline: "center",
-            block: "nearest",
-          });
+        const container = railRef.current;
+        if (el && container) {
+          const containerWidth = container.clientWidth;
+          const elLeft = el.offsetLeft;
+          const elWidth = el.offsetWidth;
+          const scrollPos = elLeft - containerWidth / 2 + elWidth / 2;
+          container.scrollTo({ left: scrollPos, behavior: "smooth" });
         }
       }
     }
   }, [items, focus, railIndex, updateRailLength, activeItem]);
 
-  // Default active when items load
+  // Default focus
   useEffect(() => {
     if (!activeItem && items.length > 0) {
       setActiveItem(items[0]);
@@ -104,7 +107,7 @@ export default function ContentRail({
     }
   }, [items, activeItem, railIndex, setFocus]);
 
-  // 🎮 Remote/keyboard Enter handler → open modal
+  // Enter → open modal
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === "Enter" && railIndex !== null) {
@@ -120,7 +123,7 @@ export default function ContentRail({
 
   return (
     <section className="relative w-full">
-      {/* Banner / Loader wrapper */}
+      {/* Banner / Loader */}
       <div className="relative min-h-[70vh] w-full flex items-center justify-center">
         {!activeItem ? (
           <motion.div
@@ -155,7 +158,11 @@ export default function ContentRail({
           transition={{ duration: 0.4, ease: "easeOut" }}
           className="relative z-30 mt-4 px-4 md:px-8 max-w-6xl mx-auto"
         >
-          <div className="flex overflow-x-auto gap-4 pb-6 scroll-smooth px-2">
+          <div
+            ref={railRef}
+            className="flex overflow-x-auto overflow-y-hidden gap-4 pb-6 px-2 no-scrollbar"
+            role="list"
+          >
             {items.map((movie, idx) => {
               const isFocused =
                 focus.section === railIndex && focus.index === idx;
@@ -170,6 +177,7 @@ export default function ContentRail({
                     if (railIndex !== null)
                       setFocus({ section: railIndex, index: idx });
                   }}
+                  refSetter={(el) => (tileRefs.current[idx] = el)}
                 />
               );
             })}
