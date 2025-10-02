@@ -43,7 +43,10 @@ const WatchlistTile = React.memo(function WatchlistTile({
       exit={{ opacity: 0, scale: 0.95, x: -50 }}
       transition={{ duration: 0.25, ease: "easeOut" }}
       tabIndex={0}
-      onClick={() => embedUrl && onWatch(embedUrl)} // ✅ Play directly
+      onClick={() => {
+        onFocus();                     // 👈 update navigation focus
+        if (embedUrl) onWatch(embedUrl); // play if available
+      }}
       whileHover={{
         scale: 1.03,
         transition: { type: "spring", stiffness: 300, damping: 20 },
@@ -62,11 +65,14 @@ const WatchlistTile = React.memo(function WatchlistTile({
         className="w-full object-cover"
         onError={(e) => ((e.target as HTMLImageElement).src = "/fallback.jpg")}
       />
+
       {movie.isNew && (
         <div className="absolute top-2 left-2 bg-[hsl(var(--foreground))] text-[hsl(var(--background))] text-[10px] sm:text-xs md:text-sm font-bold px-2 py-0.5 rounded-full uppercase shadow-pulse">
           NEW
         </div>
       )}
+
+      {/* Remove button */}
       <motion.button
         onClick={(e) => {
           e.stopPropagation();
@@ -86,6 +92,7 @@ const WatchlistTile = React.memo(function WatchlistTile({
     </motion.div>
   );
 });
+
 
 /* ---------------- Main Watchlist ---------------- */
 export default function Watchlist({
