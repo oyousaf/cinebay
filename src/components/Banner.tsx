@@ -18,7 +18,6 @@ export default function Banner({
   const { toggleWatchlist, isInWatchlist } = useWatchlist();
   const isSaved = isInWatchlist(item.id);
 
-  // Variants
   const containerVariants: Variants = {
     hidden: { opacity: 0, y: 15 },
     show: {
@@ -38,7 +37,8 @@ export default function Banner({
   };
 
   return (
-    <div className="relative w-full min-h-[70vh] flex flex-col justify-end overflow-hidden shadow-2xl">
+    <div className="relative w-full h-full flex flex-col justify-end overflow-hidden shadow-2xl snap-start">
+      {/* Backdrop */}
       <AnimatePresence mode="popLayout">
         <motion.div
           key={item.id}
@@ -49,22 +49,12 @@ export default function Banner({
           className="absolute inset-0 z-0"
         >
           {item.backdrop_path ? (
-            <picture>
-              <source
-                media="(max-width: 640px)"
-                srcSet={`https://image.tmdb.org/t/p/w780${item.backdrop_path}`}
-              />
-              <source
-                media="(max-width: 1280px)"
-                srcSet={`https://image.tmdb.org/t/p/w1280${item.backdrop_path}`}
-              />
-              <img
-                src={`https://image.tmdb.org/t/p/original${item.backdrop_path}`}
-                alt={item.title || item.name}
-                className="w-full h-full object-cover"
-                loading="lazy"
-              />
-            </picture>
+            <img
+              src={`https://image.tmdb.org/t/p/original${item.backdrop_path}`}
+              alt={item.title || item.name}
+              className="w-full h-full object-cover"
+              loading="lazy"
+            />
           ) : (
             <img
               src="/fallback-bg.png"
@@ -73,130 +63,71 @@ export default function Banner({
               loading="lazy"
             />
           )}
-
-          {/* ✅ Explicit z-0 to avoid covering tiles */}
           <div className="absolute inset-0 z-0 bg-gradient-to-t from-black via-black/70 to-transparent" />
         </motion.div>
       </AnimatePresence>
 
-      {/* Overlay content */}
+      {/* Overlay */}
       <motion.div
-        className="relative z-10 px-6 md:px-12 py-10 max-w-6xl mx-auto"
+        className="relative z-10 px-4 md:px-12 py-6 md:py-10 max-w-6xl mx-auto"
         variants={containerVariants}
         initial="hidden"
         animate="show"
         key={`overlay-${item.id}`}
       >
         <motion.h2
-          className="text-4xl sm:text-6xl font-extrabold mb-4 text-[#80ffcc] drop-shadow-md"
+          className="font-extrabold mb-4 text-[#80ffcc] drop-shadow-md text-[clamp(1.5rem,4vw,3rem)]"
           variants={childVariants}
         >
           {item.title || item.name}
         </motion.h2>
 
         <motion.p
-          className="text-sm md:text-xl text-gray-200 max-w-3xl mb-8 leading-relaxed"
+          className="text-gray-200 leading-relaxed max-w-3xl mb-6 text-[clamp(0.9rem,1.2vw+0.5rem,1.25rem)] line-clamp-3 md:line-clamp-4"
           variants={childVariants}
         >
           {item.overview}
         </motion.p>
 
-        {/* Meta info row */}
-        <motion.div
-          className="flex flex-wrap gap-2 sm:gap-3 text-sm sm:text-base text-zinc-300 mb-6 items-center"
-          variants={childVariants}
-        >
-          {item.isNew && (
-            <span className="bg-[hsl(var(--foreground))] text-[hsl(var(--background))] text-sm font-bold px-2 py-0.5 rounded-full uppercase shadow-pulse">
-              NEW
-            </span>
-          )}
-          {item.release_date && (
-            <span>{new Date(item.release_date).getFullYear()}</span>
-          )}
-          {typeof item.vote_average === "number" && item.vote_average > 0 && (
-            <span className="bg-[hsl(var(--foreground))] text-[hsl(var(--background))] text-sm font-semibold px-2 py-0.5 rounded-full shadow-[0_0_6px_hsl(var(--foreground)/0.6),0_0_12px_hsl(var(--foreground)/0.4)]">
-              {item.vote_average.toFixed(1)}
-            </span>
-          )}
-        </motion.div>
-
-        {/* Actions row */}
-        <motion.div
-          className="flex gap-4 items-center"
-          variants={childVariants}
-        >
-          {/* Play */}
+        {/* Actions */}
+        <motion.div className="flex gap-3 items-center" variants={childVariants}>
           <motion.button
             whileHover={{ scale: embedUrl ? 1.05 : 1 }}
             whileTap={{ scale: embedUrl ? 0.95 : 1 }}
             disabled={!embedUrl}
             onClick={() => embedUrl && onWatch(embedUrl)}
-            className={`flex items-center justify-center gap-2 px-6 py-2 rounded-full transition text-lg sm:text-xl font-semibold 
+            className={`flex items-center justify-center gap-2 px-5 py-2 rounded-full transition 
+              text-[clamp(0.9rem,1vw+0.5rem,1.1rem)] font-semibold 
               ${
                 embedUrl
-                  ? "bg-[hsl(var(--foreground))] hover:bg-[hsl(var(--foreground))]/90 text-[hsl(var(--background))] shadow-[0_0_6px_hsl(var(--foreground)/0.6),0_0_12px_hsl(var(--foreground)/0.4)]"
+                  ? "bg-[hsl(var(--foreground))] hover:bg-[hsl(var(--foreground))]/90 text-[hsl(var(--background))]"
                   : "bg-gray-600/50 text-gray-400 cursor-not-allowed"
               }`}
           >
-            {!embedUrl ? (
-              <>
-                <svg
-                  className="animate-spin h-5 w-5 text-gray-300"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8v4l3.5-3.5L12 0v4a8 8 0 00-8 8h4z"
-                  />
-                </svg>
-                <span className="text-sm">Loading…</span>
-              </>
-            ) : (
-              <FaPlay />
-            )}
+            {!embedUrl ? "Loading…" : <FaPlay />}
           </motion.button>
 
-          {/* Info */}
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => onSelect(item)}
-            className="bg-[hsl(var(--foreground))] hover:bg-[hsl(var(--foreground))]/90 
-                       text-[hsl(var(--background))] uppercase text-lg sm:text-xl 
-                       font-semibold p-2 rounded-full transition shadow-md"
+            className="bg-[hsl(var(--foreground))] text-[hsl(var(--background))] p-2 rounded-full transition shadow-md"
           >
             <FaInfoCircle />
           </motion.button>
 
-          {/* Watchlist */}
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => toggleWatchlist(item)}
             aria-label={isSaved ? "Remove from Watchlist" : "Add to Watchlist"}
             aria-pressed={isSaved}
-            className="bg-[hsl(var(--foreground))] hover:bg-[hsl(var(--foreground))]/90 
-                       text-[hsl(var(--background))] uppercase text-lg sm:text-xl 
-                       font-semibold p-2 rounded-full transition shadow-md"
+            className="bg-[hsl(var(--foreground))] text-[hsl(var(--background))] p-2 rounded-full transition shadow-md"
           >
             <Bookmark
-              size={22}
+              size={20}
               strokeWidth={isSaved ? 3 : 2}
-              className={
-                isSaved ? "fill-[hsl(var(--background))]" : "fill-none"
-              }
+              className={isSaved ? "fill-[hsl(var(--background))]" : "fill-none"}
             />
           </motion.button>
         </motion.div>

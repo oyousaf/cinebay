@@ -36,7 +36,7 @@ const Tile = React.memo(function Tile({
       aria-label={movie.title || movie.name}
       aria-selected={isFocused}
       role="listitem"
-      className={`relative shrink-0 rounded-lg focus:outline-none 
+      className={`relative shrink-0 rounded-lg focus:outline-none snap-center
         ${isFocused ? "ring-4 ring-[#80ffcc] shadow-pulse z-40" : "z-10"}`}
       animate={
         isFocused ? { scale: 1.1, opacity: 1 } : { scale: 1, opacity: 0.7 }
@@ -47,7 +47,6 @@ const Tile = React.memo(function Tile({
         stiffness: 300,
         damping: 20,
         mass: 0.9,
-        opacity: { duration: 0.25, ease: "easeInOut" },
       }}
       onClick={onFocus}
     >
@@ -58,7 +57,7 @@ const Tile = React.memo(function Tile({
             : "/fallback.png"
         }
         alt={movie.title || movie.name}
-        className="h-40 w-28 md:h-56 md:w-40 lg:h-64 lg:w-44 object-cover rounded-lg shadow-md"
+        className="h-32 w-20 md:h-44 md:w-32 lg:h-56 lg:w-40 object-cover rounded-lg shadow-md"
         loading="lazy"
       />
     </motion.button>
@@ -111,8 +110,10 @@ export default function ContentRail({
           const elLeft = el.offsetLeft;
           const elWidth = el.offsetWidth;
           const rawScroll = elLeft - containerWidth / 2 + elWidth / 2;
-          const scrollPos = Math.max(0, rawScroll);
-          container.scrollTo({ left: scrollPos, behavior: "smooth" });
+          container.scrollTo({
+            left: Math.max(0, rawScroll),
+            behavior: "smooth",
+          });
         }
       }
     }
@@ -126,7 +127,7 @@ export default function ContentRail({
     }
   }, [items, activeItem, railIndex, focus.section, setFocus]);
 
-  // keyboard + remote keys
+  // keyboard keys
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (railIndex === null || focus.section !== railIndex) return;
@@ -151,60 +152,49 @@ export default function ContentRail({
   }, [focus, railIndex, items, onSelect, onWatch]);
 
   return (
-    <section className="relative w-full">
-      {/* Banner */}
-      <div className="relative min-h-[70vh] w-full flex items-center justify-center">
+    <section
+      className="
+        relative w-full 
+        h-auto sm:h-screen 
+        snap-start sm:flex sm:flex-col
+      "
+    >
+      {/* Banner fills top part */}
+      <div className="sm:flex-1">
         {!activeItem ? (
-          <motion.div
-            key="loader"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            className="flex items-center justify-center"
-          >
+          <motion.div className="flex items-center justify-center h-full">
             <Loader2 className="animate-spin w-8 h-8 text-[hsl(var(--foreground))]" />
           </motion.div>
         ) : (
-          <motion.div
-            key="banner"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.4, ease: "easeOut" }}
-            className="w-full h-full"
-          >
+          <motion.div className="w-full h-full">
             <Banner item={activeItem} onSelect={onSelect} onWatch={onWatch} />
           </motion.div>
         )}
       </div>
 
-      {/* Tiles */}
+      {/* Tiles at bottom */}
       {items.length > 0 && railIndex !== null && (
         <motion.div
           key="tiles"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.35, ease: "easeOut" }}
-          className="relative z-30 mt-8 px-4"
+          className="relative z-30 px-4 pb-4"
         >
           <div
             ref={railRef}
-            className="flex overflow-x-auto overflow-y-hidden gap-3 pb-5 no-scrollbar"
+            className="flex overflow-x-auto overflow-y-hidden gap-3 no-scrollbar snap-x snap-mandatory"
             role="list"
           >
-            {items.map((movie, idx) => {
-              const isFocused =
-                focus.section === railIndex && focus.index === idx;
-              return (
-                <Tile
-                  key={movie.id}
-                  movie={movie}
-                  isFocused={isFocused}
-                  onFocus={() => handleFocus(movie, idx)}
-                  refSetter={(el) => (tileRefs.current[idx] = el)}
-                />
-              );
-            })}
+            {items.map((movie, idx) => (
+              <Tile
+                key={movie.id}
+                movie={movie}
+                isFocused={focus.section === railIndex && focus.index === idx}
+                onFocus={() => handleFocus(movie, idx)}
+                refSetter={(el) => (tileRefs.current[idx] = el)}
+              />
+            ))}
           </div>
         </motion.div>
       )}
