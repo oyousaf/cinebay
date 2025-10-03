@@ -74,7 +74,6 @@ export default function ContentRail({
   const { focus, setFocus, registerRail, updateRailLength } = useNavigation();
   const [railIndex, setRailIndex] = useState<number | null>(null);
 
-  // Register this rail once
   useEffect(() => {
     if (railIndex === null) {
       const idx = registerRail(items.length);
@@ -90,7 +89,7 @@ export default function ContentRail({
     [railIndex, setFocus]
   );
 
-  // Scroll to keep focus in view
+  // keep focus centered
   useEffect(() => {
     if (railIndex !== null) {
       updateRailLength(railIndex, items.length);
@@ -108,14 +107,13 @@ export default function ContentRail({
           const elLeft = el.offsetLeft;
           const elWidth = el.offsetWidth;
           const rawScroll = elLeft - containerWidth / 2 + elWidth / 2;
-          const scrollPos = Math.max(0, rawScroll); // clamp left edge
+          const scrollPos = Math.max(0, rawScroll);
           container.scrollTo({ left: scrollPos, behavior: "smooth" });
         }
       }
     }
   }, [items, focus, railIndex, updateRailLength, activeItem]);
 
-  // Default focus
   useEffect(() => {
     if (!activeItem && items.length > 0 && focus.section !== railIndex) {
       setActiveItem(items[0]);
@@ -125,7 +123,7 @@ export default function ContentRail({
     }
   }, [items, activeItem, railIndex, focus.section, setFocus]);
 
-  // Keyboard + remote handling
+  // keyboard + remote keys
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (railIndex === null || focus.section !== railIndex) return;
@@ -152,7 +150,6 @@ export default function ContentRail({
 
   return (
     <section className="relative w-full">
-      {/* Banner */}
       <div className="relative min-h-[70vh] w-full flex items-center justify-center">
         {!activeItem ? (
           <motion.div
@@ -178,7 +175,6 @@ export default function ContentRail({
         )}
       </div>
 
-      {/* Tiles */}
       {items.length > 0 && railIndex !== null && (
         <motion.div
           key="tiles"
