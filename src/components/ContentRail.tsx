@@ -6,6 +6,11 @@ import Banner from "./Banner";
 import { useNavigation } from "@/hooks/useNavigation";
 import { Loader2 } from "lucide-react";
 
+/* ---------- util: safe embed url builder ---------- */
+function buildEmbedUrl(mediaType: string, id: number) {
+  return `https://vidsrc.to/embed/${mediaType}/${id}`;
+}
+
 interface ContentRailProps {
   title: string;
   items: Movie[];
@@ -13,7 +18,7 @@ interface ContentRailProps {
   onWatch: (url: string) => void;
 }
 
-/* ------------------ Tile ------------------ */
+/* ---------- Tile ---------- */
 const Tile = React.memo(function Tile({
   movie,
   isFocused,
@@ -60,7 +65,7 @@ const Tile = React.memo(function Tile({
   );
 });
 
-/* ------------------ ContentRail ------------------ */
+/* ---------- ContentRail ---------- */
 export default function ContentRail({
   title,
   items,
@@ -74,6 +79,7 @@ export default function ContentRail({
   const { focus, setFocus, registerRail, updateRailLength } = useNavigation();
   const [railIndex, setRailIndex] = useState<number | null>(null);
 
+  // register this rail
   useEffect(() => {
     if (railIndex === null) {
       const idx = registerRail(items.length);
@@ -89,17 +95,15 @@ export default function ContentRail({
     [railIndex, setFocus]
   );
 
-  // keep focus centered
+  // keep focused tile centered
   useEffect(() => {
     if (railIndex !== null) {
       updateRailLength(railIndex, items.length);
-
       if (items.length > 0 && focus.section === railIndex) {
         const focusedMovie = items[focus.index];
         if (focusedMovie && focusedMovie.id !== activeItem?.id) {
           setActiveItem(focusedMovie);
         }
-
         const el = tileRefs.current[focus.index];
         const container = railRef.current;
         if (el && container) {
@@ -114,12 +118,11 @@ export default function ContentRail({
     }
   }, [items, focus, railIndex, updateRailLength, activeItem]);
 
+  // set default focus
   useEffect(() => {
     if (!activeItem && items.length > 0 && focus.section !== railIndex) {
       setActiveItem(items[0]);
-      if (railIndex !== null) {
-        setFocus({ section: railIndex, index: 0 });
-      }
+      if (railIndex !== null) setFocus({ section: railIndex, index: 0 });
     }
   }, [items, activeItem, railIndex, focus.section, setFocus]);
 
@@ -131,25 +134,25 @@ export default function ContentRail({
       if (!movie) return;
 
       switch (e.key) {
-        case "Enter":
-        case "p":
-        case "MediaPlayPause":
-        case "Return":
-          onSelect(movie);
-          break;
         case "i":
         case "Info":
           onSelect(movie);
           break;
+        case "Enter":
+        case "Return":
+        case "p":
+        case "MediaPlayPause":
+          onWatch(buildEmbedUrl(movie.media_type, movie.id));
+          break;
       }
     }
-
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [focus, railIndex, items, onSelect, onWatch]);
 
   return (
     <section className="relative w-full">
+      {/* Banner */}
       <div className="relative min-h-[70vh] w-full flex items-center justify-center">
         {!activeItem ? (
           <motion.div
@@ -175,6 +178,7 @@ export default function ContentRail({
         )}
       </div>
 
+      {/* Tiles */}
       {items.length > 0 && railIndex !== null && (
         <motion.div
           key="tiles"
