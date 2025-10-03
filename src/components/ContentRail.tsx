@@ -1,5 +1,5 @@
-import { useRef, useEffect, useState } from "react";
-import { easeIn, motion } from "framer-motion";
+import { useRef, useEffect, useState, useCallback } from "react";
+import { motion } from "framer-motion";
 import React from "react";
 import type { Movie } from "@/types/movie";
 import Banner from "./Banner";
@@ -29,8 +29,10 @@ const Tile = React.memo(function Tile({
     <motion.button
       ref={refSetter}
       aria-label={movie.title || movie.name}
+      aria-selected={isFocused}
+      role="listitem"
       className={`relative shrink-0 rounded-lg focus:outline-none 
-    ${isFocused ? "ring-4 ring-[#80ffcc] shadow-pulse z-20" : ""}`}
+        ${isFocused ? "ring-4 ring-[#80ffcc] shadow-pulse z-40" : "z-10"}`}
       animate={
         isFocused ? { scale: 1.1, opacity: 1 } : { scale: 1, opacity: 0.7 }
       }
@@ -80,7 +82,15 @@ export default function ContentRail({
     }
   }, [railIndex, registerRail, items.length]);
 
-  // Update + center scroll
+  const handleFocus = useCallback(
+    (movie: Movie, idx: number) => {
+      setActiveItem(movie);
+      if (railIndex !== null) setFocus({ section: railIndex, index: idx });
+    },
+    [railIndex, setFocus]
+  );
+
+  // Scroll to keep focus in view
   useEffect(() => {
     if (railIndex !== null) {
       updateRailLength(railIndex, items.length);
@@ -97,7 +107,8 @@ export default function ContentRail({
           const containerWidth = container.clientWidth;
           const elLeft = el.offsetLeft;
           const elWidth = el.offsetWidth;
-          const scrollPos = elLeft - containerWidth / 2 + elWidth / 2;
+          const rawScroll = elLeft - containerWidth / 2 + elWidth / 2;
+          const scrollPos = Math.max(0, rawScroll); // clamp left edge
           container.scrollTo({ left: scrollPos, behavior: "smooth" });
         }
       }
@@ -106,31 +117,43 @@ export default function ContentRail({
 
   // Default focus
   useEffect(() => {
-    if (!activeItem && items.length > 0) {
+    if (!activeItem && items.length > 0 && focus.section !== railIndex) {
       setActiveItem(items[0]);
       if (railIndex !== null) {
         setFocus({ section: railIndex, index: 0 });
       }
     }
-  }, [items, activeItem, railIndex, setFocus]);
+  }, [items, activeItem, railIndex, focus.section, setFocus]);
 
-  // Enter → open modal
+  // Keyboard + remote handling
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Enter" && railIndex !== null) {
-        if (focus.section === railIndex) {
-          const movie = items[focus.index];
-          if (movie) onSelect(movie);
-        }
+      if (railIndex === null || focus.section !== railIndex) return;
+      const movie = items[focus.index];
+      if (!movie) return;
+
+      switch (e.key) {
+        case "Enter":
+          onSelect(movie);
+          break;
+        case "p":
+        case "MediaPlayPause":
+          // ✅ unify with Banner logic
+          break;
+        case "i":
+        case "Info":
+          onSelect(movie);
+          break;
       }
     }
+
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [focus, railIndex, items, onSelect]);
+  }, [focus, railIndex, items, onSelect, onWatch]);
 
   return (
     <section className="relative w-full">
-      {/* Banner / Loader */}
+      {/* Banner */}
       <div className="relative min-h-[70vh] w-full flex items-center justify-center">
         {!activeItem ? (
           <motion.div
@@ -163,7 +186,7 @@ export default function ContentRail({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.35, ease: "easeOut" }}
-          className="relative z-30 mt-4 px-2"
+          className="relative z-30 mt-8 px-4"
         >
           <div
             ref={railRef}
@@ -173,17 +196,12 @@ export default function ContentRail({
             {items.map((movie, idx) => {
               const isFocused =
                 focus.section === railIndex && focus.index === idx;
-
               return (
                 <Tile
                   key={movie.id}
                   movie={movie}
                   isFocused={isFocused}
-                  onFocus={() => {
-                    setActiveItem(movie);
-                    if (railIndex !== null)
-                      setFocus({ section: railIndex, index: idx });
-                  }}
+                  onFocus={() => handleFocus(movie, idx)}
                   refSetter={(el) => (tileRefs.current[idx] = el)}
                 />
               );

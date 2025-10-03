@@ -18,7 +18,7 @@ export default function Banner({
   const { toggleWatchlist, isInWatchlist } = useWatchlist();
   const isSaved = isInWatchlist(item.id);
 
-  // Variants for staggered fade-in
+  // Variants
   const containerVariants: Variants = {
     hidden: { opacity: 0, y: 15 },
     show: {
@@ -46,7 +46,7 @@ export default function Banner({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.4, ease: "easeOut" }}
-          className="absolute inset-0"
+          className="absolute inset-0 z-0"
         >
           {item.backdrop_path ? (
             <picture>
@@ -74,13 +74,14 @@ export default function Banner({
             />
           )}
 
-          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/70 to-transparent" />
+          {/* ✅ Explicit z-0 to avoid covering tiles */}
+          <div className="absolute inset-0 z-0 bg-gradient-to-t from-black via-black/70 to-transparent" />
         </motion.div>
       </AnimatePresence>
 
       {/* Overlay content */}
       <motion.div
-        className="relative z-20 px-6 md:px-12 py-10 max-w-6xl mx-auto"
+        className="relative z-10 px-6 md:px-12 py-10 max-w-6xl mx-auto"
         variants={containerVariants}
         initial="hidden"
         animate="show"
@@ -110,11 +111,9 @@ export default function Banner({
               NEW
             </span>
           )}
-
           {item.release_date && (
             <span>{new Date(item.release_date).getFullYear()}</span>
           )}
-
           {typeof item.vote_average === "number" && item.vote_average > 0 && (
             <span className="bg-[hsl(var(--foreground))] text-[hsl(var(--background))] text-sm font-semibold px-2 py-0.5 rounded-full shadow-[0_0_6px_hsl(var(--foreground)/0.6),0_0_12px_hsl(var(--foreground)/0.4)]">
               {item.vote_average.toFixed(1)}
@@ -127,18 +126,18 @@ export default function Banner({
           className="flex gap-4 items-center"
           variants={childVariants}
         >
-          {/* ✅ Play Button */}
+          {/* Play */}
           <motion.button
             whileHover={{ scale: embedUrl ? 1.05 : 1 }}
             whileTap={{ scale: embedUrl ? 0.95 : 1 }}
             disabled={!embedUrl}
             onClick={() => embedUrl && onWatch(embedUrl)}
             className={`flex items-center justify-center gap-2 px-6 py-2 rounded-full transition text-lg sm:text-xl font-semibold 
-    ${
-      embedUrl
-        ? "bg-[hsl(var(--foreground))] hover:bg-[hsl(var(--foreground))]/90 text-[hsl(var(--background))] shadow-[0_0_6px_hsl(var(--foreground)/0.6),0_0_12px_hsl(var(--foreground)/0.4)]"
-        : "bg-gray-600/50 text-gray-400 cursor-not-allowed"
-    }`}
+              ${
+                embedUrl
+                  ? "bg-[hsl(var(--foreground))] hover:bg-[hsl(var(--foreground))]/90 text-[hsl(var(--background))] shadow-[0_0_6px_hsl(var(--foreground)/0.6),0_0_12px_hsl(var(--foreground)/0.4)]"
+                  : "bg-gray-600/50 text-gray-400 cursor-not-allowed"
+              }`}
           >
             {!embedUrl ? (
               <>
@@ -169,7 +168,7 @@ export default function Banner({
             )}
           </motion.button>
 
-          {/* Info button */}
+          {/* Info */}
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
@@ -181,7 +180,7 @@ export default function Banner({
             <FaInfoCircle />
           </motion.button>
 
-          {/* Watchlist button */}
+          {/* Watchlist */}
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
