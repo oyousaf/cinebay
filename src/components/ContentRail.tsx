@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { easeIn, motion } from "framer-motion";
 import React from "react";
 import type { Movie } from "@/types/movie";
 import Banner from "./Banner";
@@ -29,19 +29,18 @@ const Tile = React.memo(function Tile({
     <motion.button
       ref={refSetter}
       aria-label={movie.title || movie.name}
-      className={`relative shrink-0 rounded-lg focus:outline-none transition-transform duration-200
-        ${
-          isFocused
-            ? "ring-4 ring-[#80ffcc] shadow-pulse z-20"
-            : "opacity-70 hover:opacity-90"
-        }`}
-      animate={isFocused ? { scale: 1.1 } : { scale: 1 }}
-      whileHover={!isFocused ? { scale: 1.03 } : {}}
+      className={`relative shrink-0 rounded-lg focus:outline-none 
+    ${isFocused ? "ring-4 ring-[#80ffcc] shadow-pulse z-20" : ""}`}
+      animate={
+        isFocused ? { scale: 1.1, opacity: 1 } : { scale: 1, opacity: 0.7 }
+      }
+      whileHover={!isFocused ? { scale: 1.03, opacity: 0.9 } : {}}
       transition={{
         type: "spring",
         stiffness: 300,
         damping: 20,
         mass: 0.9,
+        opacity: { duration: 0.25, ease: "easeInOut" },
       }}
       onClick={onFocus}
     >
