@@ -134,11 +134,10 @@ export default function ContentRail({
 
       switch (e.key) {
         case "Enter":
-          onSelect(movie);
-          break;
         case "p":
         case "MediaPlayPause":
-          // ✅ unify with Banner logic
+        case "Return":
+          onSelect(movie);
           break;
         case "i":
         case "Info":
