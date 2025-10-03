@@ -44,8 +44,8 @@ const WatchlistTile = React.memo(function WatchlistTile({
       transition={{ duration: 0.25, ease: "easeOut" }}
       tabIndex={0}
       onClick={() => {
-        onFocus();                     // 👈 update navigation focus
-        if (embedUrl) onWatch(embedUrl); // play if available
+        onFocus();
+        if (embedUrl) onWatch(embedUrl);
       }}
       whileHover={{
         scale: 1.03,
@@ -98,7 +98,7 @@ const WatchlistTile = React.memo(function WatchlistTile({
 export default function Watchlist({
   onWatch,
 }: {
-  onWatch: (url: string) => void; // ✅ PlayerModal (expects embed URL)
+  onWatch: (url: string) => void;
 }) {
   const { watchlist, toggleWatchlist } = useWatchlist();
 
