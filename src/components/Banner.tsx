@@ -90,30 +90,33 @@ export default function Banner({
         </motion.p>
 
         {/* Actions */}
-        <motion.div className="flex gap-3 items-center" variants={childVariants}>
+        <motion.div
+          className="flex gap-3 items-center"
+          variants={childVariants}
+        >
           <motion.button
             whileHover={{ scale: embedUrl ? 1.05 : 1 }}
             whileTap={{ scale: embedUrl ? 0.95 : 1 }}
             disabled={!embedUrl}
             onClick={() => embedUrl && onWatch(embedUrl)}
-            className={`flex items-center justify-center gap-2 px-5 py-2 rounded-full transition 
-              text-[clamp(0.9rem,1vw+0.5rem,1.1rem)] font-semibold 
-              ${
-                embedUrl
-                  ? "bg-[hsl(var(--foreground))] hover:bg-[hsl(var(--foreground))]/90 text-[hsl(var(--background))]"
-                  : "bg-gray-600/50 text-gray-400 cursor-not-allowed"
-              }`}
+            className={`flex items-center justify-center gap-2 px-6 py-3 rounded-full transition 
+    text-[clamp(1rem,1.2vw+0.5rem,1.25rem)] font-semibold
+    ${
+      embedUrl
+        ? "bg-[hsl(var(--foreground))] hover:bg-[hsl(var(--foreground))]/90 text-[hsl(var(--background))]"
+        : "bg-gray-600/50 text-gray-400 cursor-not-allowed"
+    }`}
           >
-            {!embedUrl ? "Loading…" : <FaPlay />}
+            {!embedUrl ? "Loading…" : <FaPlay size={24} />}
           </motion.button>
 
           <motion.button
-            whileHover={{ scale: 1.05 }}
+            whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => onSelect(item)}
-            className="bg-[hsl(var(--foreground))] text-[hsl(var(--background))] p-2 rounded-full transition shadow-md"
+            className="bg-[hsl(var(--foreground))] text-[hsl(var(--background))] p-3 rounded-full transition shadow-md"
           >
-            <FaInfoCircle />
+            <FaInfoCircle size={22} />
           </motion.button>
 
           <motion.button
@@ -122,12 +125,14 @@ export default function Banner({
             onClick={() => toggleWatchlist(item)}
             aria-label={isSaved ? "Remove from Watchlist" : "Add to Watchlist"}
             aria-pressed={isSaved}
-            className="bg-[hsl(var(--foreground))] text-[hsl(var(--background))] p-2 rounded-full transition shadow-md"
+            className="bg-[hsl(var(--foreground))] text-[hsl(var(--background))] p-3 rounded-full transition shadow-md"
           >
             <Bookmark
-              size={20}
+              size={22}
               strokeWidth={isSaved ? 3 : 2}
-              className={isSaved ? "fill-[hsl(var(--background))]" : "fill-none"}
+              className={
+                isSaved ? "fill-[hsl(var(--background))]" : "fill-none"
+              }
             />
           </motion.button>
         </motion.div>

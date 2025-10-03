@@ -256,12 +256,13 @@ export default function Modal({
                       disabled={!embedUrl}
                       type="button"
                       onClick={() => embedUrl && openPlayer(embedUrl)}
-                      className={`flex items-center justify-center gap-2 px-6 py-2 rounded-full transition text-xl font-semibold 
-                        ${
-                          embedUrl
-                            ? "bg-[hsl(var(--foreground))] hover:bg-[hsl(var(--foreground))]/90 text-[hsl(var(--background))] shadow-[0_0_6px_hsl(var(--foreground)/0.6),0_0_12px_hsl(var(--foreground)/0.4)]"
-                            : "bg-gray-600/50 text-gray-400 cursor-not-allowed"
-                        }`}
+                      className={`flex items-center justify-center gap-2 px-6 py-3 rounded-full transition 
+        text-[clamp(1rem,1.2vw+0.5rem,1.25rem)] font-semibold
+        ${
+          embedUrl
+            ? "bg-[hsl(var(--foreground))] hover:bg-[hsl(var(--foreground))]/90 text-[hsl(var(--background))] shadow-[0_0_6px_hsl(var(--foreground)/0.6),0_0_12px_hsl(var(--foreground)/0.4)]"
+            : "bg-gray-600/50 text-gray-400 cursor-not-allowed"
+        }`}
                     >
                       {!embedUrl ? (
                         <>
@@ -288,7 +289,7 @@ export default function Modal({
                           <span className="text-sm">Loading…</span>
                         </>
                       ) : (
-                        <FaPlay />
+                        <FaPlay size={24} />
                       )}
                     </motion.button>
 
@@ -302,8 +303,8 @@ export default function Modal({
                         isSaved ? "Remove from Watchlist" : "Add to Watchlist"
                       }
                       className="bg-[hsl(var(--foreground))] hover:bg-[hsl(var(--foreground))]/90 
-                                 text-[hsl(var(--background))] text-xl cursor-pointer uppercase 
-                                 font-semibold p-2 rounded-full transition"
+                 text-[hsl(var(--background))] cursor-pointer 
+                 font-semibold p-3 rounded-full transition shadow-md"
                     >
                       <Bookmark
                         size={22}
