@@ -13,6 +13,7 @@ interface ContentRailProps {
   onWatch: (url: string) => void;
 }
 
+/* ------------------ Tile ------------------ */
 const Tile = React.memo(function Tile({
   movie,
   isFocused,
@@ -28,14 +29,20 @@ const Tile = React.memo(function Tile({
     <motion.button
       ref={refSetter}
       aria-label={movie.title || movie.name}
-      className={`relative shrink-0 rounded-lg focus:outline-none transition-all duration-300
+      className={`relative shrink-0 rounded-lg focus:outline-none transition-transform duration-200
         ${
           isFocused
-            ? "ring-4 ring-[#80ffcc] scale-105 shadow-pulse z-20"
-            : "opacity-50 hover:opacity-80 hover:scale-105 hover:shadow-lg"
+            ? "ring-4 ring-[#80ffcc] shadow-pulse z-20"
+            : "opacity-70 hover:opacity-90"
         }`}
-      animate={isFocused ? { scale: 1.1 } : { scale: 0.95 }}
-      transition={{ type: "spring", stiffness: 280, damping: 22, mass: 1 }}
+      animate={isFocused ? { scale: 1.1 } : { scale: 1 }}
+      whileHover={!isFocused ? { scale: 1.03 } : {}}
+      transition={{
+        type: "spring",
+        stiffness: 300,
+        damping: 20,
+        mass: 0.9,
+      }}
       onClick={onFocus}
     >
       <img
@@ -45,13 +52,14 @@ const Tile = React.memo(function Tile({
             : "/fallback.png"
         }
         alt={movie.title || movie.name}
-        className="h-40 w-28 md:h-56 md:w-40 lg:h-64 lg:w-44 object-cover rounded-lg shadow-lg"
+        className="h-40 w-28 md:h-56 md:w-40 lg:h-64 lg:w-44 object-cover rounded-lg shadow-md"
         loading="lazy"
       />
     </motion.button>
   );
 });
 
+/* ------------------ ContentRail ------------------ */
 export default function ContentRail({
   title,
   items,
@@ -155,12 +163,12 @@ export default function ContentRail({
           key="tiles"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.4, ease: "easeOut" }}
-          className="relative z-30 mt-4 px-4 md:px-8 max-w-6xl mx-auto"
+          transition={{ duration: 0.35, ease: "easeOut" }}
+          className="relative z-30 mt-4 px-2"
         >
           <div
             ref={railRef}
-            className="flex overflow-x-auto overflow-y-hidden gap-4 pb-6 px-2 no-scrollbar"
+            className="flex overflow-x-auto overflow-y-hidden gap-3 pb-5 no-scrollbar"
             role="list"
           >
             {items.map((movie, idx) => {
