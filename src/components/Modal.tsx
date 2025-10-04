@@ -51,9 +51,7 @@ export default function Modal({
   const { openPlayer } = useModalManager();
   const isSaved = isInWatchlist(movie.id);
 
-  // ✅ fetch embed url for play button
   const embedUrl = useVideoEmbed(movie.id, movie.media_type);
-
   const title = movie.title || movie.name || "Untitled";
   const poster = movie.profile_path || movie.poster_path || "";
   const displayPoster = useMemo(
@@ -140,7 +138,6 @@ export default function Modal({
 
           {/* Content */}
           <div className="relative z-10 px-4 py-8 sm:p-8 bg-gradient-to-b from-black/80 via-black/60 to-black/90 text-[#80ffcc] max-h-[90vh] overflow-y-auto space-y-6">
-            {/* Poster + Info */}
             <div className="flex flex-col sm:flex-row gap-6 sm:items-start pt-6 sm:pt-0">
               <div className="flex justify-center sm:block">
                 <img
@@ -199,29 +196,7 @@ export default function Modal({
                   </div>
                 )}
 
-                {/* Biography with animation */}
-                {isPerson && movie.biography && (
-                  <div className="text-md text-zinc-200 leading-relaxed">
-                    <motion.div
-                      initial={false}
-                      animate={{ height: showFullBio ? "auto" : "6rem" }}
-                      transition={{ duration: 0.3, ease: "easeInOut" }}
-                      className="overflow-hidden"
-                    >
-                      <p className="whitespace-pre-line">{movie.biography}</p>
-                    </motion.div>
-                    {movie.biography.length > 300 && (
-                      <button
-                        onClick={() => setShowFullBio((prev) => !prev)}
-                        className="mt-2 text-sm font-semibold text-[hsl(var(--foreground))] hover:underline"
-                      >
-                        {showFullBio ? "Read less" : "Read more"}
-                      </button>
-                    )}
-                  </div>
-                )}
-
-                {/* Movie/TV overview */}
+                {/* Overview */}
                 {!isPerson && movie.overview && (
                   <p className="text-md text-zinc-200 leading-relaxed">
                     {movie.overview}
@@ -243,13 +218,20 @@ export default function Modal({
                     )}
                     {releaseDate && <span>· {releaseDate}</span>}
                     {movie.runtime && <span>· {movie.runtime} mins</span>}
+
+                    {/* ⭐ Rating */}
+                    {typeof movie.vote_average === "number" &&
+                      movie.vote_average > 0 && (
+                        <span className="bg-[hsl(var(--foreground))] text-[hsl(var(--background))] text-sm font-bold px-2 py-0.5 rounded-full uppercase">
+                          ⭐ {movie.vote_average.toFixed(1)}
+                        </span>
+                      )}
                   </div>
                 )}
 
                 {/* Actions */}
                 {!isPerson && (
                   <div className="pt-4 flex gap-4 justify-center sm:justify-start">
-                    {/* ✅ Play Button with loading/disabled state */}
                     <motion.button
                       whileHover={{ scale: embedUrl ? 1.05 : 1 }}
                       whileTap={{ scale: embedUrl ? 0.95 : 1 }}
@@ -257,12 +239,12 @@ export default function Modal({
                       type="button"
                       onClick={() => embedUrl && openPlayer(embedUrl)}
                       className={`flex items-center justify-center gap-2 px-6 py-3 rounded-full transition 
-        text-[clamp(1rem,1.2vw+0.5rem,1.25rem)] font-semibold
-        ${
-          embedUrl
-            ? "bg-[hsl(var(--foreground))] hover:bg-[hsl(var(--foreground))]/90 text-[hsl(var(--background))] shadow-[0_0_6px_hsl(var(--foreground)/0.6),0_0_12px_hsl(var(--foreground)/0.4)]"
-            : "bg-gray-600/50 text-gray-400 cursor-not-allowed"
-        }`}
+                        text-[clamp(1rem,1.2vw+0.5rem,1.25rem)] font-semibold
+                        ${
+                          embedUrl
+                            ? "bg-[hsl(var(--foreground))] hover:bg-[hsl(var(--foreground))]/90 text-[hsl(var(--background))] shadow-[0_0_6px_hsl(var(--foreground)/0.6),0_0_12px_hsl(var(--foreground)/0.4)]"
+                            : "bg-gray-600/50 text-gray-400 cursor-not-allowed"
+                        }`}
                     >
                       {!embedUrl ? (
                         <>
@@ -293,7 +275,6 @@ export default function Modal({
                       )}
                     </motion.button>
 
-                    {/* Watchlist */}
                     <motion.button
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
@@ -303,8 +284,8 @@ export default function Modal({
                         isSaved ? "Remove from Watchlist" : "Add to Watchlist"
                       }
                       className="bg-[hsl(var(--foreground))] hover:bg-[hsl(var(--foreground))]/90 
-                 text-[hsl(var(--background))] cursor-pointer 
-                 font-semibold p-3 rounded-full transition shadow-md"
+                      text-[hsl(var(--background))] cursor-pointer 
+                      font-semibold p-3 rounded-full transition shadow-md"
                     >
                       <Bookmark
                         size={22}
@@ -319,7 +300,6 @@ export default function Modal({
                   </div>
                 )}
 
-                {/* Cast list */}
                 {!isPerson && cast.length > 0 && (
                   <StarringList cast={cast} onSelect={onSelect} />
                 )}
