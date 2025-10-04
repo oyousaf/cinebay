@@ -115,48 +115,42 @@ export function ModalManagerProvider({ children }: { children: ReactNode }) {
 
   /* ---------- Global back / escape / media handling ---------- */
   useEffect(() => {
-    const handleBack = (e?: KeyboardEvent | PopStateEvent) => {
-      e?.preventDefault?.();
+    if (!window.history.state) {
+      window.history.pushState({ cinebay: "root" }, "", window.location.href);
+    }
 
-      if (activeModal === "player") {
-        close();
-        return;
-      }
-
-      if (activeModal === "content") {
-        if (historyStack.current.length > 0) {
-          goBackContent();
-        } else {
-          close();
-        }
-        return;
-      }
-
-      if (activeModal === "exit") {
-        close();
-        return;
-      }
-      openExit();
+    const handleBack = () => {
+      if (activeModal === "player") close();
+      else if (activeModal === "content") {
+        if (historyStack.current.length > 0) goBackContent();
+        else close();
+      } else if (activeModal === "exit") close();
+      else openExit();
     };
 
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (
-        e.key === "Escape" ||
-        e.key === "Backspace" ||
-        e.key === "BrowserBack" ||
-        e.key === "MediaStop"
-      ) {
-        handleBack(e);
+    const onPopState = (e: PopStateEvent) => {
+      e.preventDefault();
+      handleBack();
+      window.history.pushState({ cinebay: "active" }, "");
+    };
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        handleBack();
       }
     };
 
-    window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("popstate", handleBack);
+    // Add listeners
+    window.addEventListener("popstate", onPopState);
+    window.addEventListener("keydown", onKeyDown);
+
+    // Cleanup
     return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("popstate", handleBack);
+      window.removeEventListener("popstate", onPopState);
+      window.removeEventListener("keydown", onKeyDown);
     };
-  }, [activeModal, close, goBackContent, openExit]);
+  }, [activeModal, goBackContent, close, openExit]);
 
   return (
     <div ref={modalRef}>
