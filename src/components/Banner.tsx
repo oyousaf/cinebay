@@ -37,7 +37,7 @@ export default function Banner({
   };
 
   return (
-    <div className="relative w-full h-full flex flex-col justify-end overflow-hidden shadow-2xl snap-start">
+    <div className="relative w-full min-h-[70vh] flex flex-col justify-end overflow-hidden shadow-2xl snap-start">
       {/* Backdrop */}
       <AnimatePresence mode="popLayout">
         <motion.div
@@ -63,13 +63,13 @@ export default function Banner({
               loading="lazy"
             />
           )}
-          <div className="absolute inset-0 z-0 bg-gradient-to-t from-black via-black/70 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/70 to-transparent" />
         </motion.div>
       </AnimatePresence>
 
       {/* Overlay */}
       <motion.div
-        className="relative z-10 px-4 md:px-12 py-6 md:py-10 max-w-6xl mx-auto"
+        className="relative z-10 px-4 md:px-12 py-4 md:py-10 max-w-6xl mx-auto"
         variants={containerVariants}
         initial="hidden"
         animate="show"
@@ -83,13 +83,12 @@ export default function Banner({
         </motion.h2>
 
         <motion.p
-          className="text-gray-200 leading-relaxed max-w-3xl mb-6 text-[clamp(0.9rem,1.2vw+0.5rem,1.25rem)] line-clamp-3 md:line-clamp-4"
+          className="text-gray-200 leading-relaxed max-w-3xl mb-6 text-[clamp(0.9rem,1.2vw+0.5rem,1.25rem)] line-clamp-4"
           variants={childVariants}
         >
           {item.overview}
         </motion.p>
 
-        {/* Actions */}
         <motion.div
           className="flex gap-3 items-center"
           variants={childVariants}
@@ -99,13 +98,11 @@ export default function Banner({
             whileTap={{ scale: embedUrl ? 0.95 : 1 }}
             disabled={!embedUrl}
             onClick={() => embedUrl && onWatch(embedUrl)}
-            className={`flex items-center justify-center gap-2 px-6 py-3 rounded-full transition 
-    text-[clamp(1rem,1.2vw+0.5rem,1.25rem)] font-semibold
-    ${
-      embedUrl
-        ? "bg-[hsl(var(--foreground))] hover:bg-[hsl(var(--foreground))]/90 text-[hsl(var(--background))]"
-        : "bg-gray-600/50 text-gray-400 cursor-not-allowed"
-    }`}
+            className={`flex items-center justify-center gap-2 px-6 py-3 rounded-full transition text-[clamp(1rem,1.2vw+0.5rem,1.25rem)] font-semibold ${
+              embedUrl
+                ? "bg-[hsl(var(--foreground))] hover:bg-[hsl(var(--foreground))]/90 text-[hsl(var(--background))]"
+                : "bg-gray-600/50 text-gray-400 cursor-not-allowed"
+            }`}
           >
             {!embedUrl ? "Loading…" : <FaPlay size={24} />}
           </motion.button>
