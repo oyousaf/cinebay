@@ -29,14 +29,15 @@ export function ModalManagerProvider({ children }: { children: ReactNode }) {
   const [activeModal, setActiveModal] = useState<ModalType>(null);
   const [selectedItem, setSelectedItem] = useState<Movie | null>(null);
   const [playerUrl, setPlayerUrl] = useState<string | null>(null);
+
   const historyStack = useRef<Movie[]>([]);
   const modalRef = useRef<HTMLDivElement | null>(null);
   const lastFocusedElement = useRef<HTMLElement | null>(null);
 
-  // optional integration with navigation context
+  // Optional navigation sync
   const { setModalOpen } = useNavigation?.() ?? { setModalOpen: () => {} };
 
-  /* ---------- Scroll lock + navigation sync ---------- */
+  /* ---------- Scroll lock & focus sync ---------- */
   useEffect(() => {
     document.body.style.overflow = activeModal ? "hidden" : "";
     setModalOpen?.(!!activeModal);
@@ -98,6 +99,7 @@ export function ModalManagerProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const openExit = useCallback(() => setActiveModal("exit"), []);
+
   const close = useCallback(() => {
     setActiveModal(null);
     setSelectedItem(null);
@@ -106,14 +108,11 @@ export function ModalManagerProvider({ children }: { children: ReactNode }) {
 
   const goBackContent = useCallback(() => {
     const last = historyStack.current.pop();
-    if (last) {
-      setSelectedItem(last);
-    } else {
-      close();
-    }
+    if (last) setSelectedItem(last);
+    else close();
   }, [close]);
 
-  /* ---------- Global back / escape / media handling ---------- */
+  /* ---------- Back / Escape / Remote Handling ---------- */
   useEffect(() => {
     if (!window.history.state) {
       window.history.pushState({ cinebay: "root" }, "", window.location.href);
@@ -135,23 +134,44 @@ export function ModalManagerProvider({ children }: { children: ReactNode }) {
     };
 
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
+      if (e.key === "Escape" || e.key === "Backspace") {
         e.preventDefault();
         handleBack();
       }
     };
 
-    // Add listeners
     window.addEventListener("popstate", onPopState);
     window.addEventListener("keydown", onKeyDown);
 
-    // Cleanup
     return () => {
       window.removeEventListener("popstate", onPopState);
       window.removeEventListener("keydown", onKeyDown);
     };
   }, [activeModal, goBackContent, close, openExit]);
 
+  /* ---------- Favicon Restore Fix  ---------- */
+  useEffect(() => {
+    const restoreFavicon = () => {
+      const existing = document.getElementById(
+        "favicon-link"
+      ) as HTMLLinkElement | null;
+      if (existing) {
+        existing.href = "/favicon.png";
+      } else {
+        const link = document.createElement("link");
+        link.id = "favicon-link";
+        link.rel = "icon";
+        link.type = "image/png";
+        link.href = "/favicon.png";
+        document.head.appendChild(link);
+      }
+    };
+
+    window.addEventListener("popstate", restoreFavicon);
+    return () => window.removeEventListener("popstate", restoreFavicon);
+  }, []);
+
+  /* ---------- Render ---------- */
   return (
     <div ref={modalRef}>
       <ModalManagerContext.Provider
