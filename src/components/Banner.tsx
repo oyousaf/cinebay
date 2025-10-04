@@ -30,15 +30,13 @@ export default function Banner({
       },
     },
   };
-
   const childVariants: Variants = {
     hidden: { opacity: 0, y: 10 },
     show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: "easeOut" } },
   };
 
   return (
-    <div className="relative w-full min-h-[70vh] flex flex-col justify-end overflow-hidden shadow-2xl snap-start">
-      {/* Backdrop */}
+    <div className="relative w-full min-h-[70vh] md:min-h-[60vh] lg:min-h-[75vh] flex flex-col justify-end overflow-hidden shadow-2xl snap-start">
       <AnimatePresence mode="popLayout">
         <motion.div
           key={item.id}
@@ -67,9 +65,8 @@ export default function Banner({
         </motion.div>
       </AnimatePresence>
 
-      {/* Overlay */}
       <motion.div
-        className="relative z-10 px-4 md:px-12 py-4 md:py-10 max-w-6xl mx-auto"
+        className="relative z-10 px-4 md:px-10 lg:px-12 py-4 md:py-8 lg:py-10 max-w-6xl mx-auto"
         variants={containerVariants}
         initial="hidden"
         animate="show"
