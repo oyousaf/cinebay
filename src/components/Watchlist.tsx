@@ -72,7 +72,7 @@ const WatchlistTile = React.memo(function WatchlistTile({
       />
 
       {movie.isNew && (
-        <div className="absolute top-2 left-2 bg-[hsl(var(--foreground))] text-[hsl(var(--background))] text-[10px] md:text-xs font-bold px-2 py-0.5 rounded-full uppercase shadow-md">
+        <div className="absolute top-2 left-2 bg-[hsl(var(--foreground))] text-[hsl(var(--background))] text-[10px] md:text-xs font-bold px-2 py-0.5 rounded-full uppercase shadow-md shadow-pulse">
           NEW
         </div>
       )}

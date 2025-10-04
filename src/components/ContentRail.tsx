@@ -36,9 +36,8 @@ const Tile = React.memo(function Tile({
       aria-label={movie.title || movie.name}
       aria-selected={isFocused}
       role="listitem"
-      className={`relative shrink-0 rounded-lg focus:outline-none snap-center ${
-        isFocused ? "ring-4 ring-[#80ffcc] shadow-pulse z-40" : "z-10"
-      }`}
+      className={`relative shrink-0 rounded-lg focus:outline-none snap-center
+        ${isFocused ? "ring-4 ring-[#80ffcc] shadow-pulse z-40" : "z-10"}`}
       animate={
         isFocused ? { scale: 1.1, opacity: 1 } : { scale: 1, opacity: 0.7 }
       }
@@ -61,6 +60,17 @@ const Tile = React.memo(function Tile({
         className="h-32 w-20 md:h-44 md:w-32 lg:h-56 lg:w-40 object-cover rounded-lg shadow-md"
         loading="lazy"
       />
+
+      {movie.isNew && (
+        <div
+          className="absolute top-2 left-2 bg-[hsl(var(--foreground))] 
+                     text-[hsl(var(--background))] text-[10px] md:text-xs 
+                     font-bold px-2 py-0.5 rounded-full uppercase 
+                     shadow-md shadow-pulse"
+        >
+          NEW
+        </div>
+      )}
     </motion.button>
   );
 });
@@ -79,6 +89,7 @@ export default function ContentRail({
   const { focus, setFocus, registerRail, updateRailLength } = useNavigation();
   const [railIndex, setRailIndex] = useState<number | null>(null);
 
+  /* ---------- Register rail ---------- */
   useEffect(() => {
     if (railIndex === null) {
       const idx = registerRail(items.length);
@@ -94,6 +105,7 @@ export default function ContentRail({
     [railIndex, setFocus]
   );
 
+  /* ---------- Keep focused tile centered ---------- */
   useEffect(() => {
     if (railIndex !== null) {
       updateRailLength(railIndex, items.length);
@@ -117,6 +129,7 @@ export default function ContentRail({
     }
   }, [items, focus, railIndex, updateRailLength, activeItem]);
 
+  /* ---------- Default focus ---------- */
   useEffect(() => {
     if (!activeItem && items.length > 0 && focus.section !== railIndex) {
       setActiveItem(items[0]);
@@ -124,20 +137,24 @@ export default function ContentRail({
     }
   }, [items, activeItem, railIndex, focus.section, setFocus]);
 
+  /* ---------- Keyboard / Remote ---------- */
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (railIndex === null || focus.section !== railIndex) return;
       const movie = items[focus.index];
       if (!movie) return;
+
       switch (e.key) {
         case "i":
         case "Info":
+          e.preventDefault();
           onSelect(movie);
           break;
         case "Enter":
         case "Return":
         case "p":
         case "MediaPlayPause":
+          e.preventDefault();
           onWatch(buildEmbedUrl(movie.media_type, movie.id));
           break;
       }
@@ -146,6 +163,7 @@ export default function ContentRail({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [focus, railIndex, items, onSelect, onWatch]);
 
+  /* ---------- UI ---------- */
   return (
     <section className="relative w-full min-h-[90vh] sm:h-screen snap-start flex flex-col">
       <div className="flex-1">
