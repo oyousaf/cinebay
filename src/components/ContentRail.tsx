@@ -57,7 +57,7 @@ const Tile = React.memo(function Tile({
             : "/fallback.png"
         }
         alt={movie.title || movie.name}
-        className="h-44 w-32 md:h-44 md:w-32 lg:h-56 lg:w-40 object-cover rounded-lg shadow-md"
+        className="h-32 w-20 md:h-44 md:w-32 lg:h-56 lg:w-40 object-cover rounded-lg shadow-md"
         loading="lazy"
       />
     </motion.button>
@@ -172,12 +172,12 @@ export default function ContentRail({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.35, ease: "easeOut" }}
-          className="relative z-30 px-2 pb-2"
+          className="relative z-30 px-4 pb-4"
         >
           <div
             ref={railRef}
             className="flex overflow-x-auto overflow-y-hidden gap-3 no-scrollbar snap-x snap-mandatory 
-             pl-2 md:pl-4 pr-2 md:pr-4 py-4"
+             pl-4 pr-4 py-4"
             role="list"
           >
             {items.map((movie, idx) => (
