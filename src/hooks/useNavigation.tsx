@@ -1,4 +1,4 @@
-import React, {
+import {
   createContext,
   useCallback,
   useContext,
@@ -16,6 +16,10 @@ interface NavigationContextType {
   registerRail: (length: number) => number;
   updateRailLength: (index: number, length: number) => void;
   resetNavigation: () => void;
+
+  /** 🧱 Modal control **/
+  isModalOpen: boolean;
+  setModalOpen: (open: boolean) => void;
 }
 
 const NavigationContext = createContext<NavigationContextType | null>(null);
@@ -23,9 +27,11 @@ const NavigationContext = createContext<NavigationContextType | null>(null);
 export function NavigationProvider({ children }: { children: ReactNode }) {
   const [rails, setRails] = useState<number[]>([]);
   const [focus, setFocus] = useState<FocusTarget>({ section: 0, index: 0 });
+  const [isModalOpen, setModalOpen] = useState(false);
 
   const railCount = useRef(0);
 
+  /** ---------- Rail registration ---------- */
   const registerRail = useCallback((length: number) => {
     const index = railCount.current;
     railCount.current += 1;
@@ -51,8 +57,11 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     setFocus({ section: 0, index: 0 });
   }, []);
 
+  /** ---------- Key handler ---------- */
   const handleKey = useCallback(
     (e: KeyboardEvent) => {
+      if (isModalOpen) return;
+
       setFocus((prev) => {
         let next = { ...prev };
         const maxIndex = rails[prev.section] ? rails[prev.section] - 1 : 0;
@@ -83,9 +92,10 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
         return next;
       });
     },
-    [rails]
+    [rails, isModalOpen]
   );
 
+  /** ---------- Lifecycle ---------- */
   useEffect(() => {
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
@@ -99,6 +109,8 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
         registerRail,
         updateRailLength,
         resetNavigation,
+        isModalOpen,
+        setModalOpen,
       }}
     >
       {children}
