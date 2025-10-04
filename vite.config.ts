@@ -27,36 +27,39 @@ export default defineConfig({
         start_url: "/",
         display: "standalone",
         orientation: "landscape",
-        categories: ["entertainment", "streaming", "media"],
         lang: "en-GB",
         dir: "ltr",
+        categories: ["entertainment", "streaming", "media"],
+
         icons: [
           {
-            src: "icon-192.png",
-            sizes: "192x192",
-            type: "image/png",
-          },
-          {
-            src: "icon-512.png",
-            sizes: "512x512",
-            type: "image/png",
-          },
-          {
-            src: "icon-1024.png",
+            src: "/logo.png",
             sizes: "1024x1024",
             type: "image/png",
             purpose: "any maskable",
           },
+          {
+            src: "/icon-512.png",
+            sizes: "512x512",
+            type: "image/png",
+          },
+          {
+            src: "/icon-192.png",
+            sizes: "192x192",
+            type: "image/png",
+          },
         ],
+
+        // 📱 Optional screenshots for store / PWA info
         screenshots: [
           {
-            src: "screenshot-desktop.png",
+            src: "/screenshot-desktop.png",
             sizes: "1280x720",
             type: "image/png",
             form_factor: "wide",
           },
           {
-            src: "screenshot-mobile.png",
+            src: "/screenshot-mobile.png",
             sizes: "720x1280",
             type: "image/png",
             form_factor: "narrow",
@@ -64,7 +67,7 @@ export default defineConfig({
         ],
       },
 
-      /* ---------- Caching Strategy ---------- */
+      /* ---------- ⚡ Workbox Caching Strategy ---------- */
       workbox: {
         skipWaiting: true,
         clientsClaim: true,
@@ -80,7 +83,7 @@ export default defineConfig({
               cacheableResponse: { statuses: [0, 200] },
             },
           },
-          // 📊 TMDB Lists
+          // 📊 TMDB Lists (popular/top-rated)
           {
             urlPattern:
               /^https:\/\/api\.themoviedb\.org\/3\/movie\/(popular|top_rated)/,
@@ -127,7 +130,7 @@ export default defineConfig({
         ],
       },
 
-      /* ---------- Dev ---------- */
+      /* ---------- 💻 Dev Mode ---------- */
       devOptions: {
         enabled: true,
         type: "module",
