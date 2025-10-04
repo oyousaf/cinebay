@@ -10,30 +10,67 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["favicon.svg", "robots.txt", "apple-touch-icon.png"],
+      includeAssets: [
+        "favicon.ico",
+        "favicon-16x16.png",
+        "favicon-32x32.png",
+        "apple-touch-icon.png",
+        "robots.txt",
+      ],
       manifest: {
         name: "CineBay",
         short_name: "CineBay",
+        description:
+          "CineBay — your personal vault for great films, fresh shows, and cult classics.",
         theme_color: "#80FFCC",
         background_color: "#80FFCC",
-        display: "standalone",
         start_url: "/",
+        display: "standalone",
+        orientation: "landscape",
+        categories: ["entertainment", "streaming", "media"],
+        lang: "en-GB",
+        dir: "ltr",
         icons: [
-          { src: "icon-192.png", sizes: "192x192", type: "image/png" },
-          { src: "icon-512.png", sizes: "512x512", type: "image/png" },
+          {
+            src: "icon-192.png",
+            sizes: "192x192",
+            type: "image/png",
+          },
+          {
+            src: "icon-512.png",
+            sizes: "512x512",
+            type: "image/png",
+          },
           {
             src: "icon-1024.png",
             sizes: "1024x1024",
             type: "image/png",
-            purpose: "any",
+            purpose: "any maskable",
+          },
+        ],
+        screenshots: [
+          {
+            src: "screenshot-desktop.png",
+            sizes: "1280x720",
+            type: "image/png",
+            form_factor: "wide",
+          },
+          {
+            src: "screenshot-mobile.png",
+            sizes: "720x1280",
+            type: "image/png",
+            form_factor: "narrow",
           },
         ],
       },
+
+      /* ---------- Caching Strategy ---------- */
       workbox: {
         skipWaiting: true,
         clientsClaim: true,
         navigateFallback: "/",
         runtimeCaching: [
+          // 🎬 TMDB API
           {
             urlPattern: /^https:\/\/api\.themoviedb\.org\/.*/i,
             handler: "CacheFirst",
@@ -43,6 +80,7 @@ export default defineConfig({
               cacheableResponse: { statuses: [0, 200] },
             },
           },
+          // 📊 TMDB Lists
           {
             urlPattern:
               /^https:\/\/api\.themoviedb\.org\/3\/movie\/(popular|top_rated)/,
@@ -56,15 +94,17 @@ export default defineConfig({
               },
             },
           },
+          // 🎥 Video Embed
           {
-            urlPattern: /^https:\/\/vidsrc\.me\/api\/.*/i,
-            handler: "CacheFirst",
+            urlPattern: /^https:\/\/vidsrc\.to\/embed\/.*/i,
+            handler: "NetworkFirst",
             options: {
-              cacheName: "vidsrc-api-cache",
-              expiration: { maxEntries: 50, maxAgeSeconds: 86400 },
+              cacheName: "vidsrc-embed-cache",
+              expiration: { maxEntries: 20, maxAgeSeconds: 3600 },
               cacheableResponse: { statuses: [0, 200] },
             },
           },
+          // 🖼️ TMDB Images
           {
             urlPattern: /^https:\/\/image\.tmdb\.org\/t\/p\/.*/i,
             handler: "CacheFirst",
@@ -74,8 +114,8 @@ export default defineConfig({
               cacheableResponse: { statuses: [0, 200] },
             },
           },
+          // ⚙️ Modal / UI Bundles
           {
-            // Cache the modal chunk
             urlPattern: /\/assets\/Modal.*\.js$/,
             handler: "StaleWhileRevalidate",
             options: {
@@ -86,16 +126,21 @@ export default defineConfig({
           },
         ],
       },
+
+      /* ---------- Dev ---------- */
       devOptions: {
         enabled: true,
+        type: "module",
       },
     }),
   ],
+
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
   },
+
   server: {
     proxy: {
       "/api": "http://localhost:3000",

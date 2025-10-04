@@ -2,43 +2,67 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
 
-    <!-- Site title and description -->
+    <!-- 🏷️ Site title + description -->
     <title>CineBay</title>
     <meta
       name="description"
       content="CineBay is your personal vault for great films, fresh shows, and cult classics."
     />
 
-    <!-- Favicon (browser tabs) -->
+    <!-- 🎨 Favicon + app icons -->
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" href="/favicon.png" id="favicon-link" />
     <link rel="shortcut icon" href="/favicon.ico" />
 
-    <!-- Apple homescreen icon -->
+    <!-- 🍎 Apple homescreen icon -->
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
 
-    <!-- Android Chrome PWA icons -->
+    <!-- 🤖 Android Chrome / PWA icons -->
     <link rel="icon" sizes="192x192" href="/icon-192.png" />
     <link rel="icon" sizes="512x512" href="/icon-512.png" />
 
-    <!-- Android / Chrome PWA settings -->
+    <!-- 📱 Progressive Web App meta -->
     <meta name="theme-color" content="#80FFCC" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="application-name" content="CineBay" />
 
-    <!-- iOS PWA settings -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="CineBay" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
 
-    <!-- Manifest (VitePWA will generate it) -->
+    <!-- 💅 Dark theme override for pinned apps -->
+    <meta
+      name="theme-color"
+      content="#80FFCC"
+      media="(prefers-color-scheme: dark)"
+    />
+
+    <!-- 📄 Manifest -->
     <link rel="manifest" href="/manifest.webmanifest" />
-  </head>
 
+    <!-- 🩹 Favicon restore -->
+    <script>
+      window.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") {
+          const link = document.getElementById("favicon-link");
+          if (link) link.href = "/favicon.png";
+        }
+      });
+    </script>
+  </head>
   <body>
     <div id="root"></div>
+
+    <!-- 🔌 Entry -->
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
