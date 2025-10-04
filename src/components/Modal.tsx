@@ -207,7 +207,7 @@ export default function Modal({
                 {!isPerson && (
                   <div className="flex flex-wrap gap-2 sm:gap-3 text-sm sm:text-base text-zinc-300 pt-2 justify-center sm:justify-start items-center">
                     {movie.isNew && (
-                      <span className="bg-[hsl(var(--foreground))] text-[hsl(var(--background))] text-sm font-bold px-2 py-0.5 rounded-full uppercase shadow-pulse">
+                      <span className="bg-[hsl(var(--foreground))] text-[hsl(var(--background))] text-md font-bold px-2 py-0.5 rounded-full uppercase shadow-pulse">
                         NEW
                       </span>
                     )}
@@ -222,8 +222,8 @@ export default function Modal({
                     {/* ⭐ Rating */}
                     {typeof movie.vote_average === "number" &&
                       movie.vote_average > 0 && (
-                        <span className="bg-[hsl(var(--foreground))] text-[hsl(var(--background))] text-sm font-bold px-2 py-0.5 rounded-full uppercase">
-                          ⭐ {movie.vote_average.toFixed(1)}
+                        <span className="bg-[hsl(var(--foreground))] text-[hsl(var(--background))] text-md font-bold px-2 py-0.5 rounded-full uppercase">
+                          {movie.vote_average.toFixed(1)}
                         </span>
                       )}
                   </div>
