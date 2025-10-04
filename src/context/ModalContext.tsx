@@ -149,24 +149,28 @@ export function ModalManagerProvider({ children }: { children: ReactNode }) {
     };
   }, [activeModal, goBackContent, close, openExit]);
 
-  /* ---------- Favicon Restore Fix  ---------- */
+  /* ---------- Favicon Restore Fix ---------- */
   useEffect(() => {
+    const isTV = /Web0S|LG|Tizen/i.test(navigator.userAgent);
+    if (isTV) return; // Skip on TV / PWA
+
     const restoreFavicon = () => {
       const existing = document.getElementById(
         "favicon-link"
       ) as HTMLLinkElement | null;
       if (existing) {
-        existing.href = "/favicon.png";
+        existing.href = "/favicon-32x32.png";
       } else {
         const link = document.createElement("link");
         link.id = "favicon-link";
         link.rel = "icon";
         link.type = "image/png";
-        link.href = "/favicon.png";
+        link.href = "/favicon-32x32.png";
         document.head.appendChild(link);
       }
     };
 
+    restoreFavicon();
     window.addEventListener("popstate", restoreFavicon);
     return () => window.removeEventListener("popstate", restoreFavicon);
   }, []);
