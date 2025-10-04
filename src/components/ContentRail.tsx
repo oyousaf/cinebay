@@ -177,7 +177,7 @@ export default function ContentRail({
           <div
             ref={railRef}
             className="flex overflow-x-auto overflow-y-hidden gap-3 no-scrollbar snap-x snap-mandatory 
-             pl-2 md:pl-4 pr-2 md:pr-4 py-2 md:py-4"
+             pl-2 md:pl-4 pr-2 md:pr-4 py-4"
             role="list"
           >
             {items.map((movie, idx) => (
