@@ -153,7 +153,7 @@ export default function ContentRail({
 
   return (
     <section className="relative w-full h-screen snap-start flex flex-col">
-      <div className="flex-1" >
+      <div className="flex-1">
         {!activeItem ? (
           <motion.div className="flex items-center justify-center h-full">
             <Loader2 className="animate-spin w-8 h-8 text-[hsl(var(--foreground))]" />
