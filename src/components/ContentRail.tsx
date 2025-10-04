@@ -6,7 +6,7 @@ import Banner from "./Banner";
 import { useNavigation } from "@/hooks/useNavigation";
 import { Loader2 } from "lucide-react";
 
-/* ---------- util: safe embed url builder ---------- */
+/* ---------- util ---------- */
 function buildEmbedUrl(mediaType: string, id: number) {
   return `https://vidsrc.to/embed/${mediaType}/${id}`;
 }
@@ -36,8 +36,9 @@ const Tile = React.memo(function Tile({
       aria-label={movie.title || movie.name}
       aria-selected={isFocused}
       role="listitem"
-      className={`relative shrink-0 rounded-lg focus:outline-none snap-center
-        ${isFocused ? "ring-4 ring-[#80ffcc] shadow-pulse z-40" : "z-10"}`}
+      className={`relative shrink-0 rounded-lg focus:outline-none snap-center ${
+        isFocused ? "ring-4 ring-[#80ffcc] shadow-pulse z-40" : "z-10"
+      }`}
       animate={
         isFocused ? { scale: 1.1, opacity: 1 } : { scale: 1, opacity: 0.7 }
       }
@@ -78,7 +79,6 @@ export default function ContentRail({
   const { focus, setFocus, registerRail, updateRailLength } = useNavigation();
   const [railIndex, setRailIndex] = useState<number | null>(null);
 
-  // register this rail
   useEffect(() => {
     if (railIndex === null) {
       const idx = registerRail(items.length);
@@ -94,7 +94,6 @@ export default function ContentRail({
     [railIndex, setFocus]
   );
 
-  // keep focused tile centered
   useEffect(() => {
     if (railIndex !== null) {
       updateRailLength(railIndex, items.length);
@@ -107,9 +106,8 @@ export default function ContentRail({
         const container = railRef.current;
         if (el && container) {
           const containerWidth = container.clientWidth;
-          const elLeft = el.offsetLeft;
-          const elWidth = el.offsetWidth;
-          const rawScroll = elLeft - containerWidth / 2 + elWidth / 2;
+          const rawScroll =
+            el.offsetLeft - containerWidth / 2 + el.offsetWidth / 2;
           container.scrollTo({
             left: Math.max(0, rawScroll),
             behavior: "smooth",
@@ -119,7 +117,6 @@ export default function ContentRail({
     }
   }, [items, focus, railIndex, updateRailLength, activeItem]);
 
-  // set default focus
   useEffect(() => {
     if (!activeItem && items.length > 0 && focus.section !== railIndex) {
       setActiveItem(items[0]);
@@ -127,13 +124,11 @@ export default function ContentRail({
     }
   }, [items, activeItem, railIndex, focus.section, setFocus]);
 
-  // keyboard keys
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (railIndex === null || focus.section !== railIndex) return;
       const movie = items[focus.index];
       if (!movie) return;
-
       switch (e.key) {
         case "i":
         case "Info":
@@ -152,7 +147,7 @@ export default function ContentRail({
   }, [focus, railIndex, items, onSelect, onWatch]);
 
   return (
-    <section className="relative w-full h-screen snap-start flex flex-col">
+    <section className="relative w-full min-h-[90vh] sm:h-screen snap-start flex flex-col">
       <div className="flex-1">
         {!activeItem ? (
           <motion.div className="flex items-center justify-center h-full">
@@ -172,12 +167,11 @@ export default function ContentRail({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.35, ease: "easeOut" }}
-          className="relative z-30 px-4 pb-4"
+          className="relative z-30 px-4 pb-[calc(0.5rem+env(safe-area-inset-bottom))]"
         >
           <div
             ref={railRef}
-            className="flex overflow-x-auto overflow-y-hidden gap-3 no-scrollbar snap-x snap-mandatory 
-             pl-2 md:pl-4 pr-2 md:pr-4 py-4"
+            className="flex overflow-x-auto overflow-y-hidden gap-3 no-scrollbar snap-x snap-mandatory pl-2 md:pl-4 pr-2 md:pr-4 py-4"
             role="list"
           >
             {items.map((movie, idx) => (
