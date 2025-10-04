@@ -152,8 +152,8 @@ export default function ContentRail({
   }, [focus, railIndex, items, onSelect, onWatch]);
 
   return (
-    <section className="relative w-full h-auto sm:h-screen snap-start sm:flex sm:flex-col">
-      <div className="sm:flex-1">
+    <section className="relative w-full h-screen snap-start flex flex-col">
+      <div className="flex-1" >
         {!activeItem ? (
           <motion.div className="flex items-center justify-center h-full">
             <Loader2 className="animate-spin w-8 h-8 text-[hsl(var(--foreground))]" />
@@ -177,7 +177,7 @@ export default function ContentRail({
           <div
             ref={railRef}
             className="flex overflow-x-auto overflow-y-hidden gap-3 no-scrollbar snap-x snap-mandatory 
-             pl-4 pr-4 py-4"
+             pl-2 md:pl-4 pr-2 md:pr-4 py-4"
             role="list"
           >
             {items.map((movie, idx) => (
