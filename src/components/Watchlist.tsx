@@ -2,13 +2,13 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, RefreshCw } from "lucide-react";
 import React from "react";
-
 import type { Movie } from "@/types/movie";
 import { TMDB_IMAGE } from "@/lib/tmdb";
 import { useWatchlist } from "@/context/WatchlistContext";
 import { useNavigation } from "@/hooks/useNavigation";
 import { useVideoEmbed } from "@/hooks/useVideoEmbed";
 
+/* ---------- Filter Types ---------- */
 type FilterState = {
   sortBy: "title-asc" | "title-desc" | "rating-desc" | "newest";
   type: "all" | "movie" | "tv";
@@ -19,7 +19,7 @@ const defaultFilters: FilterState = {
   type: "all",
 };
 
-/* ---------------- Tile Component ---------------- */
+/* ---------- Tile ---------- */
 const WatchlistTile = React.memo(function WatchlistTile({
   movie,
   isFocused,
@@ -40,7 +40,7 @@ const WatchlistTile = React.memo(function WatchlistTile({
       layout
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.95, x: -50 }}
+      exit={{ opacity: 0, scale: 0.95, x: -40 }}
       transition={{ duration: 0.25, ease: "easeOut" }}
       tabIndex={0}
       onClick={() => {
@@ -48,12 +48,16 @@ const WatchlistTile = React.memo(function WatchlistTile({
         if (embedUrl) onWatch(embedUrl);
       }}
       whileHover={{
-        scale: 1.03,
-        transition: { type: "spring", stiffness: 300, damping: 20 },
+        scale: 1.04,
+        transition: { type: "spring", stiffness: 250, damping: 20 },
       }}
-      className={`relative group cursor-pointer rounded-xl overflow-hidden shadow-xl bg-black transition-all duration-300 ${
-        isFocused ? "ring-4 ring-[#80ffcc] scale-105 shadow-pulse" : ""
-      }`}
+      className={`relative group cursor-pointer rounded-xl overflow-hidden bg-black/80 backdrop-blur-sm transition-all duration-300 
+        ${
+          isFocused
+            ? "ring-4 ring-[#80ffcc] shadow-pulse scale-105"
+            : "hover:ring-2 hover:ring-[#80ffcc]/40"
+        }
+      `}
     >
       <img
         src={
@@ -62,46 +66,44 @@ const WatchlistTile = React.memo(function WatchlistTile({
             : "/fallback.jpg"
         }
         alt={movie.title || movie.name}
-        className="w-full object-cover"
+        className="w-full h-full object-cover"
         onError={(e) => ((e.target as HTMLImageElement).src = "/fallback.jpg")}
+        loading="lazy"
       />
 
       {movie.isNew && (
-        <div className="absolute top-2 left-2 bg-[hsl(var(--foreground))] text-[hsl(var(--background))] text-[10px] sm:text-xs md:text-sm font-bold px-2 py-0.5 rounded-full uppercase shadow-pulse">
+        <div className="absolute top-2 left-2 bg-[hsl(var(--foreground))] text-[hsl(var(--background))] text-[10px] md:text-xs font-bold px-2 py-0.5 rounded-full uppercase shadow-md">
           NEW
         </div>
       )}
 
-      {/* Remove button */}
       <motion.button
         onClick={(e) => {
           e.stopPropagation();
           onRemove();
         }}
         whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.92 }}
-        className="remove-btn absolute top-2 right-2 p-2 sm:p-2.5 md:p-3 bg-red-500/20 backdrop-blur-md text-red-400 rounded-full shadow-md hover:bg-red-500/30 hover:shadow-[0_0_8px_#ef4444] focus:outline-none focus:ring-2 focus:ring-red-400/60 transition duration-200"
+        whileTap={{ scale: 0.9 }}
+        className="absolute top-2 right-2 p-2 md:p-3 bg-red-500/20 text-red-400 rounded-full shadow hover:bg-red-500/30 focus:outline-none focus:ring-2 focus:ring-red-400/50"
         aria-label="Remove from Watchlist"
       >
-        <X
-          size={20}
-          className="sm:w-6 sm:h-6 md:w-7 md:h-7"
-          strokeWidth={2.5}
-        />
+        <X size={20} strokeWidth={2.4} />
       </motion.button>
     </motion.div>
   );
 });
 
-
-/* ---------------- Main Watchlist ---------------- */
+/* ---------- Main Watchlist ---------- */
 export default function Watchlist({
   onWatch,
+  onSelect,
 }: {
   onWatch: (url: string) => void;
+  onSelect: (movie: Movie) => void;
 }) {
   const { watchlist, toggleWatchlist } = useWatchlist();
 
+  /* ---------- Filters ---------- */
   const [filters, setFilters] = useState<FilterState>(() => {
     try {
       const stored = localStorage.getItem("watchlistFilters");
@@ -137,12 +139,11 @@ export default function Watchlist({
       }
     });
 
-  // 🟢 Navigation integration
+  /* ---------- Navigation Integration ---------- */
   const { focus, setFocus, registerRail, updateRailLength } = useNavigation();
   const [railIndex, setRailIndex] = useState<number | null>(null);
   const tileRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-  // Register this grid as a "rail"
   useEffect(() => {
     if (railIndex === null) {
       const idx = registerRail(filteredList.length);
@@ -152,37 +153,46 @@ export default function Watchlist({
     }
   }, [filteredList.length, railIndex, registerRail, updateRailLength]);
 
-  // Auto-scroll focused tile into view
   useEffect(() => {
     if (railIndex !== null && focus.section === railIndex) {
       const el = tileRefs.current[focus.index];
-      if (el) {
-        el.scrollIntoView({
-          behavior: "smooth",
-          block: "nearest",
-          inline: "nearest",
-        });
-      }
+      el?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+        inline: "nearest",
+      });
     }
   }, [focus, railIndex]);
 
-  // 🎮 Remote/keyboard Enter handler → Play directly
+  /* ---------- Keyboard / Remote Controls ---------- */
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Enter" && railIndex !== null) {
-        if (focus.section === railIndex) {
-          const movie = filteredList[focus.index];
-          if (movie) {
-            const url = useVideoEmbed(movie.id, movie.media_type);
-            if (url) onWatch(url);
-          }
-        }
+      if (railIndex === null || focus.section !== railIndex) return;
+      const movie = filteredList[focus.index];
+      if (!movie) return;
+
+      switch (e.key) {
+        case "i":
+        case "Info":
+          e.preventDefault();
+          onSelect(movie);
+          break;
+        case "Enter":
+        case "Return":
+        case "p":
+        case "MediaPlayPause":
+          e.preventDefault();
+          const url = useVideoEmbed(movie.id, movie.media_type);
+          if (url) onWatch(url);
+          break;
       }
     }
+
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [focus, railIndex, filteredList, onWatch]);
+  }, [focus, railIndex, filteredList, onSelect, onWatch]);
 
+  /* ---------- UI ---------- */
   return (
     <div className="min-h-screen w-full bg-gradient-to-b from-foreground via-foreground to-black">
       <AnimatePresence mode="wait">
@@ -192,7 +202,7 @@ export default function Watchlist({
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 40 }}
           transition={{ duration: 0.6, ease: "easeOut" }}
-          className="pt-[150px] px-4 max-w-6xl mx-auto pb-12"
+          className="pt-[120px] px-4 max-w-6xl mx-auto pb-12"
         >
           {watchlist.length === 0 ? (
             <motion.p
