@@ -33,38 +33,36 @@ export function ModalManagerProvider({ children }: { children: ReactNode }) {
   const modalRef = useRef<HTMLDivElement | null>(null);
   const lastFocusedElement = useRef<HTMLElement | null>(null);
 
-  // Optional hook: syncs with nav context if present
+  // optional integration with navigation context
   const { setModalOpen } = useNavigation?.() ?? { setModalOpen: () => {} };
 
-  /** ---------- Scroll lock + navigation disable ---------- */
+  /* ---------- Scroll lock + navigation sync ---------- */
   useEffect(() => {
     document.body.style.overflow = activeModal ? "hidden" : "";
     setModalOpen?.(!!activeModal);
 
     if (activeModal) {
-      // Save last focused element
       lastFocusedElement.current = document.activeElement as HTMLElement;
-      // Try to focus first focusable element in modal
       const firstFocusable = modalRef.current?.querySelector<HTMLElement>(
         'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
       );
       firstFocusable?.focus();
     } else {
-      // Restore previous focus
       lastFocusedElement.current?.focus();
     }
   }, [activeModal, setModalOpen]);
 
-  /** ---------- Focus trap ---------- */
+  /* ---------- Focus trap ---------- */
   useEffect(() => {
     if (!activeModal) return;
 
     const handleTab = (e: KeyboardEvent) => {
       if (e.key !== "Tab") return;
+
       const focusable = modalRef.current?.querySelectorAll<HTMLElement>(
         'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
       );
-      if (!focusable || focusable.length === 0) return;
+      if (!focusable?.length) return;
 
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
@@ -82,7 +80,7 @@ export function ModalManagerProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("keydown", handleTab);
   }, [activeModal]);
 
-  /** ---------- Modal open/close handlers ---------- */
+  /* ---------- Modal controls ---------- */
   const openContent = useCallback(
     (movie: Movie) => {
       if (selectedItem && selectedItem.id !== movie.id) {
@@ -99,8 +97,11 @@ export function ModalManagerProvider({ children }: { children: ReactNode }) {
     setActiveModal("player");
   }, []);
 
-  const openExit = useCallback(() => {
-    setActiveModal("exit");
+  const openExit = useCallback(() => setActiveModal("exit"), []);
+  const close = useCallback(() => {
+    setActiveModal(null);
+    setSelectedItem(null);
+    setPlayerUrl(null);
   }, []);
 
   const goBackContent = useCallback(() => {
@@ -108,38 +109,54 @@ export function ModalManagerProvider({ children }: { children: ReactNode }) {
     if (last) {
       setSelectedItem(last);
     } else {
-      setSelectedItem(null);
-      setActiveModal(null);
+      close();
     }
-  }, []);
+  }, [close]);
 
-  const close = useCallback(() => {
-    setActiveModal(null);
-    setSelectedItem(null);
-    setPlayerUrl(null);
-  }, []);
-
-  /** ---------- Escape / Back handling ---------- */
+  /* ---------- Global back / escape / media handling ---------- */
   useEffect(() => {
-    const handleBack = () => {
-      if (activeModal === "player") close();
-      else if (activeModal === "content") {
-        if (historyStack.current.length > 0) goBackContent();
-        else close();
-      } else if (activeModal === "exit") close();
-      else openExit();
+    const handleBack = (e?: KeyboardEvent | PopStateEvent) => {
+      e?.preventDefault?.();
+
+      if (activeModal === "player") {
+        close();
+        return;
+      }
+
+      if (activeModal === "content") {
+        if (historyStack.current.length > 0) {
+          goBackContent();
+        } else {
+          close();
+        }
+        return;
+      }
+
+      if (activeModal === "exit") {
+        close();
+        return;
+      }
+      openExit();
     };
 
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        handleBack();
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (
+        e.key === "Escape" ||
+        e.key === "Backspace" ||
+        e.key === "BrowserBack" ||
+        e.key === "MediaStop"
+      ) {
+        handleBack(e);
       }
     };
 
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [activeModal, goBackContent, close, openExit]);
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("popstate", handleBack);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("popstate", handleBack);
+    };
+  }, [activeModal, close, goBackContent, openExit]);
 
   return (
     <div ref={modalRef}>
