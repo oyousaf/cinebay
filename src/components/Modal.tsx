@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Bookmark, X } from "lucide-react";
+import { ArrowLeft, ArrowUp, Bookmark, X } from "lucide-react";
 import { toast } from "sonner";
 
 import type { Movie } from "@/types/movie";
@@ -193,6 +193,63 @@ export default function Modal({
                         </span>
                       )}
                     </div>
+                  </div>
+                )}
+
+                {/* Biography Toggle */}
+                {movie.biography && (
+                  <div className="mt-6 flex flex-col items-center justify-center text-center">
+                    <motion.button
+                      whileHover={{ scale: 1.07 }}
+                      whileTap={{ scale: 0.96 }}
+                      onClick={() => setShowFullBio((prev) => !prev)}
+                      className="flex items-center justify-center gap-2 px-4 py-2 rounded-full bg-[hsl(var(--foreground))] text-[hsl(var(--background))]
+                      font-semibold text-xl uppercase transition duration-300 ease-out"
+                    >
+                      <AnimatePresence mode="wait" initial={false}>
+                        <motion.span
+                          key={showFullBio ? "arrow" : "bio"}
+                          initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                          transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+                          className="flex items-center justify-center"
+                        >
+                          {showFullBio ? (
+                            <ArrowUp size={28} strokeWidth={3} />
+                          ) : (
+                            "BIO"
+                          )}
+                        </motion.span>
+                      </AnimatePresence>
+                    </motion.button>
+
+                    <AnimatePresence>
+                      {showFullBio && (
+                        <motion.div
+                          key="bio"
+                          initial={{ opacity: 0, y: -12, scale: 0.98 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: -12, scale: 0.98 }}
+                          transition={{
+                            duration: 0.3,
+                            ease: [0.45, 0, 0.25, 1],
+                          }}
+                          className="relative w-full max-w-2xl mt-4"
+                        >
+                          <p
+                            className="max-h-[300px] overflow-y-auto text-sm sm:text-base text-zinc-300 leading-relaxed bg-zinc-900/60 p-4 rounded-xl border border-zinc-700
+                            scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent"
+                          >
+                            {movie.biography}
+                          </p>
+                          <div
+                            className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-zinc-900/80 via-zinc-900/40 to-transparent
+                            pointer-events-none rounded-b-xl"
+                          />
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
                 )}
 
