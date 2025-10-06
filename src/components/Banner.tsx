@@ -83,12 +83,13 @@ export default function Banner({
         </motion.h2>
 
         <motion.p
-          className="text-gray-200 leading-relaxed text-[clamp(0.9rem,1.2vw+0.5rem,1.25rem)] max-w-4xl rounded-lg p-4 md:p-5 mb-8 
-          sm:overflow-visible sm:h-auto md:h-[7.5rem] md:overflow-y-auto lg:overflow-visible lg:h-auto scrollbar-thin scrollbar-thumb-zinc-700
-          scrollbar-track-transparent md:border md:border-zinc-700/60 md:bg-black/25 md:shadow-inner"
+          className="text-gray-200 leading-relaxed text-[clamp(0.9rem,1.2vw+0.5rem,1.25rem)] max-w-4xl rounded-lg p-4 md:p-5 mb-8 sm:overflow-visible
+          sm:h-auto md:overflow-y-auto md:h-[7.5rem] lg:overflow-visible lg:h-auto scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent
+          md:border md:border-zinc-700/60 md:bg-black/25 md:shadow-inner"
           style={{
             WebkitOverflowScrolling: "touch",
             overscrollBehavior: "contain",
+            contain: "layout paint",
           }}
           variants={childVariants}
         >
