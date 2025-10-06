@@ -76,14 +76,14 @@ export default function Banner({
         key={`overlay-${item.id}`}
       >
         <motion.h2
-          className="font-extrabold mb-4 text-[#80ffcc] drop-shadow-md text-[clamp(1.5rem,4vw,3rem)]"
+          className="font-extrabold mb-5 text-[#80ffcc] drop-shadow-md text-[clamp(1.9rem,4.5vw,3.1rem)] tracking-tight md:tracking-normal"
           variants={childVariants}
         >
           {item.title || item.name}
         </motion.h2>
 
         <motion.p
-          className="text-gray-200 leading-relaxed text-[clamp(0.9rem,1.2vw+0.5rem,1.25rem)] max-w-6xl rounded-lg p-4 md:p-5 mb-8 sm:overflow-visible sm:h-auto md:h-[7.5rem] md:overflow-y-auto lg:overflow-visible lg:h-auto scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent md:border md:border-zinc-700/60 md:bg-black/25 md:shadow-inner"
+          className="text-gray-200 leading-relaxed text-[clamp(0.9rem,1.2vw+0.5rem,1.25rem)] max-w-4xl rounded-lg p-4 md:p-5 mb-8 sm:overflow-visible sm:h-auto md:h-[7.5rem] md:overflow-y-auto lg:overflow-visible lg:h-auto scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent md:border md:border-zinc-700/60 md:bg-black/25 md:shadow-inner"
           style={{
             WebkitOverflowScrolling: "touch",
             overscrollBehavior: "contain",
