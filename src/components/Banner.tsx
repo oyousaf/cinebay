@@ -82,31 +82,16 @@ export default function Banner({
           {item.title || item.name}
         </motion.h2>
 
-        {/* Overview */}
-        <div className="relative max-w-3xl mb-6">
-          <motion.div
-            variants={childVariants}
-            className="text-gray-200 leading-relaxed text-[clamp(0.9rem,1.2vw+0.5rem,1.25rem)] bg-black/30 rounded-lg p-3
-            scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent sm:max-h-none sm:overflow-visible md:max-h-[7.5rem] md:overflow-y-auto
-            lg:max-h-none lg:overflow-visible"
-            style={{ overscrollBehavior: "contain" }}
-            onScroll={(e) => {
-              const el = e.currentTarget;
-              const nearBottom =
-                el.scrollHeight - el.scrollTop - el.clientHeight < 5;
-              const fade = el.nextElementSibling as HTMLElement | null;
-              if (fade) fade.style.opacity = nearBottom ? "0" : "1";
-            }}
-          >
-            <p className="whitespace-pre-line">{item.overview}</p>
-          </motion.div>
-
-          {/* Fade overlay for tablet only */}
-          <div
-            className="absolute bottom-0 left-0 right-0 h-10 pointer-events-none rounded-b-lg bg-gradient-to-t from-black via-black/40 to-transparent 
-            transition-opacity duration-300 ease-out hidden md:block lg:hidden"
-          />
-        </div>
+        <motion.p
+          className="text-gray-200 leading-relaxed text-[clamp(0.9rem,1.2vw+0.5rem,1.25rem)] max-w-6xl rounded-lg p-4 md:p-5 mb-8 sm:overflow-visible sm:h-auto md:h-[7.5rem] md:overflow-y-auto lg:overflow-visible lg:h-auto scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent md:border md:border-zinc-700/60 md:bg-black/25 md:shadow-inner"
+          style={{
+            WebkitOverflowScrolling: "touch",
+            overscrollBehavior: "contain",
+          }}
+          variants={childVariants}
+        >
+          {item.overview}
+        </motion.p>
 
         {/* Actions */}
         <motion.div
