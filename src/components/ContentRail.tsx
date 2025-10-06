@@ -137,7 +137,7 @@ export default function ContentRail({
     }
   }, [items, activeItem, railIndex, focus.section, setFocus]);
 
-  /* ---------- Keyboard / Remote ---------- */
+  /* ---------- Keyboard Navigation ---------- */
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (railIndex === null || focus.section !== railIndex) return;
@@ -162,6 +162,53 @@ export default function ContentRail({
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [focus, railIndex, items, onSelect, onWatch]);
+
+  /* ---------- Controller / Gamepad Support ---------- */
+  useEffect(() => {
+    let rafId: number;
+    let pressedA = false;
+    let pressedB = false;
+
+    const pollGamepad = () => {
+      const gamepads = navigator.getGamepads?.();
+      if (!gamepads) return;
+      const gp = gamepads[0];
+      if (gp) {
+        const aPressed = gp.buttons[0]?.pressed;
+        const bPressed = gp.buttons[1]?.pressed;
+
+        if (aPressed && !pressedA) {
+          pressedA = true;
+          const movie = items[focus.index];
+          if (movie) onWatch(buildEmbedUrl(movie.media_type, movie.id));
+        } else if (!aPressed) pressedA = false;
+
+        if (bPressed && !pressedB) {
+          pressedB = true;
+          const movie = items[focus.index];
+          if (movie) onSelect(movie);
+        } else if (!bPressed) pressedB = false;
+      }
+      rafId = requestAnimationFrame(pollGamepad);
+    };
+
+    const handleConnect = () => {
+      console.log("🎮 Gamepad connected");
+      pollGamepad();
+    };
+    const handleDisconnect = () => {
+      console.log("❌ Gamepad disconnected");
+      cancelAnimationFrame(rafId);
+    };
+
+    window.addEventListener("gamepadconnected", handleConnect);
+    window.addEventListener("gamepaddisconnected", handleDisconnect);
+    return () => {
+      window.removeEventListener("gamepadconnected", handleConnect);
+      window.removeEventListener("gamepaddisconnected", handleDisconnect);
+      cancelAnimationFrame(rafId);
+    };
+  }, [focus, items, onSelect, onWatch]);
 
   /* ---------- UI ---------- */
   return (
