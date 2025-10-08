@@ -1,6 +1,6 @@
 # 🎬 CineBay
 
-**CineBay** is a sleek and modern movie discovery app built for fast, cinematic browsing — whether you're on desktop or tablet. It features auto-scrolling carousels, swipe-friendly UI, and smooth animations, making it feel like a true media experience.
+**CineBay** is a sleek and modern movie discovery app built for fast, cinematic browsing — whether you're on desktop or tablet. It features static carousels, swipe-friendly UI, and smooth animations, making it feel like a true media experience.
 
 ---
 
