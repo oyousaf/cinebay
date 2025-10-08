@@ -15,11 +15,10 @@
 
 ## ✨ Features
 
-- 🎞️ **Latest Movies**: Auto-scrolling marquee of top-rated movies
+- 🎞️ **Latest Movies**: Static marquee of top-rated movies
 - 🍿 **Latest TV Shows**: A curated list of top-rated TV Shows
-- 🎯 **Dev's Pick**: A dynamic, curated stream of developer favorites
+- 🎯 **Dev's Pick**: A dynamic, curated stream of developer favourites
 - 🔍 **Search & Filter**: Discover movies, TV shows, or actors with ease
 - 📁 **Watchlist**: Save favourites with persistent user state
 - 📱 **Touch & Swipe Support**: Smooth experience on tablets and mobile
-- 🌀 **Looping Autoplay Carousels**: Seamless animation with pause/resume on hover/touch
 - 🌄 **Responsive UI**: Looks great across devices and screen sizes
