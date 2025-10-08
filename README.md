@@ -17,8 +17,8 @@
 
 - 🎞️ **Latest Movies**: Static marquee of top-rated movies
 - 🍿 **Latest TV Shows**: A curated list of top-rated TV Shows
+- 🔍 **Search**: Discover movies, TV shows, or actors with ease
 - 🎯 **Dev's Pick**: A dynamic, curated stream of developer favourites
-- 🔍 **Search & Filter**: Discover movies, TV shows, or actors with ease
-- 📁 **Watchlist**: Save favourites with persistent user state
+- 📁 **Watchlist**: Save favourites with persistent state via local storage
 - 📱 **Touch & Swipe Support**: Smooth experience on tablets and mobile
 - 🌄 **Responsive UI**: Looks great across devices and screen sizes
