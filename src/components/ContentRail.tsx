@@ -57,7 +57,7 @@ const Tile = React.memo(function Tile({
             : "/fallback.png"
         }
         alt={movie.title || movie.name}
-        className="h-32 w-20 md:h-44 md:w-32 lg:h-56 lg:w-40 object-cover rounded-lg shadow-md"
+        className="h-44 w-32 md:h-44 md:w-32 lg:h-56 lg:w-40 object-cover rounded-lg shadow-md"
         loading="lazy"
       />
 
