@@ -16,7 +16,6 @@ export const DEVS_PICK_LIST = [
   9040, // Serpico
   31587, // Scarecrow
   320, // Insomnia
-  42314, // Looking For Richard
   1813, // The Devil's Advocate
   650, // Boyz n the Hood
   107, // Snatch
@@ -62,6 +61,4 @@ export const DEVS_PICK_LIST = [
   11690, // Bloodsport
   10222, // Kickboxer
   13672, // JCVD
-  10027, // Unleashed
-  2140, // Kiss of the Dragon
 ];
