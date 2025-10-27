@@ -28,7 +28,6 @@ export const DEVS_PICK_LIST = [
   9516, // Menace II Society
   1607, // A Bronx Tale
   16136, // Juice
-  12489, // Gridlock'd
   24, // Kill Bill: Vol. 1
   393, // Kill Bill: Vol. 2
   466272, // Once Upon a Time in Hollywood
