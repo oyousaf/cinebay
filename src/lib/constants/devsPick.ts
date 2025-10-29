@@ -13,7 +13,6 @@ export const DEVS_PICK_LIST = [
   949, // Heat
   968, // Dog Day Afternoon
   6075, // Carlito's Way
-  9040, // Serpico
   31587, // Scarecrow
   320, // Insomnia
   1813, // The Devil's Advocate
