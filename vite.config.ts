@@ -25,7 +25,7 @@ export default defineConfig({
         theme_color: "#80FFCC",
         background_color: "#80FFCC",
         start_url: "/",
-        display: "standalone",
+        display: "fullscreen",
         orientation: "landscape",
         lang: "en-GB",
         dir: "ltr",
