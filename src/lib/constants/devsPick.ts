@@ -14,7 +14,6 @@ export const DEVS_PICK_LIST = [
   968, // Dog Day Afternoon
   6075, // Carlito's Way
   31587, // Scarecrow
-  320, // Insomnia
   1813, // The Devil's Advocate
   650, // Boyz n the Hood
   107, // Snatch
@@ -44,7 +43,6 @@ export const DEVS_PICK_LIST = [
   603, // The Matrix
   604, // The Matrix Reloaded
   605, // The Matrix Revolutions
-  11129, // Human Traffic
   13809, // RocknRolla
   12877, // Dead Man's Shoes
   12481, // The Big Boss
