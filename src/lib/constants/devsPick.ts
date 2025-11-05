@@ -39,7 +39,6 @@ export const DEVS_PICK_LIST = [
   273248, // The Hateful Eight
   281957, // The Revenant
   19092, // Above the Rim
-  8291, // Poetic Justice
   603, // The Matrix
   604, // The Matrix Reloaded
   605, // The Matrix Revolutions
