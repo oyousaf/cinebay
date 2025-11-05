@@ -34,7 +34,7 @@ export default defineConfig({
         icons: [
           {
             src: "/logo.png",
-            sizes: "1024x1024",
+            sizes: "512x512",
             type: "image/png",
             purpose: "any maskable",
           },
