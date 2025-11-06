@@ -232,7 +232,7 @@ export default function ContentRail({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.35, ease: "easeOut" }}
-          className="relative z-30 px-4 pb-[calc(0.5rem+env(safe-area-inset-bottom))]"
+          className="relative z-50 px-4 pb-[calc(0.5rem+env(safe-area-inset-bottom))]"
         >
           <div
             ref={railRef}
