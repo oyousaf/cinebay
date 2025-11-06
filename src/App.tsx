@@ -1,7 +1,6 @@
-import { useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Toaster, toast } from "sonner";
-
 import Layout from "@/components/Layout";
 import Movies from "@/components/Movies";
 import Shows from "@/components/Shows";
@@ -11,10 +10,23 @@ import Watchlist from "@/components/Watchlist";
 import Modal from "@/components/Modal";
 import PlayerModal from "@/components/PlayerModal";
 import ExitConfirmModal from "@/components/ExitConfirmModal";
-
 import { useModalManager } from "@/context/ModalContext";
 
 export default function App() {
+  // --- new viewport stabiliser ---
+  useEffect(() => {
+    const setVH = () => {
+      document.documentElement.style.setProperty(
+        "--vh",
+        `${window.innerHeight * 0.01}px`
+      );
+    };
+    setVH();
+    window.addEventListener("resize", setVH);
+    return () => window.removeEventListener("resize", setVH);
+  }, []);
+  // -------------------------------
+
   const [activeTab, setActiveTab] = useState<
     "movies" | "tvshows" | "search" | "devspick" | "watchlist"
   >(() => {
@@ -41,7 +53,6 @@ export default function App() {
     goBackContent,
   } = useModalManager();
 
-  // ✅ detect if running as standalone (PWA/TV mode)
   const isStandalone = useMemo(() => {
     if (typeof window === "undefined") return false;
     return (
@@ -50,19 +61,15 @@ export default function App() {
     );
   }, []);
 
-  // Persist active tab safely
   const persistTab = (tab: typeof activeTab) => {
     setActiveTab(tab);
     if (typeof window !== "undefined") {
       try {
         localStorage.setItem("activeTab", tab);
-      } catch (err) {
-        console.warn("Unable to persist tab to localStorage", err);
-      }
+      } catch {}
     }
   };
 
-  // Tab rendering
   const renderContent = () => {
     switch (activeTab) {
       case "movies":
@@ -75,7 +82,10 @@ export default function App() {
         return <Watchlist onSelect={openContent} onWatch={openPlayer} />;
       case "search":
         return (
-          <div className="flex items-center justify-center min-h-screen px-4">
+          <div
+            className="flex items-center justify-center px-4"
+            style={{ minHeight: "calc(var(--vh) * 100)" }} // use dynamic height
+          >
             <div className="w-full max-w-md">
               <SearchBar
                 onSelectMovie={openContent}
@@ -97,7 +107,6 @@ export default function App() {
     >
       <Toaster richColors position="bottom-center" theme="dark" />
 
-      {/* Page transition */}
       <AnimatePresence mode="wait">
         <motion.div
           key={activeTab}
@@ -111,7 +120,6 @@ export default function App() {
         </motion.div>
       </AnimatePresence>
 
-      {/* Content Modal */}
       {activeModal === "content" && selectedItem && (
         <Modal
           movie={selectedItem}
@@ -121,22 +129,20 @@ export default function App() {
         />
       )}
 
-      {/* Player Modal */}
       {activeModal === "player" && playerUrl && (
         <PlayerModal url={playerUrl} onClose={close} />
       )}
 
-      {/* Exit Confirm Modal */}
       {activeModal === "exit" && (
         <ExitConfirmModal
           open
           onCancel={close}
           onExit={() => {
-            if (isStandalone) {
-              window.close();
-            } else {
-              toast.error("Can’t auto-close in browser — please close this tab.");
-            }
+            if (isStandalone) window.close();
+            else
+              toast.error(
+                "Can’t auto-close in browser — please close this tab."
+              );
             close();
           }}
         />

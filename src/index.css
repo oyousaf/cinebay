@@ -14,6 +14,7 @@
 :root {
   --background: 157 100% 75%; /* #80ffcc */
   --foreground: 276 100% 21%; /* #3b006a */
+  --vh: 1vh;
 }
 
 .dark {
