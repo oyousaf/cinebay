@@ -80,7 +80,7 @@ export type Movie = {
   recommendations?: Movie[];
   similar?: Movie[];
 
-  // Credits (movies & tv)
+  // Credits
   credits?: {
     cast?: CastMember[];
   };
