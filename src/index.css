@@ -85,3 +85,9 @@ img {
 .shadow-pulse {
   animation: shadow-pulse 2s ease-in-out infinite;
 }
+
+/* Mobile landscape fix
+*/
+@media (max-width:768px) and (orientation:landscape){
+  :root { --vh: 0.8vh; }
+}
