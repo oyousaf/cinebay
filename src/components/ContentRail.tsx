@@ -126,31 +126,6 @@ export default function ContentRail({
     }
   }, [items, activeItem, railIndex, focus.section, setFocus]);
 
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (railIndex === null || focus.section !== railIndex) return;
-      const movie = items[focus.index];
-      if (!movie) return;
-
-      switch (e.key) {
-        case "i":
-        case "Info":
-          e.preventDefault();
-          onSelect(movie);
-          break;
-        case "Enter":
-        case "Return":
-        case "p":
-        case "MediaPlayPause":
-          e.preventDefault();
-          onWatch(buildEmbedUrl(movie.media_type, movie.id));
-          break;
-      }
-    }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [focus, railIndex, items, onSelect, onWatch]);
-
   return (
     <section
       className="relative w-full snap-start flex flex-col"
@@ -176,7 +151,7 @@ export default function ContentRail({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.35, ease: "easeOut" }}
-          className="relative z-50 px-4 pb-[calc(0.5rem+env(safe-area-inset-bottom))]"
+          className="relative z-50 px-4 pb-[calc(4.5rem+env(safe-area-inset-bottom))]"
         >
           <div
             ref={railRef}

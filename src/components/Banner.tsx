@@ -35,11 +35,7 @@ export default function Banner({
 
   const childVariants: Variants = {
     hidden: { opacity: 0, y: 10 },
-    show: {
-      opacity: 1,
-      y: 0,
-      transition: { duration: 0.3, ease: "easeOut" },
-    },
+    show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: "easeOut" } },
   };
 
   return (
@@ -92,20 +88,27 @@ export default function Banner({
         variants={containerVariants}
         initial="hidden"
         animate="show"
-        key={`overlay-${item.id}`}
       >
         <motion.h2
-          className="font-extrabold mb-5 text-[#80ffcc] drop-shadow-md text-[clamp(1.9rem,4.5vw,3.1rem)] tracking-tight md:tracking-normal"
+          className="font-extrabold mb-5 text-[#80ffcc] drop-shadow-md text-[clamp(2.2rem,5vw,3.2rem)] tracking-tight md:tracking-normal"
           variants={childVariants}
         >
           {item.title || item.name}
         </motion.h2>
 
         <motion.p
-          className="text-gray-200 leading-relaxed text-[clamp(0.9rem,1.2vw+0.5rem,1.25rem)] max-w-4xl rounded-lg p-4 md:p-5 mb-8
-                     lg:h-[7.5rem] lg:overflow-y-auto 
-                     scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent 
-                     lg:border lg:border-zinc-700/60 lg:bg-black/25 lg:shadow-inner"
+          className="
+            text-gray-200 
+            leading-relaxed 
+            text-[clamp(1rem,3vw,1.35rem)]
+            max-w-4xl
+            rounded-lg 
+            p-4 md:p-5 
+            mb-8
+            lg:h-[7.5rem] lg:overflow-y-auto 
+            scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent
+            lg:border lg:border-zinc-700/60 lg:bg-black/25 lg:shadow-inner
+          "
           style={{
             WebkitOverflowScrolling: "touch",
             overscrollBehavior: "contain",
@@ -115,7 +118,10 @@ export default function Banner({
           {item.overview}
         </motion.p>
 
-        <motion.div className="flex gap-3 items-center" variants={childVariants}>
+        <motion.div
+          className="flex gap-3 items-center"
+          variants={childVariants}
+        >
           <motion.button
             whileHover={{ scale: embedUrl ? 1.05 : 1 }}
             whileTap={{ scale: embedUrl ? 0.95 : 1 }}
@@ -152,7 +158,9 @@ export default function Banner({
             <Bookmark
               size={22}
               strokeWidth={isSaved ? 3 : 2}
-              className={isSaved ? "fill-[hsl(var(--background))]" : "fill-none"}
+              className={
+                isSaved ? "fill-[hsl(var(--background))]" : "fill-none"
+              }
             />
           </motion.button>
         </motion.div>
