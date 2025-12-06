@@ -86,8 +86,7 @@ img {
   animation: shadow-pulse 2s ease-in-out infinite;
 }
 
-/* Mobile landscape fix
-*/
+/* Mobile landscape */
 @media (max-width:768px) and (orientation:landscape){
   :root { --vh: 0.8vh; }
 }
