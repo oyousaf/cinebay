@@ -1,5 +1,3 @@
-"use client";
-
 import { motion, AnimatePresence, Variants } from "framer-motion";
 import type { Movie } from "@/types/movie";
 import { useVideoEmbed } from "@/hooks/useVideoEmbed";
@@ -39,21 +37,8 @@ export default function Banner({
   };
 
   return (
-    <div
-      className="
-        relative 
-        w-full 
-        flex flex-col 
-        justify-end 
-        overflow-hidden 
-        shadow-2xl 
-        snap-start
-      "
-      style={{
-        height: "calc(var(--vh) * 70)",
-        maxHeight: "calc(var(--vh) * 100)",
-      }}
-    >
+    <div className="relative w-full h-[70vh] sm:h-full flex flex-col justify-end overflow-hidden shadow-2xl snap-start">
+      {/* Backdrop */}
       <AnimatePresence mode="popLayout">
         <motion.div
           key={item.id}
@@ -78,46 +63,40 @@ export default function Banner({
               loading="lazy"
             />
           )}
-
           <div className="absolute inset-0 z-0 bg-gradient-to-t from-black via-black/70 to-transparent" />
         </motion.div>
       </AnimatePresence>
 
+      {/* Overlay */}
       <motion.div
         className="relative z-10 px-4 md:px-12 py-6 md:py-10 max-w-6xl mx-auto"
         variants={containerVariants}
         initial="hidden"
         animate="show"
+        key={`overlay-${item.id}`}
       >
         <motion.h2
-          className="font-extrabold mb-5 text-[#80ffcc] drop-shadow-md text-[clamp(2.2rem,5vw,3.2rem)] tracking-tight md:tracking-normal"
+          className="font-extrabold mb-5 text-[#80ffcc] drop-shadow-md text-[clamp(1.9rem,4.5vw,3.1rem)] tracking-tight md:tracking-normal"
           variants={childVariants}
         >
           {item.title || item.name}
         </motion.h2>
 
         <motion.p
-          className="
-            text-gray-200 
-            leading-relaxed 
-            text-[clamp(1rem,3vw,1.35rem)]
-            max-w-4xl
-            rounded-lg 
-            p-4 md:p-5 
-            mb-8
-            lg:h-[7.5rem] lg:overflow-y-auto 
-            scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent
-            lg:border lg:border-zinc-700/60 lg:bg-black/25 lg:shadow-inner
-          "
+          className="text-gray-200 leading-relaxed text-[clamp(0.9rem,1.2vw+0.5rem,1.25rem)] max-w-4xl rounded-lg p-4 md:p-5 mb-8
+          sm:overflow-visible sm:h-auto lg:h-[7.5rem] lg:overflow-y-auto xl:overflow-visible xl:h-auto scrollbar-thin scrollbar-thumb-zinc-700 
+          scrollbar-track-transparent lg:border lg:border-zinc-700/60 lg:bg-black/25 lg:shadow-inner"
           style={{
             WebkitOverflowScrolling: "touch",
             overscrollBehavior: "contain",
+            contain: "layout paint",
           }}
           variants={childVariants}
         >
           {item.overview}
         </motion.p>
 
+        {/* Actions */}
         <motion.div
           className="flex gap-3 items-center"
           variants={childVariants}
