@@ -1,3 +1,5 @@
+"use client";
+
 import { motion, AnimatePresence, Variants } from "framer-motion";
 import type { Movie } from "@/types/movie";
 import { useVideoEmbed } from "@/hooks/useVideoEmbed";
@@ -33,12 +35,29 @@ export default function Banner({
 
   const childVariants: Variants = {
     hidden: { opacity: 0, y: 10 },
-    show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: "easeOut" } },
+    show: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.3, ease: "easeOut" },
+    },
   };
 
   return (
-    <div className="relative w-full h-[70vh] sm:h-full flex flex-col justify-end overflow-hidden shadow-2xl snap-start">
-      {/* Backdrop */}
+    <div
+      className="
+        relative 
+        w-full 
+        flex flex-col 
+        justify-end 
+        overflow-hidden 
+        shadow-2xl 
+        snap-start
+      "
+      style={{
+        height: "calc(var(--vh) * 70)",
+        maxHeight: "calc(var(--vh) * 100)",
+      }}
+    >
       <AnimatePresence mode="popLayout">
         <motion.div
           key={item.id}
@@ -63,11 +82,11 @@ export default function Banner({
               loading="lazy"
             />
           )}
+
           <div className="absolute inset-0 z-0 bg-gradient-to-t from-black via-black/70 to-transparent" />
         </motion.div>
       </AnimatePresence>
 
-      {/* Overlay */}
       <motion.div
         className="relative z-10 px-4 md:px-12 py-6 md:py-10 max-w-6xl mx-auto"
         variants={containerVariants}
@@ -84,23 +103,19 @@ export default function Banner({
 
         <motion.p
           className="text-gray-200 leading-relaxed text-[clamp(0.9rem,1.2vw+0.5rem,1.25rem)] max-w-4xl rounded-lg p-4 md:p-5 mb-8
-          sm:overflow-visible sm:h-auto lg:h-[7.5rem] lg:overflow-y-auto xl:overflow-visible xl:h-auto scrollbar-thin scrollbar-thumb-zinc-700 
-          scrollbar-track-transparent lg:border lg:border-zinc-700/60 lg:bg-black/25 lg:shadow-inner"
+                     lg:h-[7.5rem] lg:overflow-y-auto 
+                     scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent 
+                     lg:border lg:border-zinc-700/60 lg:bg-black/25 lg:shadow-inner"
           style={{
             WebkitOverflowScrolling: "touch",
             overscrollBehavior: "contain",
-            contain: "layout paint",
           }}
           variants={childVariants}
         >
           {item.overview}
         </motion.p>
 
-        {/* Actions */}
-        <motion.div
-          className="flex gap-3 items-center"
-          variants={childVariants}
-        >
+        <motion.div className="flex gap-3 items-center" variants={childVariants}>
           <motion.button
             whileHover={{ scale: embedUrl ? 1.05 : 1 }}
             whileTap={{ scale: embedUrl ? 0.95 : 1 }}
@@ -137,9 +152,7 @@ export default function Banner({
             <Bookmark
               size={22}
               strokeWidth={isSaved ? 3 : 2}
-              className={
-                isSaved ? "fill-[hsl(var(--background))]" : "fill-none"
-              }
+              className={isSaved ? "fill-[hsl(var(--background))]" : "fill-none"}
             />
           </motion.button>
         </motion.div>

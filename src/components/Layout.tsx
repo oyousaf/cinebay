@@ -1,3 +1,5 @@
+"use client";
+
 import React, { ReactNode, useEffect } from "react";
 import Navbar from "./Navbar";
 import { useNavigation } from "@/hooks/useNavigation";
@@ -24,15 +26,33 @@ const Layout: React.FC<LayoutProps> = ({
   }, [activeTab, resetNavigation]);
 
   return (
-    <div className="h-screen w-full flex flex-col overflow-hidden">
+    <div
+      className="
+        w-full 
+        overflow-x-hidden 
+        flex flex-col 
+        bg-black
+      "
+      style={{
+        height: "calc(var(--vh) * 100)", // replaces h-screen
+      }}
+    >
       <Navbar
         activeTab={activeTab}
         onTabChange={onTabChange}
         isModalOpen={isModalOpen}
       />
 
-      {/* Padding so content isn’t hidden by sidebar or bottom nav */}
-      <main className="flex-1 min-h-0 overflow-y-auto md:pl-20 md:pr-0 pb-16 md:pb-0">
+      <main
+        className="
+          flex-1
+          min-h-0
+          overflow-y-auto
+          md:pl-20 md:pr-0
+          pb-[calc(4rem+env(safe-area-inset-bottom))]
+          scrollbar-hide
+        "
+      >
         {children}
       </main>
     </div>
