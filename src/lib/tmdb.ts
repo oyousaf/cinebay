@@ -228,17 +228,17 @@ export async function fetchShows(): Promise<Movie[]> {
     const lastAir = airRaw ? new Date(airRaw) : new Date("1900-01-01");
 
     if (isNewSeriesByDetail(s)) {
-      s.status = "new";
+      s.status = "new"; // ≤1 month since first_air_date
     } else if (lastAir >= ONE_MONTH_AGO) {
-      s.status = "renewed";
+      s.status = "renewed"; // new season ≤1 month ago
     } else if (lastAir < THREE_MONTHS_AGO) {
-      s.status = undefined;
+      s.status = undefined; // older than 3 months excluded later
     } else {
       s.status = undefined;
     }
   });
 
-  // Only keep shows within 3 months (new OR renewed OR recent-season)
+  // Only keep shows within 3 months
   const within3 = final.filter((s) => {
     const seasons = s.seasons ?? [];
     const airRaw =
