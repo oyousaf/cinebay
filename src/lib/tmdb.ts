@@ -10,14 +10,13 @@ export const TMDB_IMAGE = "https://image.tmdb.org/t/p/w500";
 
 const MIN_RATING = 6.5;
 
-// Time windows
 const THREE_MONTHS_AGO = new Date();
 THREE_MONTHS_AGO.setMonth(THREE_MONTHS_AGO.getMonth() - 3);
 
 const ONE_MONTH_AGO = new Date();
-ONE_MONTH_AGO.setMonth(ONE_MONTH_AGO.getMonth() - 1);
+ONE_MONTH_AGO.setDate(ONE_MONTH_AGO.getDate() - 30);
 
-// Genre exclusions
+// Exclusions
 const EXCLUDED_GENRE_IDS = new Set([
   16, 10751, 10762, 10402, 10749, 10763, 10764, 10766, 10767, 37,
 ]);
@@ -57,8 +56,14 @@ function isAllowedContent(genres: string[]): boolean {
 }
 
 function isNewRelease(dateStr: string): boolean {
-  const releaseDate = new Date(dateStr);
-  return releaseDate > ONE_MONTH_AGO;
+  return new Date(dateStr) > ONE_MONTH_AGO;
+}
+
+// New TV series = FIRST AIR DATE within last 3 months
+function isNewSeries(detail: any): boolean {
+  const d = detail.first_air_date;
+  if (!d) return false;
+  return new Date(d) >= THREE_MONTHS_AGO;
 }
 
 // ================================
@@ -93,7 +98,10 @@ function toMovie(detail: any, media_type: "movie" | "tv" | "person"): Movie {
       genres: [],
       runtime: null,
       original_language: r.original_language ?? "",
-      isNew: isNewRelease(r.release_date || r.first_air_date || ""),
+      isNew:
+        media_type === "tv"
+          ? isNewSeries(detail)
+          : isNewRelease(r.release_date || r.first_air_date || ""),
       recommendations: [],
     }));
 
@@ -115,7 +123,8 @@ function toMovie(detail: any, media_type: "movie" | "tv" | "person"): Movie {
     place_of_birth: detail.place_of_birth ?? undefined,
     known_for_department: detail.known_for_department ?? undefined,
     known_for: detail.known_for ?? undefined,
-    isNew: isNewRelease(releaseDateStr),
+    isNew:
+      media_type === "tv" ? isNewSeries(detail) : isNewRelease(releaseDateStr),
     deathday: detail.deathday ?? undefined,
     seasons: detail.seasons ?? [],
     recommendations,
@@ -135,6 +144,20 @@ export async function fetchFromProxy(endpoint: string) {
   } catch {
     return null;
   }
+}
+
+// ================================
+// MULTI-PAGE FETCH
+// ================================
+
+async function fetchAllPages(endpoint: string, maxPages = 5) {
+  const results: any[] = [];
+  for (let p = 1; p <= maxPages; p++) {
+    const res = await fetchFromProxy(`${endpoint}&page=${p}`);
+    if (!res?.results?.length) break;
+    results.push(...res.results);
+  }
+  return results;
 }
 
 // ================================
@@ -166,7 +189,7 @@ export async function fetchDetails(
     base.similar?.results
       ?.filter((item: any) => {
         const year = extractYear(
-          item.release_date || item.first_air_date || ""
+          item.release_date || item.first_first_air_date || ""
         );
         return (
           item.vote_average >= MIN_RATING &&
@@ -208,67 +231,93 @@ function emptyPlaceholder(type: "movie" | "tv"): Movie {
 // ================================
 
 function sortByRatingThenPopularity(a: Movie, b: Movie) {
-  const ratingDiff = (b.vote_average ?? 0) - (a.vote_average ?? 0);
-  if (ratingDiff !== 0) return ratingDiff;
+  const diff = (b.vote_average ?? 0) - (a.vote_average ?? 0);
+  if (diff !== 0) return diff;
   return (b.popularity ?? 0) - (a.popularity ?? 0);
 }
 
 // -------------------------------
 // MOVIES
 // -------------------------------
+
 export async function fetchMovies(): Promise<Movie[]> {
   const data = await fetchFromProxy(
     `/discover/movie?language=en&sort_by=popularity.desc&vote_average.gte=${MIN_RATING}&include_adult=false&release_date.gte=${
       THREE_MONTHS_AGO.toISOString().split("T")[0]
     }`
   );
+
   if (!data?.results) return [emptyPlaceholder("movie")];
 
   const detailed = await Promise.all(
-    data.results.map((item: any) => fetchDetails(item.id, "movie"))
+    data.results.map((i: any) => fetchDetails(i.id, "movie"))
   );
 
-  const filtered = (detailed.filter(Boolean) as Movie[]).filter((m) => {
-    return m.original_language === "en" && isAllowedContent(m.genres);
-  });
+  const filtered = (detailed.filter(Boolean) as Movie[]).filter(
+    (m) => m.original_language === "en" && isAllowedContent(m.genres)
+  );
 
-  const sorted = filtered.sort(sortByRatingThenPopularity);
-  return sorted.length ? sorted : [emptyPlaceholder("movie")];
+  filtered.sort(sortByRatingThenPopularity);
+
+  return filtered.length ? filtered : [emptyPlaceholder("movie")];
 }
 
 // -------------------------------
-// TV SHOWS
+// TV SHOWS — NEW + RECENT RETURNING ONLY
 // -------------------------------
+
 export async function fetchShows(): Promise<Movie[]> {
-  const data = await fetchFromProxy(
-    `/discover/tv?language=en&sort_by=popularity.desc&vote_average.gte=${MIN_RATING}&include_adult=false`
+  const baseResults = await fetchAllPages(
+    `/discover/tv?language=en&sort_by=popularity.desc&vote_average.gte=${MIN_RATING}&include_adult=false`,
+    5
   );
-  if (!data?.results) return [emptyPlaceholder("tv")];
+
+  if (!baseResults.length) return [emptyPlaceholder("tv")];
 
   const detailed = await Promise.all(
-    data.results.map((item: any) => fetchDetails(item.id, "tv"))
+    baseResults.map((i: any) => fetchDetails(i.id, "tv"))
   );
 
-  const filtered = (detailed.filter(Boolean) as Movie[]).filter((s) => {
+  // filter by allowed genres + valid seasons
+  const prelim = (detailed.filter(Boolean) as Movie[]).filter((s) => {
     const isEnglish = s.original_language === "en";
     const genresOk = isAllowedContent(s.genres);
-
-    const latestSeasonAir = new Date(
+    const lastSeasonAir = new Date(
       s.seasons?.[s.seasons.length - 1]?.air_date || "1900-01-01"
     );
-
-    const isAiringNow = latestSeasonAir >= THREE_MONTHS_AGO;
-
-    return isEnglish && genresOk && isAiringNow;
+    const hasSeason = lastSeasonAir.getFullYear() > 1900;
+    return isEnglish && genresOk && hasSeason;
   });
 
-  const sorted = filtered.sort(sortByRatingThenPopularity);
-  return sorted.length ? sorted : [emptyPlaceholder("tv")];
+  // classify
+  const newSeries: Movie[] = [];
+  const recentReturning: Movie[] = [];
+
+  prelim.forEach((s) => {
+    const lastAir = new Date(
+      s.seasons?.[s.seasons.length - 1]?.air_date || "1900-01-01"
+    );
+    const isRecentReturning = lastAir >= THREE_MONTHS_AGO;
+
+    if (s.isNew) {
+      newSeries.push(s);
+    } else if (isRecentReturning) {
+      recentReturning.push(s);
+    }
+  });
+
+  newSeries.sort(sortByRatingThenPopularity);
+  recentReturning.sort(sortByRatingThenPopularity);
+
+  const finalList = [...newSeries, ...recentReturning];
+
+  return finalList.length ? finalList : [emptyPlaceholder("tv")];
 }
 
 // -------------------------------
 // DEVS PICK
 // -------------------------------
+
 export async function fetchDevsPick(): Promise<Movie[]> {
   const enriched = await Promise.all(
     DEVS_PICK_LIST.map(async (id) => {
