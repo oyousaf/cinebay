@@ -48,8 +48,14 @@ const isNewMovie = (date: string) => date && new Date(date) >= ONE_MONTH_AGO;
 const isWithin3Months = (date: string) =>
   date && new Date(date) >= THREE_MONTHS_AGO;
 
-const isNewSeriesByDetail = (detail: any) =>
-  detail.first_air_date && new Date(detail.first_air_date) >= ONE_MONTH_AGO;
+const isNewSeriesByDetail = (detail: any) => {
+  const seasons = detail.seasons ?? [];
+  return (
+    seasons.length === 1 &&
+    seasons[0]?.air_date &&
+    new Date(seasons[0].air_date) >= ONE_MONTH_AGO
+  );
+};
 
 // ================================
 // TRANSFORMER
