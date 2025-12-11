@@ -58,7 +58,7 @@ export interface PersonDetails {
 }
 
 // ========================
-// Main Movie/TV/Person Type
+// Main Movie / TV / Person Type
 // ========================
 export type Movie = {
   id: number;
@@ -74,19 +74,19 @@ export type Movie = {
   genres: string[];
   runtime: number | null;
   original_language?: string;
-  isNew?: boolean;
 
-  // Relational content
+  // unified status field
+  status?: "new" | "renewed" | "recent";
+
+  // relational content
   recommendations?: Movie[];
   similar?: Movie[];
 
-  // Credits
+  // credits
   credits?: {
     cast?: CastMember[];
   };
 
-  // TV Specific
+  // TV
   seasons?: Season[];
-
-  // Person Specific
 } & Partial<PersonDetails>;

@@ -30,6 +30,8 @@ const Tile = React.memo(function Tile({
   onFocus: () => void;
   refSetter: (el: HTMLButtonElement | null) => void;
 }) {
+  const showStatus = movie.status === "new" || movie.status === "renewed";
+
   return (
     <motion.button
       ref={refSetter}
@@ -61,14 +63,18 @@ const Tile = React.memo(function Tile({
         loading="lazy"
       />
 
-      {movie.isNew && (
+      {showStatus && (
         <div
-          className="absolute top-2 left-2 bg-[hsl(var(--foreground))] 
-                     text-[hsl(var(--background))] text-[10px] md:text-xs 
-                     font-bold px-2 py-0.5 rounded-full uppercase 
-                     shadow-md shadow-pulse"
+          className="
+            absolute top-2 left-2
+            bg-[hsl(var(--foreground))]
+            text-[hsl(var(--background))]
+            text-[10px] md:text-xs font-bold
+            px-2 py-0.5 rounded-full uppercase
+            shadow-md shadow-pulse
+          "
         >
-          NEW
+          {movie.status!.toUpperCase()}
         </div>
       )}
     </motion.button>
@@ -100,40 +106,49 @@ export default function ContentRail({
   const handleFocus = useCallback(
     (movie: Movie, idx: number) => {
       setActiveItem(movie);
-      if (railIndex !== null) setFocus({ section: railIndex, index: idx });
+      if (railIndex !== null) {
+        setFocus({ section: railIndex, index: idx });
+      }
     },
     [railIndex, setFocus]
   );
 
   /* ---------- Keep focused tile centered ---------- */
   useEffect(() => {
-    if (railIndex !== null) {
-      updateRailLength(railIndex, items.length);
-      if (items.length > 0 && focus.section === railIndex) {
-        const focusedMovie = items[focus.index];
-        if (focusedMovie && focusedMovie.id !== activeItem?.id) {
-          setActiveItem(focusedMovie);
-        }
-        const el = tileRefs.current[focus.index];
-        const container = railRef.current;
-        if (el && container) {
-          const containerWidth = container.clientWidth;
-          const rawScroll =
-            el.offsetLeft - containerWidth / 2 + el.offsetWidth / 2;
-          container.scrollTo({
-            left: Math.max(0, rawScroll),
-            behavior: "smooth",
-          });
-        }
+    if (railIndex === null) return;
+
+    updateRailLength(railIndex, items.length);
+
+    if (items.length > 0 && focus.section === railIndex) {
+      const focusedMovie = items[focus.index];
+
+      if (focusedMovie && focusedMovie.id !== activeItem?.id) {
+        setActiveItem(focusedMovie);
+      }
+
+      const el = tileRefs.current[focus.index];
+      const container = railRef.current;
+
+      if (el && container) {
+        const containerWidth = container.clientWidth;
+        const rawScroll =
+          el.offsetLeft - containerWidth / 2 + el.offsetWidth / 2;
+
+        container.scrollTo({
+          left: Math.max(0, rawScroll),
+          behavior: "smooth",
+        });
       }
     }
   }, [items, focus, railIndex, updateRailLength, activeItem]);
 
-  /* ---------- Default focus ---------- */
+  /* ---------- Default first focus ---------- */
   useEffect(() => {
     if (!activeItem && items.length > 0 && focus.section !== railIndex) {
       setActiveItem(items[0]);
-      if (railIndex !== null) setFocus({ section: railIndex, index: 0 });
+      if (railIndex !== null) {
+        setFocus({ section: railIndex, index: 0 });
+      }
     }
   }, [items, activeItem, railIndex, focus.section, setFocus]);
 
@@ -141,6 +156,7 @@ export default function ContentRail({
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (railIndex === null || focus.section !== railIndex) return;
+
       const movie = items[focus.index];
       if (!movie) return;
 
@@ -150,6 +166,7 @@ export default function ContentRail({
           e.preventDefault();
           onSelect(movie);
           break;
+
         case "Enter":
         case "Return":
         case "p":
@@ -159,11 +176,12 @@ export default function ContentRail({
           break;
       }
     }
+
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [focus, railIndex, items, onSelect, onWatch]);
 
-  /* ---------- Controller / Gamepad Support ---------- */
+  /* ---------- Gamepad Support ---------- */
   useEffect(() => {
     let rafId: number;
     let pressedA = false;
@@ -172,6 +190,7 @@ export default function ContentRail({
     const pollGamepad = () => {
       const gamepads = navigator.getGamepads?.();
       if (!gamepads) return;
+
       const gp = gamepads[0];
       if (gp) {
         const aPressed = gp.buttons[0]?.pressed;
@@ -189,23 +208,19 @@ export default function ContentRail({
           if (movie) onSelect(movie);
         } else if (!bPressed) pressedB = false;
       }
+
       rafId = requestAnimationFrame(pollGamepad);
     };
 
-    const handleConnect = () => {
-      console.log("🎮 Gamepad connected");
-      pollGamepad();
-    };
-    const handleDisconnect = () => {
-      console.log("❌ Gamepad disconnected");
-      cancelAnimationFrame(rafId);
-    };
+    const connect = () => pollGamepad();
+    const disconnect = () => cancelAnimationFrame(rafId);
 
-    window.addEventListener("gamepadconnected", handleConnect);
-    window.addEventListener("gamepaddisconnected", handleDisconnect);
+    window.addEventListener("gamepadconnected", connect);
+    window.addEventListener("gamepaddisconnected", disconnect);
+
     return () => {
-      window.removeEventListener("gamepadconnected", handleConnect);
-      window.removeEventListener("gamepaddisconnected", handleDisconnect);
+      window.removeEventListener("gamepadconnected", connect);
+      window.removeEventListener("gamepaddisconnected", disconnect);
       cancelAnimationFrame(rafId);
     };
   }, [focus, items, onSelect, onWatch]);
@@ -225,7 +240,7 @@ export default function ContentRail({
         )}
       </div>
 
-      {/* Tiles at bottom */}
+      {/* ---------- Bottom Tiles ---------- */}
       {items.length > 0 && railIndex !== null && (
         <motion.div
           key="tiles"

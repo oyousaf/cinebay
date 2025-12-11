@@ -7,16 +7,15 @@ export const TMDB_IMAGE = "https://image.tmdb.org/t/p/w500";
 // ================================
 // CONFIG
 // ================================
-
 const MIN_RATING = 6.5;
 
 const THREE_MONTHS_AGO = new Date();
 THREE_MONTHS_AGO.setMonth(THREE_MONTHS_AGO.getMonth() - 3);
 
 const ONE_MONTH_AGO = new Date();
-ONE_MONTH_AGO.setDate(ONE_MONTH_AGO.getDate() - 30);
+ONE_MONTH_AGO.setMonth(ONE_MONTH_AGO.getMonth() - 1);
 
-// Exclusions
+// Excluded genres
 const EXCLUDED_GENRE_IDS = new Set([
   16, 10751, 10762, 10402, 10749, 10763, 10764, 10766, 10767, 37,
 ]);
@@ -34,76 +33,29 @@ const GENRE_MAP: Record<string, number> = {
   Western: 37,
 };
 
-const genreToId = (name: string): number => GENRE_MAP[name] ?? -1;
+const genreToId = (name: string) => GENRE_MAP[name] ?? -1;
 
 // ================================
 // HELPERS
 // ================================
+const extractGenres = (d: any) =>
+  Array.isArray(d.genres) ? d.genres.map((g: any) => g.name) : [];
 
-function extractGenres(detail: any): string[] {
-  return Array.isArray(detail.genres)
-    ? detail.genres.map((g: any) => g.name)
-    : [];
-}
+const isAllowedContent = (genres: string[]) =>
+  !genres.some((g) => EXCLUDED_GENRE_IDS.has(genreToId(g)));
 
-function extractYear(dateStr: string): number | null {
-  const match = dateStr?.match(/^(\d{4})/);
-  return match ? parseInt(match[1], 10) : null;
-}
+const isNewMovie = (date: string) => date && new Date(date) >= ONE_MONTH_AGO;
+const isWithin3Months = (date: string) =>
+  date && new Date(date) >= THREE_MONTHS_AGO;
 
-function isAllowedContent(genres: string[]): boolean {
-  return !genres.some((g) => EXCLUDED_GENRE_IDS.has(genreToId(g)));
-}
-
-function isNewRelease(dateStr: string): boolean {
-  return new Date(dateStr) > ONE_MONTH_AGO;
-}
-
-// New TV series = FIRST AIR DATE within last 3 months
-function isNewSeries(detail: any): boolean {
-  const d = detail.first_air_date;
-  if (!d) return false;
-  return new Date(d) >= THREE_MONTHS_AGO;
-}
+const isNewSeriesByDetail = (detail: any) =>
+  detail.first_air_date && new Date(detail.first_air_date) >= ONE_MONTH_AGO;
 
 // ================================
 // TRANSFORMER
 // ================================
-
-function toMovie(detail: any, media_type: "movie" | "tv" | "person"): Movie {
-  const releaseDateStr = detail.release_date || detail.first_air_date || "";
-
-  const recommendationsRaw = detail.recommendations?.results || [];
-  const recommendations: Movie[] = recommendationsRaw
-    .filter((r: any) => {
-      const yr = extractYear(r.release_date || r.first_air_date || "");
-      return (
-        r.original_language === "en" &&
-        (yr ?? 0) >= 1950 &&
-        r.poster_path &&
-        r.vote_average >= MIN_RATING
-      );
-    })
-    .slice(0, 10)
-    .map((r: any) => ({
-      id: r.id,
-      title: r.title || r.name || "Untitled",
-      overview: r.overview || "",
-      poster_path: r.poster_path || "",
-      backdrop_path: r.backdrop_path || "",
-      profile_path: "",
-      release_date: r.release_date || r.first_air_date || "",
-      vote_average: r.vote_average ?? 0,
-      media_type: r.media_type ?? media_type,
-      genres: [],
-      runtime: null,
-      original_language: r.original_language ?? "",
-      isNew:
-        media_type === "tv"
-          ? isNewSeries(detail)
-          : isNewRelease(r.release_date || r.first_air_date || ""),
-      recommendations: [],
-    }));
+function toMovie(detail: any, type: "movie" | "tv" | "person"): Movie {
+  const release = detail.release_date || detail.first_air_date || "";
 
   return {
     id: detail.id,
@@ -112,29 +64,37 @@ function toMovie(detail: any, media_type: "movie" | "tv" | "person"): Movie {
     poster_path: detail.poster_path || "",
     backdrop_path: detail.backdrop_path || "",
     profile_path: detail.profile_path || "",
-    release_date: releaseDateStr,
+    release_date: release,
     vote_average: detail.vote_average ?? 0,
-    media_type,
+    media_type: type,
     genres: extractGenres(detail),
     runtime: detail.runtime ?? null,
     original_language: detail.original_language ?? "",
-    credits: detail.credits ?? undefined,
-    biography: detail.biography ?? undefined,
-    place_of_birth: detail.place_of_birth ?? undefined,
-    known_for_department: detail.known_for_department ?? undefined,
-    known_for: detail.known_for ?? undefined,
-    isNew:
-      media_type === "tv" ? isNewSeries(detail) : isNewRelease(releaseDateStr),
-    deathday: detail.deathday ?? undefined,
+    credits: detail.credits,
+    biography: detail.biography,
+    place_of_birth: detail.place_of_birth,
+    known_for_department: detail.known_for_department,
+    known_for: detail.known_for,
+    deathday: detail.deathday,
     seasons: detail.seasons ?? [],
-    recommendations,
+
+    status: undefined,
+
+    recommendations:
+      detail.recommendations?.results
+        ?.filter(
+          (r: any) =>
+            r.poster_path &&
+            r.vote_average >= MIN_RATING &&
+            r.original_language === "en"
+        )
+        ?.slice(0, 10) ?? [],
   };
 }
 
 // ================================
 // BASE FETCHER
 // ================================
-
 const baseURL = `${import.meta.env.VITE_API_URL}/api/tmdb`;
 
 export async function fetchFromProxy(endpoint: string) {
@@ -147,188 +107,164 @@ export async function fetchFromProxy(endpoint: string) {
 }
 
 // ================================
-// MULTI-PAGE FETCH
+// MULTI-PAGE WRAPPER
 // ================================
-
-async function fetchAllPages(endpoint: string, maxPages = 5) {
-  const results: any[] = [];
-  for (let p = 1; p <= maxPages; p++) {
-    const res = await fetchFromProxy(`${endpoint}&page=${p}`);
-    if (!res?.results?.length) break;
-    results.push(...res.results);
+async function fetchAllPages(endpoint: string, max = 3) {
+  const out: any[] = [];
+  for (let p = 1; p <= max; p++) {
+    const d = await fetchFromProxy(`${endpoint}&page=${p}`);
+    if (!d?.results?.length) break;
+    out.push(...d.results);
   }
-  return results;
+  return out;
 }
 
 // ================================
-// DETAILS FETCHER
+// DETAILS
 // ================================
-
 export async function fetchDetails(
   id: number,
-  media_type: "movie" | "tv" | "person"
-): Promise<Movie | null> {
-  const base = await fetchFromProxy(
-    `/${media_type}/${id}?language=en-GB&append_to_response=credits,recommendations,similar`
+  type: "movie" | "tv" | "person"
+) {
+  const d = await fetchFromProxy(
+    `/${type}/${id}?language=en-GB&append_to_response=credits,recommendations,similar`
   );
-  if (!base) return null;
-
-  const mv = toMovie(base, media_type);
-
-  if (media_type === "person") {
-    const credits = await fetchFromProxy(`/person/${id}/combined_credits`);
-    return {
-      ...mv,
-      known_for: credits?.cast?.slice(0, 12) ?? [],
-      birthday: base.birthday ?? "",
-      gender: base.gender ?? 0,
-    };
-  }
-
-  const similar =
-    base.similar?.results
-      ?.filter((item: any) => {
-        const year = extractYear(
-          item.release_date || item.first_first_air_date || ""
-        );
-        return (
-          item.vote_average >= MIN_RATING &&
-          item.poster_path &&
-          item.original_language === "en" &&
-          (year ?? 0) >= 1950
-        );
-      })
-      ?.slice(0, 10) ?? [];
-
-  return { ...mv, similar };
+  return d ? toMovie(d, type) : null;
 }
 
 // ================================
 // PLACEHOLDER
 // ================================
-
-function emptyPlaceholder(type: "movie" | "tv"): Movie {
-  return {
-    id: -1,
-    title: type === "movie" ? "No movies found" : "No shows found",
-    overview: "",
-    poster_path: "",
-    backdrop_path: "",
-    profile_path: "",
-    release_date: "",
-    vote_average: 0,
-    media_type: type,
-    genres: [],
-    runtime: null,
-    original_language: "",
-    known_for: [],
-    isNew: false,
-  };
-}
+const empty = (t: "movie" | "tv"): Movie => ({
+  id: -1,
+  title: t === "movie" ? "No movies found" : "No shows found",
+  overview: "",
+  poster_path: "",
+  backdrop_path: "",
+  profile_path: "",
+  release_date: "",
+  vote_average: 0,
+  media_type: t,
+  genres: [],
+  runtime: null,
+  original_language: "",
+  known_for: [],
+  status: undefined,
+});
 
 // ================================
 // SORT
 // ================================
+const sortByRating = (a: Movie, b: Movie) =>
+  (b.vote_average ?? 0) - (a.vote_average ?? 0);
 
-function sortByRatingThenPopularity(a: Movie, b: Movie) {
-  const diff = (b.vote_average ?? 0) - (a.vote_average ?? 0);
-  if (diff !== 0) return diff;
-  return (b.popularity ?? 0) - (a.popularity ?? 0);
-}
-
-// -------------------------------
-// MOVIES
-// -------------------------------
-
+// ================================
+// MOVIES — NEW THEN RECENT
+// ================================
 export async function fetchMovies(): Promise<Movie[]> {
-  const data = await fetchFromProxy(
-    `/discover/movie?language=en&sort_by=popularity.desc&vote_average.gte=${MIN_RATING}&include_adult=false&release_date.gte=${
-      THREE_MONTHS_AGO.toISOString().split("T")[0]
-    }`
+  const base = await fetchAllPages(
+    `/discover/movie?language=en&include_adult=false&vote_average.gte=${MIN_RATING}`,
+    3
   );
 
-  if (!data?.results) return [emptyPlaceholder("movie")];
+  if (!base.length) return [empty("movie")];
 
+  // Filter English + min rating + released within 3 months
+  const filtered = base.filter(
+    (m: any) =>
+      m.original_language === "en" &&
+      m.vote_average >= MIN_RATING &&
+      isWithin3Months(m.release_date)
+  );
+
+  // Load details
   const detailed = await Promise.all(
-    data.results.map((i: any) => fetchDetails(i.id, "movie"))
+    filtered.map((m: any) => fetchDetails(m.id, "movie"))
   );
 
-  const filtered = (detailed.filter(Boolean) as Movie[]).filter(
-    (m) => m.original_language === "en" && isAllowedContent(m.genres)
+  const final = (detailed.filter(Boolean) as Movie[]).filter((m) =>
+    isAllowedContent(m.genres)
   );
 
-  filtered.sort(sortByRatingThenPopularity);
-
-  return filtered.length ? filtered : [emptyPlaceholder("movie")];
-}
-
-// -------------------------------
-// TV SHOWS — NEW + RECENT RETURNING ONLY
-// -------------------------------
-
-export async function fetchShows(): Promise<Movie[]> {
-  const baseResults = await fetchAllPages(
-    `/discover/tv?language=en&sort_by=popularity.desc&vote_average.gte=${MIN_RATING}&include_adult=false`,
-    5
-  );
-
-  if (!baseResults.length) return [emptyPlaceholder("tv")];
-
-  const detailed = await Promise.all(
-    baseResults.map((i: any) => fetchDetails(i.id, "tv"))
-  );
-
-  // filter by allowed genres + valid seasons
-  const prelim = (detailed.filter(Boolean) as Movie[]).filter((s) => {
-    const isEnglish = s.original_language === "en";
-    const genresOk = isAllowedContent(s.genres);
-    const lastSeasonAir = new Date(
-      s.seasons?.[s.seasons.length - 1]?.air_date || "1900-01-01"
-    );
-    const hasSeason = lastSeasonAir.getFullYear() > 1900;
-    return isEnglish && genresOk && hasSeason;
+  // Assign NEW only
+  final.forEach((m) => {
+    m.status = isNewMovie(m.release_date) ? "new" : undefined;
   });
 
-  // classify
-  const newSeries: Movie[] = [];
-  const recentReturning: Movie[] = [];
+  const NEW = final.filter((m) => m.status === "new").sort(sortByRating);
+  const OTHER = final.filter((m) => !m.status).sort(sortByRating);
 
-  prelim.forEach((s) => {
-    const lastAir = new Date(
-      s.seasons?.[s.seasons.length - 1]?.air_date || "1900-01-01"
-    );
-    const isRecentReturning = lastAir >= THREE_MONTHS_AGO;
+  return [...NEW, ...OTHER];
+}
 
-    if (s.isNew) {
-      newSeries.push(s);
-    } else if (isRecentReturning) {
-      recentReturning.push(s);
+// ================================
+// TV — NEW → RENEWED → RECENT
+// ================================
+export async function fetchShows(): Promise<Movie[]> {
+  const base = await fetchAllPages(
+    `/discover/tv?language=en&include_adult=false&vote_average.gte=${MIN_RATING}`,
+    3
+  );
+
+  if (!base.length) return [empty("tv")];
+
+  const detailed = await Promise.all(
+    base
+      .filter((s: any) => s.original_language === "en")
+      .map((s) => fetchDetails(s.id, "tv"))
+  );
+
+  const final = (detailed.filter(Boolean) as Movie[]).filter((s) =>
+    isAllowedContent(s.genres)
+  );
+
+  final.forEach((s) => {
+    const seasons = s.seasons ?? [];
+    const airRaw =
+      seasons.length && seasons[seasons.length - 1]?.air_date
+        ? seasons[seasons.length - 1].air_date
+        : null;
+
+    const lastAir = airRaw ? new Date(airRaw) : new Date("1900-01-01");
+
+    if (isNewSeriesByDetail(s)) {
+      s.status = "new";
+    } else if (lastAir >= ONE_MONTH_AGO) {
+      s.status = "renewed";
+    } else if (lastAir < THREE_MONTHS_AGO) {
+      s.status = undefined;
+    } else {
+      s.status = undefined;
     }
   });
 
-  newSeries.sort(sortByRatingThenPopularity);
-  recentReturning.sort(sortByRatingThenPopularity);
+  // Only keep shows within 3 months (new OR renewed OR recent-season)
+  const within3 = final.filter((s) => {
+    const seasons = s.seasons ?? [];
+    const airRaw =
+      seasons.length && seasons[seasons.length - 1]?.air_date
+        ? seasons[seasons.length - 1].air_date
+        : null;
 
-  const finalList = [...newSeries, ...recentReturning];
+    const lastAir = airRaw ? new Date(airRaw) : null;
+    return lastAir && lastAir >= THREE_MONTHS_AGO;
+  });
 
-  return finalList.length ? finalList : [emptyPlaceholder("tv")];
+  const NEW = within3.filter((m) => m.status === "new").sort(sortByRating);
+  const RENEWED = within3
+    .filter((m) => m.status === "renewed")
+    .sort(sortByRating);
+  const OTHER = within3.filter((m) => !m.status).sort(sortByRating);
+
+  return [...NEW, ...RENEWED, ...OTHER];
 }
 
-// -------------------------------
-// DEVS PICK
-// -------------------------------
-
+// ================================
+// DEV'S PICK
+// ================================
 export async function fetchDevsPick(): Promise<Movie[]> {
-  const enriched = await Promise.all(
-    DEVS_PICK_LIST.map(async (id) => {
-      try {
-        const full = await fetchDetails(id, "movie");
-        return full?.original_language === "en" ? full : null;
-      } catch {
-        return null;
-      }
-    })
+  const out = await Promise.all(
+    DEVS_PICK_LIST.map((id) => fetchDetails(id, "movie"))
   );
-
-  return (enriched.filter(Boolean) as Movie[]).sort(sortByRatingThenPopularity);
+  return (out.filter(Boolean) as Movie[]).sort(sortByRating);
 }
