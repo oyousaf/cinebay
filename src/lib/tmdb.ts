@@ -50,11 +50,11 @@ const isWithin3Months = (date: string) =>
 
 const isNewSeriesByDetail = (detail: any) => {
   const seasons = detail.seasons ?? [];
-  return (
-    seasons.length === 1 &&
-    seasons[0]?.air_date &&
-    new Date(seasons[0].air_date) >= ONE_MONTH_AGO
-  );
+
+  if (seasons.length === 1 && seasons[0]?.air_date) {
+    return new Date(seasons[0].air_date) >= ONE_MONTH_AGO;
+  }
+  return false;
 };
 
 // ================================
