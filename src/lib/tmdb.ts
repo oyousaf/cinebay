@@ -76,15 +76,22 @@ function toMovie(detail: any, type: "movie" | "tv" | "person"): Movie {
     genres: extractGenres(detail),
     runtime: detail.runtime ?? null,
     original_language: detail.original_language ?? "",
-    credits: detail.credits,
 
+    // 🔒 normalised credits
+    credits: {
+      cast: detail.credits?.cast ?? [],
+      crew: detail.credits?.crew ?? [],
+    },
+
+    // person fields
     biography: detail.biography,
     birthday: detail.birthday,
     deathday: detail.deathday,
     place_of_birth: detail.place_of_birth,
-    
     known_for_department: detail.known_for_department,
     known_for: detail.known_for,
+
+    // tv
     seasons: detail.seasons ?? [],
 
     status: undefined,

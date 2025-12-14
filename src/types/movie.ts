@@ -8,6 +8,14 @@ export type CastMember = {
   profile_path?: string;
 };
 
+export type CrewMember = {
+  id: number;
+  name: string;
+  job?: string;
+  department?: string;
+  profile_path?: string;
+};
+
 export type KnownForItem = {
   id: number;
   title?: string;
@@ -58,35 +66,35 @@ export interface PersonDetails {
 }
 
 // ========================
-// Main Movie / TV / Person Type
+// Main Movie / TV / Person
 // ========================
 export type Movie = {
   id: number;
   title: string;
   name?: string;
   overview: string;
+
   poster_path: string;
   backdrop_path: string;
   profile_path: string;
+
   release_date: string;
   vote_average: number;
   media_type: "movie" | "tv" | "person";
+
   genres: string[];
   runtime: number | null;
   original_language?: string;
 
-  // unified status field
   status?: "new" | "renewed" | "recent";
 
-  // relational content
   recommendations?: Movie[];
   similar?: Movie[];
 
-  // credits
   credits?: {
-    cast?: CastMember[];
+    cast: CastMember[];
+    crew: CrewMember[];
   };
 
-  // TV
   seasons?: Season[];
 } & Partial<PersonDetails>;
