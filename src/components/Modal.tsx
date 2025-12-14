@@ -1,4 +1,12 @@
-import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import {
+  useEffect,
+  useState,
+  useCallback,
+  useMemo,
+  useRef,
+  lazy,
+  Suspense,
+} from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, ArrowUp, Bookmark, X } from "lucide-react";
 import { toast } from "sonner";
@@ -7,13 +15,24 @@ import { FaPlay } from "react-icons/fa";
 import type { Movie } from "@/types/movie";
 import { TMDB_IMAGE, fetchDetails } from "@/lib/tmdb";
 import StarringList from "./modal/StarringList";
-import KnownForSlider from "./modal/KnownForSlider";
-import { Recommendations, Similar } from "./modal/Recommendations";
 import { useWatchlist } from "@/context/WatchlistContext";
 import { useModalManager } from "@/context/ModalContext";
 import { useVideoEmbed } from "@/hooks/useVideoEmbed";
 
-/* ---------------- helpers ---------------- */
+/* ---------- Lazy Rails ---------- */
+
+const LazySimilar = lazy(() =>
+  import("./modal/Recommendations").then((m) => ({ default: m.Similar }))
+);
+const LazyRecommendations = lazy(() =>
+  import("./modal/Recommendations").then((m) => ({
+    default: m.Recommendations,
+  }))
+);
+
+const LazyKnownForSlider = lazy(() => import("./modal/KnownForSlider"));
+
+/* ---------- Helpers ---------- */
 
 const formatDate = (dateStr?: string) =>
   dateStr
@@ -33,7 +52,7 @@ const calculateAge = (birthday?: string, deathday?: string) => {
   );
 };
 
-/* ---------------- component ---------------- */
+/* ---------- Component ---------- */
 
 export default function Modal({
   movie,
@@ -48,6 +67,7 @@ export default function Modal({
 }) {
   const isPerson = movie.media_type === "person";
   const modalRef = useRef<HTMLDivElement>(null);
+
   const [mounting, setMounting] = useState(true);
   const [showFullBio, setShowFullBio] = useState(false);
 
@@ -72,6 +92,15 @@ export default function Modal({
   const isNew = movie.status === "new";
   const isRenewed = movie.status === "renewed";
 
+  /* ---------- Memoised Lists ---------- */
+
+  const MemoStarringList = useMemo(() => {
+    if (isPerson || cast.length === 0) return null;
+    return <StarringList cast={cast} onSelect={onSelect} />;
+  }, [cast, isPerson, onSelect]);
+
+  /* ---------- Handlers ---------- */
+
   const handleSelectWithDetails = useCallback(
     async (item: Movie) => {
       if (!item?.id) return;
@@ -88,8 +117,23 @@ export default function Modal({
     [movie.media_type, onSelect]
   );
 
+  /* ---------- Mount / Preload ---------- */
+
   useEffect(() => {
     const id = requestAnimationFrame(() => setMounting(false));
+
+    // Preload rails after first paint (idle-safe)
+    const preload = () => {
+      import("./modal/Recommendations");
+      import("./modal/KnownForSlider");
+    };
+
+    if ("requestIdleCallback" in window) {
+      (window as any).requestIdleCallback(preload);
+    } else {
+      setTimeout(preload, 200);
+    }
+
     return () => cancelAnimationFrame(id);
   }, []);
 
@@ -115,7 +159,7 @@ export default function Modal({
           transition={{ duration: 0.3 }}
           className="relative w-[95vw] max-w-4xl rounded-2xl overflow-hidden shadow-2xl"
         >
-          {/* Header */}
+          {/* ---------- Header ---------- */}
           <div className="absolute top-3 left-3 right-3 z-50 flex justify-between">
             {onBack ? (
               <motion.button
@@ -142,7 +186,7 @@ export default function Modal({
             </motion.button>
           </div>
 
-          {/* Content */}
+          {/* ---------- Content ---------- */}
           <div className="px-4 py-8 sm:p-8 bg-gradient-to-b from-black/80 via-black/60 to-black/90 text-[#80ffcc] max-h-[90vh] overflow-y-auto space-y-6">
             <div className="flex flex-col sm:flex-row gap-6 pt-6">
               <img
@@ -155,7 +199,7 @@ export default function Modal({
               <div className="flex-1 space-y-4 text-center sm:text-left">
                 <h2 className="text-3xl sm:text-4xl font-bold">{title}</h2>
 
-                {/* PERSON INFO */}
+                {/* ---------- Person Info ---------- */}
                 {isPerson && (
                   <div className="rounded-xl bg-zinc-900/60 p-4 border border-zinc-700 text-sm text-zinc-300 space-y-1">
                     {movie.birthday && (
@@ -181,7 +225,7 @@ export default function Modal({
                   </div>
                 )}
 
-                {/* BIO */}
+                {/* ---------- Biography ---------- */}
                 {movie.biography && (
                   <>
                     <motion.button
@@ -208,12 +252,12 @@ export default function Modal({
                   </>
                 )}
 
-                {/* OVERVIEW */}
+                {/* ---------- Overview ---------- */}
                 {!isPerson && movie.overview && (
                   <p className="text-zinc-200">{movie.overview}</p>
                 )}
 
-                {/* META */}
+                {/* ---------- Meta ---------- */}
                 {!isPerson && (
                   <div className="flex flex-wrap gap-2 text-zinc-300 justify-center sm:justify-start">
                     {isNew && (
@@ -241,7 +285,7 @@ export default function Modal({
                   </div>
                 )}
 
-                {/* ACTIONS */}
+                {/* ---------- Actions ---------- */}
                 {!isPerson && (
                   <div className="flex gap-4 justify-center sm:justify-start pt-4">
                     <motion.button
@@ -274,31 +318,31 @@ export default function Modal({
                   </div>
                 )}
 
-                {!isPerson && cast.length > 0 && (
-                  <StarringList cast={cast} onSelect={onSelect} />
-                )}
+                {MemoStarringList}
               </div>
             </div>
 
-            {/* RELATED */}
-            {isPerson ? (
-              knownFor.length > 0 && (
-                <KnownForSlider
-                  items={knownFor}
+            {/* ---------- Related ---------- */}
+            <Suspense fallback={null}>
+              {isPerson ? (
+                knownFor.length > 0 && (
+                  <LazyKnownForSlider
+                    items={knownFor}
+                    onSelect={handleSelectWithDetails}
+                  />
+                )
+              ) : movie.similar?.length ? (
+                <LazySimilar
+                  items={movie.similar}
                   onSelect={handleSelectWithDetails}
                 />
-              )
-            ) : movie.similar?.length ? (
-              <Similar
-                items={movie.similar}
-                onSelect={handleSelectWithDetails}
-              />
-            ) : movie.recommendations?.length ? (
-              <Recommendations
-                items={movie.recommendations}
-                onSelect={handleSelectWithDetails}
-              />
-            ) : null}
+              ) : movie.recommendations?.length ? (
+                <LazyRecommendations
+                  items={movie.recommendations}
+                  onSelect={handleSelectWithDetails}
+                />
+              ) : null}
+            </Suspense>
           </div>
         </motion.div>
       </motion.div>
