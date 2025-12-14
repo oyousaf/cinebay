@@ -87,7 +87,6 @@ export default function Modal({
   const cast = movie.credits?.cast ?? [];
   const crew = movie.credits?.crew ?? [];
   const knownFor = movie.known_for ?? [];
-
   const releaseDate = formatDate(movie.release_date);
 
   const director = useMemo(() => {
@@ -95,14 +94,10 @@ export default function Modal({
     return crew.find((c: any) => c.job === "Director")?.name ?? null;
   }, [crew, movie.media_type]);
 
-  /* ---------- Memo ---------- */
-
   const MemoStarringList = useMemo(() => {
     if (isPerson || cast.length === 0) return null;
     return <StarringList cast={cast} onSelect={onSelect} />;
   }, [cast, isPerson, onSelect]);
-
-  /* ---------- Handlers ---------- */
 
   const handleSelectWithDetails = useCallback(
     async (item: Movie) => {
@@ -110,7 +105,10 @@ export default function Modal({
       try {
         const full = await fetchDetails(
           item.id,
-          (item.media_type || movie.media_type) as "movie" | "tv" | "person"
+          (item.media_type || movie.media_type) as
+            | "movie"
+            | "tv"
+            | "person"
         );
         full && onSelect?.(full);
       } catch {
@@ -120,22 +118,8 @@ export default function Modal({
     [movie.media_type, onSelect]
   );
 
-  /* ---------- Mount ---------- */
-
   useEffect(() => {
     const id = requestAnimationFrame(() => setMounting(false));
-
-    const preload = () => {
-      import("./modal/Recommendations");
-      import("./modal/KnownForSlider");
-    };
-
-    if ("requestIdleCallback" in window) {
-      (window as any).requestIdleCallback(preload);
-    } else {
-      setTimeout(preload, 200);
-    }
-
     return () => cancelAnimationFrame(id);
   }, []);
 
@@ -185,7 +169,7 @@ export default function Modal({
           {/* Content */}
           <div className="px-4 py-8 sm:p-8 bg-gradient-to-b from-black/80 via-black/60 to-black/90 text-[#80ffcc] max-h-[90vh] overflow-y-auto space-y-6">
             <div className="flex flex-col sm:flex-row gap-6 pt-6">
-              {/* Poster locked */}
+              {/* Poster */}
               <img
                 src={displayPoster}
                 alt={title}
@@ -195,52 +179,56 @@ export default function Modal({
                 loading="lazy"
               />
 
-              <div className="flex-1 space-y-4 text-center sm:text-left">
-                <h2 className="text-3xl sm:text-4xl font-bold">{title}</h2>
+              {/* Right column */}
+              <div className="flex-1 space-y-4">
+                {/* TEXT BLOCK */}
+                <div className="text-center sm:text-left space-y-4">
+                  <h2 className="text-3xl sm:text-4xl font-bold">{title}</h2>
 
-                {/* Director + Release */}
-                {!isPerson && (
-                  <div className="text-sm text-zinc-300 space-y-1">
-                    {director && <div>Director: {director}</div>}
-                    {releaseDate && <div>Released: {releaseDate}</div>}
-                  </div>
-                )}
+                  {!isPerson && (
+                    <div className="text-sm text-zinc-300 space-y-1">
+                      {director && <div>Director: {director}</div>}
+                      {releaseDate && <div>Released: {releaseDate}</div>}
+                    </div>
+                  )}
 
-                {/* Person info */}
-                {isPerson && (
-                  <div className="rounded-xl bg-zinc-900/60 p-4 border border-zinc-700 text-sm text-zinc-300 space-y-1">
-                    {movie.birthday && (
-                      <div>🎂 Born: {formatDate(movie.birthday)}</div>
-                    )}
-                    {movie.deathday ? (
-                      <div>
-                        🕊️ Passed: {formatDate(movie.deathday)}{" "}
-                        {movie.birthday &&
-                          `(aged ${calculateAge(
-                            movie.birthday,
-                            movie.deathday
-                          )})`}
-                      </div>
-                    ) : (
-                      movie.birthday && (
-                        <div>🎉 Age: {calculateAge(movie.birthday)} years</div>
-                      )
-                    )}
-                    {movie.place_of_birth && (
-                      <div>📍 {movie.place_of_birth}</div>
-                    )}
-                  </div>
-                )}
+                  {isPerson && (
+                    <div className="rounded-xl bg-zinc-900/60 p-4 border border-zinc-700 text-sm text-zinc-300 space-y-1">
+                      {movie.birthday && (
+                        <div>🎂 Born: {formatDate(movie.birthday)}</div>
+                      )}
+                      {movie.deathday ? (
+                        <div>
+                          🕊️ Passed: {formatDate(movie.deathday)}{" "}
+                          {movie.birthday &&
+                            `(aged ${calculateAge(
+                              movie.birthday,
+                              movie.deathday
+                            )})`}
+                        </div>
+                      ) : (
+                        movie.birthday && (
+                          <div>
+                            🎉 Age: {calculateAge(movie.birthday)} years
+                          </div>
+                        )
+                      )}
+                      {movie.place_of_birth && (
+                        <div>📍 {movie.place_of_birth}</div>
+                      )}
+                    </div>
+                  )}
+                </div>
 
-                {/* Biography */}
+                {/* BIO BLOCK */}
                 {movie.biography && (
                   <div className="space-y-3">
-                    <div className="flex justify-center sm:justify-start">
+                    <div className="flex justify-center">
                       <motion.button
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                         onClick={() => setShowFullBio((v) => !v)}
-                        className="block px-4 py-2 rounded-full bg-[hsl(var(--foreground))] text-[hsl(var(--background))] font-bold text-center"
+                        className="px-4 py-2 rounded-full bg-[hsl(var(--foreground))] text-[hsl(var(--background))] font-bold"
                       >
                         {showFullBio ? <ArrowUp size={22} /> : "BIO"}
                       </motion.button>
