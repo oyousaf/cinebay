@@ -105,10 +105,7 @@ export default function Modal({
       try {
         const full = await fetchDetails(
           item.id,
-          (item.media_type || movie.media_type) as
-            | "movie"
-            | "tv"
-            | "person"
+          (item.media_type || movie.media_type) as "movie" | "tv" | "person"
         );
         full && onSelect?.(full);
       } catch {
