@@ -77,11 +77,14 @@ function toMovie(detail: any, type: "movie" | "tv" | "person"): Movie {
     runtime: detail.runtime ?? null,
     original_language: detail.original_language ?? "",
     credits: detail.credits,
+
     biography: detail.biography,
+    birthday: detail.birthday,
+    deathday: detail.deathday,
     place_of_birth: detail.place_of_birth,
+    
     known_for_department: detail.known_for_department,
     known_for: detail.known_for,
-    deathday: detail.deathday,
     seasons: detail.seasons ?? [],
 
     status: undefined,
