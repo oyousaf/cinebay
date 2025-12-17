@@ -71,13 +71,18 @@ function toMovie(detail: any, type: "movie" | "tv" | "person"): Movie {
     backdrop_path: detail.backdrop_path || "",
     profile_path: detail.profile_path || "",
     release_date: release,
+
     vote_average: detail.vote_average ?? 0,
+    vote_count: detail.vote_count ?? 0,
+
     media_type: type,
     genres: extractGenres(detail),
     runtime: detail.runtime ?? null,
     original_language: detail.original_language ?? "",
 
-    // 🔒 normalised credits
+    // TV creators (only exists on TV detail endpoint)
+    created_by: detail.created_by ?? [],
+
     credits: {
       cast: detail.credits?.cast ?? [],
       crew: detail.credits?.crew ?? [],
@@ -91,9 +96,7 @@ function toMovie(detail: any, type: "movie" | "tv" | "person"): Movie {
     known_for_department: detail.known_for_department,
     known_for: detail.known_for,
 
-    // tv
     seasons: detail.seasons ?? [],
-
     status: undefined,
 
     recommendations:
@@ -160,6 +163,7 @@ const empty = (t: "movie" | "tv"): Movie => ({
   profile_path: "",
   release_date: "",
   vote_average: 0,
+  vote_count: 0, // ✅ fixed
   media_type: t,
   genres: [],
   runtime: null,
@@ -185,7 +189,6 @@ export async function fetchMovies(): Promise<Movie[]> {
 
   if (!base.length) return [empty("movie")];
 
-  // Filter English + min rating + released within 3 months
   const filtered = base.filter(
     (m: any) =>
       m.original_language === "en" &&
@@ -193,7 +196,6 @@ export async function fetchMovies(): Promise<Movie[]> {
       isWithin3Months(m.release_date)
   );
 
-  // Load details
   const detailed = await Promise.all(
     filtered.map((m: any) => fetchDetails(m.id, "movie"))
   );
@@ -202,15 +204,14 @@ export async function fetchMovies(): Promise<Movie[]> {
     isAllowedContent(m.genres)
   );
 
-  // Assign NEW only
   final.forEach((m) => {
     m.status = isNewMovie(m.release_date) ? "new" : undefined;
   });
 
-  const NEW = final.filter((m) => m.status === "new").sort(sortByRating);
-  const OTHER = final.filter((m) => !m.status).sort(sortByRating);
-
-  return [...NEW, ...OTHER];
+  return [
+    ...final.filter((m) => m.status === "new").sort(sortByRating),
+    ...final.filter((m) => !m.status).sort(sortByRating),
+  ];
 }
 
 // ================================
@@ -236,43 +237,23 @@ export async function fetchShows(): Promise<Movie[]> {
 
   final.forEach((s) => {
     const seasons = s.seasons ?? [];
-    const airRaw =
-      seasons.length && seasons[seasons.length - 1]?.air_date
-        ? seasons[seasons.length - 1].air_date
-        : null;
+    const lastAirRaw = seasons.at(-1)?.air_date;
+    const lastAir = lastAirRaw ? new Date(lastAirRaw) : null;
 
-    const lastAir = airRaw ? new Date(airRaw) : new Date("1900-01-01");
-
-    if (isNewSeriesByDetail(s)) {
-      s.status = "new"; // ≤1 month since first_air_date
-    } else if (lastAir >= ONE_MONTH_AGO) {
-      s.status = "renewed"; // new season ≤1 month ago
-    } else if (lastAir < THREE_MONTHS_AGO) {
-      s.status = undefined; // older than 3 months excluded later
-    } else {
-      s.status = undefined;
-    }
+    if (isNewSeriesByDetail(s)) s.status = "new";
+    else if (lastAir && lastAir >= ONE_MONTH_AGO) s.status = "renewed";
   });
 
-  // Only keep shows within 3 months
   const within3 = final.filter((s) => {
-    const seasons = s.seasons ?? [];
-    const airRaw =
-      seasons.length && seasons[seasons.length - 1]?.air_date
-        ? seasons[seasons.length - 1].air_date
-        : null;
-
-    const lastAir = airRaw ? new Date(airRaw) : null;
-    return lastAir && lastAir >= THREE_MONTHS_AGO;
+    const lastAirRaw = s.seasons?.at(-1)?.air_date;
+    return lastAirRaw && new Date(lastAirRaw) >= THREE_MONTHS_AGO;
   });
 
-  const NEW = within3.filter((m) => m.status === "new").sort(sortByRating);
-  const RENEWED = within3
-    .filter((m) => m.status === "renewed")
-    .sort(sortByRating);
-  const OTHER = within3.filter((m) => !m.status).sort(sortByRating);
-
-  return [...NEW, ...RENEWED, ...OTHER];
+  return [
+    ...within3.filter((m) => m.status === "new").sort(sortByRating),
+    ...within3.filter((m) => m.status === "renewed").sort(sortByRating),
+    ...within3.filter((m) => !m.status).sort(sortByRating),
+  ];
 }
 
 // ================================

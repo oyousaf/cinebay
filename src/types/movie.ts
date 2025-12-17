@@ -31,6 +31,12 @@ export type KnownForItem = {
 // ========================
 // TV Specific
 // ========================
+export type Creator = {
+  id: number;
+  name: string;
+  profile_path?: string;
+};
+
 export interface Episode {
   id: number;
   name: string;
@@ -66,12 +72,10 @@ export interface PersonDetails {
 }
 
 // ========================
-// Main Movie / TV / Person
+// Base Media (internal clarity)
 // ========================
-export type Movie = {
+type BaseMedia = {
   id: number;
-  title: string;
-  name?: string;
   overview: string;
 
   poster_path: string;
@@ -80,7 +84,7 @@ export type Movie = {
 
   release_date: string;
   vote_average: number;
-  media_type: "movie" | "tv" | "person";
+  vote_count: number;
 
   genres: string[];
   runtime: number | null;
@@ -95,6 +99,19 @@ export type Movie = {
     cast: CastMember[];
     crew: CrewMember[];
   };
+};
 
+// ========================
+// Movie / TV / Person Union
+// ========================
+export type Movie = BaseMedia & {
+  media_type: "movie" | "tv" | "person";
+
+  // naming (TMDB inconsistency handled safely)
+  title: string;
+  name?: string;
+
+  // TV only
+  created_by?: Creator[];
   seasons?: Season[];
 } & Partial<PersonDetails>;
