@@ -1,3 +1,5 @@
+"use client";
+
 import {
   useEffect,
   useState,
@@ -31,16 +33,23 @@ const LazyRecommendations = lazy(() =>
 );
 const LazyKnownForSlider = lazy(() => import("./modal/KnownForSlider"));
 
-/* ---------- Helpers ---------- */
+/* ---------- Date helpers (ORDINAL FIX) ---------- */
 
-const formatDate = (dateStr?: string) =>
-  dateStr
-    ? new Date(dateStr).toLocaleDateString("en-GB", {
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-      })
-    : null;
+const ordinal = (n: number) => {
+  const s = ["th", "st", "nd", "rd"];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+};
+
+const formatDate = (dateStr?: string) => {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+
+  return `${ordinal(d.getDate())} ${d.toLocaleDateString("en-GB", {
+    month: "long",
+    year: "numeric",
+  })}`;
+};
 
 const calculateAge = (birthday?: string, deathday?: string) => {
   if (!birthday) return null;
@@ -78,21 +87,25 @@ export default function Modal({
 
   const title = movie.title || movie.name || "Untitled";
   const poster = movie.profile_path || movie.poster_path || "";
-
-  const displayPoster = useMemo(
-    () => (poster ? `${TMDB_IMAGE}${poster}` : "/fallback.jpg"),
-    [poster]
-  );
+  const displayPoster = poster ? `${TMDB_IMAGE}${poster}` : "/fallback.jpg";
 
   const cast = movie.credits?.cast ?? [];
   const crew = movie.credits?.crew ?? [];
   const knownFor = movie.known_for ?? [];
   const releaseDate = formatDate(movie.release_date);
 
+  /* ---------- Credits ---------- */
+
   const director = useMemo(() => {
     if (movie.media_type !== "movie") return null;
-    return crew.find((c: any) => c.job === "Director")?.name ?? null;
+    return crew.find((c) => c.job === "Director")?.name ?? null;
   }, [crew, movie.media_type]);
+
+  const creators = useMemo(() => {
+    if (movie.media_type !== "tv") return null;
+    if (!movie.created_by?.length) return null;
+    return movie.created_by.map((c) => c.name).join(", ");
+  }, [movie.media_type, movie.created_by]);
 
   const MemoStarringList = useMemo(() => {
     if (isPerson || cast.length === 0) return null;
@@ -139,7 +152,7 @@ export default function Modal({
           initial={{ scale: 0.95, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.95, opacity: 0 }}
-          transition={{ duration: 0.3 }}
+          transition={{ duration: 0.25 }}
           className="relative w-[95vw] max-w-4xl rounded-2xl overflow-hidden shadow-2xl"
         >
           {/* Header */}
@@ -164,31 +177,44 @@ export default function Modal({
           </div>
 
           {/* Content */}
-          <div className="px-4 py-8 sm:p-8 bg-gradient-to-b from-black/80 via-black/60 to-black/90 text-[#80ffcc] max-h-[90vh] overflow-y-auto space-y-6">
+          <div className="px-4 py-8 sm:p-8 bg-gradient-to-b from-black/80 via-black/60 to-black/90 max-h-[90vh] overflow-y-auto space-y-6">
             <div className="flex flex-col sm:flex-row gap-6 pt-6">
               {/* Poster */}
               <img
                 src={displayPoster}
                 alt={title}
-                width={176}
-                height={264}
                 className="w-40 sm:w-44 h-[264px] shrink-0 mx-auto sm:mx-0 rounded-lg shadow-lg object-cover"
                 loading="lazy"
               />
 
               {/* Right column */}
               <div className="flex-1 space-y-4">
-                {/* TEXT BLOCK */}
-                <div className="text-center sm:text-left space-y-4">
+                <div className="space-y-4 text-center sm:text-left">
                   <h2 className="text-3xl sm:text-4xl font-bold">{title}</h2>
 
-                  {!isPerson && (
-                    <div className="text-sm text-zinc-300 space-y-1">
-                      {director && <div>Director: {director}</div>}
-                      {releaseDate && <div>Released: {releaseDate}</div>}
+                  {/* META BOX */}
+                  {movie.media_type !== "person" && (
+                    <div
+                      className="inline-flex flex-wrap items-center gap-2 px-3 py-2
+    rounded-xl bg-zinc-900/60 border border-zinc-700
+    text-xs text-zinc-300"
+                    >
+                      {creators && <span>📺 {creators}</span>}
+                      {director && <span>🎬 {director}</span>}
+                      {releaseDate && <span>📅 {releaseDate}</span>}
+
+                      {movie.vote_average > 0 && (
+                        <span
+                          className="px-2 py-0.5 rounded-full
+        bg-[hsl(var(--foreground))] text-[hsl(var(--background))] font-semibold"
+                        >
+                          ⭐ {movie.vote_average.toFixed(1)}
+                        </span>
+                      )}
                     </div>
                   )}
 
+                  {/* PERSON SUMMARY */}
                   {isPerson && (
                     <div className="rounded-xl bg-zinc-900/60 p-4 border border-zinc-700 text-sm text-zinc-300 space-y-1">
                       {movie.birthday && (
@@ -215,36 +241,58 @@ export default function Modal({
                       )}
                     </div>
                   )}
-                </div>
 
-                {/* BIO BLOCK */}
-                {movie.biography && (
-                  <div className="space-y-3">
-                    <div className="flex justify-center">
+                  {/* BIO BUTTON */}
+                  {isPerson && movie.biography && (
+                    <div className="flex justify-center pt-2">
                       <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
                         onClick={() => setShowFullBio((v) => !v)}
-                        className="px-4 py-2 rounded-full bg-[hsl(var(--foreground))] text-[hsl(var(--background))] font-bold"
+                        whileTap={{ scale: 0.96 }}
+                        className="flex items-center gap-2 px-6 py-3 rounded-full font-semibold
+                          bg-[hsl(var(--foreground))] text-[hsl(var(--background))] text-xl"
                       >
-                        {showFullBio ? <ArrowUp size={22} /> : "BIO"}
+                        <AnimatePresence mode="wait" initial={false}>
+                          {!showFullBio ? (
+                            <motion.span
+                              key="bio"
+                              initial={{ opacity: 0, y: 6 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: -6 }}
+                            >
+                              BIO
+                            </motion.span>
+                          ) : (
+                            <motion.span
+                              key="up"
+                              initial={{ opacity: 0, y: 6 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: -6 }}
+                            >
+                              <ArrowUp size={18} />
+                            </motion.span>
+                          )}
+                        </AnimatePresence>
                       </motion.button>
                     </div>
+                  )}
+                </div>
 
-                    <AnimatePresence>
-                      {showFullBio && (
-                        <motion.div
-                          initial={{ opacity: 0, y: -6 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -6 }}
-                          className="text-sm text-zinc-300 bg-zinc-900/60 p-4 rounded-xl border border-zinc-700 max-h-[300px] overflow-y-auto"
-                        >
-                          {movie.biography}
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                )}
+                {/* BIO PANEL */}
+                <AnimatePresence>
+                  {isPerson && showFullBio && movie.biography && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.35, ease: "easeInOut" }}
+                      className="overflow-hidden"
+                    >
+                      <div className="mt-3 rounded-xl bg-zinc-900/60 p-4 border border-zinc-700 text-sm text-zinc-300 leading-relaxed max-h-[320px] overflow-y-auto">
+                        {movie.biography}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
                 {!isPerson && movie.overview && (
                   <p className="text-zinc-200">{movie.overview}</p>
