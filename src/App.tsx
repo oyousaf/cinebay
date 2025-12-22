@@ -13,7 +13,7 @@ import ExitConfirmModal from "@/components/ExitConfirmModal";
 import { useModalManager } from "@/context/ModalContext";
 
 export default function App() {
-  // --- new viewport stabiliser ---
+  // --- viewport stabiliser ---
   useEffect(() => {
     const setVH = () => {
       document.documentElement.style.setProperty(
