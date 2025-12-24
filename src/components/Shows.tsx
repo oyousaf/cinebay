@@ -5,12 +5,11 @@ import type { Movie } from "@/types/movie";
 
 interface ShowsProps {
   onSelect: (movie: Movie) => void;
-  onWatch: (url: string) => void;
+  onWatch: (movie: Movie) => void;
 }
 
 export default function Shows({ onSelect, onWatch }: ShowsProps) {
   const [shows, setShows] = useState<Movie[]>([]);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let active = true;
@@ -21,8 +20,6 @@ export default function Shows({ onSelect, onWatch }: ShowsProps) {
         if (active) setShows(data);
       } catch (err) {
         console.error("Failed to fetch shows:", err);
-      } finally {
-        if (active) setLoading(false);
       }
     })();
 

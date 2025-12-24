@@ -3,27 +3,32 @@ import { toast } from "sonner";
 
 type MediaType = "movie" | "tv" | "person";
 
+/**
+ * Cache resolved embeds per session + localStorage
+ */
 const embedCache = new Map<string, string>();
 
+/**
+ * ✅ Current VidSrc embed domains (official rotation)
+ */
 const PROVIDERS = [
-  "vidsrc.to",
-  "vidsrc.xyz",
-  "vidsrc.net",
-  "vidsrc.vc",
-  "vidsrc.pm",
-  "vidsrc.in",
-  "vidsrc.io",
+  "vidsrc-embed.ru",
+  "vidsrc-embed.su",
+  "vidsrcme.su",
+  "vsrc.su",
 ];
 
-// Heuristic markers that indicate provider failure pages
+/**
+ * Heuristic markers that indicate failure / placeholder pages
+ */
 const INVALID_MARKERS = [
   "not found",
   "video not found",
   "file not found",
   "404",
-  "error",
   "removed",
   "unavailable",
+  "no stream",
 ];
 
 export function useVideoEmbed(id?: number, type?: MediaType): string | null {
@@ -40,7 +45,7 @@ export function useVideoEmbed(id?: number, type?: MediaType): string | null {
 
     const cacheKey = `${type}:${id}`;
 
-    // 1️⃣ Cache lookup
+    /* ---------- Cache lookup ---------- */
     const cached =
       embedCache.get(cacheKey) ?? localStorage.getItem(`embed:${cacheKey}`);
 
@@ -50,13 +55,14 @@ export function useVideoEmbed(id?: number, type?: MediaType): string | null {
       return;
     }
 
+    /* ---------- Hidden probe iframe ---------- */
     let iframe: HTMLIFrameElement | null = document.createElement("iframe");
     iframe.style.display = "none";
     document.body.appendChild(iframe);
 
     let index = 0;
-    let timeoutId: ReturnType<typeof setTimeout> | null = null;
     let resolved = false;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
     const cleanup = () => {
       if (timeoutId) clearTimeout(timeoutId);
@@ -76,7 +82,14 @@ export function useVideoEmbed(id?: number, type?: MediaType): string | null {
         return;
       }
 
-      const url = `https://${PROVIDERS[index]}/embed/${type}/${id}`;
+      const provider = PROVIDERS[index];
+      const url = `https://${provider}/embed/${type}/${id}`;
+
+      console.log(
+        `[useVideoEmbed] trying ${index + 1}/${PROVIDERS.length}:`,
+        provider
+      );
+
       iframe.src = url;
 
       timeoutId = setTimeout(() => {
@@ -89,18 +102,19 @@ export function useVideoEmbed(id?: number, type?: MediaType): string | null {
       if (!iframe || resolved) return;
 
       try {
-        const doc = iframe.contentDocument;
-        const text = doc?.body?.innerText?.toLowerCase() ?? "";
+        const text =
+          iframe.contentDocument?.body?.innerText?.toLowerCase() ?? "";
 
         const invalid = INVALID_MARKERS.some((m) => text.includes(m));
 
         if (invalid) {
+          console.warn("[useVideoEmbed] rejected:", PROVIDERS[index]);
           index++;
           tryNext();
           return;
         }
 
-        // ✅ Valid embed confirmed
+        // ✅ Valid embed
         resolved = true;
         embedCache.set(cacheKey, iframe.src);
         localStorage.setItem(`embed:${cacheKey}`, iframe.src);
@@ -116,6 +130,7 @@ export function useVideoEmbed(id?: number, type?: MediaType): string | null {
     };
 
     iframe.onerror = () => {
+      console.warn("[useVideoEmbed] iframe error:", PROVIDERS[index]);
       index++;
       tryNext();
     };

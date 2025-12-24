@@ -12,9 +12,11 @@ export default function Banner({
 }: {
   item: Movie;
   onSelect: (movie: Movie) => void;
-  onWatch: (url: string) => void;
+  onWatch: (movie: Movie) => void;
 }) {
+  // Used ONLY to determine readiness
   const embedUrl = useVideoEmbed(item.id, item.media_type);
+
   const { toggleWatchlist, isInWatchlist } = useWatchlist();
   const isSaved = isInWatchlist(item.id);
 
@@ -33,7 +35,7 @@ export default function Banner({
 
   const childVariants: Variants = {
     hidden: { opacity: 0, y: 10 },
-    show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: "easeOut" } },
+    show: { opacity: 1, y: 0, transition: { duration: 0.3 } },
   };
 
   return (
@@ -45,25 +47,20 @@ export default function Banner({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.4, ease: "easeOut" }}
+          transition={{ duration: 0.4 }}
           className="absolute inset-0 z-0"
         >
-          {item.backdrop_path ? (
-            <img
-              src={`https://image.tmdb.org/t/p/original${item.backdrop_path}`}
-              alt={item.title || item.name}
-              className="w-full h-full object-cover"
-              loading="lazy"
-            />
-          ) : (
-            <img
-              src="/fallback-bg.png"
-              alt="Fallback background"
-              className="w-full h-full object-cover"
-              loading="lazy"
-            />
-          )}
-          <div className="absolute inset-0 z-0 bg-gradient-to-t from-black via-black/70 to-transparent" />
+          <img
+            src={
+              item.backdrop_path
+                ? `https://image.tmdb.org/t/p/original${item.backdrop_path}`
+                : "/fallback-bg.png"
+            }
+            alt={item.title || item.name}
+            className="w-full h-full object-cover"
+            loading="lazy"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/70 to-transparent" />
         </motion.div>
       </AnimatePresence>
 
@@ -73,24 +70,16 @@ export default function Banner({
         variants={containerVariants}
         initial="hidden"
         animate="show"
-        key={`overlay-${item.id}`}
       >
         <motion.h2
-          className="font-extrabold mb-5 text-[#80ffcc] drop-shadow-md text-[clamp(1.9rem,4.5vw,3.1rem)] tracking-tight md:tracking-normal"
+          className="font-extrabold mb-5 text-[#80ffcc] text-[clamp(1.9rem,4.5vw,3.1rem)]"
           variants={childVariants}
         >
           {item.title || item.name}
         </motion.h2>
 
         <motion.p
-          className="text-gray-200 leading-relaxed text-[clamp(0.9rem,1.2vw+0.5rem,1.25rem)] max-w-4xl rounded-lg p-4 md:p-5 mb-8
-          sm:overflow-visible sm:h-auto lg:h-[7.5rem] lg:overflow-y-auto xl:overflow-visible xl:h-auto scrollbar-thin scrollbar-thumb-zinc-700 
-          scrollbar-track-transparent lg:border lg:border-zinc-700/60 lg:bg-black/25 lg:shadow-inner"
-          style={{
-            WebkitOverflowScrolling: "touch",
-            overscrollBehavior: "contain",
-            contain: "layout paint",
-          }}
+          className="text-gray-200 max-w-4xl mb-8"
           variants={childVariants}
         >
           {item.overview}
@@ -102,44 +91,38 @@ export default function Banner({
           variants={childVariants}
         >
           <motion.button
+            disabled={!embedUrl}
             whileHover={{ scale: embedUrl ? 1.05 : 1 }}
             whileTap={{ scale: embedUrl ? 0.95 : 1 }}
-            disabled={!embedUrl}
-            onClick={() => embedUrl && onWatch(embedUrl)}
-            className={`flex items-center justify-center gap-2 px-6 py-3 rounded-full transition 
-              text-[clamp(1rem,1.2vw+0.5rem,1.25rem)] font-semibold
+            onClick={() => onWatch(item)}
+            className={`flex items-center gap-2 px-6 py-3 rounded-full font-semibold
               ${
                 embedUrl
-                  ? "bg-[hsl(var(--foreground))] hover:bg-[hsl(var(--foreground))]/90 text-[hsl(var(--background))]"
+                  ? "bg-[hsl(var(--foreground))] text-[hsl(var(--background))]"
                   : "bg-gray-600/50 text-gray-400 cursor-not-allowed"
               }`}
           >
-            {!embedUrl ? "Loading…" : <FaPlay size={24} />}
+            {!embedUrl ? "Loading…" : <FaPlay size={22} />}
           </motion.button>
 
           <motion.button
             whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.95 }}
             onClick={() => onSelect(item)}
-            className="bg-[hsl(var(--foreground))] text-[hsl(var(--background))] p-3 rounded-full transition shadow-md"
+            className="bg-[hsl(var(--foreground))] text-[hsl(var(--background))] p-3 rounded-full"
           >
             <FaInfoCircle size={22} />
           </motion.button>
 
           <motion.button
             whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
             onClick={() => toggleWatchlist(item)}
-            aria-label={isSaved ? "Remove from Watchlist" : "Add to Watchlist"}
             aria-pressed={isSaved}
-            className="bg-[hsl(var(--foreground))] text-[hsl(var(--background))] p-3 rounded-full transition shadow-md"
+            className="bg-[hsl(var(--foreground))] text-[hsl(var(--background))] p-3 rounded-full"
           >
             <Bookmark
               size={22}
               strokeWidth={isSaved ? 3 : 2}
-              className={
-                isSaved ? "fill-[hsl(var(--background))]" : "fill-none"
-              }
+              className={isSaved ? "fill-current" : "fill-none"}
             />
           </motion.button>
         </motion.div>
