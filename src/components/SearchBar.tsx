@@ -2,33 +2,56 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { motion, AnimatePresence, useAnimation } from "framer-motion";
 import { Search, Loader2 } from "lucide-react";
 import debounce from "lodash.debounce";
+import React from "react";
 
 import { fetchDetails, fetchFromProxy } from "@/lib/tmdb";
 import type { Movie } from "@/types/movie";
-
-import React from "react";
 
 const SearchBar: React.FC<{
   onSelectMovie: (movie: Movie) => void;
   onSelectPerson?: (person: Movie) => void;
 }> = React.memo(({ onSelectMovie, onSelectPerson }) => {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<TMDBResult[]>([]);
+  const [results, setResults] = useState<Movie[]>([]);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const iconControls = useAnimation();
   const resultsRef = useRef<HTMLDivElement>(null);
 
-  // 🔹 Animation variants
+  /* ================= Keyboard Isolation ================= */
+
+  const stopWASDPropagation = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (["w", "a", "s", "d", "W", "A", "S", "D"].includes(e.key)) {
+      e.stopPropagation();
+    }
+  };
+
+  /* ================= Loading Icon Animation ================= */
+
+  useEffect(() => {
+    if (loading) {
+      iconControls.start({
+        rotate: 360,
+        transition: {
+          repeat: Infinity,
+          duration: 1,
+          ease: "linear",
+        },
+      });
+    } else {
+      iconControls.stop();
+      iconControls.set({ rotate: 0 });
+    }
+  }, [loading, iconControls]);
+
+  /* ================= Animations ================= */
+
   const listVariants = {
     hidden: { opacity: 0 },
     show: {
       opacity: 1,
-      transition: {
-        staggerChildren: 0.08,
-        delayChildren: 0.1,
-      },
+      transition: { staggerChildren: 0.08, delayChildren: 0.1 },
     },
     exit: {
       opacity: 0,
@@ -42,11 +65,11 @@ const SearchBar: React.FC<{
     exit: { opacity: 0, y: -6 },
   };
 
-  // 🔹 Debounced TMDB search
+  /* ================= Debounced Search ================= */
+
   const debouncedSearch = useRef(
     debounce(async (term: string) => {
       if (!term.trim()) {
-        setResults([]);
         setDropdownOpen(false);
         return;
       }
@@ -56,10 +79,11 @@ const SearchBar: React.FC<{
         const data = await fetchFromProxy(
           `/search/multi?query=${encodeURIComponent(term)}`
         );
-        setResults(data?.results?.slice(0, 10) || []);
+
+        setResults((data?.results || []).slice(0, 10));
         setDropdownOpen(true);
       } catch (err) {
-        console.error("❌ TMDB Search Failed", err);
+        console.error("TMDB search failed", err);
       } finally {
         setLoading(false);
       }
@@ -68,9 +92,10 @@ const SearchBar: React.FC<{
 
   useEffect(() => {
     debouncedSearch(query);
-  }, [query]);
+  }, [query, debouncedSearch]);
 
-  // 🔹 Close on outside click or ESC
+  /* ================= Outside / ESC Handling ================= */
+
   useEffect(() => {
     const clickOutside = (e: MouseEvent) => {
       if (
@@ -80,24 +105,26 @@ const SearchBar: React.FC<{
         setDropdownOpen(false);
       }
     };
+
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        setQuery("");
         setDropdownOpen(false);
       }
     };
 
     document.addEventListener("mousedown", clickOutside);
     document.addEventListener("keydown", handleEsc);
+
     return () => {
       document.removeEventListener("mousedown", clickOutside);
       document.removeEventListener("keydown", handleEsc);
     };
   }, []);
 
-  // 🔹 Handle selection → fetch details → open modal
+  /* ================= Selection ================= */
+
   const handleSelect = useCallback(
-    async (item: TMDBResult) => {
+    async (item: Movie) => {
       const full = await fetchDetails(item.id, item.media_type);
       if (!full) return;
 
@@ -107,20 +134,18 @@ const SearchBar: React.FC<{
         onSelectMovie(full);
       }
 
-      setQuery("");
-      setResults([]);
+      // Preserve query + cached results
       setDropdownOpen(false);
     },
     [onSelectMovie, onSelectPerson]
   );
 
+  /* ================= Render ================= */
+
   return (
     <div className="w-full flex flex-col items-center relative">
       {/* Search Input */}
       <motion.form
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ delay: 0.2, duration: 0.4, ease: "easeOut" }}
         onSubmit={(e) => {
           e.preventDefault();
           debouncedSearch.cancel();
@@ -134,39 +159,38 @@ const SearchBar: React.FC<{
       >
         <motion.input
           type="text"
-          name="search"
-          placeholder="Search movies, shows, people..."
           value={query}
+          placeholder="Search movies, shows, people..."
           onChange={(e) => setQuery(e.target.value)}
+          onKeyDownCapture={stopWASDPropagation}
           autoFocus
-          whileFocus={{ scale: 1.02 }}
           className="flex-1 bg-transparent outline-none text-base md:text-lg placeholder:text-gray-500"
           style={{ color: "hsl(var(--foreground))" }}
         />
+
         <motion.button
           type="submit"
-          whileTap={{ scale: 0.97 }}
-          whileHover={{ scale: 1.12 }}
           disabled={loading}
+          whileHover={{ scale: 1.12 }}
+          whileTap={{ scale: 0.97 }}
           className="h-10 w-10 flex items-center justify-center rounded-full"
-          style={{ color: "hsl(var(--foreground))" }}
         >
           {loading ? (
-            <Loader2 className="h-5 w-5 animate-spin" />
-          ) : (
             <motion.span animate={iconControls}>
-              <Search className="h-5 w-5" />
+              <Loader2 className="h-5 w-5" />
             </motion.span>
+          ) : (
+            <Search className="h-5 w-5" />
           )}
         </motion.button>
       </motion.form>
 
-      {/* Dropdown Results */}
+      {/* Results Dropdown */}
       <AnimatePresence>
         {dropdownOpen && (
           <motion.div
             ref={resultsRef}
-            className="absolute top-full mt-2 w-full max-h-80 overflow-y-auto rounded-lg shadow-lg bg-[hsl(var(--background))] text-[hsl(var(--foreground))] z-50 divide-y divide-[hsl(var(--foreground))]/10"
+            className="absolute top-full mt-2 w-full max-h-80 overflow-y-auto rounded-lg shadow-lg bg-[hsl(var(--background))] z-50 divide-y divide-[hsl(var(--foreground))]/10"
             role="listbox"
             initial="hidden"
             animate="show"
@@ -175,26 +199,30 @@ const SearchBar: React.FC<{
           >
             {loading && (
               <div className="p-6 text-center">
-                <Loader2 className="h-6 w-6 animate-spin mx-auto text-[hsl(var(--foreground))]" />
+                <Loader2 className="h-6 w-6 animate-spin mx-auto" />
               </div>
             )}
+
             {!loading && results.length === 0 && query.trim() && (
               <div className="p-3 text-sm text-center">No results found.</div>
             )}
+
             {results.map((item) => {
               const image =
                 item.media_type === "person"
                   ? item.profile_path
                   : item.poster_path;
+
               const name = item.title || item.name || "Unknown";
+
               return (
                 <motion.div
                   key={`${item.media_type}-${item.id}`}
                   role="option"
                   tabIndex={0}
-                  className="flex items-center gap-3 px-4 py-2 hover:bg-[hsl(var(--foreground))]/10 cursor-pointer"
-                  onClick={() => handleSelect(item)}
                   variants={itemVariants}
+                  onClick={() => handleSelect(item)}
+                  className="flex items-center gap-3 px-4 py-2 cursor-pointer hover:bg-[hsl(var(--foreground))]/10"
                 >
                   <img
                     src={
@@ -204,13 +232,11 @@ const SearchBar: React.FC<{
                     }
                     alt={name}
                     loading="lazy"
-                    className={`w-10 h-14 object-cover rounded-md ${
-                      image ? "" : "opacity-70 blur-sm"
-                    }`}
+                    className="w-10 h-14 object-cover rounded-md"
                   />
                   <div className="flex flex-col">
                     <span className="font-medium text-sm">{name}</span>
-                    <span className="text-xs text-zinc-400 uppercase">
+                    <span className="text-xs uppercase opacity-60">
                       {item.media_type}
                     </span>
                   </div>
@@ -225,12 +251,3 @@ const SearchBar: React.FC<{
 });
 
 export default SearchBar;
-
-type TMDBResult = {
-  id: number;
-  title?: string;
-  name?: string;
-  media_type: "movie" | "tv" | "person";
-  poster_path?: string;
-  profile_path?: string;
-};
