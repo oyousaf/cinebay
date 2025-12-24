@@ -15,34 +15,11 @@ THREE_MONTHS_AGO.setMonth(THREE_MONTHS_AGO.getMonth() - 3);
 const ONE_MONTH_AGO = new Date();
 ONE_MONTH_AGO.setMonth(ONE_MONTH_AGO.getMonth() - 1);
 
-// Excluded genres
-const EXCLUDED_GENRE_IDS = new Set([
-  16, 10751, 10762, 10402, 10749, 10763, 10764, 10766, 10767, 37,
-]);
-
-const GENRE_MAP: Record<string, number> = {
-  Animation: 16,
-  Family: 10751,
-  Kids: 10762,
-  Music: 10402,
-  Romance: 10749,
-  News: 10763,
-  Reality: 10764,
-  Soap: 10766,
-  Talk: 10767,
-  Western: 37,
-};
-
-const genreToId = (name: string) => GENRE_MAP[name] ?? -1;
-
 // ================================
 // HELPERS
 // ================================
 const extractGenres = (d: any) =>
   Array.isArray(d.genres) ? d.genres.map((g: any) => g.name) : [];
-
-const isAllowedContent = (genres: string[]) =>
-  !genres.some((g) => EXCLUDED_GENRE_IDS.has(genreToId(g)));
 
 const isNewMovie = (date: string) => date && new Date(date) >= ONE_MONTH_AGO;
 const isWithin3Months = (date: string) =>
@@ -80,7 +57,6 @@ function toMovie(detail: any, type: "movie" | "tv" | "person"): Movie {
     runtime: detail.runtime ?? null,
     original_language: detail.original_language ?? "",
 
-    // TV creators (only exists on TV detail endpoint)
     created_by: detail.created_by ?? [],
 
     credits: {
@@ -88,7 +64,6 @@ function toMovie(detail: any, type: "movie" | "tv" | "person"): Movie {
       crew: detail.credits?.crew ?? [],
     },
 
-    // person fields
     biography: detail.biography,
     birthday: detail.birthday,
     deathday: detail.deathday,
@@ -139,7 +114,7 @@ async function fetchAllPages(endpoint: string, max = 3) {
 }
 
 // ================================
-// DETAILS
+// DETAILS (AUTHORITATIVE)
 // ================================
 export async function fetchDetails(
   id: number,
@@ -163,7 +138,7 @@ const empty = (t: "movie" | "tv"): Movie => ({
   profile_path: "",
   release_date: "",
   vote_average: 0,
-  vote_count: 0, // ✅ fixed
+  vote_count: 0,
   media_type: t,
   genres: [],
   runtime: null,
@@ -200,9 +175,7 @@ export async function fetchMovies(): Promise<Movie[]> {
     filtered.map((m: any) => fetchDetails(m.id, "movie"))
   );
 
-  const final = (detailed.filter(Boolean) as Movie[]).filter((m) =>
-    isAllowedContent(m.genres)
-  );
+  const final = detailed.filter(Boolean) as Movie[];
 
   final.forEach((m) => {
     m.status = isNewMovie(m.release_date) ? "new" : undefined;
@@ -231,9 +204,7 @@ export async function fetchShows(): Promise<Movie[]> {
       .map((s) => fetchDetails(s.id, "tv"))
   );
 
-  const final = (detailed.filter(Boolean) as Movie[]).filter((s) =>
-    isAllowedContent(s.genres)
-  );
+  const final = detailed.filter(Boolean) as Movie[];
 
   final.forEach((s) => {
     const seasons = s.seasons ?? [];
