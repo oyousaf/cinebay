@@ -17,9 +17,11 @@ interface NavigationContextType {
   updateRailLength: (index: number, length: number) => void;
   resetNavigation: () => void;
 
-  /** 🧱 Modal control **/
   isModalOpen: boolean;
   setModalOpen: (open: boolean) => void;
+
+  navigationLocked: boolean;
+  setNavigationLocked: (locked: boolean) => void;
 }
 
 const NavigationContext = createContext<NavigationContextType | null>(null);
@@ -28,10 +30,11 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   const [rails, setRails] = useState<number[]>([]);
   const [focus, setFocus] = useState<FocusTarget>({ section: 0, index: 0 });
   const [isModalOpen, setModalOpen] = useState(false);
+  const [navigationLocked, setNavigationLocked] = useState(false);
 
   const railCount = useRef(0);
 
-  /** ---------- Rail registration ---------- */
+  /* ---------- Rail registration ---------- */
   const registerRail = useCallback((length: number) => {
     const index = railCount.current;
     railCount.current += 1;
@@ -57,25 +60,35 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     setFocus({ section: 0, index: 0 });
   }, []);
 
-  /** ---------- Key handler ---------- */
+  /* ---------- Key handler ---------- */
   const handleKey = useCallback(
     (e: KeyboardEvent) => {
       if (isModalOpen) return;
 
+      const key = e.key;
+
+      const isWASD =
+        key === "w" ||
+        key === "W" ||
+        key === "a" ||
+        key === "A" ||
+        key === "s" ||
+        key === "S" ||
+        key === "d" ||
+        key === "D";
+
+      if (navigationLocked && isWASD) return;
+
       setFocus((prev) => {
         let next = { ...prev };
         const maxIndex = rails[prev.section] ? rails[prev.section] - 1 : 0;
-        const key = e.key;
 
-        // horizontal
         if (key === "ArrowRight" || key === "d" || key === "D") {
           next.index = Math.min(prev.index + 1, maxIndex);
         }
         if (key === "ArrowLeft" || key === "a" || key === "A") {
           next.index = Math.max(prev.index - 1, 0);
         }
-
-        // vertical
         if (key === "ArrowDown" || key === "s" || key === "S") {
           if (prev.section < rails.length - 1) {
             next.section = prev.section + 1;
@@ -92,10 +105,10 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
         return next;
       });
     },
-    [rails, isModalOpen]
+    [rails, isModalOpen, navigationLocked]
   );
 
-  /** ---------- Lifecycle ---------- */
+  /* ---------- Lifecycle ---------- */
   useEffect(() => {
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
@@ -111,6 +124,8 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
         resetNavigation,
         isModalOpen,
         setModalOpen,
+        navigationLocked,
+        setNavigationLocked,
       }}
     >
       {children}
