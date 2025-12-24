@@ -37,28 +37,22 @@ const WatchlistTile = React.memo(function WatchlistTile({
   const showStatus = movie.status === "new" || movie.status === "renewed";
 
   return (
-    <motion.div
+    <motion.button
       layout
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.95, x: -40 }}
-      transition={{ duration: 0.25, ease: "easeOut" }}
-      tabIndex={0}
+      type="button"
       onClick={() => {
         onFocus();
         if (embedUrl) onWatch(embedUrl);
       }}
-      whileHover={{
-        scale: 1.03,
-        transition: { type: "spring", stiffness: 240, damping: 18 },
-      }}
-      className={`relative group cursor-pointer rounded-xl overflow-hidden bg-black/70 backdrop-blur-sm transition-all duration-300 
+      whileHover={{ scale: 1.03 }}
+      whileTap={{ scale: 0.98 }}
+      className={`relative group rounded-xl overflow-hidden bg-black/70 backdrop-blur-sm
         ${
           isFocused
-            ? "ring-4 ring-[#80ffcc] shadow-pulse scale-[1.04]"
-            : "hover:ring-2 hover:ring-[#80ffcc]/40"
-        }
-      `}
+            ? "ring-4 ring-[#80ffcc] shadow-pulse z-40"
+            : "hover:ring-2 hover:ring-[#80ffcc]/40 z-10"
+        }`}
+      aria-selected={isFocused}
     >
       <img
         src={
@@ -72,19 +66,18 @@ const WatchlistTile = React.memo(function WatchlistTile({
         onError={(e) => ((e.target as HTMLImageElement).src = "/fallback.jpg")}
       />
 
-      {/* STATUS BADGE */}
       {showStatus && (
         <div
           className="absolute top-2 left-2 bg-[hsl(var(--foreground))]
           text-[hsl(var(--background))] text-[10px] md:text-xs font-bold
-          px-2 py-0.5 rounded-full uppercase shadow-md shadow-pulse tracking-wide"
+          px-2 py-0.5 rounded-full uppercase shadow-md"
         >
           {movie.status!.toUpperCase()}
         </div>
       )}
 
-      {/* REMOVE BUTTON */}
       <motion.button
+        type="button"
         onClick={(e) => {
           e.stopPropagation();
           onRemove();
@@ -92,16 +85,16 @@ const WatchlistTile = React.memo(function WatchlistTile({
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
         className="absolute top-2 right-2 p-2 bg-red-500/20 text-red-400
-          rounded-full shadow hover:bg-red-500/30 transition focus:ring-2 focus:ring-red-400/50"
+          rounded-full hover:bg-red-500/30 transition"
         aria-label="Remove from Watchlist"
       >
         <X size={18} strokeWidth={2.3} />
       </motion.button>
-    </motion.div>
+    </motion.button>
   );
 });
 
-/* ---------- Main Watchlist ---------- */
+/* ---------- Main ---------- */
 export default function Watchlist({
   onWatch,
   onSelect,
@@ -111,7 +104,6 @@ export default function Watchlist({
 }) {
   const { watchlist, toggleWatchlist } = useWatchlist();
 
-  /* ---------- Filters ---------- */
   const [filters, setFilters] = useState<FilterState>(() => {
     try {
       const stored = localStorage.getItem("watchlistFilters");
@@ -125,12 +117,11 @@ export default function Watchlist({
     localStorage.setItem("watchlistFilters", JSON.stringify(filters));
   }, [filters]);
 
-  /* ---------- Sort + Filter ---------- */
   const filteredList = watchlist
     .filter((m) => filters.type === "all" || m.media_type === filters.type)
     .sort((a, b) => {
-      const titleA = a.title || a.name || "";
-      const titleB = b.title || b.name || "";
+      const ta = a.title || a.name || "";
+      const tb = b.title || b.name || "";
       switch (filters.sortBy) {
         case "rating-desc":
           return (b.vote_average ?? 0) - (a.vote_average ?? 0);
@@ -140,104 +131,47 @@ export default function Watchlist({
             new Date(a.release_date || "").getTime()
           );
         case "title-asc":
-          return titleA.localeCompare(titleB);
+          return ta.localeCompare(tb);
         case "title-desc":
-          return titleB.localeCompare(titleA);
+          return tb.localeCompare(ta);
         default:
           return 0;
       }
     });
 
-  /* ---------- Navigation ---------- */
   const { focus, setFocus, registerRail, updateRailLength } = useNavigation();
   const [railIndex, setRailIndex] = useState<number | null>(null);
-  const tileRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => {
     if (railIndex === null) {
-      const idx = registerRail(filteredList.length);
-      setRailIndex(idx);
+      setRailIndex(registerRail(filteredList.length));
     } else {
       updateRailLength(railIndex, filteredList.length);
     }
   }, [filteredList.length, railIndex, registerRail, updateRailLength]);
 
-  useEffect(() => {
-    if (railIndex !== null && focus.section === railIndex) {
-      const el = tileRefs.current[focus.index];
-      el?.scrollIntoView({
-        behavior: "smooth",
-        block: "nearest",
-        inline: "nearest",
-      });
-    }
-  }, [focus, railIndex]);
-
-  /* ---------- Keyboard ---------- */
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (railIndex === null || focus.section !== railIndex) return;
-
-      const movie = filteredList[focus.index];
-      if (!movie) return;
-
-      switch (e.key) {
-        case "i":
-        case "Info":
-          e.preventDefault();
-          onSelect(movie);
-          break;
-
-        case "Enter":
-        case "Return":
-        case "p":
-        case "MediaPlayPause":
-          e.preventDefault();
-          const url = useVideoEmbed(movie.id, movie.media_type);
-          if (url) onWatch(url);
-          break;
-      }
-    }
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [focus, railIndex, filteredList, onSelect, onWatch]);
-
-  /* ---------- UI ---------- */
   return (
-    <div className="min-h-screen w-full bg-gradient-to-b from-foreground via-foreground to-black">
+    <div className="min-h-screen w-full">
       <AnimatePresence mode="wait">
         <motion.main
-          key="watchlist"
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 40 }}
-          transition={{ duration: 0.6, ease: "easeOut" }}
-          className="pt-10 md:pt-14 px-4 max-w-6xl mx-auto pb-12"
+          transition={{ duration: 0.6 }}
+          className="pt-10 px-4 max-w-6xl mx-auto pb-12"
         >
-          <h1 className="text-3xl md:text-4xl font-bold mb-6 tracking-wide text-center">
+          <h1 className="text-3xl md:text-4xl font-bold mb-6 text-center">
             Watchlist
           </h1>
 
           {watchlist.length === 0 ? (
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.2 }}
-              className="italic font-heading text-3xl md:text-4xl font-bold mb-8 text-center tracking-wide drop-shadow-md"
-            >
-              Plot twist: you haven’t added anything yet.
-            </motion.p>
+            <p className="text-center text-2xl italic">
+              Plot twist: nothing saved yet.
+            </p>
           ) : (
             <>
               {/* Filters */}
-              <motion.div
-                layout
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, ease: "easeOut" }}
-                className="mb-6 flex flex-wrap justify-center items-center gap-4 text-base md:text-lg"
-              >
+              <div className="mb-6 flex flex-wrap justify-center gap-4">
                 <select
                   value={filters.sortBy}
                   onChange={(e) =>
@@ -246,8 +180,7 @@ export default function Watchlist({
                       sortBy: e.target.value as FilterState["sortBy"],
                     }))
                   }
-                  className="rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] border border-[hsl(var(--foreground))]/40 px-3 py-2 shadow-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-[hsl(var(--foreground))]/60 transition"
-                  aria-label="Sort by"
+                  className="px-3 py-2 rounded-md"
                 >
                   <option value="rating-desc">Top Rated</option>
                   <option value="newest">Newest</option>
@@ -263,49 +196,41 @@ export default function Watchlist({
                       type: e.target.value as FilterState["type"],
                     }))
                   }
-                  className="rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] border border-[hsl(var(--foreground))]/40 px-3 py-2 shadow-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-[hsl(var(--foreground))]/60 transition"
-                  aria-label="Filter by type"
+                  className="px-3 py-2 rounded-md"
                 >
-                  <option value="all">All Types</option>
+                  <option value="all">All</option>
                   <option value="movie">Movies</option>
-                  <option value="tv">TV Shows</option>
+                  <option value="tv">TV</option>
                 </select>
 
                 <button
                   onClick={() => setFilters(defaultFilters)}
-                  className="p-2 rounded-full border bg-[hsl(var(--foreground))] text-[hsl(var(--background))] hover:bg-[hsl(var(--foreground))]/90 hover:shadow-[0_0_8px_hsla(var(--foreground)/0.4)] transition flex items-center justify-center"
-                  aria-label="Reset filters"
+                  className="p-2 rounded-full"
                 >
-                  <RefreshCw className="w-5 h-5" strokeWidth={2.5} />
+                  <RefreshCw size={20} />
                 </button>
-              </motion.div>
+              </div>
 
               {/* Grid */}
-              <motion.div
-                layout
-                className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-7 auto-rows-fr gap-3 md:gap-4 px-1"
-              >
-                <AnimatePresence mode="sync">
-                  {filteredList.map((movie, idx) => {
-                    const isFocused =
-                      railIndex !== null &&
-                      focus.section === railIndex &&
-                      focus.index === idx;
-
-                    return (
-                      <WatchlistTile
-                        key={movie.id}
-                        movie={movie}
-                        isFocused={isFocused}
-                        onFocus={() => {
-                          if (railIndex !== null)
-                            setFocus({ section: railIndex, index: idx });
-                        }}
-                        onWatch={onWatch}
-                        onRemove={() => toggleWatchlist(movie)}
-                      />
-                    );
-                  })}
+              <motion.div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-7 gap-3">
+                <AnimatePresence>
+                  {filteredList.map((movie, idx) => (
+                    <WatchlistTile
+                      key={movie.id}
+                      movie={movie}
+                      isFocused={
+                        railIndex !== null &&
+                        focus.section === railIndex &&
+                        focus.index === idx
+                      }
+                      onFocus={() =>
+                        railIndex !== null &&
+                        setFocus({ section: railIndex, index: idx })
+                      }
+                      onWatch={onWatch}
+                      onRemove={() => toggleWatchlist(movie)}
+                    />
+                  ))}
                 </AnimatePresence>
               </motion.div>
             </>

@@ -5,11 +5,12 @@ import type { Movie } from "@/types/movie";
 
 interface MoviesProps {
   onSelect: (movie: Movie) => void;
-  onWatch: (movie: Movie) => void;
+  onWatch: (url: string) => void;
 }
 
 export default function Movies({ onSelect, onWatch }: MoviesProps) {
   const [movies, setMovies] = useState<Movie[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let active = true;
@@ -20,6 +21,8 @@ export default function Movies({ onSelect, onWatch }: MoviesProps) {
         if (active) setMovies(data);
       } catch (err) {
         console.error("Failed to fetch movies:", err);
+      } finally {
+        if (active) setLoading(false);
       }
     })();
 

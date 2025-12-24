@@ -6,11 +6,16 @@ import Banner from "./Banner";
 import { useNavigation } from "@/hooks/useNavigation";
 import { Loader2 } from "lucide-react";
 
+/* ---------- util ---------- */
+function buildEmbedUrl(mediaType: string, id: number) {
+  return `https://vidsrc.to/embed/${mediaType}/${id}`;
+}
+
 interface ContentRailProps {
   title: string;
   items: Movie[];
   onSelect: (movie: Movie) => void;
-  onWatch: (movie: Movie) => void;
+  onWatch: (url: string) => void;
 }
 
 /* ---------- Tile ---------- */
@@ -34,7 +39,7 @@ const Tile = React.memo(function Tile({
       aria-selected={isFocused}
       role="listitem"
       className={`relative shrink-0 rounded-lg focus:outline-none snap-center
-        ${isFocused ? "ring-4 ring-[#80ffcc] shadow-pulse z-[100]" : "z-10"}`}
+        ${isFocused ? "ring-4 ring-[#80ffcc] shadow-pulse z-40" : "z-10"}`}
       animate={
         isFocused ? { scale: 1.1, opacity: 1 } : { scale: 1, opacity: 0.7 }
       }
@@ -60,9 +65,14 @@ const Tile = React.memo(function Tile({
 
       {showStatus && (
         <div
-          className="absolute top-2 left-2 bg-[hsl(var(--foreground))]
-          text-[hsl(var(--background))] text-[10px] md:text-xs font-bold
-          px-2 py-0.5 rounded-full uppercase shadow-md shadow-pulse"
+          className="
+            absolute top-2 left-2
+            bg-[hsl(var(--foreground))]
+            text-[hsl(var(--background))]
+            text-[10px] md:text-xs font-bold
+            px-2 py-0.5 rounded-full uppercase
+            shadow-md shadow-pulse
+          "
         >
           {movie.status!.toUpperCase()}
         </div>
@@ -103,7 +113,7 @@ export default function ContentRail({
     [railIndex, setFocus]
   );
 
-  /* ---------- Sync focus ---------- */
+  /* ---------- Keep focused tile centered ---------- */
   useEffect(() => {
     if (railIndex === null) return;
 
@@ -111,6 +121,7 @@ export default function ContentRail({
 
     if (items.length > 0 && focus.section === railIndex) {
       const focusedMovie = items[focus.index];
+
       if (focusedMovie && focusedMovie.id !== activeItem?.id) {
         setActiveItem(focusedMovie);
       }
@@ -131,7 +142,17 @@ export default function ContentRail({
     }
   }, [items, focus, railIndex, updateRailLength, activeItem]);
 
-  /* ---------- Keyboard ---------- */
+  /* ---------- Default first focus ---------- */
+  useEffect(() => {
+    if (!activeItem && items.length > 0 && focus.section !== railIndex) {
+      setActiveItem(items[0]);
+      if (railIndex !== null) {
+        setFocus({ section: railIndex, index: 0 });
+      }
+    }
+  }, [items, activeItem, railIndex, focus.section, setFocus]);
+
+  /* ---------- Keyboard Navigation ---------- */
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (railIndex === null || focus.section !== railIndex) return;
@@ -141,15 +162,17 @@ export default function ContentRail({
 
       switch (e.key) {
         case "i":
+        case "Info":
           e.preventDefault();
           onSelect(movie);
           break;
 
         case "Enter":
+        case "Return":
         case "p":
         case "MediaPlayPause":
           e.preventDefault();
-          onWatch(movie);
+          onWatch(buildEmbedUrl(movie.media_type, movie.id));
           break;
       }
     }
@@ -158,35 +181,90 @@ export default function ContentRail({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [focus, railIndex, items, onSelect, onWatch]);
 
+  /* ---------- Gamepad Support ---------- */
+  useEffect(() => {
+    let rafId: number;
+    let pressedA = false;
+    let pressedB = false;
+
+    const pollGamepad = () => {
+      const gamepads = navigator.getGamepads?.();
+      if (!gamepads) return;
+
+      const gp = gamepads[0];
+      if (gp) {
+        const aPressed = gp.buttons[0]?.pressed;
+        const bPressed = gp.buttons[1]?.pressed;
+
+        if (aPressed && !pressedA) {
+          pressedA = true;
+          const movie = items[focus.index];
+          if (movie) onWatch(buildEmbedUrl(movie.media_type, movie.id));
+        } else if (!aPressed) pressedA = false;
+
+        if (bPressed && !pressedB) {
+          pressedB = true;
+          const movie = items[focus.index];
+          if (movie) onSelect(movie);
+        } else if (!bPressed) pressedB = false;
+      }
+
+      rafId = requestAnimationFrame(pollGamepad);
+    };
+
+    const connect = () => pollGamepad();
+    const disconnect = () => cancelAnimationFrame(rafId);
+
+    window.addEventListener("gamepadconnected", connect);
+    window.addEventListener("gamepaddisconnected", disconnect);
+
+    return () => {
+      window.removeEventListener("gamepadconnected", connect);
+      window.removeEventListener("gamepaddisconnected", disconnect);
+      cancelAnimationFrame(rafId);
+    };
+  }, [focus, items, onSelect, onWatch]);
+
   /* ---------- UI ---------- */
   return (
     <section className="relative w-full min-h-[90vh] sm:h-screen snap-start flex flex-col">
-      <div className="flex-1 relative z-50">
+      <div className="flex-1">
         {!activeItem ? (
           <motion.div className="flex items-center justify-center h-full">
             <Loader2 className="animate-spin w-8 h-8 text-[hsl(var(--foreground))]" />
           </motion.div>
         ) : (
-          <Banner item={activeItem} onSelect={onSelect} onWatch={onWatch} />
+          <motion.div className="w-full h-full">
+            <Banner item={activeItem} onSelect={onSelect} onWatch={onWatch} />
+          </motion.div>
         )}
       </div>
 
+      {/* ---------- Bottom Tiles ---------- */}
       {items.length > 0 && railIndex !== null && (
-        <div
-          ref={railRef}
-          className="relative z-40 flex overflow-x-auto gap-3 no-scrollbar snap-x snap-mandatory px-4 py-4"
-          role="list"
+        <motion.div
+          key="tiles"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.35, ease: "easeOut" }}
+          className="relative z-50 px-4 pb-[calc(0.5rem+env(safe-area-inset-bottom))]"
         >
-          {items.map((movie, idx) => (
-            <Tile
-              key={movie.id}
-              movie={movie}
-              isFocused={focus.section === railIndex && focus.index === idx}
-              onFocus={() => handleFocus(movie, idx)}
-              refSetter={(el) => (tileRefs.current[idx] = el)}
-            />
-          ))}
-        </div>
+          <div
+            ref={railRef}
+            className="flex overflow-x-auto overflow-y-hidden gap-3 no-scrollbar snap-x snap-mandatory pl-2 md:pl-4 pr-2 md:pr-4 py-4"
+            role="list"
+          >
+            {items.map((movie, idx) => (
+              <Tile
+                key={movie.id}
+                movie={movie}
+                isFocused={focus.section === railIndex && focus.index === idx}
+                onFocus={() => handleFocus(movie, idx)}
+                refSetter={(el) => (tileRefs.current[idx] = el)}
+              />
+            ))}
+          </div>
+        </motion.div>
       )}
     </section>
   );
