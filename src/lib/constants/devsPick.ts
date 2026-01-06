@@ -40,7 +40,6 @@ export const DEVS_PICK_LIST = [
   281957, // The Revenant
   19092, // Above the Rim
   603, // The Matrix
-  13809, // RocknRolla
   12877, // Dead Man's Shoes
   12481, // The Big Boss
   11713, // Fist of Fury
