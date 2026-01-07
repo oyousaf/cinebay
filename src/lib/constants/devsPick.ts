@@ -18,7 +18,6 @@ export const DEVS_PICK_LIST = [
   650, // Boyz n the Hood
   107, // Snatch
   276907, // Legend
-  4836, // Layer Cake
   522627, // The Gentlemen
   100, // Lock, Stock and Two Smoking Barrels
   4982, // American Gangster
