@@ -8,14 +8,20 @@ type MediaType = "movie" | "tv" | "person";
  */
 const embedCache = new Map<string, string>();
 
-/**
- * ✅ Current VidSrc embed domains (official rotation)
- */
 const PROVIDERS = [
+  // ✅ current VidSrc active domains (primary)
   "vidsrc-embed.ru",
   "vidsrc-embed.su",
   "vidsrcme.su",
   "vsrc.su",
+
+  // 🟡 alternative (secondary)
+  "vidlink.pro",
+
+  // ⚠️ legacy VidSrc (backup)
+  "vidsrc.to",
+  "vidsrc.me",
+  "vidsrc.cc",
 ];
 
 /**

@@ -5,11 +5,7 @@ import type { Movie } from "@/types/movie";
 import Banner from "./Banner";
 import { useNavigation } from "@/hooks/useNavigation";
 import { Loader2 } from "lucide-react";
-
-/* ---------- util ---------- */
-function buildEmbedUrl(mediaType: string, id: number) {
-  return `https://vidsrc.to/embed/${mediaType}/${id}`;
-}
+import { useVideoEmbed } from "@/hooks/useVideoEmbed";
 
 interface ContentRailProps {
   title: string;
@@ -95,6 +91,12 @@ export default function ContentRail({
   const { focus, setFocus, registerRail, updateRailLength } = useNavigation();
   const [railIndex, setRailIndex] = useState<number | null>(null);
 
+  /* ---------- Embed resolution (single source of truth) ---------- */
+  const embedUrl = useVideoEmbed(
+    activeItem?.id,
+    activeItem?.media_type
+  );
+
   /* ---------- Register rail ---------- */
   useEffect(() => {
     if (railIndex === null) {
@@ -156,15 +158,13 @@ export default function ContentRail({
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (railIndex === null || focus.section !== railIndex) return;
-
-      const movie = items[focus.index];
-      if (!movie) return;
+      if (!activeItem) return;
 
       switch (e.key) {
         case "i":
         case "Info":
           e.preventDefault();
-          onSelect(movie);
+          onSelect(activeItem);
           break;
 
         case "Enter":
@@ -172,14 +172,14 @@ export default function ContentRail({
         case "p":
         case "MediaPlayPause":
           e.preventDefault();
-          onWatch(buildEmbedUrl(movie.media_type, movie.id));
+          if (embedUrl) onWatch(embedUrl);
           break;
       }
     }
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [focus, railIndex, items, onSelect, onWatch]);
+  }, [railIndex, focus.section, activeItem, embedUrl, onSelect, onWatch]);
 
   /* ---------- Gamepad Support ---------- */
   useEffect(() => {
@@ -192,20 +192,18 @@ export default function ContentRail({
       if (!gamepads) return;
 
       const gp = gamepads[0];
-      if (gp) {
+      if (gp && activeItem) {
         const aPressed = gp.buttons[0]?.pressed;
         const bPressed = gp.buttons[1]?.pressed;
 
         if (aPressed && !pressedA) {
           pressedA = true;
-          const movie = items[focus.index];
-          if (movie) onWatch(buildEmbedUrl(movie.media_type, movie.id));
+          if (embedUrl) onWatch(embedUrl);
         } else if (!aPressed) pressedA = false;
 
         if (bPressed && !pressedB) {
           pressedB = true;
-          const movie = items[focus.index];
-          if (movie) onSelect(movie);
+          onSelect(activeItem);
         } else if (!bPressed) pressedB = false;
       }
 
@@ -223,7 +221,7 @@ export default function ContentRail({
       window.removeEventListener("gamepaddisconnected", disconnect);
       cancelAnimationFrame(rafId);
     };
-  }, [focus, items, onSelect, onWatch]);
+  }, [activeItem, embedUrl, onSelect, onWatch]);
 
   /* ---------- UI ---------- */
   return (
@@ -240,7 +238,6 @@ export default function ContentRail({
         )}
       </div>
 
-      {/* ---------- Bottom Tiles ---------- */}
       {items.length > 0 && railIndex !== null && (
         <motion.div
           key="tiles"
