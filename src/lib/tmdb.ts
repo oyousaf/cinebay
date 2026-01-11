@@ -60,6 +60,41 @@ const isNewSeriesByDetail = (detail: any) => {
 };
 
 /* =========================================================
+   PERSON: KNOWN FOR (AUTHORITATIVE)
+========================================================= */
+
+const buildKnownForFromCredits = (detail: any): Movie[] => {
+  const cast = detail.combined_credits?.cast ?? [];
+
+  return cast
+    .filter(
+      (c: any) =>
+        c.poster_path &&
+        c.vote_average >= MIN_RATING &&
+        c.original_language === "en"
+    )
+    .sort((a: any, b: any) => (b.popularity ?? 0) - (a.popularity ?? 0))
+    .slice(0, 10)
+    .map((c: any) => ({
+      id: c.id,
+      title: c.title || c.name || "Untitled",
+      overview: c.overview ?? "",
+      poster_path: c.poster_path,
+      backdrop_path: c.backdrop_path ?? "",
+      profile_path: "",
+      release_date: c.release_date || c.first_air_date || "",
+      vote_average: c.vote_average ?? 0,
+      vote_count: c.vote_count ?? 0,
+      media_type: c.media_type,
+      genres: [],
+      runtime: null,
+      original_language: c.original_language ?? "",
+      known_for: [],
+      status: undefined,
+    }));
+};
+
+/* =========================================================
    TRANSFORMER (SINGLE AUTHORITY)
 ========================================================= */
 
@@ -95,7 +130,11 @@ function toMovie(detail: any, type: "movie" | "tv" | "person"): Movie {
     deathday: detail.deathday,
     place_of_birth: detail.place_of_birth,
     known_for_department: detail.known_for_department,
-    known_for: detail.known_for,
+
+    known_for:
+      type === "person"
+        ? buildKnownForFromCredits(detail)
+        : detail.known_for ?? [],
 
     seasons: detail.seasons ?? [],
     status: undefined,
@@ -161,9 +200,13 @@ export async function fetchDetails(
   id: number,
   type: "movie" | "tv" | "person"
 ) {
+  const append =
+    type === "person" ? "combined_credits" : "credits,similar,recommendations";
+
   const d = await fetchFromProxy(
-    `/${type}/${id}?language=en-GB&append_to_response=credits,recommendations,similar`
+    `/${type}/${id}?language=en-GB&append_to_response=${append}`
   );
+
   return d ? toMovie(d, type) : null;
 }
 
