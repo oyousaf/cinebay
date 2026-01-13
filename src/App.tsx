@@ -1,19 +1,24 @@
 import { useEffect, useState, useMemo } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Toaster, toast } from "sonner";
+
 import Layout from "@/components/Layout";
 import Movies from "@/components/Movies";
 import Shows from "@/components/Shows";
 import DevsPick from "@/components/DevsPick";
 import SearchBar from "@/components/SearchBar";
 import Watchlist from "@/components/Watchlist";
+import LiveTV from "@/components/LiveTV";
+
 import Modal from "@/components/Modal";
 import PlayerModal from "@/components/PlayerModal";
 import ExitConfirmModal from "@/components/ExitConfirmModal";
 import { useModalManager } from "@/context/ModalContext";
 
+import type { Tab } from "@/types/tabs";
+
 export default function App() {
-  // --- viewport stabiliser ---
+  /* -------- viewport stabiliser -------- */
   useEffect(() => {
     const setVH = () => {
       document.documentElement.style.setProperty(
@@ -25,22 +30,11 @@ export default function App() {
     window.addEventListener("resize", setVH);
     return () => window.removeEventListener("resize", setVH);
   }, []);
-  // -------------------------------
+  /* ------------------------------------ */
 
-  const [activeTab, setActiveTab] = useState<
-    "movies" | "tvshows" | "search" | "devspick" | "watchlist"
-  >(() => {
-    if (typeof window !== "undefined") {
-      return (
-        (localStorage.getItem("activeTab") as
-          | "movies"
-          | "tvshows"
-          | "search"
-          | "devspick"
-          | "watchlist") || "movies"
-      );
-    }
-    return "movies";
+  const [activeTab, setActiveTab] = useState<Tab>(() => {
+    if (typeof window === "undefined") return "movies";
+    return (localStorage.getItem("activeTab") as Tab) || "movies";
   });
 
   const {
@@ -61,30 +55,26 @@ export default function App() {
     );
   }, []);
 
-  const persistTab = (tab: typeof activeTab) => {
+  const persistTab = (tab: Tab) => {
     setActiveTab(tab);
-    if (typeof window !== "undefined") {
-      try {
-        localStorage.setItem("activeTab", tab);
-      } catch {}
-    }
+    try {
+      localStorage.setItem("activeTab", tab);
+    } catch {}
   };
 
   const renderContent = () => {
     switch (activeTab) {
       case "movies":
         return <Movies onSelect={openContent} onWatch={openPlayer} />;
+
       case "tvshows":
         return <Shows onSelect={openContent} onWatch={openPlayer} />;
-      case "devspick":
-        return <DevsPick onSelect={openContent} onWatch={openPlayer} />;
-      case "watchlist":
-        return <Watchlist onSelect={openContent} onWatch={openPlayer} />;
+
       case "search":
         return (
           <div
             className="flex items-center justify-center px-4"
-            style={{ minHeight: "calc(var(--vh) * 100)" }} // use dynamic height
+            style={{ minHeight: "calc(var(--vh) * 100)" }}
           >
             <div className="w-full max-w-md">
               <SearchBar
@@ -94,6 +84,16 @@ export default function App() {
             </div>
           </div>
         );
+
+      case "livetv":
+        return <LiveTV onWatch={openPlayer} />;
+
+      case "devspick":
+        return <DevsPick onSelect={openContent} onWatch={openPlayer} />;
+
+      case "watchlist":
+        return <Watchlist onSelect={openContent} onWatch={openPlayer} />;
+
       default:
         return null;
     }

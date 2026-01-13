@@ -2,12 +2,20 @@
 
 import { useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { FaFilm, FaTv, FaSearch, FaStar, FaBookmark } from "react-icons/fa";
+import {
+  FaFilm,
+  FaTv,
+  FaSearch,
+  FaStar,
+  FaBookmark,
+  FaBroadcastTower,
+} from "react-icons/fa";
+
 import { useTooltip } from "@/context/TooltipContext";
 import { DarkModeToggle } from "../DarkModeToggle";
-import logo from "/logo.png";
+import type { Tab } from "@/types/tabs";
 
-type Tab = "movies" | "tvshows" | "search" | "devspick" | "watchlist";
+import logo from "/logo.png";
 
 interface NavbarProps {
   activeTab: Tab;
@@ -19,8 +27,9 @@ const navItems: { id: Tab; icon: React.ReactElement; label: string }[] = [
   { id: "movies", icon: <FaFilm size={30} />, label: "Movies" },
   { id: "tvshows", icon: <FaTv size={30} />, label: "TV Shows" },
   { id: "search", icon: <FaSearch size={30} />, label: "Search" },
-  { id: "devspick", icon: <FaStar size={30} />, label: "Dev’s Pick" },
+  { id: "livetv", icon: <FaBroadcastTower size={28} />, label: "Live TV" },
   { id: "watchlist", icon: <FaBookmark size={30} />, label: "Watchlist" },
+  { id: "devspick", icon: <FaStar size={30} />, label: "Dev’s Pick" },
 ];
 
 const Navbar: React.FC<NavbarProps> = ({
@@ -34,18 +43,26 @@ const Navbar: React.FC<NavbarProps> = ({
   /* Keyboard navigation */
   useEffect(() => {
     if (isModalOpen) return;
+
     const handleKeys = (e: KeyboardEvent) => {
       const currentIndex = navItems.findIndex((n) => n.id === activeTab);
+
       if (activeTab === "search" && e.key === "Escape") {
         onTabChange("movies");
-      } else if (["ArrowUp", "w", "W"].includes(e.key)) {
+        return;
+      }
+
+      if (["ArrowUp", "w", "W"].includes(e.key)) {
         onTabChange(
           navItems[(currentIndex - 1 + navItems.length) % navItems.length].id
         );
-      } else if (["ArrowDown", "s", "S"].includes(e.key)) {
+      }
+
+      if (["ArrowDown", "s", "S"].includes(e.key)) {
         onTabChange(navItems[(currentIndex + 1) % navItems.length].id);
       }
     };
+
     window.addEventListener("keydown", handleKeys);
     return () => window.removeEventListener("keydown", handleKeys);
   }, [activeTab, onTabChange, isModalOpen]);
@@ -57,9 +74,11 @@ const Navbar: React.FC<NavbarProps> = ({
   ) => {
     const target = e.currentTarget;
     pressTimeout.current = setTimeout(() => {
-      showTooltip(navItems.find((n) => n.id === id)!.label, "top", target);
+      const item = navItems.find((n) => n.id === id);
+      if (item) showTooltip(item.label, "top", target);
     }, 400);
   };
+
   const handleTouchEnd = () => {
     if (pressTimeout.current) clearTimeout(pressTimeout.current);
     hideTooltip();
@@ -69,7 +88,7 @@ const Navbar: React.FC<NavbarProps> = ({
     <>
       {/* Desktop / Tablet Sidebar */}
       <aside className="hidden md:flex fixed left-0 top-0 h-screen w-20 flex-col items-center justify-between bg-[hsl(var(--background))] border-r border-border z-40">
-        {/* Top: Logo */}
+        {/* Logo */}
         <div className="pt-4">
           <motion.img
             src={logo}
@@ -81,10 +100,11 @@ const Navbar: React.FC<NavbarProps> = ({
           />
         </div>
 
-        {/* Middle: Nav items */}
+        {/* Nav items */}
         <div className="flex flex-col gap-6">
           {navItems.map((item) => {
             const isActive = activeTab === item.id;
+
             return (
               <motion.button
                 key={item.id}
@@ -96,7 +116,7 @@ const Navbar: React.FC<NavbarProps> = ({
                 whileHover={{ scale: 1.15 }}
                 aria-current={isActive ? "page" : undefined}
                 aria-label={item.label}
-                className={`relative group p-2 rounded-lg transition-colors ${
+                className={`relative p-2 rounded-lg transition-colors ${
                   isActive ? "text-[hsl(var(--foreground))]" : "opacity-50"
                 }`}
               >
@@ -113,7 +133,7 @@ const Navbar: React.FC<NavbarProps> = ({
           })}
         </div>
 
-        {/* Bottom: Dark mode toggle */}
+        {/* Dark mode */}
         <motion.div
           className="pb-6"
           initial={{ opacity: 0, y: 10 }}
@@ -128,6 +148,7 @@ const Navbar: React.FC<NavbarProps> = ({
       <nav className="md:hidden fixed bottom-0 left-0 w-full h-16 bg-[hsl(var(--background))] border-t border-border flex justify-around items-center z-40 pb-[env(safe-area-inset-bottom)]">
         {navItems.map((item) => {
           const isActive = activeTab === item.id;
+
           return (
             <motion.button
               key={item.id}
@@ -138,7 +159,7 @@ const Navbar: React.FC<NavbarProps> = ({
               whileHover={{ scale: 1.15 }}
               aria-current={isActive ? "page" : undefined}
               aria-label={item.label}
-              className={`relative group flex flex-col items-center justify-center transition-colors ${
+              className={`relative flex flex-col items-center justify-center transition-colors ${
                 isActive ? "text-[hsl(var(--foreground))]" : "opacity-50"
               }`}
             >
