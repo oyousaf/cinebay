@@ -1,4 +1,5 @@
-import type { LiveProvider, ResolvedStream } from "../types";
+import type { LiveProvider, MirrorCandidate, ResolvedStream } from "../types";
+import { resolveWithFallbacks } from "../mirrorResolver";
 
 export const sportHDProvider: LiveProvider = {
   id: "sport-hd",
@@ -6,17 +7,22 @@ export const sportHDProvider: LiveProvider = {
   priority: 1,
 
   async getChannels() {
-    // Metadata only. No scraping in Sprint 2.
     return [
       {
-        id: "sport-hd-live-1",
-        name: "Sport HD – Live 1",
+        id: "laliga-real-barca",
+        name: "La Liga: Real Madrid vs Barcelona",
         category: "sports",
         provider: "sport-hd",
       },
       {
-        id: "sport-hd-live-2",
-        name: "Sport HD – Live 2",
+        id: "laliga-atleti-sevilla",
+        name: "La Liga: Atletico Madrid vs Sevilla",
+        category: "sports",
+        provider: "sport-hd",
+      },
+      {
+        id: "laliga-valencia-villarreal",
+        name: "La Liga: Valencia vs Villarreal",
         category: "sports",
         provider: "sport-hd",
       },
@@ -24,18 +30,18 @@ export const sportHDProvider: LiveProvider = {
   },
 
   async resolveStream(channelId: string): Promise<ResolvedStream | null> {
-    /**
-     * Sprint 2 contract:
-     * - Resolver exists
-     * - Signature locked
-     * - Logic intentionally not implemented
-     *
-     * Sprint 3 will:
-     * - Fetch addon manifest / endpoint
-     * - Resolve playable stream
-     * - Apply headers / proxy if required
-     */
-    console.warn(`[SportHD] resolveStream not implemented`, channelId);
-    return null;
+    console.log(`[SportHD] resolve requested`, channelId);
+
+    const mirrors: MirrorCandidate[] = [
+      { id: "mirror-1", label: "Primary mirror", priority: 1 },
+      { id: "mirror-2", label: "Backup mirror", priority: 2 },
+      { id: "mirror-3", label: "Last resort", priority: 3 },
+    ];
+
+    return resolveWithFallbacks(mirrors, async (mirror) => {
+      console.log(`[SportHD] trying ${mirror.id} for ${channelId}`);
+
+      return null;
+    });
   },
 };

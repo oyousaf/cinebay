@@ -2,7 +2,7 @@ import type { LiveProvider } from "./types";
 
 import { sportHDProvider } from "./providers/sportHD";
 import { loopProvider } from "./providers/loop";
-import { daddyLiveProvider } from "./providers/daddylive";
+import { daddyLiveProvider } from "./providers/daddyLive";
 import { madTitanProvider } from "./providers/madTitan";
 import { risingTidesProvider } from "./providers/risingTides";
 
