@@ -1,4 +1,8 @@
-import type { LiveProvider, MirrorCandidate, ResolvedStream } from "../types";
+import type {
+  LiveProvider,
+  MirrorCandidate,
+  ResolvedStream,
+} from "../types";
 import { resolveWithFallbacks } from "../mirrorResolver";
 
 export const sportHDProvider: LiveProvider = {
@@ -10,21 +14,36 @@ export const sportHDProvider: LiveProvider = {
     return [
       {
         id: "laliga-real-barca",
-        name: "La Liga: Real Madrid vs Barcelona",
+        name: "Real Madrid vs Barcelona",
         category: "sports",
         provider: "sport-hd",
+        meta: {
+          league: "La Liga",
+          kickoffUTC: "2026-02-14T20:00:00Z",
+          order: 1,
+        },
       },
       {
         id: "laliga-atleti-sevilla",
-        name: "La Liga: Atletico Madrid vs Sevilla",
+        name: "Atletico Madrid vs Sevilla",
         category: "sports",
         provider: "sport-hd",
+        meta: {
+          league: "La Liga",
+          kickoffUTC: "2026-02-15T17:30:00Z",
+          order: 2,
+        },
       },
       {
         id: "laliga-valencia-villarreal",
-        name: "La Liga: Valencia vs Villarreal",
+        name: "Valencia vs Villarreal",
         category: "sports",
         provider: "sport-hd",
+        meta: {
+          league: "La Liga",
+          kickoffUTC: "2026-02-16T19:00:00Z",
+          order: 3,
+        },
       },
     ];
   },
@@ -39,8 +58,9 @@ export const sportHDProvider: LiveProvider = {
     ];
 
     return resolveWithFallbacks(mirrors, async (mirror) => {
-      console.log(`[SportHD] trying ${mirror.id} for ${channelId}`);
-
+      console.log(
+        `[SportHD] trying ${mirror.id} for ${channelId}`
+      );
       return null;
     });
   },
