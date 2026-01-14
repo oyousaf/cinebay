@@ -11,9 +11,10 @@ export default function EpisodeSelector({
   onPlay,
 }: {
   tv: Movie;
-  onPlay: (season: number, episode: number) => void;
+  onPlay: (url: string) => void;
 }) {
-  const { getTVProgress, setTVProgress, getResumeLabel } = useContinueWatching();
+  const { getTVProgress, setTVProgress, getResumeLabel, getResumeUrl } =
+    useContinueWatching();
 
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [episodes, setEpisodes] = useState<Episode[]>([]);
@@ -58,14 +59,14 @@ export default function EpisodeSelector({
         setEpisode(eps[0].episode_number);
       }
     });
-  }, [tv.id, season]);
+  }, [tv.id, season, episode]);
 
   /* ---------- Play ---------- */
   const play = () => {
     if (!season || !episode) return;
 
     setTVProgress(tv.id, season, episode);
-    onPlay(season, episode);
+    onPlay(getResumeUrl(tv.id));
   };
 
   /* ---------- UI ---------- */
@@ -92,7 +93,6 @@ export default function EpisodeSelector({
         >
           <FaPlay />
           {episode ? getResumeLabel(tv.id) : "Select episode"}
-
         </button>
       </div>
 
