@@ -36,7 +36,7 @@ export default function PlayerModal({
               <Loader2 className="h-8 w-8 animate-spin" />
               {stillLoading && (
                 <p className="pt-2 text-zinc-300 text-xs sm:text-sm">
-                  Still loading... If nothing appears, try another source.
+                  Still loading… If nothing appears, try another source.
                 </p>
               )}
             </div>
@@ -44,14 +44,15 @@ export default function PlayerModal({
 
           {error ? (
             <div className="absolute inset-0 flex items-center justify-center text-white px-6 text-center text-sm sm:text-base">
-              Sorry, the video could not be loaded. Please try again later or
-              use another source.
+              Sorry, the video could not be loaded. Please try again later.
             </div>
           ) : (
             <iframe
               src={url}
-              allowFullScreen
               className="w-full h-full border-none"
+              allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+              allowFullScreen
+              referrerPolicy="no-referrer"
               onLoad={() => {
                 setLoaded(true);
                 setError(false);

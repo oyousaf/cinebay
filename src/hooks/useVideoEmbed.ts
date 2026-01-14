@@ -44,7 +44,7 @@ function buildUrl(
   id: number
 ) {
   if (provider.name === "vidlink") {
-    return `https://vidlink.pro/${type}/${id}?autoplay=1&primaryColor=2dd4bf&secondaryColor=0f766e`;
+    return `https://vidlink.pro/${type}/${id}?autoplay=1&captions=0&primaryColor=2dd4bf&secondaryColor=0f766e`;
   }
 
   return `https://${provider.domain}/embed/${type}/${id}`;
@@ -123,7 +123,7 @@ export function useVideoEmbed(id?: number, type?: MediaType): string | null {
         cleanup();
         return;
       }
-      
+
       try {
         const text =
           iframe.contentDocument?.body?.innerText?.toLowerCase() ?? "";
