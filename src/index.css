@@ -1,19 +1,22 @@
 @import url("https://fonts.googleapis.com/css2?family=Concert+One&family=Permanent+Marker&display=swap");
 
-/* Tailwind core utilities */
+/* Tailwind core */
 @import "tailwindcss";
 @import "tw-animate-css";
 
-/* Theme Fonts */
-@theme inline {
+/* -------------------------------------------------
+   THEME TOKENS
+-------------------------------------------------- */
+:root {
+  /* Fonts */
   --font-sans: "Concert One", ui-sans-serif, system-ui, sans-serif;
   --font-heading: "Permanent Marker", cursive;
-}
 
-/* App Theme Colors */
-:root {
+  /* Colors */
   --background: 157 100% 75%; /* #80ffcc */
   --foreground: 276 100% 21%; /* #3b006a */
+
+  /* Viewport fix */
   --vh: 1vh;
 }
 
@@ -22,24 +25,28 @@
   --foreground: 157 100% 75%;
 }
 
-/* Base layout & smooth scrolling */
+/* -------------------------------------------------
+   BASE LAYOUT
+-------------------------------------------------- */
 html,
 body {
   height: 100%;
   overflow-x: hidden;
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));
+  font-family: var(--font-sans);
   transition: background-color 0.3s, color 0.2s;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: contain;
 }
 
-/* Always allow vertical scroll without visible scrollbars */
 body {
   overflow-y: scroll;
 }
 
-/* Global scrollbar hiding */
+/* -------------------------------------------------
+   SCROLLBARS
+-------------------------------------------------- */
 * {
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -49,14 +56,6 @@ body {
   display: none;
 }
 
-/* Protect images */
-img {
-  user-select: none;
-  -webkit-user-drag: none;
-  pointer-events: none;
-}
-
-/* Optional: for targeted elements */
 .scrollbar-hide {
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -66,17 +65,27 @@ img {
   display: none;
 }
 
-/* Shadow Pulse */
+/* -------------------------------------------------
+   MEDIA SAFETY
+-------------------------------------------------- */
+img {
+  user-select: none;
+  -webkit-user-drag: none;
+  pointer-events: none;
+}
+
+/* -------------------------------------------------
+   EFFECTS
+-------------------------------------------------- */
 @keyframes shadow-pulse {
-  0%, 100% {
-    box-shadow:
-      0 0 0 2px hsl(var(--foreground)),
+  0%,
+  100% {
+    box-shadow: 0 0 0 2px hsl(var(--foreground)),
       0 0 6px hsl(var(--foreground) / 0.6),
       0 0 12px hsl(var(--foreground) / 0.4);
   }
   50% {
-    box-shadow:
-      0 0 0 2px hsl(var(--foreground)),
+    box-shadow: 0 0 0 2px hsl(var(--foreground)),
       0 0 12px hsl(var(--foreground) / 0.8),
       0 0 24px hsl(var(--foreground) / 0.6);
   }
@@ -86,7 +95,11 @@ img {
   animation: shadow-pulse 2s ease-in-out infinite;
 }
 
-/* Mobile landscape */
-@media (max-width:768px) and (orientation:landscape){
-  :root { --vh: 0.8vh; }
+/* -------------------------------------------------
+   MOBILE LANDSCAPE FIX
+-------------------------------------------------- */
+@media (max-width: 768px) and (orientation: landscape) {
+  :root {
+    --vh: 0.8vh;
+  }
 }
