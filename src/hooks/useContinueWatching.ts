@@ -59,11 +59,11 @@ export function useContinueWatching() {
     localStorage.removeItem(keyFor(tvId));
   }, []);
 
-  /* ---------- Helpers ---------- */
+  /* ---------- Helpers (SINGLE SOURCE OF TRUTH) ---------- */
   const getResumeLabel = useCallback(
     (tvId: number) => {
       const p = getTVProgress(tvId);
-      return p ? `Resume S${p.season}E${p.episode}` : "Play S1E1";
+      return p ? `Resume S${p.season} · E${p.episode}` : "Play · S1 · E1";
     },
     [getTVProgress]
   );
