@@ -3,8 +3,6 @@ import axios from "axios";
 import dotenv from "dotenv";
 import cors from "cors";
 
-import liveTVRoutes from "./routes/livetv";
-
 dotenv.config();
 
 const app = express();
@@ -37,11 +35,6 @@ app.get("/api/tmdb/*", async (req, res) => {
 });
 
 /* ----------------------------------
-   LIVE TV API
----------------------------------- */
-app.use("/api/livetv", liveTVRoutes);
-
-/* ----------------------------------
    HEALTH
 ---------------------------------- */
 app.get("/health", (_, res) => {
@@ -49,5 +42,5 @@ app.get("/health", (_, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`✅ Server running at http://localhost:${PORT}`);
+  console.log(`Server running at http://localhost:${PORT}`);
 });
