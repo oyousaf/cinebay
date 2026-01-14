@@ -60,6 +60,14 @@ const calculateAge = (birthday?: string, deathday?: string) => {
   );
 };
 
+/* ---------- Genre helper ---------- */
+
+const titleCase = (s: string) =>
+  s
+    .split(" ")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+
 /* ---------- Component ---------- */
 
 export default function Modal({
@@ -95,9 +103,7 @@ export default function Modal({
   const knownFor = movie.known_for ?? [];
 
   const genreLabel = Array.isArray(movie.genres)
-    ? movie.genres
-        .map((g) => g.charAt(0).toUpperCase() + g.slice(1))
-        .join(" • ")
+    ? movie.genres.map(titleCase).join(" • ")
     : "";
 
   const director = useMemo(
