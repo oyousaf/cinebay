@@ -92,9 +92,6 @@ export default function EpisodeSelector({
     >
       {/* Header */}
       <div className="flex items-center justify-between">
-        <span className="text-sm font-semibold text-[hsl(var(--foreground))]">
-          Episodes
-        </span>
 
         <button
           onClick={play}
