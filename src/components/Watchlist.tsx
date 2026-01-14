@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, RefreshCw } from "lucide-react";
 import React from "react";
@@ -7,6 +7,7 @@ import { TMDB_IMAGE } from "@/lib/tmdb";
 import { useWatchlist } from "@/context/WatchlistContext";
 import { useNavigation } from "@/hooks/useNavigation";
 import { useVideoEmbed } from "@/hooks/useVideoEmbed";
+import { getTVProgress } from "@/lib/continueWatching";
 
 /* ---------- Filter Types ---------- */
 type FilterState = {
@@ -33,7 +34,23 @@ const WatchlistTile = React.memo(function WatchlistTile({
   onWatch: (url: string) => void;
   onRemove: () => void;
 }) {
-  const embedUrl = useVideoEmbed(movie.id, movie.media_type);
+  const isTV = movie.media_type === "tv";
+  const isMovie = movie.media_type === "movie";
+
+  const movieEmbedUrl = isMovie
+    ? useVideoEmbed(movie.id, movie.media_type)
+    : null;
+
+  const tvProgress = isTV ? getTVProgress(movie.id) : null;
+
+  const tvPlayUrl = isTV
+    ? tvProgress
+      ? `https://vidlink.pro/tv/${movie.id}/${tvProgress.season}/${tvProgress.episode}?autoplay=1`
+      : `https://vidlink.pro/tv/${movie.id}/1/1?autoplay=1`
+    : null;
+
+  const playUrl = isMovie ? movieEmbedUrl : tvPlayUrl;
+
   const showStatus = movie.status === "new" || movie.status === "renewed";
 
   return (
@@ -42,7 +59,7 @@ const WatchlistTile = React.memo(function WatchlistTile({
       type="button"
       onClick={() => {
         onFocus();
-        if (embedUrl) onWatch(embedUrl);
+        if (playUrl) onWatch(playUrl);
       }}
       whileHover={{ scale: 1.03 }}
       whileTap={{ scale: 0.98 }}
@@ -97,10 +114,8 @@ const WatchlistTile = React.memo(function WatchlistTile({
 /* ---------- Main ---------- */
 export default function Watchlist({
   onWatch,
-  onSelect,
 }: {
   onWatch: (url: string) => void;
-  onSelect: (movie: Movie) => void;
 }) {
   const { watchlist, toggleWatchlist } = useWatchlist();
 
