@@ -18,27 +18,31 @@ export default function Banner({
   const isTV = item.media_type === "tv";
   const isMovie = item.media_type === "movie";
 
-  const embedUrl = isMovie ? useVideoEmbed(item.id, item.media_type) : null;
+  const movieEmbedUrl = isMovie
+    ? useVideoEmbed(item.id, item.media_type)
+    : null;
 
   const { toggleWatchlist, isInWatchlist } = useWatchlist();
   const isSaved = isInWatchlist(item.id);
 
-  /* ---------- TV play resolution ---------- */
-  const tvPlayUrl = (() => {
-    if (!isTV) return null;
+  /* ---------- TV resume logic ---------- */
+  const tvProgress = isTV ? getTVProgress(item.id) : null;
 
-    const progress = getTVProgress(item.id);
+  const tvPlayUrl = isTV
+    ? tvProgress
+      ? `https://vidlink.pro/tv/${item.id}/${tvProgress.season}/${tvProgress.episode}`
+      : `https://vidlink.pro/tv/${item.id}/1/1`
+    : null;
 
-    if (progress) {
-      return `https://vidlink.pro/tv/${item.id}/${progress.season}/${progress.episode}?autoplay=1`;
-    }
+  const playUrl = isMovie ? movieEmbedUrl : tvPlayUrl;
 
-    // default start
-    return `https://vidlink.pro/tv/${item.id}/1/1?autoplay=1`;
-  })();
+  const playLabel = isTV
+    ? tvProgress
+      ? `Resume S${tvProgress.season}E${tvProgress.episode}`
+      : "Play S1E1"
+    : "Play";
 
-  const playUrl = isMovie ? embedUrl : tvPlayUrl;
-
+  /* ---------- Animations ---------- */
   const containerVariants: Variants = {
     hidden: { opacity: 0, y: 15 },
     show: {
@@ -91,7 +95,7 @@ export default function Banner({
         animate="show"
       >
         <motion.h2
-          className="font-extrabold mb-5 text-[#80ffcc] text-[clamp(1.9rem,4.5vw,3.1rem)]"
+          className="font-extrabold mb-5 text-[hsl(var(--foreground))] text-[clamp(1.9rem,4.5vw,3.1rem)]"
           variants={childVariants}
         >
           {item.title || item.name}
@@ -105,10 +109,7 @@ export default function Banner({
         </motion.p>
 
         {/* Actions */}
-        <motion.div
-          className="flex gap-3 items-center"
-          variants={childVariants}
-        >
+        <motion.div className="flex gap-3 items-center" variants={childVariants}>
           <motion.button
             disabled={!playUrl}
             onClick={() => playUrl && onWatch(playUrl)}
@@ -120,6 +121,7 @@ export default function Banner({
               }`}
           >
             <FaPlay size={22} />
+            <span>{playLabel}</span>
           </motion.button>
 
           <motion.button
