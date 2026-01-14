@@ -13,7 +13,7 @@ export default function EpisodeSelector({
   tv: Movie;
   onPlay: (season: number, episode: number) => void;
 }) {
-  const { getTVProgress, setTVProgress } = useContinueWatching();
+  const { getTVProgress, setTVProgress, getResumeLabel } = useContinueWatching();
 
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [episodes, setEpisodes] = useState<Episode[]>([]);
@@ -91,7 +91,8 @@ export default function EpisodeSelector({
           "
         >
           <FaPlay />
-          {episode ? `Play S${season}E${episode}` : "Select episode"}
+          {episode ? getResumeLabel(tv.id) : "Select episode"}
+
         </button>
       </div>
 
