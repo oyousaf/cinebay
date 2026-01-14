@@ -69,7 +69,7 @@ export default function EpisodeSelector({
     onPlay(getResumeUrl(tv.id));
   };
 
-  /* ---------- Derived label ---------- */
+  /* ---------- Derived label ---------- *
   const playLabel =
     season && episode
       ? `Play S${season} · E${episode}`
