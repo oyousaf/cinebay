@@ -37,14 +37,12 @@ export const DEVS_PICK_LIST = [
   640, // Catch Me If You Can
   273248, // The Hateful Eight
   281957, // The Revenant
-  19092, // Above the Rim
   603, // The Matrix
   12877, // Dead Man's Shoes
   12481, // The Big Boss
   11713, // Fist of Fury
   9462, // The Way of the Dragon
   9461, // Enter the Dragon
-  13333, // Game of Death
   84383, // I Am Bruce Lee
   218, // The Terminator
   280, // Terminator 2: Judgment Day
