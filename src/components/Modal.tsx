@@ -20,7 +20,6 @@ import StarringList from "./modal/StarringList";
 import { useWatchlist } from "@/context/WatchlistContext";
 import { useModalManager } from "@/context/ModalContext";
 import { useVideoEmbed } from "@/hooks/useVideoEmbed";
-
 import EpisodeSelector from "@/components/tv/EpisodeSelector";
 
 /* ---------- Lazy ---------- */
@@ -76,10 +75,10 @@ export default function Modal({
 }) {
   const isPerson = movie.media_type === "person";
   const isTV = movie.media_type === "tv";
-  const modalRef = useRef<HTMLDivElement>(null);
 
+  const modalRef = useRef<HTMLDivElement>(null);
   const [mounting, setMounting] = useState(true);
-  const [showFullBio, setShowFullBio] = useState(false);
+  const [showBio, setShowBio] = useState(false);
 
   const { toggleWatchlist, isInWatchlist } = useWatchlist();
   const { openPlayer } = useModalManager();
@@ -88,34 +87,40 @@ export default function Modal({
   const isSaved = isInWatchlist(movie.id);
 
   const title = movie.title || movie.name || "Untitled";
-  const poster = movie.profile_path || movie.poster_path || "";
-  const displayPoster = poster ? `${TMDB_IMAGE}${poster}` : "/fallback.jpg";
+  const posterPath = movie.profile_path || movie.poster_path;
+  const poster = posterPath ? `${TMDB_IMAGE}${posterPath}` : "/fallback.jpg";
 
   const cast = movie.credits?.cast ?? [];
   const crew = movie.credits?.crew ?? [];
   const knownFor = movie.known_for ?? [];
-  const releaseDate = formatDate(movie.release_date);
 
-  /* ---------- Genres (NORMALISED, SAFE) ---------- */
-  const genreList = Array.isArray(movie.genres) ? movie.genres : [];
-  const genreLabel = genreList.join(" • ");
+  const genreLabel = Array.isArray(movie.genres)
+    ? movie.genres.join(" • ")
+    : "";
 
-  /* ---------- Credits ---------- */
+  const director = useMemo(
+    () =>
+      movie.media_type === "movie"
+        ? crew.find((c) => c.job === "Director")?.name ?? null
+        : null,
+    [crew, movie.media_type]
+  );
 
-  const director = useMemo(() => {
-    if (movie.media_type !== "movie") return null;
-    return crew.find((c) => c.job === "Director")?.name ?? null;
-  }, [crew, movie.media_type]);
+  const creators = useMemo(
+    () =>
+      isTV && movie.created_by?.length
+        ? movie.created_by.map((c) => c.name).join(", ")
+        : null,
+    [isTV, movie.created_by]
+  );
 
-  const creators = useMemo(() => {
-    if (!isTV || !movie.created_by?.length) return null;
-    return movie.created_by.map((c) => c.name).join(", ");
-  }, [isTV, movie.created_by]);
-
-  const MemoStarringList = useMemo(() => {
-    if (isPerson || cast.length === 0) return null;
-    return <StarringList cast={cast} onSelect={onSelect} />;
-  }, [cast, isPerson, onSelect]);
+  const MemoStarringList = useMemo(
+    () =>
+      !isPerson && cast.length ? (
+        <StarringList cast={cast} onSelect={onSelect} />
+      ) : null,
+    [cast, isPerson, onSelect]
+  );
 
   const handleSelectWithDetails = useCallback(
     async (item: Movie) => {
@@ -185,53 +190,79 @@ export default function Modal({
           <div className="px-4 py-8 sm:p-8 bg-gradient-to-b from-black/80 via-black/60 to-black/90 max-h-[90vh] overflow-y-auto space-y-6">
             <div className="flex flex-col sm:flex-row gap-6 pt-6">
               <img
-                src={displayPoster}
+                src={poster}
                 alt={title}
-                className="w-40 sm:w-44 h-[264px] shrink-0 mx-auto sm:mx-0 rounded-lg shadow-lg object-cover"
-                loading="lazy"
+                className="w-40 sm:w-44 h-[264px] rounded-lg shadow-lg object-cover mx-auto sm:mx-0"
               />
 
               <div className="flex-1 space-y-4">
-                <div className="space-y-2 text-center sm:text-left">
-                  <h2 className="text-3xl sm:text-4xl font-bold">{title}</h2>
+                <h2 className="text-3xl sm:text-4xl font-bold">{title}</h2>
 
-                  {genreLabel && (
-                    <div className="text-sm text-zinc-400">{genreLabel}</div>
-                  )}
+                {!isPerson && (
+                  <div className="inline-flex flex-wrap gap-2 px-3 py-2 rounded-xl bg-zinc-900/60 border border-zinc-700 text-xs text-zinc-300">
+                    {creators && <span>📺 {creators}</span>}
+                    {director && <span>🎬 {director}</span>}
+                    {movie.release_date && (
+                      <span>📅 {formatDate(movie.release_date)}</span>
+                    )}
+                    {movie.vote_average ? (
+                      <span className="px-2 py-0.5 rounded-full bg-[hsl(var(--foreground))] text-[hsl(var(--background))] font-semibold">
+                        ⭐ {movie.vote_average.toFixed(1)}
+                      </span>
+                    ) : null}
+                    {genreLabel && (
+                      <span className="text-zinc-400">{genreLabel}</span>
+                    )}
+                  </div>
+                )}
 
-                  {movie.media_type !== "person" && (
-                    <div className="inline-flex flex-wrap items-center gap-2 px-3 py-2 rounded-xl bg-zinc-900/60 border border-zinc-700 text-xs text-zinc-300">
-                      {creators && <span>📺 {creators}</span>}
-                      {director && <span>🎬 {director}</span>}
-                      {releaseDate && <span>📅 {releaseDate}</span>}
-                      {typeof movie.vote_average === "number" &&
-                        movie.vote_average > 0 && (
-                          <span className="px-2 py-0.5 rounded-full bg-[hsl(var(--foreground))] text-[hsl(var(--background))] font-semibold">
-                            ⭐ {movie.vote_average.toFixed(1)}
-                          </span>
-                        )}
-                    </div>
-                  )}
-                </div>
+                {/* PERSON SUMMARY */}
+                {isPerson && (
+                  <div className="rounded-xl bg-zinc-900/60 p-4 border border-zinc-700 text-sm text-zinc-300 space-y-1">
+                    {movie.birthday && (
+                      <div>🎂 Born: {formatDate(movie.birthday)}</div>
+                    )}
+                    {movie.deathday ? (
+                      <div>
+                        🕊️ Passed: {formatDate(movie.deathday)}{" "}
+                        {movie.birthday &&
+                          `(aged ${calculateAge(
+                            movie.birthday,
+                            movie.deathday
+                          )})`}
+                      </div>
+                    ) : (
+                      movie.birthday && (
+                        <div>🎉 Age: {calculateAge(movie.birthday)} years</div>
+                      )
+                    )}
+                    {movie.place_of_birth && (
+                      <div>📍 {movie.place_of_birth}</div>
+                    )}
+                  </div>
+                )}
 
                 {/* BIO */}
                 {isPerson && movie.biography && (
                   <>
-                    <motion.button
-                      onClick={() => setShowFullBio((v) => !v)}
-                      whileTap={{ scale: 0.96 }}
-                      className="px-6 py-3 rounded-full font-semibold bg-[hsl(var(--foreground))] text-[hsl(var(--background))]"
-                    >
-                      {showFullBio ? <ArrowUp /> : "BIO"}
-                    </motion.button>
+                    <div className="flex justify-center py-2">
+                      <motion.button
+                        onClick={() => setShowBio((v) => !v)}
+                        whileTap={{ scale: 0.96 }}
+                        className="inline-flex items-center gap-2 px-6 py-3 rounded-full font-semibold
+        bg-[hsl(var(--foreground))] text-[hsl(var(--background))]"
+                      >
+                        {showBio ? <ArrowUp size={18} /> : "BIO"}
+                      </motion.button>
+                    </div>
 
                     <AnimatePresence>
-                      {showFullBio && (
+                      {showBio && (
                         <motion.div
                           initial={{ height: 0, opacity: 0 }}
                           animate={{ height: "auto", opacity: 1 }}
                           exit={{ height: 0, opacity: 0 }}
-                          className="rounded-xl bg-zinc-900/60 p-4 border border-zinc-700 text-sm text-zinc-300 max-h-[320px] overflow-y-auto"
+                          className="rounded-xl bg-zinc-900/60 p-4 border border-zinc-700 text-sm text-zinc-300 leading-relaxed max-h-[320px] overflow-y-auto"
                         >
                           {movie.biography}
                         </motion.div>
@@ -279,9 +310,9 @@ export default function Modal({
                 {isTV && (
                   <EpisodeSelector
                     tv={movie}
-                    onPlay={(season, episode) =>
+                    onPlay={(s, e) =>
                       openPlayer(
-                        `https://vidlink.pro/tv/${movie.id}/${season}/${episode}?autoplay=1`
+                        `https://vidlink.pro/tv/${movie.id}/${s}/${e}?autoplay=1`
                       )
                     }
                   />
