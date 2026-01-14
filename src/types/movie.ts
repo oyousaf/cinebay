@@ -29,6 +29,14 @@ export type KnownForItem = {
 };
 
 // ========================
+// Genre (FIXED + EXPLICIT)
+// ========================
+export type Genre = {
+  id: number;
+  name: string;
+};
+
+// ========================
 // TV Specific
 // ========================
 export type Creator = {
@@ -72,22 +80,25 @@ export interface PersonDetails {
 }
 
 // ========================
-// Base Media (internal clarity)
+// Base Media (NORMALISED)
 // ========================
 type BaseMedia = {
   id: number;
   overview: string;
 
-  poster_path: string;
-  backdrop_path: string;
-  profile_path: string;
+  poster_path?: string;
+  backdrop_path?: string;
+  profile_path?: string;
 
-  release_date: string;
-  vote_average: number;
-  vote_count: number;
+  release_date?: string;
+  first_air_date?: string;
 
-  genres: string[];
-  runtime: number | null;
+  vote_average?: number;
+  vote_count?: number;
+
+  genres?: string[];
+
+  runtime?: number | null;
   original_language?: string;
 
   status?: "new" | "renewed" | "recent";
@@ -107,9 +118,11 @@ type BaseMedia = {
 export type Movie = BaseMedia & {
   media_type: "movie" | "tv" | "person";
 
-  // naming (TMDB inconsistency handled safely)
-  title: string;
+  // naming (TMDB inconsistency handled)
+  title?: string;
   name?: string;
+
+  genres_raw?: Genre[];
 
   // TV only
   created_by?: Creator[];

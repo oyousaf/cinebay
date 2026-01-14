@@ -21,6 +21,8 @@ import { useWatchlist } from "@/context/WatchlistContext";
 import { useModalManager } from "@/context/ModalContext";
 import { useVideoEmbed } from "@/hooks/useVideoEmbed";
 
+import EpisodeSelector from "@/components/tv/EpisodeSelector";
+
 /* ---------- Lazy ---------- */
 
 const LazySimilar = lazy(() =>
@@ -33,7 +35,7 @@ const LazyRecommendations = lazy(() =>
 );
 const LazyKnownForSlider = lazy(() => import("./modal/KnownForSlider"));
 
-/* ---------- Date helpers (ORDINAL FIX) ---------- */
+/* ---------- Date helpers ---------- */
 
 const ordinal = (n: number) => {
   const s = ["th", "st", "nd", "rd"];
@@ -44,7 +46,6 @@ const ordinal = (n: number) => {
 const formatDate = (dateStr?: string) => {
   if (!dateStr) return null;
   const d = new Date(dateStr);
-
   return `${ordinal(d.getDate())} ${d.toLocaleDateString("en-GB", {
     month: "long",
     year: "numeric",
@@ -74,6 +75,7 @@ export default function Modal({
   onBack?: () => void;
 }) {
   const isPerson = movie.media_type === "person";
+  const isTV = movie.media_type === "tv";
   const modalRef = useRef<HTMLDivElement>(null);
 
   const [mounting, setMounting] = useState(true);
@@ -94,6 +96,10 @@ export default function Modal({
   const knownFor = movie.known_for ?? [];
   const releaseDate = formatDate(movie.release_date);
 
+  /* ---------- Genres (NORMALISED, SAFE) ---------- */
+  const genreList = Array.isArray(movie.genres) ? movie.genres : [];
+  const genreLabel = genreList.join(" • ");
+
   /* ---------- Credits ---------- */
 
   const director = useMemo(() => {
@@ -102,10 +108,9 @@ export default function Modal({
   }, [crew, movie.media_type]);
 
   const creators = useMemo(() => {
-    if (movie.media_type !== "tv") return null;
-    if (!movie.created_by?.length) return null;
+    if (!isTV || !movie.created_by?.length) return null;
     return movie.created_by.map((c) => c.name).join(", ");
-  }, [movie.media_type, movie.created_by]);
+  }, [isTV, movie.created_by]);
 
   const MemoStarringList = useMemo(() => {
     if (isPerson || cast.length === 0) return null;
@@ -179,7 +184,6 @@ export default function Modal({
           {/* Content */}
           <div className="px-4 py-8 sm:p-8 bg-gradient-to-b from-black/80 via-black/60 to-black/90 max-h-[90vh] overflow-y-auto space-y-6">
             <div className="flex flex-col sm:flex-row gap-6 pt-6">
-              {/* Poster */}
               <img
                 src={displayPoster}
                 alt={title}
@@ -187,119 +191,61 @@ export default function Modal({
                 loading="lazy"
               />
 
-              {/* Right column */}
               <div className="flex-1 space-y-4">
-                <div className="space-y-4 text-center sm:text-left">
+                <div className="space-y-2 text-center sm:text-left">
                   <h2 className="text-3xl sm:text-4xl font-bold">{title}</h2>
 
-                  {/* META BOX */}
+                  {genreLabel && (
+                    <div className="text-sm text-zinc-400">{genreLabel}</div>
+                  )}
+
                   {movie.media_type !== "person" && (
-                    <div
-                      className="inline-flex flex-wrap items-center gap-2 px-3 py-2
-    rounded-xl bg-zinc-900/60 border border-zinc-700
-    text-xs text-zinc-300"
-                    >
+                    <div className="inline-flex flex-wrap items-center gap-2 px-3 py-2 rounded-xl bg-zinc-900/60 border border-zinc-700 text-xs text-zinc-300">
                       {creators && <span>📺 {creators}</span>}
                       {director && <span>🎬 {director}</span>}
                       {releaseDate && <span>📅 {releaseDate}</span>}
-
-                      {movie.vote_average > 0 && (
-                        <span
-                          className="px-2 py-0.5 rounded-full
-        bg-[hsl(var(--foreground))] text-[hsl(var(--background))] font-semibold"
-                        >
-                          ⭐ {movie.vote_average.toFixed(1)}
-                        </span>
-                      )}
-                    </div>
-                  )}
-
-                  {/* PERSON SUMMARY */}
-                  {isPerson && (
-                    <div className="rounded-xl bg-zinc-900/60 p-4 border border-zinc-700 text-sm text-zinc-300 space-y-1">
-                      {movie.birthday && (
-                        <div>🎂 Born: {formatDate(movie.birthday)}</div>
-                      )}
-                      {movie.deathday ? (
-                        <div>
-                          🕊️ Passed: {formatDate(movie.deathday)}{" "}
-                          {movie.birthday &&
-                            `(aged ${calculateAge(
-                              movie.birthday,
-                              movie.deathday
-                            )})`}
-                        </div>
-                      ) : (
-                        movie.birthday && (
-                          <div>
-                            🎉 Age: {calculateAge(movie.birthday)} years
-                          </div>
-                        )
-                      )}
-                      {movie.place_of_birth && (
-                        <div>📍 {movie.place_of_birth}</div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* BIO BUTTON */}
-                  {isPerson && movie.biography && (
-                    <div className="flex justify-center pt-2">
-                      <motion.button
-                        onClick={() => setShowFullBio((v) => !v)}
-                        whileTap={{ scale: 0.96 }}
-                        className="flex items-center gap-2 px-6 py-3 rounded-full font-semibold
-                          bg-[hsl(var(--foreground))] text-[hsl(var(--background))] text-xl"
-                      >
-                        <AnimatePresence mode="wait" initial={false}>
-                          {!showFullBio ? (
-                            <motion.span
-                              key="bio"
-                              initial={{ opacity: 0, y: 6 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              exit={{ opacity: 0, y: -6 }}
-                            >
-                              BIO
-                            </motion.span>
-                          ) : (
-                            <motion.span
-                              key="up"
-                              initial={{ opacity: 0, y: 6 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              exit={{ opacity: 0, y: -6 }}
-                            >
-                              <ArrowUp size={18} />
-                            </motion.span>
-                          )}
-                        </AnimatePresence>
-                      </motion.button>
+                      {typeof movie.vote_average === "number" &&
+                        movie.vote_average > 0 && (
+                          <span className="px-2 py-0.5 rounded-full bg-[hsl(var(--foreground))] text-[hsl(var(--background))] font-semibold">
+                            ⭐ {movie.vote_average.toFixed(1)}
+                          </span>
+                        )}
                     </div>
                   )}
                 </div>
 
-                {/* BIO PANEL */}
-                <AnimatePresence>
-                  {isPerson && showFullBio && movie.biography && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.35, ease: "easeInOut" }}
-                      className="overflow-hidden"
+                {/* BIO */}
+                {isPerson && movie.biography && (
+                  <>
+                    <motion.button
+                      onClick={() => setShowFullBio((v) => !v)}
+                      whileTap={{ scale: 0.96 }}
+                      className="px-6 py-3 rounded-full font-semibold bg-[hsl(var(--foreground))] text-[hsl(var(--background))]"
                     >
-                      <div className="mt-3 rounded-xl bg-zinc-900/60 p-4 border border-zinc-700 text-sm text-zinc-300 leading-relaxed max-h-[320px] overflow-y-auto">
-                        {movie.biography}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                      {showFullBio ? <ArrowUp /> : "BIO"}
+                    </motion.button>
+
+                    <AnimatePresence>
+                      {showFullBio && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          className="rounded-xl bg-zinc-900/60 p-4 border border-zinc-700 text-sm text-zinc-300 max-h-[320px] overflow-y-auto"
+                        >
+                          {movie.biography}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </>
+                )}
 
                 {!isPerson && movie.overview && (
                   <p className="text-zinc-200">{movie.overview}</p>
                 )}
 
                 {!isPerson && (
-                  <div className="flex gap-4 justify-center sm:justify-start pt-4">
+                  <div className="flex gap-4 pt-4">
                     <motion.button
                       disabled={!embedUrl}
                       onClick={() => embedUrl && openPlayer(embedUrl)}
@@ -328,6 +274,17 @@ export default function Modal({
                       />
                     </motion.button>
                   </div>
+                )}
+
+                {isTV && (
+                  <EpisodeSelector
+                    tv={movie}
+                    onPlay={(season, episode) =>
+                      openPlayer(
+                        `https://vidlink.pro/tv/${movie.id}/${season}/${episode}?autoplay=1`
+                      )
+                    }
+                  />
                 )}
 
                 {MemoStarringList}
