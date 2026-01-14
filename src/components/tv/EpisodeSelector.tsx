@@ -4,22 +4,7 @@ import { useEffect, useState } from "react";
 import { FaPlay, FaChevronDown } from "react-icons/fa";
 import type { Movie, Season, Episode } from "@/types/movie";
 import { fetchSeasonEpisodes } from "@/lib/tmdb";
-
-/* ---------------------------------------------
-   Types
---------------------------------------------- */
-
-type Progress = {
-  season: number;
-  episode: number;
-  watchedAt: number;
-};
-
-const progressKey = (id: number) => `tv-progress:${id}`;
-
-/* ---------------------------------------------
-   Component
---------------------------------------------- */
+import { useContinueWatching } from "@/hooks/useContinueWatching";
 
 export default function EpisodeSelector({
   tv,
@@ -28,6 +13,8 @@ export default function EpisodeSelector({
   tv: Movie;
   onPlay: (season: number, episode: number) => void;
 }) {
+  const { getTVProgress, setTVProgress } = useContinueWatching();
+
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [episodes, setEpisodes] = useState<Episode[]>([]);
   const [season, setSeason] = useState<number | null>(null);
@@ -36,47 +23,48 @@ export default function EpisodeSelector({
   const [openSeason, setOpenSeason] = useState(false);
   const [openEpisode, setOpenEpisode] = useState(false);
 
-  /* ---------- Load seasons ---------- */
+  /* ---------- Load seasons + resume ---------- */
   useEffect(() => {
     if (!Array.isArray(tv.seasons)) return;
 
     const valid = tv.seasons.filter((s) => s.season_number > 0);
     setSeasons(valid);
 
-    if (!season && valid.length) {
+    const progress = getTVProgress(tv.id);
+
+    if (progress) {
+      setSeason(progress.season);
+      setEpisode(progress.episode);
+      return;
+    }
+
+    if (valid.length) {
       setSeason(valid[0].season_number);
     }
-  }, [tv.seasons, season]);
+  }, [tv.id, tv.seasons, getTVProgress]);
 
   /* ---------- Load episodes ---------- */
   useEffect(() => {
     if (!tv.id || !season) return;
 
     setEpisodes([]);
-    setEpisode(null);
 
     fetchSeasonEpisodes(tv.id, season).then((eps) => {
-      if (!eps || eps.length === 0) {
-        setEpisodes([]);
-        return;
-      }
+      if (!Array.isArray(eps) || eps.length === 0) return;
 
       setEpisodes(eps);
-      setEpisode(eps[0].episode_number);
+
+      if (!eps.some((e) => e.episode_number === episode)) {
+        setEpisode(eps[0].episode_number);
+      }
     });
   }, [tv.id, season]);
 
-  /* ---------- Play + persist ---------- */
+  /* ---------- Play ---------- */
   const play = () => {
     if (!season || !episode) return;
 
-    const payload: Progress = {
-      season,
-      episode,
-      watchedAt: Date.now(),
-    };
-
-    localStorage.setItem(progressKey(tv.id), JSON.stringify(payload));
+    setTVProgress(tv.id, season, episode);
     onPlay(season, episode);
   };
 
@@ -90,9 +78,8 @@ export default function EpisodeSelector({
         p-4 space-y-4
       "
     >
-      {/* Header */}
+      {/* Play */}
       <div className="flex items-center justify-center">
-
         <button
           onClick={play}
           disabled={!episode}
@@ -205,7 +192,6 @@ export default function EpisodeSelector({
         </div>
       </div>
 
-      {/* Empty state */}
       {season && episodes.length === 0 && (
         <div className="text-xs opacity-70 text-[hsl(var(--foreground))]">
           No regular episodes found for this season.
