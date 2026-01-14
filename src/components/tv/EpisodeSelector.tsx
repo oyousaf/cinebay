@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
-import { FaPlay } from "react-icons/fa";
+import { FaPlay, FaChevronDown } from "react-icons/fa";
 import type { Movie, Season, Episode } from "@/types/movie";
-import axios from "axios";
+import { fetchSeasonEpisodes } from "@/lib/tmdb";
 
 /* ---------------------------------------------
    Types
@@ -13,6 +12,7 @@ import axios from "axios";
 type Progress = {
   season: number;
   episode: number;
+  watchedAt: number;
 };
 
 const progressKey = (id: number) => `tv-progress:${id}`;
@@ -30,115 +30,157 @@ export default function EpisodeSelector({
 }) {
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [episodes, setEpisodes] = useState<Episode[]>([]);
-  const [season, setSeason] = useState(1);
-  const [episode, setEpisode] = useState(1);
+  const [season, setSeason] = useState<number | null>(null);
+  const [episode, setEpisode] = useState<number | null>(null);
 
-  /* ---------- Load progress ---------- */
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(progressKey(tv.id));
-      if (raw) {
-        const p = JSON.parse(raw) as Progress;
-        setSeason(p.season);
-        setEpisode(p.episode);
-      }
-    } catch {}
-  }, [tv.id]);
+  const [openSeason, setOpenSeason] = useState(false);
+  const [openEpisode, setOpenEpisode] = useState(false);
 
-  /* ---------- Load seasons (from details) ---------- */
+  /* ---------- Load seasons ---------- */
   useEffect(() => {
-    if (Array.isArray(tv.seasons)) {
-      setSeasons(tv.seasons.filter((s) => s.season_number > 0));
+    if (!Array.isArray(tv.seasons)) return;
+
+    const valid = tv.seasons.filter((s) => s.season_number > 0);
+    setSeasons(valid);
+
+    if (!season && valid.length) {
+      setSeason(valid[0].season_number);
     }
-  }, [tv.seasons]);
+  }, [tv.seasons, season]);
 
-  /* ---------- Fetch episodes (proxy) ---------- */
+  /* ---------- Load episodes (HELPER ONLY) ---------- */
   useEffect(() => {
     if (!tv.id || !season) return;
 
-    axios
-      .get(`/api/tmdb/tv/${tv.id}/season/${season}?language=en-GB`)
-      .then((res) => {
-        if (Array.isArray(res.data?.episodes)) {
-          setEpisodes(res.data.episodes);
+    setEpisodes([]);
+    setEpisode(null);
 
-          if (
-            !res.data.episodes.some(
-              (e: Episode) => e.episode_number === episode
-            )
-          ) {
-            setEpisode(1);
-          }
-        }
-      })
-      .catch(() => {
+    fetchSeasonEpisodes(tv.id, season).then((eps) => {
+      if (!eps || eps.length === 0) {
         setEpisodes([]);
-      });
-  }, [tv.id, season, episode]);
+        return;
+      }
+
+      setEpisodes(eps);
+      setEpisode(eps[0].episode_number);
+    });
+  }, [tv.id, season]);
 
   /* ---------- Play + persist ---------- */
-  const play = (s: number, e: number) => {
-    localStorage.setItem(
-      progressKey(tv.id),
-      JSON.stringify({ season: s, episode: e })
-    );
-    onPlay(s, e);
-  };
+  const play = () => {
+    if (!season || !episode) return;
 
-  const hasProgress = season > 1 || episode > 1;
+    const payload: Progress = {
+      season,
+      episode,
+      watchedAt: Date.now(),
+    };
+
+    localStorage.setItem(progressKey(tv.id), JSON.stringify(payload));
+    onPlay(season, episode);
+  };
 
   /* ---------- UI ---------- */
   return (
-    <div className="rounded-xl border border-zinc-700 bg-zinc-900/60 p-4 space-y-4">
+    <div className="rounded-xl border border-emerald-500/40 bg-black/70 p-4 space-y-4">
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold text-lg">Episodes</h3>
+        <span className="text-sm text-emerald-400 font-semibold">Episodes</span>
 
-        <motion.button
-          whileTap={{ scale: 0.96 }}
-          onClick={() => play(season, episode)}
+        <button
+          onClick={play}
+          disabled={!episode}
           className="flex items-center gap-2 px-4 py-2 rounded-full
-            bg-[hsl(var(--foreground))] text-[hsl(var(--background))]"
+            bg-emerald-500 text-black font-semibold disabled:opacity-40"
         >
           <FaPlay />
-          {hasProgress ? `Continue S${season}E${episode}` : "Play S1E1"}
-        </motion.button>
+          {episode ? `Play S${season}E${episode}` : "Select episode"}
+        </button>
       </div>
 
-      {/* Seasons */}
-      <div className="flex gap-2 overflow-x-auto">
-        {seasons.map((s) => (
+      {/* Selectors */}
+      <div className="grid grid-cols-2 gap-3">
+        {/* Season */}
+        <div className="relative">
           <button
-            key={s.id}
-            onClick={() => setSeason(s.season_number)}
-            className={`px-3 py-1 rounded-full text-sm border
-              ${
-                season === s.season_number
-                  ? "bg-[hsl(var(--foreground))] text-[hsl(var(--background))]"
-                  : "border-zinc-600 text-zinc-300"
-              }`}
+            onClick={() => setOpenSeason((v) => !v)}
+            className="w-full flex items-center justify-between
+              px-3 py-2 rounded-lg border border-emerald-500/40
+              bg-black text-emerald-300"
           >
-            S{s.season_number}
+            {season ? `Season ${season}` : "Select season"}
+            <FaChevronDown />
           </button>
-        ))}
+
+          {openSeason && (
+            <div
+              className="absolute z-50 mt-1 w-full rounded-lg
+              bg-black border border-emerald-500/40 shadow-xl"
+            >
+              {seasons.map((s) => (
+                <button
+                  key={s.id}
+                  onClick={() => {
+                    setSeason(s.season_number);
+                    setOpenSeason(false);
+                  }}
+                  className="w-full px-3 py-2 text-left
+                    text-emerald-300 hover:bg-emerald-500/10"
+                >
+                  Season {s.season_number}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Episode */}
+        <div className="relative">
+          <button
+            onClick={() => episodes.length && setOpenEpisode((v) => !v)}
+            disabled={!episodes.length}
+            className="w-full flex items-center justify-between
+              px-3 py-2 rounded-lg border border-emerald-500/40
+              bg-black text-emerald-300 disabled:opacity-40"
+          >
+            {episode ? `Episode ${episode}` : "No episodes"}
+            <FaChevronDown />
+          </button>
+
+          {openEpisode && (
+            <div
+              className="absolute z-50 mt-1 w-full max-h-60 overflow-y-auto
+              rounded-lg bg-black border border-emerald-500/40 shadow-xl"
+            >
+              {episodes.map((e) => (
+                <button
+                  key={e.id}
+                  onClick={() => {
+                    setEpisode(e.episode_number);
+                    setOpenEpisode(false);
+                  }}
+                  className="w-full px-3 py-2 text-left
+                    text-emerald-300 hover:bg-emerald-500/10"
+                >
+                  Episode {e.episode_number}
+                  {e.name && (
+                    <span className="block text-xs text-emerald-400">
+                      {e.name}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Episodes */}
-      <div className="grid grid-cols-6 gap-2">
-        {episodes.map((e) => (
-          <button
-            key={e.id}
-            onClick={() => play(season, e.episode_number)}
-            className={`text-xs rounded-md py-2
-              ${
-                episode === e.episode_number
-                  ? "bg-[hsl(var(--foreground))] text-[hsl(var(--background))]"
-                  : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
-              }`}
-          >
-            E{e.episode_number}
-          </button>
-        ))}
-      </div>
+      {/* Empty state */}
+      {season && episodes.length === 0 && (
+        <div className="text-xs text-emerald-400 opacity-70">
+          No regular episodes found for this season.
+        </div>
+      )}
     </div>
   );
 }

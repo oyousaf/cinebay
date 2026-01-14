@@ -94,7 +94,8 @@ function toMovieSummary(item: any, forcedType?: "movie" | "tv"): Movie {
     profile_path: "",
 
     release_date: release,
-    vote_average: typeof item?.vote_average === "number" ? item.vote_average : 0,
+    vote_average:
+      typeof item?.vote_average === "number" ? item.vote_average : 0,
     vote_count: typeof item?.vote_count === "number" ? item.vote_count : 0,
 
     genres: [], // summaries do not carry full genres
@@ -124,7 +125,9 @@ const buildKnownForFromCredits = (detail: any): Movie[] => {
     )
     .sort((a: any, b: any) => (b.popularity ?? 0) - (a.popularity ?? 0))
     .slice(0, 10)
-    .map((c: any) => toMovieSummary({ ...c, media_type: c?.media_type }, undefined));
+    .map((c: any) =>
+      toMovieSummary({ ...c, media_type: c?.media_type }, undefined)
+    );
 };
 
 /* =========================================================
@@ -175,7 +178,8 @@ function toMovie(detail: any, type: "movie" | "tv" | "person"): Movie {
     profile_path: detail?.profile_path ?? "",
 
     release_date: release,
-    vote_average: typeof detail?.vote_average === "number" ? detail.vote_average : 0,
+    vote_average:
+      typeof detail?.vote_average === "number" ? detail.vote_average : 0,
     vote_count: typeof detail?.vote_count === "number" ? detail.vote_count : 0,
     genres,
     genres_raw,
@@ -199,8 +203,8 @@ function toMovie(detail: any, type: "movie" | "tv" | "person"): Movie {
       type === "person"
         ? buildKnownForFromCredits(detail)
         : Array.isArray(detail?.known_for)
-          ? detail.known_for.map((x: any) => toMovieSummary(x))
-          : [],
+        ? detail.known_for.map((x: any) => toMovieSummary(x))
+        : [],
 
     similar,
     recommendations,
@@ -249,9 +253,7 @@ export async function fetchDetails(
   type: "movie" | "tv" | "person"
 ) {
   const append =
-    type === "person"
-      ? "combined_credits"
-      : "credits,similar,recommendations";
+    type === "person" ? "combined_credits" : "credits,similar,recommendations";
 
   const d = await fetchFromProxy(
     `/${type}/${id}?language=en-GB&append_to_response=${append}`
@@ -363,10 +365,26 @@ export async function fetchShows(): Promise<Movie[]> {
 }
 
 /* =========================================================
+   TV SEASON EPISODES
+========================================================= */
+
+export async function fetchSeasonEpisodes(
+  tvId: number,
+  season: number
+): Promise<any[] | null> {
+  const d = await fetchFromProxy(`/tv/${tvId}/season/${season}?language=en-GB`);
+
+  if (!d || !Array.isArray(d.episodes)) return null;
+  return d.episodes;
+}
+
+/* =========================================================
    DEV'S PICK
 ========================================================= */
 
 export async function fetchDevsPick(): Promise<Movie[]> {
-  const out = await Promise.all(DEVS_PICK_LIST.map((id) => fetchDetails(id, "movie")));
+  const out = await Promise.all(
+    DEVS_PICK_LIST.map((id) => fetchDetails(id, "movie"))
+  );
   return (out.filter(Boolean) as Movie[]).sort(sortByRating);
 }
