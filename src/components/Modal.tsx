@@ -314,11 +314,7 @@ export default function Modal({
                 {isTV && (
                   <EpisodeSelector
                     tv={movie}
-                    onPlay={(s, e) =>
-                      openPlayer(
-                        `https://vidlink.pro/tv/${movie.id}/${s}/${e}?autoplay=1`
-                      )
-                    }
+                    onPlay={(url) => openPlayer(url)}
                   />
                 )}
 
