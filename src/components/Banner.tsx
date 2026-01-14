@@ -4,7 +4,7 @@ import { FaInfoCircle, FaPlay } from "react-icons/fa";
 import { Bookmark } from "lucide-react";
 import { useWatchlist } from "@/context/WatchlistContext";
 import { useVideoEmbed } from "@/hooks/useVideoEmbed";
-import { getTVProgress } from "@/lib/continueWatching";
+import { useContinueWatching } from "@/hooks/useContinueWatching";
 
 export default function Banner({
   item,
@@ -18,29 +18,22 @@ export default function Banner({
   const isTV = item.media_type === "tv";
   const isMovie = item.media_type === "movie";
 
+  const { toggleWatchlist, isInWatchlist } = useWatchlist();
+  const isSaved = isInWatchlist(item.id);
+
+  /* ---------- CONTINUE WATCHING (SINGLE AUTHORITY) ---------- */
+  const { getResumeUrl, getResumeLabel } = useContinueWatching();
+
+  const tvPlayUrl = isTV ? getResumeUrl(item.id) : null;
+  const tvPlayLabel = isTV ? getResumeLabel(item.id) : null;
+
+  /* ---------- MOVIE EMBED ---------- */
   const movieEmbedUrl = isMovie
     ? useVideoEmbed(item.id, item.media_type)
     : null;
 
-  const { toggleWatchlist, isInWatchlist } = useWatchlist();
-  const isSaved = isInWatchlist(item.id);
-
-  /* ---------- TV resume logic ---------- */
-  const tvProgress = isTV ? getTVProgress(item.id) : null;
-
-  const tvPlayUrl = isTV
-    ? tvProgress
-      ? `https://vidlink.pro/tv/${item.id}/${tvProgress.season}/${tvProgress.episode}`
-      : `https://vidlink.pro/tv/${item.id}/1/1`
-    : null;
-
   const playUrl = isMovie ? movieEmbedUrl : tvPlayUrl;
-
-  const playLabel = isTV
-    ? tvProgress
-      ? `Resume S${tvProgress.season}E${tvProgress.episode}`
-      : "Play S1E1"
-    : "Play";
+  const playLabel = isMovie ? "Play" : tvPlayLabel ?? "Play S1E1";
 
   /* ---------- Animations ---------- */
   const containerVariants: Variants = {
@@ -109,7 +102,10 @@ export default function Banner({
         </motion.p>
 
         {/* Actions */}
-        <motion.div className="flex gap-3 items-center" variants={childVariants}>
+        <motion.div
+          className="flex gap-3 items-center"
+          variants={childVariants}
+        >
           <motion.button
             disabled={!playUrl}
             onClick={() => playUrl && onWatch(playUrl)}
