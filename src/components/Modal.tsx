@@ -95,7 +95,9 @@ export default function Modal({
   const knownFor = movie.known_for ?? [];
 
   const genreLabel = Array.isArray(movie.genres)
-    ? movie.genres.join(" • ")
+    ? movie.genres
+        .map((g) => g.charAt(0).toUpperCase() + g.slice(1))
+        .join(" • ")
     : "";
 
   const director = useMemo(
@@ -205,18 +207,18 @@ export default function Modal({
                     {movie.release_date && (
                       <span>📅 {formatDate(movie.release_date)}</span>
                     )}
-                    {movie.vote_average ? (
+                    {movie.vote_average && (
                       <span className="px-2 py-0.5 rounded-full bg-[hsl(var(--foreground))] text-[hsl(var(--background))] font-semibold">
                         ⭐ {movie.vote_average.toFixed(1)}
                       </span>
-                    ) : null}
+                    )}
                     {genreLabel && (
                       <span className="text-zinc-400">{genreLabel}</span>
                     )}
                   </div>
                 )}
 
-                {/* PERSON SUMMARY */}
+                {/* PERSON */}
                 {isPerson && (
                   <div className="rounded-xl bg-zinc-900/60 p-4 border border-zinc-700 text-sm text-zinc-300 space-y-1">
                     {movie.birthday && (
@@ -249,8 +251,7 @@ export default function Modal({
                       <motion.button
                         onClick={() => setShowBio((v) => !v)}
                         whileTap={{ scale: 0.96 }}
-                        className="inline-flex items-center gap-2 px-6 py-3 rounded-full font-semibold
-        bg-[hsl(var(--foreground))] text-[hsl(var(--background))]"
+                        className="inline-flex items-center gap-2 px-6 py-3 rounded-full font-semibold bg-[hsl(var(--foreground))] text-[hsl(var(--background))]"
                       >
                         {showBio ? <ArrowUp size={18} /> : "BIO"}
                       </motion.button>
@@ -275,19 +276,22 @@ export default function Modal({
                   <p className="text-zinc-200">{movie.overview}</p>
                 )}
 
+                {/* ACTIONS */}
                 {!isPerson && (
-                  <div className="flex gap-4 pt-4">
-                    <motion.button
-                      disabled={!embedUrl}
-                      onClick={() => embedUrl && openPlayer(embedUrl)}
-                      className={`px-6 py-3 rounded-full font-semibold ${
-                        embedUrl
-                          ? "bg-[hsl(var(--foreground))] text-[hsl(var(--background))]"
-                          : "bg-gray-600/50 text-gray-400"
-                      }`}
-                    >
-                      {embedUrl ? <FaPlay size={22} /> : "Loading…"}
-                    </motion.button>
+                  <div className="flex gap-4 pt-4 items-center">
+                    {!isTV && (
+                      <motion.button
+                        disabled={!embedUrl}
+                        onClick={() => embedUrl && openPlayer(embedUrl)}
+                        className={`px-6 py-3 rounded-full font-semibold ${
+                          embedUrl
+                            ? "bg-[hsl(var(--foreground))] text-[hsl(var(--background))]"
+                            : "bg-gray-600/50 text-gray-400"
+                        }`}
+                      >
+                        {embedUrl ? <FaPlay size={22} /> : "Loading…"}
+                      </motion.button>
+                    )}
 
                     <motion.button
                       onClick={() => toggleWatchlist(movie)}
