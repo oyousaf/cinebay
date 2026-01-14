@@ -3,30 +3,28 @@ import { toast } from "sonner";
 
 type MediaType = "movie" | "tv" | "person";
 
-/**
- * Cache resolved embeds per session + localStorage
- */
+/* -------------------------------------------------
+   CACHE
+-------------------------------------------------- */
 const embedCache = new Map<string, string>();
 
+/* -------------------------------------------------
+   PROVIDERS (ORDER MATTERS)
+-------------------------------------------------- */
 const PROVIDERS = [
-  // ✅ current VidSrc active domains (primary)
-  "vidsrc-embed.ru",
-  "vidsrc-embed.su",
-  "vidsrcme.su",
-  "vsrc.su",
-
-  // 🟡 alternative (secondary)
-  "vidlink.pro",
-
-  // ⚠️ legacy VidSrc (backup)
-  "vidsrc.to",
-  "vidsrc.me",
-  "vidsrc.cc",
+  { name: "vidlink", domain: "vidlink.pro" },
+  { name: "vidsrc", domain: "vidsrc.to" },
+  { name: "vidsrc", domain: "vidsrc.me" },
+  { name: "vidsrc", domain: "vidsrc.cc" },
+  { name: "vidsrc", domain: "vidsrc-embed.ru" },
+  { name: "vidsrc", domain: "vidsrc-embed.su" },
+  { name: "vidsrc", domain: "vidsrcme.su" },
+  { name: "vidsrc", domain: "vsrc.su" },
 ];
 
-/**
- * Heuristic markers that indicate failure / placeholder pages
- */
+/* -------------------------------------------------
+   FAILURE MARKERS (VidSrc only)
+-------------------------------------------------- */
 const INVALID_MARKERS = [
   "not found",
   "video not found",
@@ -37,10 +35,26 @@ const INVALID_MARKERS = [
   "no stream",
 ];
 
+/* -------------------------------------------------
+   URL BUILDER
+-------------------------------------------------- */
+function buildUrl(
+  provider: { name: string; domain: string },
+  type: MediaType,
+  id: number
+) {
+  if (provider.name === "vidlink") {
+    return `https://vidlink.pro/${type}/${id}?autoplay=1&primaryColor=2dd4bf&secondaryColor=0f766e`;
+  }
+
+  return `https://${provider.domain}/embed/${type}/${id}`;
+}
+
+/* -------------------------------------------------
+   HOOK
+-------------------------------------------------- */
 export function useVideoEmbed(id?: number, type?: MediaType): string | null {
   const [embedUrl, setEmbedUrl] = useState<string | null>(null);
-
-  // Prevent repeated toasts for the same title
   const hasErroredRef = useRef(false);
 
   useEffect(() => {
@@ -51,7 +65,6 @@ export function useVideoEmbed(id?: number, type?: MediaType): string | null {
 
     const cacheKey = `${type}:${id}`;
 
-    /* ---------- Cache lookup ---------- */
     const cached =
       embedCache.get(cacheKey) ?? localStorage.getItem(`embed:${cacheKey}`);
 
@@ -61,7 +74,6 @@ export function useVideoEmbed(id?: number, type?: MediaType): string | null {
       return;
     }
 
-    /* ---------- Hidden probe iframe ---------- */
     let iframe: HTMLIFrameElement | null = document.createElement("iframe");
     iframe.style.display = "none";
     document.body.appendChild(iframe);
@@ -72,7 +84,7 @@ export function useVideoEmbed(id?: number, type?: MediaType): string | null {
 
     const cleanup = () => {
       if (timeoutId) clearTimeout(timeoutId);
-      if (iframe?.parentNode) iframe.parentNode.removeChild(iframe);
+      iframe?.remove();
       iframe = null;
     };
 
@@ -82,19 +94,15 @@ export function useVideoEmbed(id?: number, type?: MediaType): string | null {
 
         if (!hasErroredRef.current) {
           hasErroredRef.current = true;
-          toast.error("No streaming source available for this title.");
+          toast.error("No streaming source available.");
         }
-
         return;
       }
 
       const provider = PROVIDERS[index];
-      const url = `https://${provider}/embed/${type}/${id}`;
+      const url = buildUrl(provider, type, id);
 
-      console.log(
-        `[useVideoEmbed] trying ${index + 1}/${PROVIDERS.length}:`,
-        provider
-      );
+      console.log(`[useVideoEmbed] trying ${provider.domain}`);
 
       iframe.src = url;
 
@@ -107,20 +115,26 @@ export function useVideoEmbed(id?: number, type?: MediaType): string | null {
     iframe.onload = () => {
       if (!iframe || resolved) return;
 
+      if (PROVIDERS[index].name === "vidlink") {
+        resolved = true;
+        embedCache.set(cacheKey, iframe.src);
+        localStorage.setItem(`embed:${cacheKey}`, iframe.src);
+        setEmbedUrl(iframe.src);
+        cleanup();
+        return;
+      }
+      
       try {
         const text =
           iframe.contentDocument?.body?.innerText?.toLowerCase() ?? "";
 
         const invalid = INVALID_MARKERS.some((m) => text.includes(m));
-
         if (invalid) {
-          console.warn("[useVideoEmbed] rejected:", PROVIDERS[index]);
           index++;
           tryNext();
           return;
         }
 
-        // ✅ Valid embed
         resolved = true;
         embedCache.set(cacheKey, iframe.src);
         localStorage.setItem(`embed:${cacheKey}`, iframe.src);
@@ -136,13 +150,11 @@ export function useVideoEmbed(id?: number, type?: MediaType): string | null {
     };
 
     iframe.onerror = () => {
-      console.warn("[useVideoEmbed] iframe error:", PROVIDERS[index]);
       index++;
       tryNext();
     };
 
     tryNext();
-
     return cleanup;
   }, [id, type]);
 
