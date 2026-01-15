@@ -14,6 +14,11 @@ import { useNavigation } from "@/hooks/useNavigation";
 type SortKey = "rating-desc" | "newest" | "title-asc" | "title-desc";
 type TypeKey = "all" | "movie" | "tv";
 
+type Filters = {
+  sortBy: SortKey;
+  type: TypeKey;
+};
+
 const SORTS: { key: SortKey; label: string }[] = [
   { key: "rating-desc", label: "Top Rated" },
   { key: "newest", label: "Newest" },
@@ -27,9 +32,9 @@ const TYPES: { key: TypeKey; label: string }[] = [
   { key: "tv", label: "TV" },
 ];
 
-const defaultFilters = {
-  sortBy: "rating-desc" as SortKey,
-  type: "all" as TypeKey,
+const defaultFilters: Filters = {
+  sortBy: "rating-desc",
+  type: "all",
 };
 
 /* ---------- Tile ---------- */
@@ -143,7 +148,7 @@ export default function Watchlist({
 }) {
   const { watchlist, toggleWatchlist } = useWatchlist();
 
-  const [filters, setFilters] = useState(() => {
+  const [filters, setFilters] = useState<Filters>(() => {
     try {
       const stored = localStorage.getItem("watchlistFilters");
       return stored ? JSON.parse(stored) : defaultFilters;
@@ -218,7 +223,9 @@ export default function Watchlist({
               key={s.key}
               active={filters.sortBy === s.key}
               layoutId="sort-pill"
-              onClick={() => setFilters((f) => ({ ...f, sortBy: s.key }))}
+              onClick={() =>
+                setFilters((f: Filters) => ({ ...f, sortBy: s.key }))
+              }
             >
               {s.label}
             </FilterPill>
@@ -231,7 +238,9 @@ export default function Watchlist({
               key={t.key}
               active={filters.type === t.key}
               layoutId="type-pill"
-              onClick={() => setFilters((f) => ({ ...f, type: t.key }))}
+              onClick={() =>
+                setFilters((f: Filters) => ({ ...f, type: t.key }))
+              }
             >
               {t.label}
             </FilterPill>
