@@ -1,19 +1,44 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect, memo } from "react";
-import { motion, AnimatePresence, useAnimation } from "framer-motion";
+import {
+  motion,
+  AnimatePresence,
+  useAnimation,
+  type Variants,
+} from "framer-motion";
 import { Search, Loader2 } from "lucide-react";
 import debounce from "lodash.debounce";
 
 import { fetchDetails, fetchFromProxy } from "@/lib/tmdb";
 import type { Movie } from "@/types/movie";
 
-import type { Variants } from "framer-motion";
-
 type Props = {
   onSelectMovie: (movie: Movie) => void;
   onSelectPerson?: (person: Movie) => void;
 };
+
+/* ================= Ranking ================= */
+
+function scoreResult(item: Movie, query: string): number {
+  let score = 0;
+  const q = query.toLowerCase();
+  const title = (item.title || item.name || "").toLowerCase();
+
+  if (title === q) score += 100;
+  else if (title.startsWith(q)) score += 60;
+  else if (title.includes(q)) score += 30;
+
+  if (item.media_type === "movie") score += 20;
+  if (item.media_type === "tv") score += 15;
+  if (item.media_type === "person") score += 5;
+
+  score += (item.vote_average ?? 0) * 2;
+
+  return score;
+}
+
+/* ================= Component ================= */
 
 function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
   const [query, setQuery] = useState("");
@@ -24,7 +49,7 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
   const resultsRef = useRef<HTMLDivElement>(null);
   const iconControls = useAnimation();
 
-  /* ---------------- Loading icon ---------------- */
+  /* ---------- Loading icon ---------- */
 
   useEffect(() => {
     if (!loading) {
@@ -39,7 +64,7 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
     });
   }, [loading, iconControls]);
 
-  /* ---------------- Search logic ---------------- */
+  /* ---------- Search ---------- */
 
   const runSearch = useCallback(async (term: string) => {
     const q = term.trim();
@@ -56,12 +81,14 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
         `/search/multi?query=${encodeURIComponent(q)}`
       );
 
-      const cleaned: Movie[] = (data?.results || [])
+      const ranked: Movie[] = (data?.results || [])
         .filter((r: Movie) => r?.id && r?.media_type)
+        .filter((r: Movie) => (q.length < 3 ? r.media_type !== "person" : true))
+        .sort((a: Movie, b: Movie) => scoreResult(b, q) - scoreResult(a, q))
         .slice(0, 10);
 
-      setResults(cleaned);
-      setOpen(cleaned.length > 0);
+      setResults(ranked);
+      setOpen(ranked.length > 0);
     } catch (err) {
       console.error("TMDB search failed", err);
     } finally {
@@ -78,7 +105,7 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
     return () => debouncedSearch.cancel();
   }, [query, debouncedSearch]);
 
-  /* ---------------- Outside / ESC ---------------- */
+  /* ---------- Outside / ESC ---------- */
 
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
@@ -103,7 +130,7 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
     };
   }, []);
 
-  /* ---------------- Selection ---------------- */
+  /* ---------- Selection ---------- */
 
   const handleSelect = useCallback(
     async (item: Movie) => {
@@ -121,19 +148,16 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
     [onSelectMovie, onSelectPerson]
   );
 
-  /* ---------------- Animations ---------------- */
+  /* ---------- Animations ---------- */
 
   const listVariants: Variants = {
-    hidden: {
-      opacity: 0,
-      y: -6,
-    },
+    hidden: { opacity: 0, y: -6 },
     show: {
       opacity: 1,
       y: 0,
       transition: {
-        duration: 0.3, // 300ms enter
-        ease: [0.16, 1, 0.3, 1], // modern ease-out
+        duration: 0.3,
+        ease: [0.16, 1, 0.3, 1],
         staggerChildren: 0.04,
       },
     },
@@ -141,7 +165,7 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
       opacity: 0,
       y: -4,
       transition: {
-        duration: 0.2, // 200ms exit
+        duration: 0.2,
         ease: [0.4, 0, 1, 1],
         staggerDirection: -1,
       },
@@ -168,7 +192,7 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
     },
   };
 
-  /* ---------------- Render ---------------- */
+  /* ---------- Render ---------- */
 
   return (
     <div className="w-full relative">
@@ -247,7 +271,7 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
                   <div className="flex flex-col">
                     <span className="text-sm font-medium">{name}</span>
                     <span className="text-xs uppercase opacity-60">
-                      {item.media_type}
+                      {item.media_type === "tv" ? "TV Show" : item.media_type}
                     </span>
                   </div>
                 </motion.div>
