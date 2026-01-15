@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect, useState } from "react";
 import ContentRail from "@/components/ContentRail";
 import { fetchDevsPick } from "@/lib/tmdb";
@@ -9,32 +11,38 @@ interface DevsPickProps {
 }
 
 export default function DevsPick({ onSelect, onWatch }: DevsPickProps) {
-  const [movies, setMovies] = useState<Movie[]>([]);
+  const [items, setItems] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let active = true;
+    let alive = true;
 
     (async () => {
       try {
         const data = await fetchDevsPick();
-        if (active) setMovies(data);
+        if (!alive || !Array.isArray(data)) return;
+
+        setItems(
+          data.filter(
+            (m) => m?.id && (m.title || m.name) && m.media_type !== "person"
+          )
+        );
       } catch (err) {
-        console.error("Failed to fetch Dev’s Pick:", err);
+        console.error("Dev’s Pick fetch failed", err);
       } finally {
-        if (active) setLoading(false);
+        if (alive) setLoading(false);
       }
     })();
 
     return () => {
-      active = false;
+      alive = false;
     };
   }, []);
 
   return (
     <ContentRail
       title="Dev’s Pick"
-      items={movies}
+      items={items}
       onSelect={onSelect}
       onWatch={onWatch}
     />
