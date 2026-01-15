@@ -1,17 +1,22 @@
 import { useEffect, useState } from "react";
 import { X, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useContinueWatching } from "@/hooks/useContinueWatching";
 
 export default function PlayerModal({
   url,
+  movieId,
   onClose,
 }: {
   url: string;
+  movieId?: number;
   onClose: () => void;
 }) {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
   const [stillLoading, setStillLoading] = useState(false);
+
+  const { markMovieStarted } = useContinueWatching();
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -44,7 +49,7 @@ export default function PlayerModal({
 
           {error ? (
             <div className="absolute inset-0 flex items-center justify-center text-white px-6 text-center text-sm sm:text-base">
-              Sorry, the video could not be loaded. Please try again later.
+              Sorry, the video could not be loaded.
             </div>
           ) : (
             <iframe
@@ -56,6 +61,10 @@ export default function PlayerModal({
               onLoad={() => {
                 setLoaded(true);
                 setError(false);
+
+                if (movieId) {
+                  markMovieStarted(movieId);
+                }
               }}
               onError={() => setError(true)}
             />
@@ -63,12 +72,9 @@ export default function PlayerModal({
 
           <button
             onClick={onClose}
-            className="absolute top-3 right-3 text-white hover:text-yellow-400 z-20 cursor-pointer"
+            className="absolute top-3 right-3 text-white z-20"
           >
-            <X
-              size={28}
-              className="p-1 bg-black/60 rounded-full backdrop-blur"
-            />
+            <X size={28} className="p-1 bg-black/60 rounded-full" />
           </button>
         </div>
       </motion.div>

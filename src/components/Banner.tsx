@@ -21,26 +21,24 @@ export default function Banner({
   const { toggleWatchlist, isInWatchlist } = useWatchlist();
   const isSaved = isInWatchlist(item.id);
 
-  const {
-    getTVProgress,
-    getResumeUrl,
-    hasMovieProgress,
-  } = useContinueWatching();
+  /* ---------- CONTINUE WATCHING ---------- */
+  const { getTVProgress, getResumeUrl } = useContinueWatching();
 
   const hasResume =
-    (isTV && Boolean(getTVProgress(item.id))) ||
-    (isMovie && hasMovieProgress(item.id));
+    isTV && Boolean(getTVProgress(item.id));
 
+  /* ---------- PLAY URL ---------- */
   const movieEmbedUrl = isMovie
     ? useVideoEmbed(item.id, item.media_type)
     : null;
 
-  const playUrl = isTV
-    ? getResumeUrl(item.id)
-    : isMovie
+  const playUrl = isMovie
     ? movieEmbedUrl
+    : isTV
+    ? getResumeUrl(item.id)
     : null;
 
+  /* ---------- Animations ---------- */
   const containerVariants: Variants = {
     hidden: { opacity: 0, y: 15 },
     show: {
@@ -57,6 +55,7 @@ export default function Banner({
 
   return (
     <div className="relative w-full h-[70vh] sm:h-full flex flex-col justify-end overflow-hidden shadow-2xl snap-start">
+      {/* Backdrop */}
       <AnimatePresence mode="popLayout">
         <motion.div
           key={item.id}
@@ -80,6 +79,7 @@ export default function Banner({
         </motion.div>
       </AnimatePresence>
 
+      {/* Overlay */}
       <motion.div
         className="relative z-10 px-4 md:px-12 py-6 md:py-10 max-w-6xl mx-auto"
         variants={containerVariants}
@@ -100,7 +100,9 @@ export default function Banner({
           {item.overview}
         </motion.p>
 
+        {/* Actions */}
         <motion.div className="flex gap-3 items-center" variants={childVariants}>
+          {/* PLAY / RESUME */}
           <motion.button
             disabled={!playUrl}
             onClick={() => playUrl && onWatch(playUrl)}
@@ -115,6 +117,7 @@ export default function Banner({
             `}
           >
             <FaPlay size={20} />
+
             {hasResume && (
               <span className="ml-1 text-[15px] font-semibold leading-none opacity-95">
                 Resume
@@ -122,6 +125,7 @@ export default function Banner({
             )}
           </motion.button>
 
+          {/* INFO */}
           <motion.button
             onClick={() => onSelect(item)}
             className="bg-[hsl(var(--foreground))] text-[hsl(var(--background))] p-3 rounded-full"
@@ -129,6 +133,7 @@ export default function Banner({
             <FaInfoCircle size={22} />
           </motion.button>
 
+          {/* WATCHLIST */}
           <motion.button
             onClick={() => toggleWatchlist(item)}
             aria-pressed={isSaved}

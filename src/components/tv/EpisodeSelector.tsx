@@ -13,7 +13,7 @@ export default function EpisodeSelector({
   tv: Movie;
   onPlay: (url: string) => void;
 }) {
-  const { getTVProgress, setTVProgress, getResumeLabel, getResumeUrl } =
+  const { getTVProgress, setTVProgress, getResumeUrl } =
     useContinueWatching();
 
   const [seasons, setSeasons] = useState<Season[]>([]);
@@ -31,20 +31,18 @@ export default function EpisodeSelector({
   useEffect(() => {
     if (!Array.isArray(tv.seasons)) return;
 
-    const valid = tv.seasons.filter((s) => s.season_number > 0);
-    setSeasons(valid);
+    const validSeasons = tv.seasons.filter(
+      (s) => s.season_number > 0
+    );
+    setSeasons(validSeasons);
 
     const progress = getTVProgress(tv.id);
 
     if (progress) {
       setSeason(progress.season);
       setEpisode(progress.episode);
-      setHydrated(true);
-      return;
-    }
-
-    if (valid.length) {
-      setSeason(valid[0].season_number);
+    } else if (validSeasons.length) {
+      setSeason(validSeasons[0].season_number);
     }
 
     setHydrated(true);
@@ -54,23 +52,25 @@ export default function EpisodeSelector({
      LOAD + VALIDATE EPISODES
   --------------------------------------------- */
   useEffect(() => {
-    if (!hydrated || !tv.id || !season) return;
+    if (!hydrated || !season) return;
 
+    let active = true;
     setEpisodes([]);
 
     fetchSeasonEpisodes(tv.id, season).then((eps) => {
-      if (!Array.isArray(eps) || eps.length === 0) return;
+      if (!active || !Array.isArray(eps) || eps.length === 0) return;
 
       setEpisodes(eps);
 
-      const validEpisode =
-        episode && eps.some((e) => e.episode_number === episode);
-
-      if (!validEpisode) {
+      if (!eps.some((e) => e.episode_number === episode)) {
         setEpisode(eps[0].episode_number);
       }
     });
-  }, [hydrated, tv.id, season]);
+
+    return () => {
+      active = false;
+    };
+  }, [hydrated, tv.id, season, episode]);
 
   /* ---------------------------------------------
      PLAY
@@ -83,18 +83,20 @@ export default function EpisodeSelector({
   };
 
   /* ---------------------------------------------
-     LABEL LOGIC (RESUME VS PLAY)
+     LABEL (UNIFIED WITH BANNER)
   --------------------------------------------- */
   const progress = getTVProgress(tv.id);
 
   const isResume =
-    progress && progress.season === season && progress.episode === episode;
+    progress?.season === season &&
+    progress?.episode === episode;
 
-  const playLabel = isResume
-    ? getResumeLabel(tv.id)
-    : season && episode
-    ? `S${season} · E${episode}`
-    : "Select episode";
+  const playLabel =
+    season && episode
+      ? isResume
+        ? `Resume S${season} · E${episode}`
+        : `S${season} · E${episode}`
+      : "Select episode";
 
   /* ---------------------------------------------
      UI
@@ -175,7 +177,9 @@ export default function EpisodeSelector({
         {/* Episode */}
         <div className="relative">
           <button
-            onClick={() => episodes.length && setOpenEpisode((v) => !v)}
+            onClick={() =>
+              episodes.length && setOpenEpisode((v) => !v)
+            }
             disabled={!episodes.length}
             className="
               w-full flex items-center justify-between
@@ -214,7 +218,9 @@ export default function EpisodeSelector({
                 >
                   Episode {e.episode_number}
                   {e.name && (
-                    <span className="block text-xs opacity-70">{e.name}</span>
+                    <span className="block text-xs opacity-70">
+                      {e.name}
+                    </span>
                   )}
                 </button>
               ))}
