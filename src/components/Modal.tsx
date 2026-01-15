@@ -203,23 +203,39 @@ export default function Modal({
                 className="w-40 sm:w-44 h-[264px] rounded-lg shadow-lg object-cover mx-auto sm:mx-0"
               />
 
-              <div className="flex-1 space-y-4">
+              <div className="flex-1 space-y-4 text-center sm:text-left">
                 <h2 className="text-3xl sm:text-4xl font-bold">{title}</h2>
 
+                {/* META */}
                 {!isPerson && (
-                  <div className="inline-flex flex-wrap gap-2 px-3 py-2 rounded-xl bg-zinc-900/60 border border-zinc-700 text-xs text-zinc-300">
-                    {creators && <span>📺 {creators}</span>}
-                    {director && <span>🎬 {director}</span>}
-                    {movie.release_date && (
-                      <span>📅 {formatDate(movie.release_date)}</span>
-                    )}
-                    {movie.vote_average && (
-                      <span className="px-2 py-0.5 rounded-full bg-[hsl(var(--foreground))] text-[hsl(var(--background))] font-semibold">
-                        ⭐ {movie.vote_average.toFixed(1)}
-                      </span>
-                    )}
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap gap-2 text-xs text-zinc-200 justify-center sm:justify-start">
+                      {creators && (
+                        <span className="px-3 py-1 rounded-full bg-zinc-900/70 border border-zinc-700">
+                          📺 {creators}
+                        </span>
+                      )}
+                      {director && (
+                        <span className="px-3 py-1 rounded-full bg-zinc-900/70 border border-zinc-700">
+                          🎬 {director}
+                        </span>
+                      )}
+                      {movie.release_date && (
+                        <span className="px-3 py-1 rounded-full bg-zinc-900/70 border border-zinc-700">
+                          📅 {formatDate(movie.release_date)}
+                        </span>
+                      )}
+                      {movie.vote_average && (
+                        <span className="px-3 py-1 rounded-full bg-[hsl(var(--foreground))] text-[hsl(var(--background))] font-semibold">
+                          ⭐ {movie.vote_average.toFixed(1)}
+                        </span>
+                      )}
+                    </div>
+
                     {genreLabel && (
-                      <span className="text-zinc-400">{genreLabel}</span>
+                      <div className="text-xs text-zinc-400 px-1">
+                        {genreLabel}
+                      </div>
                     )}
                   </div>
                 )}
@@ -284,7 +300,7 @@ export default function Modal({
 
                 {/* ACTIONS */}
                 {!isPerson && (
-                  <div className="flex gap-4 pt-4 items-center">
+                  <div className="flex gap-4 pt-4 items-center justify-center sm:justify-start">
                     {!isTV && (
                       <motion.button
                         disabled={!embedUrl}
