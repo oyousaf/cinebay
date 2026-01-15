@@ -7,7 +7,7 @@ import Shows from "@/components/Shows";
 import DevsPick from "@/components/DevsPick";
 import SearchBar from "@/components/SearchBar";
 import Watchlist from "@/components/Watchlist";
-import Modal from "@/components/Modal";
+import Modal from "@/components/modal/ModalClient";
 import PlayerModal from "@/components/PlayerModal";
 import ExitConfirmModal from "@/components/ExitConfirmModal";
 import { useModalManager } from "@/context/ModalContext";
