@@ -28,6 +28,12 @@ const calculateAge = (birthday?: string, deathday?: string) => {
   );
 };
 
+const titleCase = (s: string) =>
+  s
+    .split(" ")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+
 /* ---------- Component ---------- */
 
 export default function ModalMeta({
@@ -44,19 +50,26 @@ export default function ModalMeta({
   /* ---------- PERSON META ---------- */
   if (isPerson) {
     return (
-      <div className="space-y-2">
-        <h2 className="text-3xl font-semibold border-b border-zinc-700/60 pb-1">
+      <div className="space-y-3">
+        <h2 className="text-3xl font-semibold tracking-tight">
           {movie.name}
         </h2>
 
+        <div className="h-px w-20 bg-zinc-700/60" />
+
         <div className="text-sm text-zinc-300 space-y-1">
-          {movie.birthday && <div>🎂 Born: {formatDate(movie.birthday)}</div>}
+          {movie.birthday && (
+            <div>🎂 Born: {formatDate(movie.birthday)}</div>
+          )}
 
           {movie.deathday ? (
             <div>
               🕊️ Passed: {formatDate(movie.deathday)}
               {movie.birthday &&
-                ` (aged ${calculateAge(movie.birthday, movie.deathday)})`}
+                ` (aged ${calculateAge(
+                  movie.birthday,
+                  movie.deathday
+                )})`}
             </div>
           ) : (
             movie.birthday && (
@@ -64,13 +77,21 @@ export default function ModalMeta({
             )
           )}
 
-          {movie.place_of_birth && <div>📍 {movie.place_of_birth}</div>}
+          {movie.place_of_birth && (
+            <div>📍 {movie.place_of_birth}</div>
+          )}
         </div>
       </div>
     );
   }
 
   /* ---------- MOVIE / TV META ---------- */
+
+  const genres =
+    Array.isArray(movie.genres) && movie.genres.length
+      ? movie.genres.map(titleCase).join(" • ")
+      : null;
+
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap gap-2 text-xs text-zinc-200 justify-center sm:justify-start">
@@ -92,18 +113,18 @@ export default function ModalMeta({
           </span>
         )}
 
-        {movie.vote_average && (
+        {typeof movie.vote_average === "number" && (
           <span className="px-3 py-1 rounded-full bg-[hsl(var(--foreground))] text-[hsl(var(--background))] font-semibold">
             ⭐ {movie.vote_average.toFixed(1)}
           </span>
         )}
       </div>
 
-      {movie.genres?.length ? (
+      {genres && (
         <div className="text-xs text-zinc-400 text-center sm:text-left">
-          {movie.genres.join(" • ")}
+          {genres}
         </div>
-      ) : null}
+      )}
     </div>
   );
 }
