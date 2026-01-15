@@ -72,30 +72,22 @@ export default function EpisodeSelector({
   /* ---------- Derived label ---------- */
   const playLabel =
     season && episode
-      ? `Play S${season} · E${episode}`
+      ? `S${season} · E${episode}`
       : "Select episode";
 
   /* ---------- UI ---------- */
   return (
     <div
-      className="
-        rounded-xl border
-        border-[hsl(var(--foreground)/0.4)]
-        bg-[hsl(var(--background)/0.85)]
-        p-4 space-y-4
-      "
+      className="rounded-xl border border-[hsl(var(--foreground)/0.4)] bg-[hsl(var(--background)/0.85)]
+        p-4 space-y-4"
     >
       {/* Play */}
       <div className="flex items-center justify-center">
         <button
           onClick={play}
           disabled={!episode}
-          className="
-            flex items-center gap-2 px-4 py-2 rounded-full font-semibold
-            bg-[hsl(var(--foreground))]
-            text-[hsl(var(--background))]
-            disabled:opacity-40
-          "
+          className="flex items-center gap-2 px-4 py-2 rounded-full font-semibold bg-[hsl(var(--foreground))]
+            text-[hsl(var(--background))] disabled:opacity-40"
         >
           <FaPlay />
           {playLabel}
@@ -108,12 +100,8 @@ export default function EpisodeSelector({
         <div className="relative">
           <button
             onClick={() => setOpenSeason((v) => !v)}
-            className="
-              w-full flex items-center justify-between
-              px-3 py-2 rounded-lg border
-              border-[hsl(var(--foreground)/0.4)]
-              bg-[hsl(var(--background))]
-              text-[hsl(var(--foreground))]
+            className="w-full flex items-center justify-between px-3 py-2 rounded-lg border border-[hsl(var(--foreground)/0.4)]
+              bg-[hsl(var(--background))] text-[hsl(var(--foreground))]
             "
           >
             {season ? `Season ${season}` : "Select season"}
@@ -122,9 +110,7 @@ export default function EpisodeSelector({
 
           {openSeason && (
             <div
-              className="
-                absolute z-50 mt-1 w-full rounded-lg shadow-xl
-                bg-[hsl(var(--background))]
+              className="absolute z-50 mt-1 w-full rounded-lg shadow-xl bg-[hsl(var(--background))]
                 border border-[hsl(var(--foreground)/0.4)]
               "
             >
