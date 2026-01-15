@@ -1,19 +1,22 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+"use client";
+
+import { useState, useRef, useCallback, useEffect, memo } from "react";
 import { motion, AnimatePresence, useAnimation } from "framer-motion";
 import { Search, Loader2 } from "lucide-react";
 import debounce from "lodash.debounce";
-import React from "react";
 
 import { fetchDetails, fetchFromProxy } from "@/lib/tmdb";
 import type { Movie } from "@/types/movie";
 
-const SearchBar: React.FC<{
+type Props = {
   onSelectMovie: (movie: Movie) => void;
   onSelectPerson?: (person: Movie) => void;
-}> = React.memo(({ onSelectMovie, onSelectPerson }) => {
+};
+
+function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Movie[]>([]);
-  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const iconControls = useAnimation();
@@ -27,61 +30,45 @@ const SearchBar: React.FC<{
     }
   };
 
-  /* ================= Loading Icon Animation ================= */
+  /* ================= Loading Icon ================= */
 
   useEffect(() => {
-    if (loading) {
-      iconControls.start({
-        rotate: 360,
-        transition: {
-          repeat: Infinity,
-          duration: 1,
-          ease: "linear",
-        },
-      });
-    } else {
+    if (!loading) {
       iconControls.stop();
       iconControls.set({ rotate: 0 });
+      return;
     }
+
+    iconControls.start({
+      rotate: 360,
+      transition: { repeat: Infinity, duration: 1, ease: "linear" },
+    });
   }, [loading, iconControls]);
-
-  /* ================= Animations ================= */
-
-  const listVariants = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: { staggerChildren: 0.08, delayChildren: 0.1 },
-    },
-    exit: {
-      opacity: 0,
-      transition: { duration: 0.25, staggerDirection: -1 },
-    },
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 6 },
-    show: { opacity: 1, y: 0 },
-    exit: { opacity: 0, y: -6 },
-  };
 
   /* ================= Debounced Search ================= */
 
   const debouncedSearch = useRef(
     debounce(async (term: string) => {
-      if (!term.trim()) {
-        setDropdownOpen(false);
+      const q = term.trim();
+      if (!q) {
+        setResults([]);
+        setOpen(false);
         return;
       }
 
       setLoading(true);
+
       try {
         const data = await fetchFromProxy(
-          `/search/multi?query=${encodeURIComponent(term)}`
+          `/search/multi?query=${encodeURIComponent(q)}`
         );
 
-        setResults((data?.results || []).slice(0, 10));
-        setDropdownOpen(true);
+        const cleaned: Movie[] = (data?.results || [])
+          .filter((r: Movie) => r?.id && r?.media_type)
+          .slice(0, 10);
+
+        setResults(cleaned);
+        setOpen(cleaned.length > 0);
       } catch (err) {
         console.error("TMDB search failed", err);
       } finally {
@@ -92,32 +79,31 @@ const SearchBar: React.FC<{
 
   useEffect(() => {
     debouncedSearch(query);
+    return () => debouncedSearch.cancel();
   }, [query, debouncedSearch]);
 
-  /* ================= Outside / ESC Handling ================= */
+  /* ================= Outside / ESC ================= */
 
   useEffect(() => {
-    const clickOutside = (e: MouseEvent) => {
+    const onClick = (e: MouseEvent) => {
       if (
         resultsRef.current &&
         !resultsRef.current.contains(e.target as Node)
       ) {
-        setDropdownOpen(false);
+        setOpen(false);
       }
     };
 
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setDropdownOpen(false);
-      }
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
     };
 
-    document.addEventListener("mousedown", clickOutside);
-    document.addEventListener("keydown", handleEsc);
+    document.addEventListener("mousedown", onClick);
+    document.addEventListener("keydown", onEsc);
 
     return () => {
-      document.removeEventListener("mousedown", clickOutside);
-      document.removeEventListener("keydown", handleEsc);
+      document.removeEventListener("mousedown", onClick);
+      document.removeEventListener("keydown", onEsc);
     };
   }, []);
 
@@ -128,14 +114,13 @@ const SearchBar: React.FC<{
       const full = await fetchDetails(item.id, item.media_type);
       if (!full) return;
 
-      if (item.media_type === "person" && onSelectPerson) {
-        onSelectPerson(full);
+      if (item.media_type === "person") {
+        onSelectPerson?.(full);
       } else {
         onSelectMovie(full);
       }
 
-      // Preserve query + cached results
-      setDropdownOpen(false);
+      setOpen(false);
     },
     [onSelectMovie, onSelectPerson]
   );
@@ -143,29 +128,26 @@ const SearchBar: React.FC<{
   /* ================= Render ================= */
 
   return (
-    <div className="w-full flex flex-col items-center relative">
-      {/* Search Input */}
+    <div className="w-full relative">
       <motion.form
         onSubmit={(e) => {
           e.preventDefault();
-          debouncedSearch.cancel();
-          debouncedSearch(query);
+          debouncedSearch.flush();
         }}
-        className="w-full flex items-center gap-2 rounded-xl shadow-md border px-4 py-2 z-50"
+        className="w-full flex items-center gap-2 rounded-xl shadow-md border px-4 py-2"
         style={{
           backgroundColor: "hsl(var(--background))",
           borderColor: "hsl(var(--foreground))",
         }}
       >
         <motion.input
-          type="text"
           value={query}
-          placeholder="Search movies, shows, people..."
           onChange={(e) => setQuery(e.target.value)}
           onKeyDownCapture={stopWASDPropagation}
-          autoFocus
+          placeholder="Search movies, shows, people..."
           className="flex-1 bg-transparent outline-none text-base md:text-lg placeholder:text-gray-500"
           style={{ color: "hsl(var(--foreground))" }}
+          autoFocus
         />
 
         <motion.button
@@ -185,42 +167,26 @@ const SearchBar: React.FC<{
         </motion.button>
       </motion.form>
 
-      {/* Results Dropdown */}
       <AnimatePresence>
-        {dropdownOpen && (
+        {open && (
           <motion.div
             ref={resultsRef}
             className="absolute top-full mt-2 w-full max-h-80 overflow-y-auto rounded-lg shadow-lg bg-[hsl(var(--background))] z-50 divide-y divide-[hsl(var(--foreground))]/10"
-            role="listbox"
-            initial="hidden"
-            animate="show"
-            exit="exit"
-            variants={listVariants}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
           >
-            {loading && (
-              <div className="p-6 text-center">
-                <Loader2 className="h-6 w-6 animate-spin mx-auto" />
-              </div>
-            )}
-
-            {!loading && results.length === 0 && query.trim() && (
-              <div className="p-3 text-sm text-center">No results found.</div>
-            )}
-
             {results.map((item) => {
               const image =
                 item.media_type === "person"
                   ? item.profile_path
                   : item.poster_path;
 
-              const name = item.title || item.name || "Unknown";
+              const name = item.title || item.name || "Untitled";
 
               return (
-                <motion.div
-                  key={`${item.media_type}-${item.id}`}
-                  role="option"
-                  tabIndex={0}
-                  variants={itemVariants}
+                <div
+                  key={`${item.media_type}:${item.id}`}
                   onClick={() => handleSelect(item)}
                   className="flex items-center gap-3 px-4 py-2 cursor-pointer hover:bg-[hsl(var(--foreground))]/10"
                 >
@@ -235,12 +201,12 @@ const SearchBar: React.FC<{
                     className="w-10 h-14 object-cover rounded-md"
                   />
                   <div className="flex flex-col">
-                    <span className="font-medium text-sm">{name}</span>
+                    <span className="text-sm font-medium">{name}</span>
                     <span className="text-xs uppercase opacity-60">
                       {item.media_type}
                     </span>
                   </div>
-                </motion.div>
+                </div>
               );
             })}
           </motion.div>
@@ -248,6 +214,6 @@ const SearchBar: React.FC<{
       </AnimatePresence>
     </div>
   );
-});
+}
 
-export default SearchBar;
+export default memo(SearchBar);
