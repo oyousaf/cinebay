@@ -75,7 +75,6 @@ const WatchlistTile = React.memo(function WatchlistTile({
         onError={(e) => ((e.target as HTMLImageElement).src = "/fallback.jpg")}
       />
 
-      {/* Remove */}
       <motion.button
         type="button"
         onClick={(e) => {
@@ -99,6 +98,42 @@ const WatchlistTile = React.memo(function WatchlistTile({
     </motion.button>
   );
 });
+
+/* ---------- Filter Pill ---------- */
+function FilterPill({
+  active,
+  children,
+  onClick,
+  layoutId,
+}: {
+  active: boolean;
+  children: React.ReactNode;
+  onClick: () => void;
+  layoutId: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="relative px-4 py-2 text-sm rounded-full"
+    >
+      {active && (
+        <motion.span
+          layoutId={layoutId}
+          className="
+            absolute inset-0 rounded-full
+            bg-white/10 ring-1 ring-white/20
+          "
+          transition={{
+            type: "spring",
+            stiffness: 500,
+            damping: 35,
+          }}
+        />
+      )}
+      <span className="relative z-10">{children}</span>
+    </button>
+  );
+}
 
 /* ---------- Watchlist ---------- */
 export default function Watchlist({
@@ -164,7 +199,6 @@ export default function Watchlist({
       transition={{ duration: 0.4 }}
       className="min-h-screen w-full"
     >
-      {/* Header */}
       <div className="pt-10 pb-6 text-center">
         <h1 className="text-4xl font-bold">Watchlist</h1>
       </div>
@@ -180,35 +214,27 @@ export default function Watchlist({
       >
         <div className="max-w-6xl mx-auto flex flex-wrap gap-3 justify-center">
           {SORTS.map((s) => (
-            <button
+            <FilterPill
               key={s.key}
-              data-active={filters.sortBy === s.key}
+              active={filters.sortBy === s.key}
+              layoutId="sort-pill"
               onClick={() => setFilters((f) => ({ ...f, sortBy: s.key }))}
-              className="
-                px-4 py-2 rounded-full text-sm
-                data-[active=true]:bg-white/10
-                data-[active=true]:ring-1 ring-white/20
-              "
             >
               {s.label}
-            </button>
+            </FilterPill>
           ))}
 
           <span className="w-px bg-white/10 mx-2" />
 
           {TYPES.map((t) => (
-            <button
+            <FilterPill
               key={t.key}
-              data-active={filters.type === t.key}
+              active={filters.type === t.key}
+              layoutId="type-pill"
               onClick={() => setFilters((f) => ({ ...f, type: t.key }))}
-              className="
-                px-4 py-2 rounded-full text-sm
-                data-[active=true]:bg-white/10
-                data-[active=true]:ring-1 ring-white/20
-              "
             >
               {t.label}
-            </button>
+            </FilterPill>
           ))}
 
           <button
