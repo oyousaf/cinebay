@@ -13,7 +13,7 @@ export default function EpisodeSelector({
   tv: Movie;
   onPlay: (url: string) => void;
 }) {
-  const { getTVProgress, setTVProgress, getResumeUrl } =
+  const { getTVProgress, setTVProgress, getResumeLabel, getResumeUrl } =
     useContinueWatching();
 
   const [seasons, setSeasons] = useState<Season[]>([]);
@@ -23,8 +23,11 @@ export default function EpisodeSelector({
 
   const [openSeason, setOpenSeason] = useState(false);
   const [openEpisode, setOpenEpisode] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
 
-  /* ---------- Load seasons + resume ---------- */
+  /* ---------------------------------------------
+     HYDRATE FROM STORAGE (ONCE)
+  --------------------------------------------- */
   useEffect(() => {
     if (!Array.isArray(tv.seasons)) return;
 
@@ -36,17 +39,22 @@ export default function EpisodeSelector({
     if (progress) {
       setSeason(progress.season);
       setEpisode(progress.episode);
+      setHydrated(true);
       return;
     }
 
     if (valid.length) {
       setSeason(valid[0].season_number);
     }
+
+    setHydrated(true);
   }, [tv.id, tv.seasons, getTVProgress]);
 
-  /* ---------- Load episodes ---------- */
+  /* ---------------------------------------------
+     LOAD + VALIDATE EPISODES
+  --------------------------------------------- */
   useEffect(() => {
-    if (!tv.id || !season) return;
+    if (!hydrated || !tv.id || !season) return;
 
     setEpisodes([]);
 
@@ -55,13 +63,18 @@ export default function EpisodeSelector({
 
       setEpisodes(eps);
 
-      if (!eps.some((e) => e.episode_number === episode)) {
+      const validEpisode =
+        episode && eps.some((e) => e.episode_number === episode);
+
+      if (!validEpisode) {
         setEpisode(eps[0].episode_number);
       }
     });
-  }, [tv.id, season]);
+  }, [hydrated, tv.id, season]);
 
-  /* ---------- Play ---------- */
+  /* ---------------------------------------------
+     PLAY
+  --------------------------------------------- */
   const play = () => {
     if (!season || !episode) return;
 
@@ -69,25 +82,43 @@ export default function EpisodeSelector({
     onPlay(getResumeUrl(tv.id));
   };
 
-  /* ---------- Derived label ---------- */
-  const playLabel =
-    season && episode
-      ? `S${season} · E${episode}`
-      : "Select episode";
+  /* ---------------------------------------------
+     LABEL LOGIC (RESUME VS PLAY)
+  --------------------------------------------- */
+  const progress = getTVProgress(tv.id);
 
-  /* ---------- UI ---------- */
+  const isResume =
+    progress && progress.season === season && progress.episode === episode;
+
+  const playLabel = isResume
+    ? getResumeLabel(tv.id)
+    : season && episode
+    ? `S${season} · E${episode}`
+    : "Select episode";
+
+  /* ---------------------------------------------
+     UI
+  --------------------------------------------- */
   return (
     <div
-      className="rounded-xl border border-[hsl(var(--foreground)/0.4)] bg-[hsl(var(--background)/0.85)]
-        p-4 space-y-4"
+      className="
+        rounded-xl border border-[hsl(var(--foreground)/0.4)]
+        bg-[hsl(var(--background)/0.85)]
+        p-4 space-y-4
+      "
     >
       {/* Play */}
       <div className="flex items-center justify-center">
         <button
           onClick={play}
           disabled={!episode}
-          className="flex items-center gap-2 px-4 py-2 rounded-full font-semibold bg-[hsl(var(--foreground))]
-            text-[hsl(var(--background))] disabled:opacity-40"
+          className="
+            flex items-center gap-2 px-4 py-2
+            rounded-full font-semibold
+            bg-[hsl(var(--foreground))]
+            text-[hsl(var(--background))]
+            disabled:opacity-40
+          "
         >
           <FaPlay />
           {playLabel}
@@ -100,8 +131,12 @@ export default function EpisodeSelector({
         <div className="relative">
           <button
             onClick={() => setOpenSeason((v) => !v)}
-            className="w-full flex items-center justify-between px-3 py-2 rounded-lg border border-[hsl(var(--foreground)/0.4)]
-              bg-[hsl(var(--background))] text-[hsl(var(--foreground))]
+            className="
+              w-full flex items-center justify-between
+              px-3 py-2 rounded-lg border
+              border-[hsl(var(--foreground)/0.4)]
+              bg-[hsl(var(--background))]
+              text-[hsl(var(--foreground))]
             "
           >
             {season ? `Season ${season}` : "Select season"}
@@ -110,7 +145,10 @@ export default function EpisodeSelector({
 
           {openSeason && (
             <div
-              className="absolute z-50 mt-1 w-full rounded-lg shadow-xl bg-[hsl(var(--background))]
+              className="
+                absolute z-50 mt-1 w-full max-h-60 overflow-y-auto
+                rounded-lg shadow-xl
+                bg-[hsl(var(--background))]
                 border border-[hsl(var(--foreground)/0.4)]
               "
             >
@@ -176,9 +214,7 @@ export default function EpisodeSelector({
                 >
                   Episode {e.episode_number}
                   {e.name && (
-                    <span className="block text-xs opacity-70">
-                      {e.name}
-                    </span>
+                    <span className="block text-xs opacity-70">{e.name}</span>
                   )}
                 </button>
               ))}
