@@ -10,18 +10,22 @@ export type TVProgress = {
 };
 
 /* ---------------------------------------------
-   Storage
+   Storage keys
 --------------------------------------------- */
-const keyFor = (tvId: number) => `watch:tv:${tvId}`;
+const tvKeyFor = (tvId: number) => `watch:tv:${tvId}`;
+const movieKeyFor = (movieId: number) => `watch:movie:${movieId}`;
 
 /* ---------------------------------------------
    Hook
 --------------------------------------------- */
 export function useContinueWatching() {
-  /* ---------- Read ---------- */
+  /* =======================
+     TV
+  ======================= */
+
   const getTVProgress = useCallback((tvId: number): TVProgress | null => {
     try {
-      const raw = localStorage.getItem(keyFor(tvId));
+      const raw = localStorage.getItem(tvKeyFor(tvId));
       if (!raw) return null;
 
       const parsed = JSON.parse(raw);
@@ -40,7 +44,6 @@ export function useContinueWatching() {
     }
   }, []);
 
-  /* ---------- Write ---------- */
   const setTVProgress = useCallback(
     (tvId: number, season: number, episode: number) => {
       const payload: TVProgress = {
@@ -49,17 +52,15 @@ export function useContinueWatching() {
         updatedAt: Date.now(),
       };
 
-      localStorage.setItem(keyFor(tvId), JSON.stringify(payload));
+      localStorage.setItem(tvKeyFor(tvId), JSON.stringify(payload));
     },
     []
   );
 
-  /* ---------- Clear ---------- */
   const clearTVProgress = useCallback((tvId: number) => {
-    localStorage.removeItem(keyFor(tvId));
+    localStorage.removeItem(tvKeyFor(tvId));
   }, []);
 
-  /* ---------- Helpers (SINGLE SOURCE OF TRUTH) ---------- */
   const getResumeLabel = useCallback(
     (tvId: number) => {
       const p = getTVProgress(tvId);
@@ -78,11 +79,36 @@ export function useContinueWatching() {
     [getTVProgress]
   );
 
+  /* =======================
+     MOVIES 
+  ======================= */
+
+  const hasMovieProgress = useCallback((movieId: number) => {
+    return Boolean(localStorage.getItem(movieKeyFor(movieId)));
+  }, []);
+
+  const markMovieStarted = useCallback((movieId: number) => {
+    localStorage.setItem(
+      movieKeyFor(movieId),
+      JSON.stringify({ startedAt: Date.now() })
+    );
+  }, []);
+
+  const clearMovieProgress = useCallback((movieId: number) => {
+    localStorage.removeItem(movieKeyFor(movieId));
+  }, []);
+
   return {
+    /* TV */
     getTVProgress,
     setTVProgress,
     clearTVProgress,
     getResumeLabel,
     getResumeUrl,
+
+    /* Movies */
+    hasMovieProgress,
+    markMovieStarted,
+    clearMovieProgress,
   };
 }

@@ -21,19 +21,26 @@ export default function Banner({
   const { toggleWatchlist, isInWatchlist } = useWatchlist();
   const isSaved = isInWatchlist(item.id);
 
-  /* ---------- CONTINUE WATCHING ---------- */
-  const { getResumeUrl, getTVProgress } = useContinueWatching();
-  const progress = isTV ? getTVProgress(item.id) : null;
-  const hasResume = Boolean(progress);
+  const {
+    getTVProgress,
+    getResumeUrl,
+    hasMovieProgress,
+  } = useContinueWatching();
 
-  /* ---------- PLAY URL ---------- */
+  const hasResume =
+    (isTV && Boolean(getTVProgress(item.id))) ||
+    (isMovie && hasMovieProgress(item.id));
+
   const movieEmbedUrl = isMovie
     ? useVideoEmbed(item.id, item.media_type)
     : null;
 
-  const playUrl = isMovie ? movieEmbedUrl : isTV ? getResumeUrl(item.id) : null;
+  const playUrl = isTV
+    ? getResumeUrl(item.id)
+    : isMovie
+    ? movieEmbedUrl
+    : null;
 
-  /* ---------- Animations ---------- */
   const containerVariants: Variants = {
     hidden: { opacity: 0, y: 15 },
     show: {
@@ -50,7 +57,6 @@ export default function Banner({
 
   return (
     <div className="relative w-full h-[70vh] sm:h-full flex flex-col justify-end overflow-hidden shadow-2xl snap-start">
-      {/* Backdrop */}
       <AnimatePresence mode="popLayout">
         <motion.div
           key={item.id}
@@ -74,7 +80,6 @@ export default function Banner({
         </motion.div>
       </AnimatePresence>
 
-      {/* Overlay */}
       <motion.div
         className="relative z-10 px-4 md:px-12 py-6 md:py-10 max-w-6xl mx-auto"
         variants={containerVariants}
@@ -95,12 +100,7 @@ export default function Banner({
           {item.overview}
         </motion.p>
 
-        {/* Actions */}
-        <motion.div
-          className="flex gap-3 items-center"
-          variants={childVariants}
-        >
-          {/* PLAY / RESUME PILL */}
+        <motion.div className="flex gap-3 items-center" variants={childVariants}>
           <motion.button
             disabled={!playUrl}
             onClick={() => playUrl && onWatch(playUrl)}
@@ -115,7 +115,6 @@ export default function Banner({
             `}
           >
             <FaPlay size={20} />
-
             {hasResume && (
               <span className="ml-1 text-[15px] font-semibold leading-none opacity-95">
                 Resume
@@ -123,27 +122,17 @@ export default function Banner({
             )}
           </motion.button>
 
-          {/* INFO */}
           <motion.button
             onClick={() => onSelect(item)}
-            className="
-              bg-[hsl(var(--foreground))]
-              text-[hsl(var(--background))]
-              p-3 rounded-full
-            "
+            className="bg-[hsl(var(--foreground))] text-[hsl(var(--background))] p-3 rounded-full"
           >
             <FaInfoCircle size={22} />
           </motion.button>
 
-          {/* WATCHLIST */}
           <motion.button
             onClick={() => toggleWatchlist(item)}
             aria-pressed={isSaved}
-            className="
-              bg-[hsl(var(--foreground))]
-              text-[hsl(var(--background))]
-              p-3 rounded-full
-            "
+            className="bg-[hsl(var(--foreground))] text-[hsl(var(--background))] p-3 rounded-full"
           >
             <Bookmark
               size={22}
