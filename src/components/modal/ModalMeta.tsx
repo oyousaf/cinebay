@@ -45,7 +45,7 @@ export default function ModalMeta({
   if (isPerson) {
     return (
       <div className="space-y-2">
-        <h2 className="text-xl font-semibold border-b border-zinc-700/60 pb-1">
+        <h2 className="text-3xl font-semibold border-b border-zinc-700/60 pb-1">
           {movie.name}
         </h2>
 
