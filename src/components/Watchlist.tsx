@@ -209,13 +209,7 @@ export default function Watchlist({
       </div>
 
       {/* Filters */}
-      <div
-        className="
-        sticky top-0 z-20
-        backdrop-blur-xl bg-black/40
-        border-b border-white/10
-        px-4 py-4
-      "
+      <div className="sticky top-0 z-20 backdrop-blur-xl bg-black/40 border-b border-white/10 px-4 py-4"
       >
         <div className="max-w-6xl mx-auto flex flex-wrap gap-3 justify-center">
           {SORTS.map((s) => (
