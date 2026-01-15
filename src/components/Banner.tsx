@@ -21,19 +21,17 @@ export default function Banner({
   const { toggleWatchlist, isInWatchlist } = useWatchlist();
   const isSaved = isInWatchlist(item.id);
 
-  /* ---------- CONTINUE WATCHING (SINGLE AUTHORITY) ---------- */
-  const { getResumeUrl, getResumeLabel } = useContinueWatching();
+  /* ---------- CONTINUE WATCHING ---------- */
+  const { getResumeUrl, getTVProgress } = useContinueWatching();
+  const progress = isTV ? getTVProgress(item.id) : null;
+  const hasResume = Boolean(progress);
 
-  const tvPlayUrl = isTV ? getResumeUrl(item.id) : null;
-  const tvPlayLabel = isTV ? getResumeLabel(item.id) : null;
-
-  /* ---------- MOVIE EMBED ---------- */
+  /* ---------- PLAY URL ---------- */
   const movieEmbedUrl = isMovie
     ? useVideoEmbed(item.id, item.media_type)
     : null;
 
-  const playUrl = isMovie ? movieEmbedUrl : tvPlayUrl;
-  const playLabel = isMovie ? "Play" : tvPlayLabel ?? "Play S1E1";
+  const playUrl = isMovie ? movieEmbedUrl : isTV ? getResumeUrl(item.id) : null;
 
   /* ---------- Animations ---------- */
   const containerVariants: Variants = {
@@ -41,11 +39,7 @@ export default function Banner({
     show: {
       opacity: 1,
       y: 0,
-      transition: {
-        duration: 0.35,
-        ease: [0.25, 0.1, 0.25, 1],
-        staggerChildren: 0.05,
-      },
+      transition: { duration: 0.35, staggerChildren: 0.05 },
     },
   };
 
@@ -106,31 +100,50 @@ export default function Banner({
           className="flex gap-3 items-center"
           variants={childVariants}
         >
+          {/* PLAY / RESUME PILL */}
           <motion.button
             disabled={!playUrl}
             onClick={() => playUrl && onWatch(playUrl)}
-            className={`flex items-center gap-2 px-6 py-3 rounded-full font-semibold
+            aria-label={hasResume ? "Resume" : "Play"}
+            className={`
+              flex items-center gap-3 px-6 py-3 rounded-full font-semibold
               ${
                 playUrl
                   ? "bg-[hsl(var(--foreground))] text-[hsl(var(--background))]"
                   : "bg-gray-600/50 text-gray-400"
-              }`}
+              }
+            `}
           >
-            <FaPlay size={22} />
-            <span>{playLabel}</span>
+            <FaPlay size={20} />
+
+            {hasResume && (
+              <span className="ml-1 text-[15px] font-semibold leading-none opacity-95">
+                Resume
+              </span>
+            )}
           </motion.button>
 
+          {/* INFO */}
           <motion.button
             onClick={() => onSelect(item)}
-            className="bg-[hsl(var(--foreground))] text-[hsl(var(--background))] p-3 rounded-full"
+            className="
+              bg-[hsl(var(--foreground))]
+              text-[hsl(var(--background))]
+              p-3 rounded-full
+            "
           >
             <FaInfoCircle size={22} />
           </motion.button>
 
+          {/* WATCHLIST */}
           <motion.button
             onClick={() => toggleWatchlist(item)}
             aria-pressed={isSaved}
-            className="bg-[hsl(var(--foreground))] text-[hsl(var(--background))] p-3 rounded-full"
+            className="
+              bg-[hsl(var(--foreground))]
+              text-[hsl(var(--background))]
+              p-3 rounded-full
+            "
           >
             <Bookmark
               size={22}
