@@ -20,7 +20,7 @@ import ModalMeta from "./ModalMeta";
 import ModalActions from "./ModalActions";
 import ModalBody from "./ModalBody";
 
-/* Lazy */
+/* ---------- Lazy blocks ---------- */
 const LazySimilar = lazy(() =>
   import("./Recommendations").then((m) => ({ default: m.Similar }))
 );
@@ -28,6 +28,8 @@ const LazyRecommendations = lazy(() =>
   import("./Recommendations").then((m) => ({ default: m.Recommendations }))
 );
 const LazyKnownForSlider = lazy(() => import("./KnownForSlider"));
+
+/* ---------- Component ---------- */
 
 export default function ModalClient({
   movie,
@@ -46,12 +48,14 @@ export default function ModalClient({
   const isPerson = movie.media_type === "person";
   const isTV = movie.media_type === "tv";
 
-  /* ---------- Derived meta (RESTORED) ---------- */
+  /* ---------- Derived meta ---------- */
 
   const director = useMemo(() => {
     if (movie.media_type !== "movie") return null;
-    return movie.credits?.crew?.find((c) => c.job === "Director")?.name ?? null;
-  }, [movie]);
+    return (
+      movie.credits?.crew?.find((c) => c.job === "Director")?.name ?? null
+    );
+  }, [movie.media_type, movie.credits]);
 
   const creators = useMemo(() => {
     if (!isTV || !movie.created_by?.length) return null;
@@ -59,7 +63,9 @@ export default function ModalClient({
   }, [isTV, movie.created_by]);
 
   const posterPath = movie.profile_path || movie.poster_path;
-  const poster = posterPath ? `${TMDB_IMAGE}${posterPath}` : "/fallback.jpg";
+  const poster = posterPath
+    ? `${TMDB_IMAGE}${posterPath}`
+    : "/fallback.jpg";
 
   /* ---------- Selection ---------- */
 
@@ -69,9 +75,12 @@ export default function ModalClient({
       try {
         const full = await fetchDetails(
           item.id,
-          (item.media_type || movie.media_type) as "movie" | "tv" | "person"
+          (item.media_type || movie.media_type) as
+            | "movie"
+            | "tv"
+            | "person"
         );
-        full && onSelect?.(full);
+        if (full) onSelect?.(full);
       } catch {
         toast.error("Failed to load details.");
       }
@@ -79,10 +88,14 @@ export default function ModalClient({
     [movie.media_type, onSelect]
   );
 
+  /* ---------- Mount sync ---------- */
+
   useEffect(() => {
     const id = requestAnimationFrame(() => setMounting(false));
     return () => cancelAnimationFrame(id);
   }, []);
+
+  /* ---------- Render ---------- */
 
   return (
     <AnimatePresence>
@@ -90,7 +103,7 @@ export default function ModalClient({
         key={movie.id}
         role="dialog"
         aria-modal="true"
-        aria-label={movie.title || movie.name}
+        aria-labelledby="modal-title"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -115,7 +128,7 @@ export default function ModalClient({
               <img
                 src={poster}
                 alt={movie.title || movie.name}
-                className="w-40 sm:w-44 h-[264px] rounded-lg shadow-lg object-cover"
+                className="w-40 sm:w-44 h-[264px] rounded-lg shadow-lg object-cover mx-auto sm:mx-0"
               />
 
               <div className="flex-1 space-y-6 text-center sm:text-left">
@@ -125,7 +138,6 @@ export default function ModalClient({
                   creators={creators}
                 />
 
-                {/* BODY */}
                 <ModalBody movie={movie} onSelect={onSelect} />
 
                 <ModalActions movie={movie} />
