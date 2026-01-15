@@ -10,11 +10,10 @@ import { useModalManager } from "@/context/ModalContext";
 import { useVideoEmbed } from "@/hooks/useVideoEmbed";
 import EpisodeSelector from "@/components/tv/EpisodeSelector";
 
-export default function ModalActions({
-  movie,
-}: {
-  movie: Movie;
-}) {
+export default function ModalActions({ movie }: { movie: Movie }) {
+  /* ❌ Actors never have actions */
+  if (movie.media_type === "person") return null;
+
   const isTV = movie.media_type === "tv";
 
   const { toggleWatchlist, isInWatchlist } = useWatchlist();
@@ -51,9 +50,7 @@ export default function ModalActions({
               size={22}
               strokeWidth={isSaved ? 3 : 2}
               className={
-                isSaved
-                  ? "fill-[hsl(var(--background))]"
-                  : "fill-none"
+                isSaved ? "fill-[hsl(var(--background))]" : "fill-none"
               }
             />
           </motion.button>
@@ -61,12 +58,7 @@ export default function ModalActions({
       )}
 
       {/* TV ACTIONS */}
-      {isTV && (
-        <EpisodeSelector
-          tv={movie}
-          onPlay={(url) => openPlayer(url)}
-        />
-      )}
+      {isTV && <EpisodeSelector tv={movie} onPlay={(url) => openPlayer(url)} />}
     </div>
   );
 }

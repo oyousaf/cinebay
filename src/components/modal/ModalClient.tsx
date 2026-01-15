@@ -29,8 +29,6 @@ const LazyRecommendations = lazy(() =>
 );
 const LazyKnownForSlider = lazy(() => import("./KnownForSlider"));
 
-/* ---------- Component ---------- */
-
 export default function ModalClient({
   movie,
   onClose,
@@ -52,9 +50,7 @@ export default function ModalClient({
 
   const director = useMemo(() => {
     if (movie.media_type !== "movie") return null;
-    return (
-      movie.credits?.crew?.find((c) => c.job === "Director")?.name ?? null
-    );
+    return movie.credits?.crew?.find((c) => c.job === "Director")?.name ?? null;
   }, [movie.media_type, movie.credits]);
 
   const creators = useMemo(() => {
@@ -63,9 +59,7 @@ export default function ModalClient({
   }, [isTV, movie.created_by]);
 
   const posterPath = movie.profile_path || movie.poster_path;
-  const poster = posterPath
-    ? `${TMDB_IMAGE}${posterPath}`
-    : "/fallback.jpg";
+  const poster = posterPath ? `${TMDB_IMAGE}${posterPath}` : "/fallback.jpg";
 
   /* ---------- Selection ---------- */
 
@@ -75,10 +69,7 @@ export default function ModalClient({
       try {
         const full = await fetchDetails(
           item.id,
-          (item.media_type || movie.media_type) as
-            | "movie"
-            | "tv"
-            | "person"
+          (item.media_type || movie.media_type) as "movie" | "tv" | "person"
         );
         if (full) onSelect?.(full);
       } catch {
@@ -122,16 +113,21 @@ export default function ModalClient({
           <ModalHeader onClose={onClose} onBack={onBack} />
 
           {/* CONTENT */}
-          <div className="px-4 py-8 sm:p-8 bg-gradient-to-b from-black/80 via-black/60 to-black/90 max-h-[90vh] overflow-y-auto space-y-8">
+          <div className="px-4 py-6 sm:px-8 sm:py-8 bg-gradient-to-b from-black/80 via-black/60 to-black/90 max-h-[90vh] overflow-y-auto space-y-8">
             {/* HERO ROW */}
             <div className="flex flex-col sm:flex-row gap-6 items-center sm:items-start">
               <img
                 src={poster}
                 alt={movie.title || movie.name}
-                className="w-40 sm:w-44 h-[264px] rounded-lg shadow-lg object-cover mx-auto sm:mx-0"
+                className="w-40 sm:w-44 h-[264px] rounded-lg shadow-lg object-cover"
               />
 
-              <div className="flex-1 space-y-6 text-center sm:text-left">
+              <div
+                className={`flex-1 text-center sm:text-left ${
+                  isPerson ? "space-y-4" : "space-y-6"
+                }`}
+              >
+
                 <ModalMeta
                   movie={movie}
                   director={director}
@@ -140,7 +136,7 @@ export default function ModalClient({
 
                 <ModalBody movie={movie} onSelect={onSelect} />
 
-                <ModalActions movie={movie} />
+                {!isPerson && <ModalActions movie={movie} />}
               </div>
             </div>
 
