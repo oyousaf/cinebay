@@ -29,7 +29,10 @@ const TYPES: readonly { key: TypeKey; label: string }[] = [
   { key: "tv", label: "TV" },
 ];
 
-const defaultFilters: Filters = { sortBy: "rating-desc", type: "all" };
+const defaultFilters: Filters = {
+  sortBy: "rating-desc",
+  type: "all",
+};
 
 /* ---------- Swipe tuning ---------- */
 const MAX_REVEAL = 88;
@@ -80,8 +83,12 @@ const WatchlistTile = React.memo(function WatchlistTile({
           onRemove();
         }
       }}
-      className={`group relative rounded-xl overflow-hidden focus-visible:ring-4 ring-[#80ffcc]
-        ${isFocused ? "z-30" : "z-10"}`}
+      className={`
+        group relative
+        rounded-xl overflow-hidden
+        focus-visible:ring-4 ring-[#80ffcc]
+        ${isFocused ? "z-30" : "z-10"}
+      `}
     >
       {/* Swipe reveal */}
       <div
@@ -98,21 +105,24 @@ const WatchlistTile = React.memo(function WatchlistTile({
       <motion.button
         type="button"
         drag="x"
-        dragElastic={0.06}
+        dragDirectionLock
+        dragElastic={0}
+        dragMomentum={false}
         dragConstraints={{ left: -MAX_REVEAL, right: 0 }}
-        onDrag={(_, info) => setDragX(info.offset.x)}
+        onDrag={(_, info) => {
+          setDragX(Math.min(0, info.offset.x));
+        }}
         onDragEnd={() => {
           if (dragX < -COMMIT_THRESHOLD) {
+            setDragX(-MAX_REVEAL);
             onRemove();
-          } else if (Math.abs(dragX) < TAP_THRESHOLD) {
-            onSelect(movie);
+            return;
           }
+
           setDragX(0);
         }}
-        onClick={() => {
-          if (Math.abs(dragX) < TAP_THRESHOLD) {
-            onSelect(movie);
-          }
+        onTap={() => {
+          onSelect(movie);
         }}
         style={{ x: dragX }}
         whileTap={{ scale: 0.97 }}
@@ -140,14 +150,8 @@ const WatchlistTile = React.memo(function WatchlistTile({
             onRemove();
           }}
           aria-label="Remove from watchlist"
-          className="
-            absolute top-2 right-2
-            rounded-full bg-black/60 backdrop-blur
-            text-red-400 transition
-            p-3 sm:p-2
-            opacity-100
-            sm:opacity-0 sm:group-hover:opacity-100
-          "
+          className="absolute top-2 right-2 rounded-full bg-black/60 backdrop-blur text-red-400 transition
+          p-3 sm:p-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
         >
           <X size={16} />
         </button>
@@ -293,7 +297,7 @@ export default function Watchlist({
             layout
             className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-7 gap-4"
           >
-            <AnimatePresence>
+            <AnimatePresence mode="popLayout">
               {filteredList.map((movie, idx) => (
                 <WatchlistTile
                   key={movie.id}
