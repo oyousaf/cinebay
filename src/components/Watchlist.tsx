@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useDeferredValue } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, RefreshCw } from "lucide-react";
 import React from "react";
@@ -54,12 +54,7 @@ const WatchlistTile = React.memo(function WatchlistTile({
       tabIndex={0}
       initial={{ opacity: 0, scale: 0.98 }}
       animate={{ opacity: 1, scale: 1 }}
-      exit={{
-        opacity: 0,
-        scale: 0.9,
-        x: -40,
-        transition: { duration: 0.25 },
-      }}
+      exit={{ opacity: 0, scale: 0.9, x: -40, transition: { duration: 0.25 } }}
       onFocus={onFocus}
       onKeyDown={(e) => {
         if (e.key === "Enter") {
@@ -72,8 +67,7 @@ const WatchlistTile = React.memo(function WatchlistTile({
         }
       }}
       className={`group relative rounded-xl overflow-hidden focus-visible:ring-4 ring-[#80ffcc]
-        ${isFocused ? "z-30" : "z-10"}
-      `}
+        ${isFocused ? "z-30" : "z-10"}`}
     >
       <button
         type="button"
@@ -150,6 +144,7 @@ export default function Watchlist({
   const { watchlist, toggleWatchlist } = useWatchlist();
   const { focus, setFocus, registerRail, updateRailLength } = useNavigation();
 
+  /* ---------- Init filters (localStorage only) ---------- */
   const [filters, setFilters] = useState<Filters>(() => {
     try {
       const stored = localStorage.getItem("watchlistFilters");
@@ -159,27 +154,46 @@ export default function Watchlist({
     }
   });
 
+  const deferredFilters = useDeferredValue(filters);
+
+  /* ---------- Persist filters ---------- */
   useEffect(() => {
-    localStorage.setItem("watchlistFilters", JSON.stringify(filters));
+    const next = JSON.stringify(filters);
+    const stored = localStorage.getItem("watchlistFilters");
+    if (stored !== next) {
+      localStorage.setItem("watchlistFilters", next);
+    }
   }, [filters]);
 
+  /* ---------- Filter + sort ---------- */
   const filteredList = useMemo(() => {
-    return watchlist
-      .filter((m) => filters.type === "all" || m.media_type === filters.type)
-      .sort((a, b) => {
-        const ta = a.title || a.name || "";
-        const tb = b.title || b.name || "";
-        if (filters.sortBy === "title-asc") return ta.localeCompare(tb);
-        if (filters.sortBy === "title-desc") return tb.localeCompare(ta);
-        if (filters.sortBy === "newest")
-          return (
-            new Date(b.release_date || "").getTime() -
-            new Date(a.release_date || "").getTime()
-          );
-        return (b.vote_average ?? 0) - (a.vote_average ?? 0);
-      });
-  }, [watchlist, filters]);
+    const list = watchlist
+      .filter(
+        (m) =>
+          deferredFilters.type === "all" ||
+          m.media_type === deferredFilters.type
+      )
+      .map((m) => ({
+        ...m,
+        _title: m.title || m.name || "",
+        _date: m.release_date ? Date.parse(m.release_date) : 0,
+      }));
 
+    switch (deferredFilters.sortBy) {
+      case "title-asc":
+        return list.sort((a, b) => a._title.localeCompare(b._title));
+      case "title-desc":
+        return list.sort((a, b) => b._title.localeCompare(a._title));
+      case "newest":
+        return list.sort((a, b) => b._date - a._date);
+      default:
+        return list.sort(
+          (a, b) => (b.vote_average ?? 0) - (a.vote_average ?? 0)
+        );
+    }
+  }, [watchlist, deferredFilters]);
+
+  /* ---------- Navigation rail ---------- */
   const [railIndex, setRailIndex] = useState<number | null>(null);
 
   useEffect(() => {
@@ -190,6 +204,7 @@ export default function Watchlist({
     }
   }, [filteredList.length, railIndex, registerRail, updateRailLength]);
 
+  /* ---------- Render ---------- */
   return (
     <motion.main
       initial={{ opacity: 0, y: 20 }}
