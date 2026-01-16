@@ -82,10 +82,7 @@ const WatchlistTile = React.memo(function WatchlistTile({
           onRemove();
         }
       }}
-      className={`
-        group relative
-        rounded-xl overflow-hidden
-        focus-visible:ring-4 ring-[#80ffcc]
+      className={`group relative rounded-xl overflow-hidden focus-visible:ring-4 ring-[#80ffcc]
         ${isFocused ? "z-30" : "z-10"}
       `}
     >
@@ -101,8 +98,7 @@ const WatchlistTile = React.memo(function WatchlistTile({
       </div>
 
       {/* Foreground */}
-      <motion.button
-        type="button"
+      <motion.div
         drag="x"
         dragDirectionLock
         dragElastic={0}
@@ -117,16 +113,20 @@ const WatchlistTile = React.memo(function WatchlistTile({
             onRemove();
             return;
           }
-
           setDragX(0);
-        }}
-        onTap={() => {
-          onSelect(movie);
         }}
         style={{ x: dragX }}
         whileTap={{ scale: 0.97 }}
         className="relative w-full h-full bg-black"
       >
+        {/* Click layer */}
+        <button
+          type="button"
+          onClick={() => onSelect(movie)}
+          className="absolute inset-0"
+          aria-label={`Open ${movie.title || movie.name}`}
+        />
+
         <img
           src={
             movie.poster_path
@@ -134,27 +134,27 @@ const WatchlistTile = React.memo(function WatchlistTile({
               : "/fallback.jpg"
           }
           alt={movie.title || movie.name}
-          className="w-full h-full object-cover"
+          className="w-full h-full object-cover pointer-events-none"
           loading="lazy"
           onError={(e) =>
             ((e.target as HTMLImageElement).src = "/fallback.jpg")
           }
         />
 
-        {/* Remove icon */}
+        {/* Remove button */}
         <button
           type="button"
+          aria-label="Remove from watchlist"
           onClick={(e) => {
             e.stopPropagation();
             onRemove();
           }}
-          aria-label="Remove from watchlist"
           className="absolute top-2 right-2 rounded-full bg-black/60 backdrop-blur text-red-400 transition
           p-3 sm:p-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
         >
           <X size={16} />
         </button>
-      </motion.button>
+      </motion.div>
     </motion.div>
   );
 });
