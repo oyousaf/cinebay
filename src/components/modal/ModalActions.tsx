@@ -11,7 +11,6 @@ import { useVideoEmbed } from "@/hooks/useVideoEmbed";
 import EpisodeSelector from "@/components/tv/EpisodeSelector";
 
 export default function ModalActions({ movie }: { movie: Movie }) {
-  /* ❌ Actors never have actions */
   if (movie.media_type === "person") return null;
 
   const isTV = movie.media_type === "tv";
@@ -24,9 +23,10 @@ export default function ModalActions({ movie }: { movie: Movie }) {
 
   return (
     <div className="space-y-4">
-      {/* MOVIE ACTIONS */}
-      {!isTV && (
-        <div className="flex gap-4 items-center justify-center sm:justify-start">
+      {/* ACTION BAR */}
+      <div className="flex gap-4 items-center justify-center sm:justify-start">
+        {/* PLAY BUTTON */}
+        {!isTV && (
           <motion.button
             disabled={!embedUrl}
             onClick={() => embedUrl && openPlayer(embedUrl)}
@@ -39,26 +39,25 @@ export default function ModalActions({ movie }: { movie: Movie }) {
           >
             {embedUrl ? <FaPlay size={20} /> : "Loading…"}
           </motion.button>
+        )}
 
-          <motion.button
-            onClick={() => toggleWatchlist(movie)}
-            aria-pressed={isSaved}
-            whileTap={{ scale: 0.96 }}
-            className="p-3 rounded-full bg-[hsl(var(--foreground))] text-[hsl(var(--background))]"
-          >
-            <Bookmark
-              size={22}
-              strokeWidth={isSaved ? 3 : 2}
-              className={
-                isSaved ? "fill-[hsl(var(--background))]" : "fill-none"
-              }
-            />
-          </motion.button>
-        </div>
-      )}
+        {/* BOOKMARK */}
+        <motion.button
+          onClick={() => toggleWatchlist(movie)}
+          aria-pressed={isSaved}
+          whileTap={{ scale: 0.96 }}
+          className="p-3 rounded-full bg-[hsl(var(--foreground))] text-[hsl(var(--background))]"
+        >
+          <Bookmark
+            size={22}
+            strokeWidth={isSaved ? 3 : 2}
+            className={isSaved ? "fill-[hsl(var(--background))]" : "fill-none"}
+          />
+        </motion.button>
+      </div>
 
-      {/* TV ACTIONS */}
-      {isTV && <EpisodeSelector tv={movie} onPlay={(url) => openPlayer(url)} />}
+      {/* TV EPISODES */}
+      {isTV && <EpisodeSelector tv={movie} onPlay={openPlayer} />}
     </div>
   );
 }
