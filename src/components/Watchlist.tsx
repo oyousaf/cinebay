@@ -16,27 +16,23 @@ type TypeKey = "all" | "movie" | "tv";
 
 type Filters = { sortBy: SortKey; type: TypeKey };
 
-const SORTS: readonly { key: SortKey; label: string }[] = [
+const SORTS = [
   { key: "rating-desc", label: "Top Rated" },
   { key: "newest", label: "Newest" },
   { key: "title-asc", label: "A–Z" },
   { key: "title-desc", label: "Z–A" },
-];
+] as const;
 
-const TYPES: readonly { key: TypeKey; label: string }[] = [
+const TYPES = [
   { key: "all", label: "All" },
   { key: "movie", label: "Movies" },
   { key: "tv", label: "TV" },
-];
+] as const;
 
 const defaultFilters: Filters = {
   sortBy: "rating-desc",
   type: "all",
 };
-
-/* ---------- Swipe tuning ---------- */
-const MAX_REVEAL = 88;
-const COMMIT_THRESHOLD = 64;
 
 /* ---------- Tile ---------- */
 const WatchlistTile = React.memo(function WatchlistTile({
@@ -52,13 +48,6 @@ const WatchlistTile = React.memo(function WatchlistTile({
   onSelect: (movie: Movie) => void;
   onRemove: () => void;
 }) {
-  const [dragX, setDragX] = useState(0);
-
-  const revealOpacity = Math.min(
-    Math.pow(Math.abs(dragX) / MAX_REVEAL, 0.6),
-    1
-  );
-
   return (
     <motion.div
       layout
@@ -69,7 +58,7 @@ const WatchlistTile = React.memo(function WatchlistTile({
         opacity: 0,
         scale: 0.9,
         x: -40,
-        transition: { duration: 0.25, ease: "easeInOut" },
+        transition: { duration: 0.25 },
       }}
       onFocus={onFocus}
       onKeyDown={(e) => {
@@ -77,7 +66,7 @@ const WatchlistTile = React.memo(function WatchlistTile({
           e.preventDefault();
           onSelect(movie);
         }
-        if (e.key === "Delete" || e.key === "ArrowDown") {
+        if (e.key === "Delete") {
           e.preventDefault();
           onRemove();
         }
@@ -86,47 +75,12 @@ const WatchlistTile = React.memo(function WatchlistTile({
         ${isFocused ? "z-30" : "z-10"}
       `}
     >
-      {/* Swipe reveal */}
-      <div
-        className="absolute inset-0 flex items-center justify-end pr-4"
-        style={{
-          backgroundColor: "rgb(127 29 29)",
-          opacity: revealOpacity,
-        }}
+      <button
+        type="button"
+        onClick={() => onSelect(movie)}
+        className="relative block w-full h-full bg-black"
+        aria-label={`Open ${movie.title || movie.name}`}
       >
-        <span className="text-red-200 text-sm font-medium">Remove</span>
-      </div>
-
-      {/* Foreground */}
-      <motion.div
-        drag="x"
-        dragDirectionLock
-        dragElastic={0}
-        dragMomentum={false}
-        dragConstraints={{ left: -MAX_REVEAL, right: 0 }}
-        onDrag={(_, info) => {
-          setDragX(Math.min(0, info.offset.x));
-        }}
-        onDragEnd={() => {
-          if (dragX < -COMMIT_THRESHOLD) {
-            setDragX(-MAX_REVEAL);
-            onRemove();
-            return;
-          }
-          setDragX(0);
-        }}
-        style={{ x: dragX }}
-        whileTap={{ scale: 0.97 }}
-        className="relative w-full h-full bg-black"
-      >
-        {/* Click layer */}
-        <button
-          type="button"
-          onClick={() => onSelect(movie)}
-          className="absolute inset-0"
-          aria-label={`Open ${movie.title || movie.name}`}
-        />
-
         <img
           src={
             movie.poster_path
@@ -134,14 +88,13 @@ const WatchlistTile = React.memo(function WatchlistTile({
               : "/fallback.jpg"
           }
           alt={movie.title || movie.name}
-          className="w-full h-full object-cover pointer-events-none"
+          className="w-full h-full object-cover"
           loading="lazy"
           onError={(e) =>
             ((e.target as HTMLImageElement).src = "/fallback.jpg")
           }
         />
 
-        {/* Remove button */}
         <button
           type="button"
           aria-label="Remove from watchlist"
@@ -154,7 +107,7 @@ const WatchlistTile = React.memo(function WatchlistTile({
         >
           <X size={16} />
         </button>
-      </motion.div>
+      </button>
     </motion.div>
   );
 });
@@ -248,7 +201,6 @@ export default function Watchlist({
         <h1 className="text-4xl font-bold">Watchlist</h1>
       </div>
 
-      {/* Filters */}
       <div className="sticky top-0 z-20 backdrop-blur-xl bg-black/40 border-b border-white/10 px-4 py-4">
         <div className="max-w-6xl mx-auto flex flex-wrap gap-3 justify-center">
           {SORTS.map((s) => (
@@ -285,38 +237,31 @@ export default function Watchlist({
         </div>
       </div>
 
-      {/* Grid */}
       <div className="max-w-6xl mx-auto px-4 py-8">
-        {filteredList.length === 0 ? (
-          <p className="text-center text-xl italic opacity-70">
-            Nothing queued yet.
-          </p>
-        ) : (
-          <motion.div
-            layout
-            className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-7 gap-4"
-          >
-            <AnimatePresence mode="popLayout">
-              {filteredList.map((movie, idx) => (
-                <WatchlistTile
-                  key={movie.id}
-                  movie={movie}
-                  isFocused={
-                    railIndex !== null &&
-                    focus.section === railIndex &&
-                    focus.index === idx
-                  }
-                  onFocus={() =>
-                    railIndex !== null &&
-                    setFocus({ section: railIndex, index: idx })
-                  }
-                  onSelect={onSelect}
-                  onRemove={() => toggleWatchlist(movie)}
-                />
-              ))}
-            </AnimatePresence>
-          </motion.div>
-        )}
+        <motion.div
+          layout
+          className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-7 gap-4"
+        >
+          <AnimatePresence mode="popLayout">
+            {filteredList.map((movie, idx) => (
+              <WatchlistTile
+                key={movie.id}
+                movie={movie}
+                isFocused={
+                  railIndex !== null &&
+                  focus.section === railIndex &&
+                  focus.index === idx
+                }
+                onFocus={() =>
+                  railIndex !== null &&
+                  setFocus({ section: railIndex, index: idx })
+                }
+                onSelect={onSelect}
+                onRemove={() => toggleWatchlist(movie)}
+              />
+            ))}
+          </AnimatePresence>
+        </motion.div>
       </div>
     </motion.main>
   );
