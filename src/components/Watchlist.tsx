@@ -61,24 +61,27 @@ const WatchlistTile = React.memo(function WatchlistTile({
     <motion.div
       layout
       tabIndex={0}
+      initial={{ opacity: 0, scale: 0.98 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{
+        opacity: 0,
+        scale: 0.9,
+        x: -40,
+        transition: { duration: 0.25, ease: "easeInOut" },
+      }}
       onFocus={onFocus}
       onKeyDown={(e) => {
         if (e.key === "Enter") {
           e.preventDefault();
           onSelect(movie);
         }
-
         if (e.key === "Delete" || e.key === "ArrowDown") {
           e.preventDefault();
           onRemove();
         }
       }}
-      className={`
-        group relative
-        rounded-xl overflow-hidden
-        focus-visible:ring-4 ring-[#80ffcc]
-        ${isFocused ? "z-30" : "z-10"}
-      `}
+      className={`group relative rounded-xl overflow-hidden focus-visible:ring-4 ring-[#80ffcc]
+        ${isFocused ? "z-30" : "z-10"}`}
     >
       {/* Swipe reveal */}
       <div
