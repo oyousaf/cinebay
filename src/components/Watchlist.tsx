@@ -14,28 +14,27 @@ import { useNavigation } from "@/hooks/useNavigation";
 type SortKey = "rating-desc" | "newest" | "title-asc" | "title-desc";
 type TypeKey = "all" | "movie" | "tv";
 
-type Filters = {
-  sortBy: SortKey;
-  type: TypeKey;
-};
+type Filters = { sortBy: SortKey; type: TypeKey };
 
-const SORTS: { key: SortKey; label: string }[] = [
+const SORTS: readonly { key: SortKey; label: string }[] = [
   { key: "rating-desc", label: "Top Rated" },
   { key: "newest", label: "Newest" },
   { key: "title-asc", label: "A–Z" },
   { key: "title-desc", label: "Z–A" },
 ];
 
-const TYPES: { key: TypeKey; label: string }[] = [
+const TYPES: readonly { key: TypeKey; label: string }[] = [
   { key: "all", label: "All" },
   { key: "movie", label: "Movies" },
   { key: "tv", label: "TV" },
 ];
 
-const defaultFilters: Filters = {
-  sortBy: "rating-desc",
-  type: "all",
-};
+const defaultFilters: Filters = { sortBy: "rating-desc", type: "all" };
+
+/* ---------- Swipe tuning ---------- */
+const MAX_REVEAL = 88;
+const COMMIT_THRESHOLD = 64;
+const TAP_THRESHOLD = 5;
 
 /* ---------- Tile ---------- */
 const WatchlistTile = React.memo(function WatchlistTile({
@@ -51,56 +50,106 @@ const WatchlistTile = React.memo(function WatchlistTile({
   onSelect: (movie: Movie) => void;
   onRemove: () => void;
 }) {
+  const [dragX, setDragX] = useState(0);
+
+  const revealOpacity = Math.min(
+    Math.pow(Math.abs(dragX) / MAX_REVEAL, 0.6),
+    1
+  );
+
   return (
-    <motion.button
+    <motion.div
       layout
-      type="button"
-      onClick={() => {
-        onFocus();
-        onSelect(movie);
+      tabIndex={0}
+      onFocus={onFocus}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          onSelect(movie);
+        }
+
+        if (e.key === "Delete" || e.key === "ArrowDown") {
+          e.preventDefault();
+          onRemove();
+        }
       }}
-      whileHover={{ scale: 1.03 }}
-      whileTap={{ scale: 0.97 }}
       className={`
-        group relative overflow-hidden rounded-xl
+        group relative
+        rounded-xl overflow-hidden
         focus-visible:ring-4 ring-[#80ffcc]
         ${isFocused ? "z-30" : "z-10"}
       `}
-      aria-selected={isFocused}
     >
-      <img
-        src={
-          movie.poster_path
-            ? `${TMDB_IMAGE}${movie.poster_path}`
-            : "/fallback.jpg"
-        }
-        alt={movie.title || movie.name}
-        className="w-full h-full object-cover transition-opacity group-hover:opacity-90"
-        loading="lazy"
-        onError={(e) => ((e.target as HTMLImageElement).src = "/fallback.jpg")}
-      />
+      {/* Swipe reveal */}
+      <div
+        className="absolute inset-0 flex items-center justify-end pr-4"
+        style={{
+          backgroundColor: "rgb(127 29 29)",
+          opacity: revealOpacity,
+        }}
+      >
+        <span className="text-red-200 text-sm font-medium">Remove</span>
+      </div>
 
+      {/* Foreground */}
       <motion.button
         type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onRemove();
+        drag="x"
+        dragElastic={0.06}
+        dragConstraints={{ left: -MAX_REVEAL, right: 0 }}
+        onDrag={(_, info) => setDragX(info.offset.x)}
+        onDragEnd={() => {
+          if (dragX < -COMMIT_THRESHOLD) {
+            onRemove();
+          } else if (Math.abs(dragX) < TAP_THRESHOLD) {
+            onSelect(movie);
+          }
+          setDragX(0);
         }}
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.9 }}
-        className="
-          absolute top-2 right-2
-          p-2 rounded-full
-          bg-black/60 backdrop-blur
-          text-red-400
-          opacity-0 group-hover:opacity-100
-          transition
-        "
-        aria-label="Remove from Watchlist"
+        onClick={() => {
+          if (Math.abs(dragX) < TAP_THRESHOLD) {
+            onSelect(movie);
+          }
+        }}
+        style={{ x: dragX }}
+        whileTap={{ scale: 0.97 }}
+        className="relative w-full h-full bg-black"
       >
-        <X size={16} />
+        <img
+          src={
+            movie.poster_path
+              ? `${TMDB_IMAGE}${movie.poster_path}`
+              : "/fallback.jpg"
+          }
+          alt={movie.title || movie.name}
+          className="w-full h-full object-cover"
+          loading="lazy"
+          onError={(e) =>
+            ((e.target as HTMLImageElement).src = "/fallback.jpg")
+          }
+        />
+
+        {/* Remove icon */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemove();
+          }}
+          aria-label="Remove from watchlist"
+          className="
+            absolute top-2 right-2
+            rounded-full bg-black/60 backdrop-blur
+            text-red-400 transition
+            p-3 sm:p-2
+            opacity-100
+            sm:opacity-0 sm:group-hover:opacity-100
+          "
+        >
+          <X size={16} />
+        </button>
       </motion.button>
-    </motion.button>
+    </motion.div>
   );
 });
 
@@ -124,15 +173,8 @@ function FilterPill({
       {active && (
         <motion.span
           layoutId={layoutId}
-          className="
-            absolute inset-0 rounded-full
-            bg-white/10 ring-1 ring-white/20
-          "
-          transition={{
-            type: "spring",
-            stiffness: 500,
-            damping: 35,
-          }}
+          className="absolute inset-0 rounded-full bg-white/10 ring-1 ring-white/20"
+          transition={{ type: "spring", stiffness: 500, damping: 35 }}
         />
       )}
       <span className="relative z-10">{children}</span>
@@ -147,6 +189,7 @@ export default function Watchlist({
   onSelect: (movie: Movie) => void;
 }) {
   const { watchlist, toggleWatchlist } = useWatchlist();
+  const { focus, setFocus, registerRail, updateRailLength } = useNavigation();
 
   const [filters, setFilters] = useState<Filters>(() => {
     try {
@@ -167,26 +210,17 @@ export default function Watchlist({
       .sort((a, b) => {
         const ta = a.title || a.name || "";
         const tb = b.title || b.name || "";
-
-        switch (filters.sortBy) {
-          case "rating-desc":
-            return (b.vote_average ?? 0) - (a.vote_average ?? 0);
-          case "newest":
-            return (
-              new Date(b.release_date || "").getTime() -
-              new Date(a.release_date || "").getTime()
-            );
-          case "title-asc":
-            return ta.localeCompare(tb);
-          case "title-desc":
-            return tb.localeCompare(ta);
-          default:
-            return 0;
-        }
+        if (filters.sortBy === "title-asc") return ta.localeCompare(tb);
+        if (filters.sortBy === "title-desc") return tb.localeCompare(ta);
+        if (filters.sortBy === "newest")
+          return (
+            new Date(b.release_date || "").getTime() -
+            new Date(a.release_date || "").getTime()
+          );
+        return (b.vote_average ?? 0) - (a.vote_average ?? 0);
       });
   }, [watchlist, filters]);
 
-  const { focus, setFocus, registerRail, updateRailLength } = useNavigation();
   const [railIndex, setRailIndex] = useState<number | null>(null);
 
   useEffect(() => {
@@ -209,17 +243,14 @@ export default function Watchlist({
       </div>
 
       {/* Filters */}
-      <div className="sticky top-0 z-20 backdrop-blur-xl bg-black/40 border-b border-white/10 px-4 py-4"
-      >
+      <div className="sticky top-0 z-20 backdrop-blur-xl bg-black/40 border-b border-white/10 px-4 py-4">
         <div className="max-w-6xl mx-auto flex flex-wrap gap-3 justify-center">
           {SORTS.map((s) => (
             <FilterPill
               key={s.key}
               active={filters.sortBy === s.key}
               layoutId="sort-pill"
-              onClick={() =>
-                setFilters((f: Filters) => ({ ...f, sortBy: s.key }))
-              }
+              onClick={() => setFilters((f) => ({ ...f, sortBy: s.key }))}
             >
               {s.label}
             </FilterPill>
@@ -232,9 +263,7 @@ export default function Watchlist({
               key={t.key}
               active={filters.type === t.key}
               layoutId="type-pill"
-              onClick={() =>
-                setFilters((f: Filters) => ({ ...f, type: t.key }))
-              }
+              onClick={() => setFilters((f) => ({ ...f, type: t.key }))}
             >
               {t.label}
             </FilterPill>
