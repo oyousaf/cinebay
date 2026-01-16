@@ -37,7 +37,6 @@ const defaultFilters: Filters = {
 /* ---------- Swipe tuning ---------- */
 const MAX_REVEAL = 88;
 const COMMIT_THRESHOLD = 64;
-const TAP_THRESHOLD = 5;
 
 /* ---------- Tile ---------- */
 const WatchlistTile = React.memo(function WatchlistTile({
