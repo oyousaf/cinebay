@@ -39,7 +39,7 @@ const RecommendationList: React.FC<Props & { label: string }> = ({
               role="listitem"
               onClick={() => onSelect?.(item)}
               tabIndex={0}
-              className="relative w-28 flex-shrink-0 text-center space-y-1 cursor-pointer outline-none"
+              className="relative w-28 shrink-0 text-center space-y-1 cursor-pointer outline-none"
             >
               <img
                 src={poster}

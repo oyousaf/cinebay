@@ -68,7 +68,7 @@ const KnownForSlider = ({ items, onSelect }: Props) => {
                   vote_average: item.vote_average,
                 })
               }
-              className="w-28 flex-shrink-0 text-center space-y-1 focus:outline-none"
+              className="w-28 shrink-0 text-center space-y-1 focus:outline-none"
             >
               <img
                 src={poster}
