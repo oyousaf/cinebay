@@ -52,7 +52,7 @@ export default function ExitConfirmModal({
             transition={{ duration: 0.25, ease: "easeOut" }}
             className="relative w-[90vw] max-w-md mx-auto rounded-2xl 
                        text-[hsl(var(--foreground))] border-5 
-                       bg-gradient-to-b from-[hsl(var(--background))]/90 
+                       bg-linear-to-b from-[hsl(var(--background))]/90 
                        to-[hsl(var(--background))]/95 shadow-2xl p-6"
           >
             {/* Close button */}
