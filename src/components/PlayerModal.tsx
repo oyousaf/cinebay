@@ -33,7 +33,7 @@ export default function PlayerModal({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[999] flex items-center justify-center bg-black/90 backdrop-blur"
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur"
       >
         <div className="relative w-full max-w-6xl aspect-video bg-black shadow-2xl rounded-xl overflow-hidden">
           {!loaded && !error && (

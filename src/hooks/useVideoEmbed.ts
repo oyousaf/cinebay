@@ -1,31 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
-type MediaType = "movie" | "tv";
-
-/* -------------------------------------------------
-   THEME (SINGLE SOURCE OF TRUTH)
--------------------------------------------------- */
-const EMBED_THEME = {
-  autoplay: 1,
-  captions: 0,
-  primaryColor: "2dd4bf",
-  secondaryColor: "0f766e",
-};
-
-/* -------------------------------------------------
-   PROVIDERS
--------------------------------------------------- */
-const PROVIDERS = [
-  { name: "vidlink", domain: "vidlink.pro" },
-  { name: "vidsrc", domain: "vidsrc.to" },
-  { name: "vidsrc", domain: "vidsrc.me" },
-  { name: "vidsrc", domain: "vidsrc.cc" },
-  { name: "vidsrc", domain: "vidsrc-embed.ru" },
-  { name: "vidsrc", domain: "vidsrc-embed.su" },
-  { name: "vidsrc", domain: "vidsrcme.su" },
-  { name: "vidsrc", domain: "vsrc.su" },
-];
+import {
+  buildEmbedUrl,
+  buildEmbedCacheKey,
+  EMBED_PROVIDERS,
+  type PlaybackIntent,
+} from "@/lib/embed/buildEmbedUrl";
 
 /* -------------------------------------------------
    FAILURE MARKERS (VIDSRC)
@@ -46,47 +27,21 @@ const INVALID_MARKERS = [
 const memoryCache = new Map<string, string>();
 
 /* -------------------------------------------------
-   HELPERS
--------------------------------------------------- */
-function buildQuery(params: Record<string, string | number>) {
-  return new URLSearchParams(
-    Object.entries(params).map(([k, v]) => [k, String(v)]),
-  ).toString();
-}
-
-function buildEmbedUrl(
-  provider: { name: string; domain: string },
-  type: MediaType,
-  id: number,
-) {
-  if (provider.name === "vidlink") {
-    return `https://vidlink.pro/${type}/${id}?${buildQuery(EMBED_THEME)}`;
-  }
-
-  return `https://${provider.domain}/embed/${type}/${id}`;
-}
-
-function buildCacheKey(type: MediaType, id: number) {
-  return `${type}:${id}:theme:${EMBED_THEME.primaryColor}`;
-}
-
-/* -------------------------------------------------
    HOOK
 -------------------------------------------------- */
-export function useVideoEmbed(id?: number, type?: MediaType): string | null {
+export function useVideoEmbed(intent?: PlaybackIntent): string | null {
   const [embedUrl, setEmbedUrl] = useState<string | null>(null);
   const hasErroredRef = useRef(false);
 
   useEffect(() => {
-    if (!id || !type) {
+    if (!intent) {
       setEmbedUrl(null);
       return;
     }
 
-    const cacheKey = buildCacheKey(type, id);
+    const cacheKey = buildEmbedCacheKey(intent);
 
-    const cached =
-      memoryCache.get(cacheKey) ?? localStorage.getItem(`embed:${cacheKey}`);
+    const cached = memoryCache.get(cacheKey) ?? localStorage.getItem(cacheKey);
 
     if (cached) {
       memoryCache.set(cacheKey, cached);
@@ -109,7 +64,7 @@ export function useVideoEmbed(id?: number, type?: MediaType): string | null {
     };
 
     const tryNext = () => {
-      if (!iframe || index >= PROVIDERS.length) {
+      if (!iframe || index >= EMBED_PROVIDERS.length) {
         cleanup();
 
         if (!hasErroredRef.current) {
@@ -119,10 +74,8 @@ export function useVideoEmbed(id?: number, type?: MediaType): string | null {
         return;
       }
 
-      const provider = PROVIDERS[index];
-      const url = buildEmbedUrl(provider, type, id);
-
-      iframe.src = url;
+      const provider = EMBED_PROVIDERS[index];
+      iframe.src = buildEmbedUrl(provider, intent);
 
       timeoutId = setTimeout(() => {
         index++;
@@ -133,10 +86,10 @@ export function useVideoEmbed(id?: number, type?: MediaType): string | null {
     iframe.onload = () => {
       if (!iframe || resolved) return;
 
-      if (PROVIDERS[index].name === "vidlink") {
+      if (EMBED_PROVIDERS[index].name === "vidlink") {
         resolved = true;
         memoryCache.set(cacheKey, iframe.src);
-        localStorage.setItem(`embed:${cacheKey}`, iframe.src);
+        localStorage.setItem(cacheKey, iframe.src);
         setEmbedUrl(iframe.src);
         cleanup();
         return;
@@ -155,13 +108,13 @@ export function useVideoEmbed(id?: number, type?: MediaType): string | null {
 
         resolved = true;
         memoryCache.set(cacheKey, iframe.src);
-        localStorage.setItem(`embed:${cacheKey}`, iframe.src);
+        localStorage.setItem(cacheKey, iframe.src);
         setEmbedUrl(iframe.src);
         cleanup();
       } catch {
         resolved = true;
         memoryCache.set(cacheKey, iframe.src);
-        localStorage.setItem(`embed:${cacheKey}`, iframe.src);
+        localStorage.setItem(cacheKey, iframe.src);
         setEmbedUrl(iframe.src);
         cleanup();
       }
@@ -174,7 +127,7 @@ export function useVideoEmbed(id?: number, type?: MediaType): string | null {
 
     tryNext();
     return cleanup;
-  }, [id, type]);
+  }, [intent]);
 
   return embedUrl;
 }
