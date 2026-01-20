@@ -11,21 +11,33 @@ import { useVideoEmbed } from "@/hooks/useVideoEmbed";
 import EpisodeSelector from "@/components/tv/EpisodeSelector";
 
 export default function ModalActions({ movie }: { movie: Movie }) {
-  if (movie.media_type === "person") return null;
+  const isPlayable = movie.media_type === "movie" || movie.media_type === "tv";
 
   const isTV = movie.media_type === "tv";
 
   const { toggleWatchlist, isInWatchlist } = useWatchlist();
   const { openPlayer } = useModalManager();
 
-  const embedUrl = useVideoEmbed(movie.id, movie.media_type);
+  const playableType: "movie" | "tv" | undefined =
+    movie.media_type === "movie" || movie.media_type === "tv"
+      ? movie.media_type
+      : undefined;
+
+  const embedUrl = useVideoEmbed(
+    playableType ? movie.id : undefined,
+    playableType,
+  );
+
+  if (!playableType) return null;
+
   const isSaved = isInWatchlist(movie.id);
+
+  if (!isPlayable) return null;
 
   return (
     <div className="space-y-4">
       {/* ACTION BAR */}
       <div className="flex gap-4 items-center justify-center sm:justify-start">
-        {/* PLAY BUTTON */}
         {!isTV && (
           <motion.button
             disabled={!embedUrl}
@@ -41,7 +53,6 @@ export default function ModalActions({ movie }: { movie: Movie }) {
           </motion.button>
         )}
 
-        {/* BOOKMARK */}
         <motion.button
           onClick={() => toggleWatchlist(movie)}
           aria-pressed={isSaved}
@@ -56,7 +67,6 @@ export default function ModalActions({ movie }: { movie: Movie }) {
         </motion.button>
       </div>
 
-      {/* TV EPISODES */}
       {isTV && <EpisodeSelector tv={movie} onPlay={openPlayer} />}
     </div>
   );

@@ -91,10 +91,12 @@ export default function ContentRail({
   const { focus, setFocus, registerRail, updateRailLength } = useNavigation();
   const [railIndex, setRailIndex] = useState<number | null>(null);
 
-  /* ---------- Embed resolution (single source of truth) ---------- */
+  /* ---------- Embed resolution ---------- */
   const embedUrl = useVideoEmbed(
     activeItem?.id,
-    activeItem?.media_type
+    activeItem?.media_type === "movie" || activeItem?.media_type === "tv"
+      ? activeItem.media_type
+      : undefined,
   );
 
   /* ---------- Register rail ---------- */
@@ -112,7 +114,7 @@ export default function ContentRail({
         setFocus({ section: railIndex, index: idx });
       }
     },
-    [railIndex, setFocus]
+    [railIndex, setFocus],
   );
 
   /* ---------- Keep focused tile centered ---------- */
