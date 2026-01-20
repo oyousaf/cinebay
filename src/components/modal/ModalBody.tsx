@@ -40,7 +40,7 @@ export default function ModalBody({
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: "auto", opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
-                className="rounded-xl bg-zinc-900/60 p-4 border border-zinc-700 text-sm text-zinc-300 max-h-[320px] overflow-y-auto"
+                className="rounded-xl bg-zinc-900/60 p-4 border border-zinc-700 text-sm text-zinc-300 max-h-80 overflow-y-auto"
               >
                 {movie.biography}
               </motion.div>
