@@ -1,15 +1,20 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
-type MediaType = "movie" | "tv" | "person";
+type MediaType = "movie" | "tv";
 
 /* -------------------------------------------------
-   CACHE
+   THEME (SINGLE SOURCE OF TRUTH)
 -------------------------------------------------- */
-const embedCache = new Map<string, string>();
+const EMBED_THEME = {
+  autoplay: 1,
+  captions: 0,
+  primaryColor: "2dd4bf",
+  secondaryColor: "0f766e",
+};
 
 /* -------------------------------------------------
-   PROVIDERS (ORDER MATTERS)
+   PROVIDERS
 -------------------------------------------------- */
 const PROVIDERS = [
   { name: "vidlink", domain: "vidlink.pro" },
@@ -23,7 +28,7 @@ const PROVIDERS = [
 ];
 
 /* -------------------------------------------------
-   FAILURE MARKERS (VidSrc only)
+   FAILURE MARKERS (VIDSRC)
 -------------------------------------------------- */
 const INVALID_MARKERS = [
   "not found",
@@ -36,18 +41,33 @@ const INVALID_MARKERS = [
 ];
 
 /* -------------------------------------------------
-   URL BUILDER
+   CACHE
 -------------------------------------------------- */
-function buildUrl(
+const memoryCache = new Map<string, string>();
+
+/* -------------------------------------------------
+   HELPERS
+-------------------------------------------------- */
+function buildQuery(params: Record<string, string | number>) {
+  return new URLSearchParams(
+    Object.entries(params).map(([k, v]) => [k, String(v)]),
+  ).toString();
+}
+
+function buildEmbedUrl(
   provider: { name: string; domain: string },
   type: MediaType,
-  id: number
+  id: number,
 ) {
   if (provider.name === "vidlink") {
-    return `https://vidlink.pro/${type}/${id}?autoplay=1&captions=0&primaryColor=2dd4bf&secondaryColor=0f766e`;
+    return `https://vidlink.pro/${type}/${id}?${buildQuery(EMBED_THEME)}`;
   }
 
   return `https://${provider.domain}/embed/${type}/${id}`;
+}
+
+function buildCacheKey(type: MediaType, id: number) {
+  return `${type}:${id}:theme:${EMBED_THEME.primaryColor}`;
 }
 
 /* -------------------------------------------------
@@ -58,18 +78,18 @@ export function useVideoEmbed(id?: number, type?: MediaType): string | null {
   const hasErroredRef = useRef(false);
 
   useEffect(() => {
-    if (!id || !type || type === "person") {
+    if (!id || !type) {
       setEmbedUrl(null);
       return;
     }
 
-    const cacheKey = `${type}:${id}`;
+    const cacheKey = buildCacheKey(type, id);
 
     const cached =
-      embedCache.get(cacheKey) ?? localStorage.getItem(`embed:${cacheKey}`);
+      memoryCache.get(cacheKey) ?? localStorage.getItem(`embed:${cacheKey}`);
 
     if (cached) {
-      embedCache.set(cacheKey, cached);
+      memoryCache.set(cacheKey, cached);
       setEmbedUrl(cached);
       return;
     }
@@ -100,9 +120,7 @@ export function useVideoEmbed(id?: number, type?: MediaType): string | null {
       }
 
       const provider = PROVIDERS[index];
-      const url = buildUrl(provider, type, id);
-
-      console.log(`[useVideoEmbed] trying ${provider.domain}`);
+      const url = buildEmbedUrl(provider, type, id);
 
       iframe.src = url;
 
@@ -117,7 +135,7 @@ export function useVideoEmbed(id?: number, type?: MediaType): string | null {
 
       if (PROVIDERS[index].name === "vidlink") {
         resolved = true;
-        embedCache.set(cacheKey, iframe.src);
+        memoryCache.set(cacheKey, iframe.src);
         localStorage.setItem(`embed:${cacheKey}`, iframe.src);
         setEmbedUrl(iframe.src);
         cleanup();
@@ -136,13 +154,13 @@ export function useVideoEmbed(id?: number, type?: MediaType): string | null {
         }
 
         resolved = true;
-        embedCache.set(cacheKey, iframe.src);
+        memoryCache.set(cacheKey, iframe.src);
         localStorage.setItem(`embed:${cacheKey}`, iframe.src);
         setEmbedUrl(iframe.src);
         cleanup();
       } catch {
         resolved = true;
-        embedCache.set(cacheKey, iframe.src);
+        memoryCache.set(cacheKey, iframe.src);
         localStorage.setItem(`embed:${cacheKey}`, iframe.src);
         setEmbedUrl(iframe.src);
         cleanup();
