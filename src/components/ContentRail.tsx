@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect, useState, useCallback } from "react";
+import { useRef, useEffect, useState, useCallback, useMemo } from "react";
 import { motion } from "framer-motion";
 import React from "react";
 
@@ -94,14 +94,14 @@ export default function ContentRail({
   const { focus, setFocus, registerRail, updateRailLength } = useNavigation();
   const [railIndex, setRailIndex] = useState<number | null>(null);
 
-  /* ---------- Register rail once ---------- */
+  /* ---------- Register rail ---------- */
   useEffect(() => {
     if (railIndex === null) {
       setRailIndex(registerRail(items.length));
     }
   }, [railIndex, registerRail, items.length]);
 
-  /* ---------- Handle focus ---------- */
+  /* ---------- Focus handling ---------- */
   const handleFocus = useCallback(
     (movie: Movie, idx: number) => {
       setActiveItem(movie);
@@ -138,7 +138,7 @@ export default function ContentRail({
     }
   }, [focus, items, railIndex, updateRailLength, activeItem]);
 
-  /* ---------- Default first focus ---------- */
+  /* ---------- Default focus ---------- */
   useEffect(() => {
     if (!activeItem && items.length > 0 && railIndex !== null) {
       setActiveItem(items[0]);
@@ -146,23 +146,25 @@ export default function ContentRail({
     }
   }, [items, activeItem, railIndex, setFocus]);
 
-  /* ---------- Build intent on demand ---------- */
-  const handleWatch = useCallback(() => {
-    if (!activeItem) return;
+  /* ---------- Build intent ---------- */
+  const bannerIntent: PlaybackIntent | null = useMemo(() => {
+    if (!activeItem) return null;
 
     if (activeItem.media_type === "movie") {
-      onWatch({ mediaType: "movie", tmdbId: activeItem.id });
+      return { mediaType: "movie", tmdbId: activeItem.id };
     }
 
     if (activeItem.media_type === "tv") {
-      onWatch({
+      return {
         mediaType: "tv",
         tmdbId: activeItem.id,
         season: 1,
         episode: 1,
-      });
+      };
     }
-  }, [activeItem, onWatch]);
+
+    return null;
+  }, [activeItem]);
 
   /* -------------------------------------------------
      UI
@@ -179,7 +181,7 @@ export default function ContentRail({
             <Banner
               item={activeItem}
               onSelect={onSelect}
-              onWatch={handleWatch}
+              onWatch={bannerIntent ? () => onWatch(bannerIntent) : undefined}
             />
           </motion.div>
         )}

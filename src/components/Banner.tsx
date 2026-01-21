@@ -4,38 +4,22 @@ import { FaInfoCircle, FaPlay } from "react-icons/fa";
 import { Bookmark } from "lucide-react";
 import { useWatchlist } from "@/context/WatchlistContext";
 import { useContinueWatching } from "@/hooks/useContinueWatching";
-import type { PlaybackIntent } from "@/lib/embed/buildEmbedUrl";
 
-export default function Banner({
-  item,
-  onSelect,
-  onWatch,
-}: {
+interface BannerProps {
   item: Movie;
   onSelect: (movie: Movie) => void;
-  onWatch: (intent: PlaybackIntent) => void;
-}) {
+  onWatch?: () => void;
+}
+
+export default function Banner({ item, onSelect, onWatch }: BannerProps) {
   const isTV = item.media_type === "tv";
-  const isMovie = item.media_type === "movie";
 
   const { toggleWatchlist, isInWatchlist } = useWatchlist();
   const isSaved = isInWatchlist(item.id);
 
   const { getTVProgress } = useContinueWatching();
   const progress = isTV ? getTVProgress(item.id) : null;
-
   const hasResume = Boolean(progress);
-
-  const intent: PlaybackIntent | null = isMovie
-    ? { mediaType: "movie", tmdbId: item.id }
-    : isTV && progress
-      ? {
-          mediaType: "tv",
-          tmdbId: item.id,
-          season: progress.season,
-          episode: progress.episode,
-        }
-      : null;
 
   const containerVariants: Variants = {
     hidden: { opacity: 0, y: 15 },
@@ -99,10 +83,10 @@ export default function Banner({
           variants={childVariants}
         >
           <motion.button
-            disabled={!intent}
-            onClick={() => intent && onWatch(intent)}
+            disabled={!onWatch}
+            onClick={onWatch}
             className={`flex items-center gap-3 px-6 py-3 rounded-full font-semibold ${
-              intent
+              onWatch
                 ? "bg-[hsl(var(--foreground))] text-[hsl(var(--background))]"
                 : "bg-gray-600/50 text-gray-400"
             }`}
