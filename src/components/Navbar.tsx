@@ -2,13 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import {
-  FaFilm,
-  FaTv,
-  FaSearch,
-  FaStar,
-  FaBookmark,
-} from "react-icons/fa";
+import { FaFilm, FaTv, FaSearch, FaStar, FaBookmark } from "react-icons/fa";
 
 import { DarkModeToggle } from "../DarkModeToggle";
 import { useTooltip } from "@/context/TooltipContext";
@@ -24,7 +18,11 @@ interface NavbarProps {
   isModalOpen?: boolean;
 }
 
-const navItems: { id: Tab; icon: JSX.Element; label: string }[] = [
+const navItems: {
+  id: Tab;
+  icon: React.ReactElement;
+  label: string;
+}[] = [
   { id: "movies", icon: <FaFilm size={30} />, label: "Movies" },
   { id: "tvshows", icon: <FaTv size={30} />, label: "TV Shows" },
   { id: "search", icon: <FaSearch size={30} />, label: "Search" },
@@ -40,62 +38,48 @@ export default function Navbar({
   const { showTooltip, hideTooltip } = useTooltip();
   const { setTabNavigator } = useNavigation();
 
-  const pressTimeout = useRef<NodeJS.Timeout | null>(null);
+  const pressTimeout = useRef<number | null>(null);
 
   /* -------------------------------------------------
-     REGISTER TAB NAVIGATION (SINGLE SOURCE)
+     TAB NAVIGATION REGISTRATION
   -------------------------------------------------- */
   useEffect(() => {
     setTabNavigator((direction) => {
       if (isModalOpen) return;
 
-      const currentIndex = navItems.findIndex(
-        (n) => n.id === activeTab,
-      );
+      const index = navItems.findIndex((n) => n.id === activeTab);
+      if (index === -1) return;
 
-      if (currentIndex === -1) return;
+      if (direction === "up") {
+        onTabChange(
+          navItems[(index - 1 + navItems.length) % navItems.length].id,
+        );
+      }
 
-      switch (direction) {
-        case "up": {
-          const next =
-            navItems[
-              (currentIndex - 1 + navItems.length) % navItems.length
-            ];
-          onTabChange(next.id);
-          break;
-        }
+      if (direction === "down") {
+        onTabChange(navItems[(index + 1) % navItems.length].id);
+      }
 
-        case "down": {
-          const next =
-            navItems[(currentIndex + 1) % navItems.length];
-          onTabChange(next.id);
-          break;
-        }
-
-        case "escape": {
-          if (activeTab === "search") {
-            onTabChange("movies");
-          }
-          break;
-        }
+      if (direction === "escape" && activeTab === "search") {
+        onTabChange("movies");
       }
     });
-  }, [activeTab, onTabChange, isModalOpen, setTabNavigator]);
+  }, [activeTab, isModalOpen, onTabChange, setTabNavigator]);
 
   /* -------------------------------------------------
-     TOUCH TOOLTIP (MOBILE)
+     TOUCH TOOLTIP
   -------------------------------------------------- */
-  const handleTouchStart = (
-    label: string,
-    target: HTMLElement,
-  ) => {
-    pressTimeout.current = setTimeout(() => {
+  const handleTouchStart = (label: string, target: HTMLElement) => {
+    pressTimeout.current = window.setTimeout(() => {
       showTooltip(label, "top", target);
     }, 400);
   };
 
   const handleTouchEnd = () => {
-    if (pressTimeout.current) clearTimeout(pressTimeout.current);
+    if (pressTimeout.current !== null) {
+      clearTimeout(pressTimeout.current);
+      pressTimeout.current = null;
+    }
     hideTooltip();
   };
 
@@ -106,22 +90,20 @@ export default function Navbar({
     <>
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex fixed left-0 top-0 h-screen w-20 flex-col items-center justify-between bg-[hsl(var(--background))] border-r border-border z-40">
-        {/* Logo */}
         <div className="pt-4">
           <motion.img
             src={logo}
             alt="CineBay"
-            className="w-12 h-12 object-contain rounded-full"
+            className="w-12 h-12 rounded-full"
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.35 }}
           />
         </div>
 
-        {/* Nav */}
         <div className="flex flex-col gap-6">
           {navItems.map((item) => {
-            const isActive = activeTab === item.id;
+            const active = activeTab === item.id;
 
             return (
               <motion.button
@@ -132,17 +114,14 @@ export default function Navbar({
                 }
                 onMouseLeave={hideTooltip}
                 whileHover={{ scale: 1.15 }}
-                aria-current={isActive ? "page" : undefined}
-                aria-label={item.label}
-                className={`relative p-2 rounded-lg transition-colors ${
-                  isActive
-                    ? "text-[hsl(var(--foreground))]"
-                    : "opacity-50"
+                aria-current={active ? "page" : undefined}
+                className={`relative p-2 rounded-lg ${
+                  active ? "text-[hsl(var(--foreground))]" : "opacity-50"
                 }`}
               >
                 {item.icon}
 
-                {isActive && (
+                {active && (
                   <motion.div
                     layoutId="active-indicator"
                     className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-full bg-[hsl(var(--foreground))]"
@@ -153,7 +132,6 @@ export default function Navbar({
           })}
         </div>
 
-        {/* Dark mode */}
         <div className="pb-6">
           <DarkModeToggle />
         </div>
@@ -162,7 +140,7 @@ export default function Navbar({
       {/* Mobile Bottom Nav */}
       <nav className="md:hidden fixed bottom-0 left-0 w-full h-16 bg-[hsl(var(--background))] border-t border-border flex justify-around items-center z-40 pb-[env(safe-area-inset-bottom)]">
         {navItems.map((item) => {
-          const isActive = activeTab === item.id;
+          const active = activeTab === item.id;
 
           return (
             <motion.button
@@ -172,19 +150,15 @@ export default function Navbar({
                 handleTouchStart(item.label, e.currentTarget)
               }
               onTouchEnd={handleTouchEnd}
-              onContextMenu={(e) => e.preventDefault()}
               whileHover={{ scale: 1.15 }}
-              aria-current={isActive ? "page" : undefined}
-              aria-label={item.label}
-              className={`relative flex flex-col items-center justify-center ${
-                isActive
-                  ? "text-[hsl(var(--foreground))]"
-                  : "opacity-50"
+              aria-current={active ? "page" : undefined}
+              className={`relative ${
+                active ? "text-[hsl(var(--foreground))]" : "opacity-50"
               }`}
             >
               {item.icon}
 
-              {isActive && (
+              {active && (
                 <motion.div
                   layoutId="active-indicator-mobile"
                   className="absolute -bottom-1.5 w-8 h-1 rounded-full bg-[hsl(var(--foreground))]"
