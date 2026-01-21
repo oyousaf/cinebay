@@ -10,9 +10,6 @@ import {
   ReactNode,
 } from "react";
 
-/* -------------------------------------------------
-   TYPES
--------------------------------------------------- */
 type FocusTarget = { section: number; index: number };
 type TabDirection = "up" | "down" | "escape";
 
@@ -27,18 +24,15 @@ interface NavigationContextType {
   isModalOpen: boolean;
   setModalOpen: (open: boolean) => void;
 
-  /** Navbar registers its tab logic here */
   setTabNavigator: (fn: (dir: TabDirection) => void) => void;
+
+  /** Action dispatch */
+  triggerSelect?: () => void;
+  triggerPlay?: () => void;
 }
 
-/* -------------------------------------------------
-   CONTEXT
--------------------------------------------------- */
 const NavigationContext = createContext<NavigationContextType | null>(null);
 
-/* -------------------------------------------------
-   PROVIDER
--------------------------------------------------- */
 export function NavigationProvider({ children }: { children: ReactNode }) {
   const [rails, setRails] = useState<number[]>([]);
   const [focus, setFocus] = useState<FocusTarget>({ section: 0, index: 0 });
@@ -47,25 +41,25 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   const railCount = useRef(0);
   const tabNavigatorRef = useRef<((dir: TabDirection) => void) | null>(null);
 
-  /* ---------- Rail registration ---------- */
+  const selectRef = useRef<(() => void) | null>(null);
+  const playRef = useRef<(() => void) | null>(null);
+
+  /* ---------- Registration ---------- */
   const registerRail = useCallback((length: number) => {
-    const index = railCount.current;
-    railCount.current += 1;
-
-    setRails((prev) => {
-      const next = [...prev];
-      next[index] = length;
-      return next;
+    const idx = railCount.current++;
+    setRails((r) => {
+      const n = [...r];
+      n[idx] = length;
+      return n;
     });
-
-    return index;
+    return idx;
   }, []);
 
-  const updateRailLength = useCallback((index: number, length: number) => {
-    setRails((prev) => {
-      const next = [...prev];
-      next[index] = length;
-      return next;
+  const updateRailLength = useCallback((i: number, l: number) => {
+    setRails((r) => {
+      const n = [...r];
+      n[i] = l;
+      return n;
     });
   }, []);
 
@@ -75,92 +69,75 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     setFocus({ section: 0, index: 0 });
   }, []);
 
-  /* ---------- Navbar hook ---------- */
-  const setTabNavigator = useCallback(
-    (fn: (dir: TabDirection) => void) => {
-      tabNavigatorRef.current = fn;
-    },
-    [],
-  );
+  const setTabNavigator = useCallback((fn: (dir: TabDirection) => void) => {
+    tabNavigatorRef.current = fn;
+  }, []);
 
   /* -------------------------------------------------
-     GLOBAL KEY HANDLER (SINGLE SOURCE OF TRUTH)
+     KEYBOARD
   -------------------------------------------------- */
-  const handleKey = useCallback(
-    (e: KeyboardEvent) => {
-      /* ---- Hard guards ---- */
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
       if (isModalOpen) return;
 
-      const target = e.target as HTMLElement | null;
-      if (
-        target &&
-        (target.tagName === "INPUT" ||
-          target.tagName === "TEXTAREA" ||
-          target.tagName === "SELECT" ||
-          target.isContentEditable)
-      ) {
-        return;
-      }
+      const t = e.target as HTMLElement | null;
+      if (t && ["INPUT", "TEXTAREA", "SELECT"].includes(t.tagName)) return;
 
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
-
-      /* ---- Tab navigation (Navbar) ---- */
       if (tabNavigatorRef.current) {
-        if (e.key === "ArrowUp" || e.key === "w" || e.key === "W") {
-          tabNavigatorRef.current("up");
-          return;
-        }
-        if (e.key === "ArrowDown" || e.key === "s" || e.key === "S") {
-          tabNavigatorRef.current("down");
-          return;
-        }
-        if (e.key === "Escape") {
-          tabNavigatorRef.current("escape");
-          return;
-        }
+        if (["ArrowUp", "w", "W"].includes(e.key))
+          return tabNavigatorRef.current("up");
+        if (["ArrowDown", "s", "S"].includes(e.key))
+          return tabNavigatorRef.current("down");
+        if (e.key === "Escape") return tabNavigatorRef.current("escape");
       }
 
-      /* ---- Rail navigation ---- */
-      setFocus((prev) => {
-        const maxIndex =
-          rails[prev.section] !== undefined
-            ? Math.max(rails[prev.section] - 1, 0)
-            : 0;
+      if (["Enter", "p"].includes(e.key)) playRef.current?.();
+      if (["i"].includes(e.key)) selectRef.current?.();
 
-        let next = { ...prev };
+      if (e.key === "ArrowRight")
+        setFocus((f) => ({
+          ...f,
+          index: Math.min(f.index + 1, (rails[f.section] ?? 1) - 1),
+        }));
 
-        switch (e.key) {
-          case "ArrowRight":
-          case "d":
-          case "D":
-            next.index = Math.min(prev.index + 1, maxIndex);
-            break;
+      if (e.key === "ArrowLeft")
+        setFocus((f) => ({ ...f, index: Math.max(0, f.index - 1) }));
+    };
 
-          case "ArrowLeft":
-          case "a":
-          case "A":
-            next.index = Math.max(prev.index - 1, 0);
-            break;
-
-          default:
-            return prev;
-        }
-
-        return next;
-      });
-    },
-    [rails, isModalOpen],
-  );
-
-  /* ---------- Lifecycle ---------- */
-  useEffect(() => {
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [handleKey]);
+  }, [rails, isModalOpen]);
 
   /* -------------------------------------------------
-     PROVIDER
+     GAMEPAD
   -------------------------------------------------- */
+  useEffect(() => {
+    let raf: number;
+    let a = false;
+    let b = false;
+
+    const loop = () => {
+      const gp = navigator.getGamepads?.()[0];
+      if (gp && !isModalOpen) {
+        if (gp.buttons[0]?.pressed && !a) {
+          a = true;
+          playRef.current?.();
+        }
+        if (!gp.buttons[0]?.pressed) a = false;
+
+        if (gp.buttons[1]?.pressed && !b) {
+          b = true;
+          selectRef.current?.();
+        }
+        if (!gp.buttons[1]?.pressed) b = false;
+      }
+      raf = requestAnimationFrame(loop);
+    };
+
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, [isModalOpen]);
+
   return (
     <NavigationContext.Provider
       value={{
@@ -172,6 +149,8 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
         isModalOpen,
         setModalOpen,
         setTabNavigator,
+        triggerSelect: () => selectRef.current?.(),
+        triggerPlay: () => playRef.current?.(),
       }}
     >
       {children}
@@ -179,13 +158,8 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   );
 }
 
-/* -------------------------------------------------
-   HOOK
--------------------------------------------------- */
-export function useNavigation(): NavigationContextType {
+export function useNavigation() {
   const ctx = useContext(NavigationContext);
-  if (!ctx) {
-    throw new Error("useNavigation must be used inside NavigationProvider");
-  }
+  if (!ctx) throw new Error("useNavigation must be used inside provider");
   return ctx;
 }
