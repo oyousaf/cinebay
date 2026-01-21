@@ -69,14 +69,7 @@ const Tile = React.memo(function Tile({
       />
 
       {showStatus && (
-        <div
-          className="absolute top-2 left-2
-            bg-[hsl(var(--foreground))]
-            text-[hsl(var(--background))]
-            text-[10px] md:text-xs font-bold
-            px-2 py-0.5 rounded-full uppercase
-            shadow-md shadow-pulse"
-        >
+        <div className="absolute top-2 left-2 bg-[hsl(var(--foreground))] text-[hsl(var(--background))] text-[10px] md:text-xs font-bold px-2 py-0.5 rounded-full uppercase shadow-md shadow-pulse">
           {movie.status!.toUpperCase()}
         </div>
       )}
@@ -101,16 +94,6 @@ export default function ContentRail({
   const { focus, setFocus, registerRail, updateRailLength } = useNavigation();
   const [railIndex, setRailIndex] = useState<number | null>(null);
 
-  /* ---------- Playback intent ---------- */
-  const playbackIntent: PlaybackIntent | null =
-    activeItem &&
-    (activeItem.media_type === "movie" || activeItem.media_type === "tv")
-      ? {
-          mediaType: activeItem.media_type,
-          tmdbId: activeItem.id,
-        }
-      : null;
-
   /* ---------- Register rail once ---------- */
   useEffect(() => {
     if (railIndex === null) {
@@ -134,7 +117,6 @@ export default function ContentRail({
     if (railIndex === null) return;
 
     updateRailLength(railIndex, items.length);
-
     if (focus.section !== railIndex) return;
 
     const focused = items[focus.index];
@@ -164,6 +146,24 @@ export default function ContentRail({
     }
   }, [items, activeItem, railIndex, setFocus]);
 
+  /* ---------- Build intent on demand ---------- */
+  const handleWatch = useCallback(() => {
+    if (!activeItem) return;
+
+    if (activeItem.media_type === "movie") {
+      onWatch({ mediaType: "movie", tmdbId: activeItem.id });
+    }
+
+    if (activeItem.media_type === "tv") {
+      onWatch({
+        mediaType: "tv",
+        tmdbId: activeItem.id,
+        season: 1,
+        episode: 1,
+      });
+    }
+  }, [activeItem, onWatch]);
+
   /* -------------------------------------------------
      UI
   -------------------------------------------------- */
@@ -176,7 +176,11 @@ export default function ContentRail({
           </motion.div>
         ) : (
           <motion.div className="w-full h-full">
-            <Banner item={activeItem} onSelect={onSelect} onWatch={onWatch} />
+            <Banner
+              item={activeItem}
+              onSelect={onSelect}
+              onWatch={handleWatch}
+            />
           </motion.div>
         )}
       </div>
