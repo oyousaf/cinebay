@@ -89,57 +89,45 @@ export default function PlayerModal({
   }, [embedUrl]);
 
   /* -------------------------------------------------
-     NEAR-END OFFER (RUNTIME-AWARE, GUARDED)
-  -------------------------------------------------- */
+   NEAR-END OFFER (LATE-WINDOW, RETRY-SAFE)
+-------------------------------------------------- */
   useEffect(() => {
     if (intent.mediaType !== "tv") return;
     if (!loaded) return;
 
     let cancelled = false;
 
-    const schedule = async () => {
+    const start = async () => {
       let runtimeSeconds = FALLBACK_DURATION_SECONDS;
-      let fireAt = runtimeSeconds - NEAR_END_SECONDS;
 
       try {
         if (
           typeof intent.season === "number" &&
           typeof intent.episode === "number"
         ) {
-          const runtime = await fetchEpisodeRuntime(
+          const r = await fetchEpisodeRuntime(
             intent.tmdbId,
             intent.season,
             intent.episode,
           );
 
-          if (runtime && runtime > 10 * 60 && runtime < 3 * 60 * 60) {
-            runtimeSeconds = runtime;
-            fireAt = runtime - NEAR_END_SECONDS;
+          if (r && r > 10 * 60 && r < 3 * 60 * 60) {
+            runtimeSeconds = r;
           }
         }
       } catch {
         // silent fallback
       }
 
-      // Clamp: never early, never too late
-      const minFireAt = Math.floor(runtimeSeconds * 0.6);
-      const maxFireAt = Math.floor(runtimeSeconds * 0.98);
-      fireAt = Math.max(fireAt, minFireAt);
-      fireAt = Math.min(fireAt, maxFireAt);
+      const windowStart = Math.floor(runtimeSeconds * 0.9);
+      const windowEnd = Math.floor(runtimeSeconds * 0.98);
 
-      if (cancelled) return;
-      
-      timerRef.current = window.setTimeout(async () => {
+      const attempt = async () => {
+        if (cancelled) return;
         if (offeredRef.current) return;
-        if (!loaded) return;
 
         if (document.visibilityState !== "visible") {
-          // defer instead of cancelling
-          timerRef.current = window.setTimeout(() => {
-            if (!offeredRef.current) {
-              offeredRef.current = false;
-            }
-          }, 30_000);
+          timerRef.current = window.setTimeout(attempt, 15_000);
           return;
         }
 
@@ -149,10 +137,21 @@ export default function PlayerModal({
         if (!result) return;
 
         setNextOffer(result);
-      }, fireAt * 1000);
+      };
+
+      // enter late window
+      timerRef.current = window.setTimeout(
+        attempt,
+        Math.max(0, windowStart * 1000),
+      );
+
+      // hard stop after window ends
+      window.setTimeout(() => {
+        cancelled = true;
+      }, windowEnd * 1000);
     };
 
-    schedule();
+    start();
 
     return () => {
       cancelled = true;
