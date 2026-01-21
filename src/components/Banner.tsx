@@ -1,3 +1,5 @@
+"use client";
+
 import { motion, AnimatePresence, Variants } from "framer-motion";
 import type { Movie } from "@/types/movie";
 import { FaInfoCircle, FaPlay } from "react-icons/fa";
@@ -22,99 +24,133 @@ export default function Banner({ item, onSelect, onWatch }: BannerProps) {
   const hasResume = Boolean(progress);
 
   const containerVariants: Variants = {
-    hidden: { opacity: 0, y: 15 },
+    hidden: { opacity: 0, y: 6 },
     show: {
       opacity: 1,
       y: 0,
-      transition: { duration: 0.35, staggerChildren: 0.05 },
+      transition: { duration: 0.18, ease: "easeOut" },
+    },
+    exit: {
+      opacity: 0,
+      y: 4,
+      transition: { duration: 0.12, ease: "easeIn" },
     },
   };
 
   const childVariants: Variants = {
-    hidden: { opacity: 0, y: 10 },
-    show: { opacity: 1, y: 0, transition: { duration: 0.3 } },
+    hidden: { opacity: 0, y: 4 },
+    show: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.16, ease: "easeOut" },
+    },
   };
 
   return (
-    <div className="relative w-full h-[70vh] sm:h-full flex flex-col justify-end overflow-hidden shadow-2xl snap-start">
-      <AnimatePresence>
-        <motion.div
+    <div className="relative w-full h-[70vh] sm:h-full flex flex-col justify-end overflow-hidden shadow-2xl snap-start bg-black">
+      <AnimatePresence initial={false}>
+        <motion.img
           key={item.id}
+          src={
+            item.backdrop_path
+              ? `https://image.tmdb.org/t/p/original${item.backdrop_path}`
+              : "/fallback-bg.png"
+          }
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.4 }}
-          className="absolute inset-0"
-        >
-          <img
-            src={
-              item.backdrop_path
-                ? `https://image.tmdb.org/t/p/original${item.backdrop_path}`
-                : "/fallback-bg.png"
-            }
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-linear-to-t from-black via-black/70 to-transparent" />
-        </motion.div>
+          transition={{ duration: 0.28, ease: "linear" }}
+        />
       </AnimatePresence>
 
-      <motion.div
-        className="relative z-10 px-4 md:px-12 py-6 md:py-10 max-w-6xl mx-auto"
-        variants={containerVariants}
-        initial="hidden"
-        animate="show"
-      >
-        <motion.h2
-          className="font-extrabold mb-5 text-[clamp(1.9rem,4.5vw,3.1rem)]"
-          variants={childVariants}
-        >
-          {item.title || item.name}
-        </motion.h2>
+      <div className="absolute inset-0 bg-linear-to-t from-black via-black/80 to-black/30 pointer-events-none" />
 
-        <motion.p
-          className="text-gray-200 max-w-4xl mb-8"
-          variants={childVariants}
-        >
-          {item.overview}
-        </motion.p>
-
+      <AnimatePresence mode="wait">
         <motion.div
-          className="flex gap-3 items-center"
-          variants={childVariants}
+          key={item.id}
+          className="relative z-10 px-4 md:px-12 py-6 md:py-10 max-w-6xl mx-auto"
+          variants={containerVariants}
+          initial="hidden"
+          animate="show"
+          exit="exit"
         >
-          <motion.button
-            disabled={!onWatch}
-            onClick={onWatch}
-            className={`flex items-center gap-3 px-6 py-3 rounded-full font-semibold ${
-              onWatch
-                ? "bg-[hsl(var(--foreground))] text-[hsl(var(--background))]"
-                : "bg-gray-600/50 text-gray-400"
-            }`}
+          <motion.h2
+            className="font-extrabold mb-4 text-[clamp(1.9rem,4.5vw,3.1rem)]"
+            variants={childVariants}
           >
-            <FaPlay size={20} />
-            {hasResume && <span className="text-sm font-semibold">Resume</span>}
-          </motion.button>
+            {item.title || item.name}
+          </motion.h2>
 
-          <motion.button
-            onClick={() => onSelect(item)}
-            className="p-3 rounded-full bg-[hsl(var(--foreground))] text-[hsl(var(--background))]"
+          <motion.p
+            className="text-gray-200 max-w-4xl mb-7 line-clamp-4"
+            variants={childVariants}
           >
-            <FaInfoCircle size={22} />
-          </motion.button>
+            {item.overview}
+          </motion.p>
 
-          <motion.button
-            onClick={() => toggleWatchlist(item)}
-            aria-pressed={isSaved}
-            className="p-3 rounded-full bg-[hsl(var(--foreground))] text-[hsl(var(--background))]"
+          <motion.div
+            className="flex items-center gap-3"
+            variants={childVariants}
           >
-            <Bookmark
-              size={22}
-              strokeWidth={isSaved ? 3 : 2}
-              className={isSaved ? "fill-current" : "fill-none"}
-            />
-          </motion.button>
+            <motion.button
+              disabled={!onWatch}
+              onClick={onWatch}
+              whileHover={onWatch ? { scale: 1.04 } : {}}
+              whileTap={onWatch ? { scale: 0.96 } : {}}
+              className={`relative inline-flex items-center justify-center gap-3 h-12
+                ${hasResume ? "px-7" : "px-6"}
+                rounded-full font-semibold leading-none
+                transition-colors select-none
+                shadow-lg shadow-black/40
+                ${
+                  onWatch
+                    ? "bg-[hsl(var(--foreground))] text-[hsl(var(--background))]"
+                    : "bg-gray-700/60 text-gray-400 shadow-none"
+                }`}
+            >
+              {onWatch && (
+                <span className="absolute inset-0 rounded-full ring-1 ring-white/15 pointer-events-none" />
+              )}
+
+              <FaPlay size={22} className="translate-x-px" />
+              {hasResume && (
+                <span className="text-base font-semibold tracking-tight">
+                  Resume
+                </span>
+              )}
+            </motion.button>
+
+            <button
+              onClick={() => onSelect(item)}
+              className="inline-flex items-center justify-center h-12 w-12
+                rounded-full
+                bg-[hsl(var(--foreground))]
+                text-[hsl(var(--background))]
+                transition-colors"
+            >
+              <FaInfoCircle size={22} />
+            </button>
+
+            <button
+              onClick={() => toggleWatchlist(item)}
+              aria-pressed={isSaved}
+              className="inline-flex items-center justify-center h-12 w-12
+                rounded-full
+                bg-[hsl(var(--foreground))]
+                text-[hsl(var(--background))]
+                transition-colors"
+            >
+              <Bookmark
+                size={22}
+                strokeWidth={isSaved ? 3 : 2}
+                className={isSaved ? "fill-current" : "fill-none"}
+              />
+            </button>
+          </motion.div>
         </motion.div>
-      </motion.div>
+      </AnimatePresence>
     </div>
   );
 }
