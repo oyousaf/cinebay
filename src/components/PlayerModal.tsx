@@ -17,6 +17,10 @@ import { fetchEpisodeRuntime } from "@/lib/tv/fetchEpisodeRuntime";
 import { useContinueWatching } from "@/hooks/useContinueWatching";
 import { useResumeSignal } from "@/context/ResumeContext";
 
+/* -------------------------------------------------
+   TYPES
+-------------------------------------------------- */
+
 interface PlayerModalProps {
   intent: PlaybackIntent;
   onClose: () => void;
@@ -30,7 +34,9 @@ interface PlayerModalProps {
 const NEAR_END_SECONDS = 120;
 const FALLBACK_DURATION_SECONDS = 42 * 60;
 
-const TEST_FORCE_NEXT = false;
+/* -------------------------------------------------
+   COMPONENT
+-------------------------------------------------- */
 
 export default function PlayerModal({
   intent,
@@ -83,7 +89,7 @@ export default function PlayerModal({
   }, [embedUrl]);
 
   /* -------------------------------------------------
-     NEAR-END OFFER (RUNTIME AWARE)
+     NEAR-END OFFER (RUNTIME-AWARE, GUARDED)
   -------------------------------------------------- */
   useEffect(() => {
     if (intent.mediaType !== "tv") return;
@@ -92,7 +98,8 @@ export default function PlayerModal({
     let cancelled = false;
 
     const schedule = async () => {
-      let fireAt = FALLBACK_DURATION_SECONDS - NEAR_END_SECONDS;
+      let runtimeSeconds = FALLBACK_DURATION_SECONDS;
+      let fireAt = runtimeSeconds - NEAR_END_SECONDS;
 
       try {
         if (
@@ -105,17 +112,28 @@ export default function PlayerModal({
             intent.episode,
           );
 
-          if (runtime && runtime > NEAR_END_SECONDS + 60) {
+          if (runtime && runtime > 10 * 60 && runtime < 3 * 60 * 60) {
+            runtimeSeconds = runtime;
             fireAt = runtime - NEAR_END_SECONDS;
           }
         }
-      } catch {}
+      } catch {
+        // silent fallback
+      }
 
-      if (TEST_FORCE_NEXT) fireAt = 5;
+      // Clamp: never early, never too late
+      const minFireAt = Math.floor(runtimeSeconds * 0.6);
+      const maxFireAt = Math.floor(runtimeSeconds * 0.98);
+      fireAt = Math.max(fireAt, minFireAt);
+      fireAt = Math.min(fireAt, maxFireAt);
+
       if (cancelled) return;
 
       timerRef.current = window.setTimeout(async () => {
         if (offeredRef.current) return;
+        if (!loaded) return;
+        if (document.visibilityState !== "visible") return;
+
         offeredRef.current = true;
 
         const result = await resolveNextEpisode(intent);
@@ -154,13 +172,12 @@ export default function PlayerModal({
   };
 
   /* -------------------------------------------------
-     PLAY NEXT (CRITICAL FIX)
+     PLAY NEXT (HARD REMOUNT)
   -------------------------------------------------- */
   const handlePlayNext = (next: PlaybackIntent) => {
     bump?.();
     setNextOffer(null);
 
-    // HARD REMOUNT
     onClose();
     queueMicrotask(() => onPlayNext(next));
   };
