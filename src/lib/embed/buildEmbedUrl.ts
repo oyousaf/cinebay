@@ -7,6 +7,7 @@ export interface PlaybackIntent {
   mediaType: MediaType;
   tmdbId: number;
 
+  // TV-only
   season?: number;
   episode?: number;
 }
@@ -40,7 +41,7 @@ export const EMBED_PROVIDERS = [
 -------------------------------------------------- */
 function buildQuery(params: Record<string, string | number>) {
   return new URLSearchParams(
-    Object.entries(params).map(([k, v]) => [k, String(v)]),
+    Object.entries(params).map(([k, v]) => [k, String(v)])
   ).toString();
 }
 
@@ -49,22 +50,45 @@ function buildQuery(params: Record<string, string | number>) {
 -------------------------------------------------- */
 export function buildEmbedUrl(
   provider: { name: string; domain: string },
-  intent: PlaybackIntent,
+  intent: PlaybackIntent
 ): string {
   const { mediaType, tmdbId } = intent;
 
+  /* ---------- VIDLINK (PRIMARY) ---------- */
   if (provider.name === "vidlink") {
-    return `https://vidlink.pro/${mediaType}/${tmdbId}?${buildQuery(
-      EMBED_THEME,
-    )}`;
+    if (mediaType === "tv") {
+      const season = intent.season ?? 1;
+      const episode = intent.episode ?? 1;
+
+      return `https://vidlink.pro/tv/${tmdbId}/${season}/${episode}?${buildQuery(
+        EMBED_THEME
+      )}`;
+    }
+
+    return `https://vidlink.pro/movie/${tmdbId}?${buildQuery(EMBED_THEME)}`;
   }
 
-  return `https://${provider.domain}/embed/${mediaType}/${tmdbId}`;
+  /* ---------- VIDSRC FALLBACKS ---------- */
+  if (mediaType === "tv") {
+    const season = intent.season ?? 1;
+    const episode = intent.episode ?? 1;
+
+    return `https://${provider.domain}/embed/tv/${tmdbId}/${season}/${episode}`;
+  }
+
+  return `https://${provider.domain}/embed/movie/${tmdbId}`;
 }
 
 /* -------------------------------------------------
-   CACHE KEY (MEDIA-AGNOSTIC)
+   CACHE KEY (MEDIA-AGNOSTIC, EPISODE-SENSITIVE)
 -------------------------------------------------- */
 export function buildEmbedCacheKey(intent: PlaybackIntent) {
-  return `embed:${intent.tmdbId}:theme:${EMBED_THEME.primaryColor}`;
+  return [
+    "embed",
+    intent.tmdbId,
+    intent.mediaType === "tv"
+      ? `s${intent.season ?? 1}e${intent.episode ?? 1}`
+      : "movie",
+    `theme:${EMBED_THEME.primaryColor}`,
+  ].join(":");
 }
