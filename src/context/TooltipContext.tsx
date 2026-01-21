@@ -39,7 +39,7 @@ export const TooltipProvider = ({ children }: { children: ReactNode }) => {
 
       setTooltip({ text, x, y, position });
     },
-    []
+    [],
   );
 
   const hideTooltip = useCallback(() => setTooltip(null), []);
@@ -50,8 +50,8 @@ export const TooltipProvider = ({ children }: { children: ReactNode }) => {
       {tooltip &&
         createPortal(
           <div
-            className="fixed z-[9999] px-2 py-1 text-xs rounded shadow-lg
-                       bg-[hsl(var(--foreground))] text-[hsl(var(--background))] pointer-events-none"
+            className="fixed z-50 px-2 py-1 text-xs rounded shadow-lg bg-[hsl(var(--foreground))] 
+            text-[hsl(var(--background))] pointer-events-none"
             style={{
               top: tooltip.y,
               left: tooltip.x,
@@ -63,7 +63,7 @@ export const TooltipProvider = ({ children }: { children: ReactNode }) => {
           >
             {tooltip.text}
           </div>,
-          document.body
+          document.body,
         )}
     </TooltipContext.Provider>
   );
