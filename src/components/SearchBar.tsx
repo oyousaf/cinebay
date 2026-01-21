@@ -201,7 +201,7 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
      RENDER
   -------------------------------------------------- */
   return (
-    <div className="relative w-full">
+    <div className="relative w-full overflow-visible">
       <form
         onSubmit={(e) => {
           e.preventDefault();
