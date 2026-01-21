@@ -29,7 +29,7 @@ export type KnownForItem = {
 };
 
 // ========================
-// Genre (FIXED + EXPLICIT)
+// Genre
 // ========================
 export type Genre = {
   id: number;
@@ -118,7 +118,7 @@ type BaseMedia = {
 export type Movie = BaseMedia & {
   media_type: "movie" | "tv" | "person";
 
-  // naming (TMDB inconsistency handled)
+  // naming
   title?: string;
   name?: string;
 
