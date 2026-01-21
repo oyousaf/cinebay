@@ -128,11 +128,20 @@ export default function PlayerModal({
       fireAt = Math.min(fireAt, maxFireAt);
 
       if (cancelled) return;
-
+      
       timerRef.current = window.setTimeout(async () => {
         if (offeredRef.current) return;
         if (!loaded) return;
-        if (document.visibilityState !== "visible") return;
+
+        if (document.visibilityState !== "visible") {
+          // defer instead of cancelling
+          timerRef.current = window.setTimeout(() => {
+            if (!offeredRef.current) {
+              offeredRef.current = false;
+            }
+          }, 30_000);
+          return;
+        }
 
         offeredRef.current = true;
 
