@@ -42,27 +42,27 @@ function scoreResult(item: Movie, query: string): number {
 function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Movie[]>([]);
-  const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [activeIndex, setActiveIndex] = useState<number>(-1);
+  const [activeIndex, setActiveIndex] = useState(-1);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
   const requestId = useRef(0);
 
-  /* ---------- Initial focus ---------- */
+  const open = results.length > 0 && query.trim().length >= 2;
+
+  /* ---------- Focus input once ---------- */
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
 
   /* -------------------------------------------------
-     SEARCH (RACE-SAFE)
+     SEARCH (DERIVED OPEN, RACE SAFE)
   -------------------------------------------------- */
   const runSearch = useCallback(async (term: string) => {
     const q = term.trim();
     if (q.length < 2) {
       setResults([]);
-      setOpen(false);
       setActiveIndex(-1);
       return;
     }
@@ -84,11 +84,10 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
         .slice(0, 10);
 
       setResults(ranked);
-      setOpen(ranked.length > 0);
       setActiveIndex(ranked.length ? 0 : -1);
     } catch {
       setResults([]);
-      setOpen(false);
+      setActiveIndex(-1);
     } finally {
       if (id === requestId.current) setLoading(false);
     }
@@ -104,7 +103,7 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
   }, [query, debouncedSearch]);
 
   /* -------------------------------------------------
-     KEYBOARD (LOCAL, CONTROLLED)
+     KEYBOARD
   -------------------------------------------------- */
   useEffect(() => {
     if (!open) return;
@@ -126,7 +125,7 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
       }
 
       if (e.key === "Escape") {
-        setOpen(false);
+        setResults([]);
         setActiveIndex(-1);
       }
     };
@@ -153,7 +152,7 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
         resultsRef.current &&
         !resultsRef.current.contains(e.target as Node)
       ) {
-        setOpen(false);
+        setResults([]);
         setActiveIndex(-1);
       }
     };
@@ -176,7 +175,7 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
         onSelectMovie(full);
       }
 
-      setOpen(false);
+      setResults([]);
       setActiveIndex(-1);
     },
     [onSelectMovie, onSelectPerson],
@@ -187,14 +186,13 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
   -------------------------------------------------- */
   const listVariants: Variants = {
     hidden: { opacity: 0, y: -6 },
-    show: { opacity: 1, y: 0, transition: { staggerChildren: 0.03 } },
+    show: { opacity: 1, y: 0 },
     exit: { opacity: 0, y: -4 },
   };
 
   const itemVariants: Variants = {
     hidden: { opacity: 0, y: 6 },
     show: { opacity: 1, y: 0 },
-    exit: { opacity: 0, y: -6 },
   };
 
   /* -------------------------------------------------
@@ -205,8 +203,8 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          debouncedSearch.cancel();
-          runSearch(query);
+          if (!query.trim()) return;
+          if (!open) runSearch(query);
         }}
         className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[hsl(var(--background))] border border-[hsl(var(--foreground)/0.25)] shadow-md"
       >
@@ -218,11 +216,17 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
           className="flex-1 bg-transparent outline-none text-base text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--foreground)/0.5)]"
         />
 
-        {loading ? (
-          <Loader2 className="h-5 w-5 animate-spin text-[hsl(var(--foreground))]" />
-        ) : (
-          <Search className="h-5 w-5 text-[hsl(var(--foreground))]" />
-        )}
+        <button
+          type="submit"
+          disabled={!query.trim()}
+          className="h-10 w-10 flex items-center justify-center rounded-full"
+        >
+          {loading ? (
+            <Loader2 className="h-5 w-5 animate-spin text-[hsl(var(--foreground))]" />
+          ) : (
+            <Search className="h-5 w-5 text-[hsl(var(--foreground))]" />
+          )}
+        </button>
       </form>
 
       <AnimatePresence>
