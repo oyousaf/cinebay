@@ -8,7 +8,8 @@ import {
   type PlaybackIntent,
 } from "@/lib/embed/buildEmbedUrl";
 
-import { setTVProgress } from "@/lib/continueWatching";
+import { useContinueWatching } from "@/hooks/useContinueWatching";
+import { useResumeSignal } from "@/context/ResumeContext";
 
 const INVALID_MARKERS = [
   "not found",
@@ -25,6 +26,9 @@ const RESUME_DELAY_MS = 30_000;
 
 export function useVideoEmbed(intent?: PlaybackIntent): string | null {
   const [embedUrl, setEmbedUrl] = useState<string | null>(null);
+
+  const { setTVProgress } = useContinueWatching();
+  const { bump } = useResumeSignal();
 
   const resumeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const resumeArmedRef = useRef(false);
@@ -57,6 +61,8 @@ export function useVideoEmbed(intent?: PlaybackIntent): string | null {
           intent.episode ?? 1,
           RESUME_DELAY_MS / 1000,
         );
+
+        bump();
       }, RESUME_DELAY_MS);
     };
 
@@ -67,8 +73,12 @@ export function useVideoEmbed(intent?: PlaybackIntent): string | null {
       memoryCache.set(cacheKey, cached);
       setEmbedUrl(cached);
       armResume();
+
       return () => {
-        if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
+        if (resumeTimerRef.current) {
+          clearTimeout(resumeTimerRef.current);
+          resumeTimerRef.current = null;
+        }
       };
     }
 
@@ -108,6 +118,7 @@ export function useVideoEmbed(intent?: PlaybackIntent): string | null {
       }
 
       iframe.src = buildEmbedUrl(EMBED_PROVIDERS[index], intent);
+
       timeoutId = setTimeout(() => {
         index++;
         tryNext();
@@ -147,9 +158,12 @@ export function useVideoEmbed(intent?: PlaybackIntent): string | null {
 
     return () => {
       cleanupProbe();
-      if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
+      if (resumeTimerRef.current) {
+        clearTimeout(resumeTimerRef.current);
+        resumeTimerRef.current = null;
+      }
     };
-  }, [intent]);
+  }, [intent, bump, setTVProgress]);
 
   return embedUrl;
 }

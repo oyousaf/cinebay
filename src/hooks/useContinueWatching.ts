@@ -8,7 +8,6 @@ export type TVProgress = {
 };
 
 const tvKeyFor = (tvId: number) => `watch:tv:${tvId}`;
-
 const MIN_RESUME_SECONDS = 30;
 
 export function useContinueWatching() {
@@ -35,7 +34,12 @@ export function useContinueWatching() {
   }, []);
 
   const setTVProgress = useCallback(
-    (tvId: number, season: number, episode: number, position: number) => {
+    (
+      tvId: number,
+      season: number,
+      episode: number,
+      position: number = MIN_RESUME_SECONDS,
+    ) => {
       if (position < MIN_RESUME_SECONDS) return;
 
       localStorage.setItem(

@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { FaPlay, FaChevronDown } from "react-icons/fa";
+
 import type { Movie, Season, Episode } from "@/types/movie";
 import { fetchSeasonEpisodes } from "@/lib/tmdb";
 import { useContinueWatching } from "@/hooks/useContinueWatching";
+import { useResumeSignal } from "@/context/ResumeContext";
 import type { PlaybackIntent } from "@/lib/embed/buildEmbedUrl";
 
 export default function EpisodeSelector({
@@ -15,6 +17,7 @@ export default function EpisodeSelector({
   onPlay: (intent: PlaybackIntent) => void;
 }) {
   const { getTVProgress, setTVProgress } = useContinueWatching();
+  const { version } = useResumeSignal();
 
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [episodes, setEpisodes] = useState<Episode[]>([]);
@@ -39,10 +42,11 @@ export default function EpisodeSelector({
       setEpisode(progress.episode);
     } else if (validSeasons.length) {
       setSeason(validSeasons[0].season_number);
+      setEpisode(null);
     }
 
     setHydrated(true);
-  }, [tv.id, tv.seasons, getTVProgress]);
+  }, [tv.id, tv.seasons, getTVProgress, version]);
 
   /* ---------- LOAD EPISODES ---------- */
   useEffect(() => {
@@ -70,6 +74,7 @@ export default function EpisodeSelector({
   const play = () => {
     if (!season || !episode) return;
 
+    // UI writes intent only
     setTVProgress(tv.id, season, episode);
 
     onPlay({
@@ -98,7 +103,9 @@ export default function EpisodeSelector({
         <button
           onClick={play}
           disabled={!episode}
-          className="flex items-center gap-2 px-4 py-2 rounded-full font-semibold bg-[hsl(var(--foreground))] text-[hsl(var(--background))] disabled:opacity-40"
+          className="flex items-center gap-2 px-4 py-2 rounded-full font-semibold
+            bg-[hsl(var(--foreground))] text-[hsl(var(--background))]
+            disabled:opacity-40"
         >
           <FaPlay />
           {playLabel}
@@ -110,14 +117,20 @@ export default function EpisodeSelector({
         <div className="relative">
           <button
             onClick={() => setOpenSeason((v) => !v)}
-            className="w-full flex items-center justify-between px-3 py-2 rounded-lg border border-[hsl(var(--foreground)/0.4)] bg-[hsl(var(--background))]"
+            className="w-full flex items-center justify-between px-3 py-2 rounded-lg
+              border border-[hsl(var(--foreground)/0.4)]
+              bg-[hsl(var(--background))]"
           >
             {season ? `Season ${season}` : "Select season"}
             <FaChevronDown />
           </button>
 
           {openSeason && (
-            <div className="absolute z-50 mt-1 w-full max-h-60 overflow-y-auto rounded-lg shadow-xl bg-[hsl(var(--background))] border border-[hsl(var(--foreground)/0.4)]">
+            <div
+              className="absolute z-50 mt-1 w-full max-h-60 overflow-y-auto
+              rounded-lg shadow-xl bg-[hsl(var(--background))]
+              border border-[hsl(var(--foreground)/0.4)]"
+            >
               {seasons.map((s) => (
                 <button
                   key={s.id}
@@ -125,7 +138,8 @@ export default function EpisodeSelector({
                     setSeason(s.season_number);
                     setOpenSeason(false);
                   }}
-                  className="w-full px-3 py-2 text-left hover:bg-[hsl(var(--foreground)/0.1)]"
+                  className="w-full px-3 py-2 text-left
+                    hover:bg-[hsl(var(--foreground)/0.1)]"
                 >
                   Season {s.season_number}
                 </button>
@@ -139,14 +153,21 @@ export default function EpisodeSelector({
           <button
             onClick={() => episodes.length && setOpenEpisode((v) => !v)}
             disabled={!episodes.length}
-            className="w-full flex items-center justify-between px-3 py-2 rounded-lg border border-[hsl(var(--foreground)/0.4)] bg-[hsl(var(--background))] disabled:opacity-40"
+            className="w-full flex items-center justify-between px-3 py-2 rounded-lg
+              border border-[hsl(var(--foreground)/0.4)]
+              bg-[hsl(var(--background))]
+              disabled:opacity-40"
           >
             {episode ? `Episode ${episode}` : "No episodes"}
             <FaChevronDown />
           </button>
 
           {openEpisode && (
-            <div className="absolute z-50 mt-1 w-full max-h-60 overflow-y-auto rounded-lg shadow-xl bg-[hsl(var(--background))] border border-[hsl(var(--foreground)/0.4)]">
+            <div
+              className="absolute z-50 mt-1 w-full max-h-60 overflow-y-auto
+              rounded-lg shadow-xl bg-[hsl(var(--background))]
+              border border-[hsl(var(--foreground)/0.4)]"
+            >
               {episodes.map((e) => (
                 <button
                   key={e.id}
@@ -154,7 +175,8 @@ export default function EpisodeSelector({
                     setEpisode(e.episode_number);
                     setOpenEpisode(false);
                   }}
-                  className="w-full px-3 py-2 text-left hover:bg-[hsl(var(--foreground)/0.1)]"
+                  className="w-full px-3 py-2 text-left
+                    hover:bg-[hsl(var(--foreground)/0.1)]"
                 >
                   Episode {e.episode_number}
                   {e.name && (

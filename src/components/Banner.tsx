@@ -1,10 +1,13 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence, Variants } from "framer-motion";
 import type { Movie } from "@/types/movie";
 import { FaInfoCircle, FaPlay } from "react-icons/fa";
 import { Bookmark } from "lucide-react";
+
 import { useWatchlist } from "@/context/WatchlistContext";
+import { useResumeSignal } from "@/context/ResumeContext";
 import { useContinueWatching } from "@/hooks/useContinueWatching";
 
 interface BannerProps {
@@ -20,9 +23,22 @@ export default function Banner({ item, onSelect, onWatch }: BannerProps) {
   const isSaved = isInWatchlist(item.id);
 
   const { getTVProgress } = useContinueWatching();
-  const progress = isTV ? getTVProgress(item.id) : null;
-  const hasResume = Boolean(progress);
+  const { version } = useResumeSignal();
 
+  const [hasResume, setHasResume] = useState(false);
+
+  /* ---------- RESUME CHECK ---------- */
+  useEffect(() => {
+    if (!isTV) {
+      setHasResume(false);
+      return;
+    }
+
+    const progress = getTVProgress(item.id);
+    setHasResume(Boolean(progress));
+  }, [item.id, isTV, getTVProgress, version]);
+
+  /* ---------- MOTION ---------- */
   const containerVariants: Variants = {
     hidden: { opacity: 0, y: 6 },
     show: {
@@ -46,6 +62,7 @@ export default function Banner({ item, onSelect, onWatch }: BannerProps) {
     },
   };
 
+  /* ---------- UI ---------- */
   return (
     <div className="relative w-full h-[70vh] sm:h-full flex flex-col justify-end overflow-hidden shadow-2xl snap-start bg-black">
       <AnimatePresence initial={false}>
@@ -125,10 +142,8 @@ export default function Banner({ item, onSelect, onWatch }: BannerProps) {
             <button
               onClick={() => onSelect(item)}
               className="inline-flex items-center justify-center h-12 w-12
-                rounded-full
-                bg-[hsl(var(--foreground))]
-                text-[hsl(var(--background))]
-                transition-colors"
+                rounded-full bg-[hsl(var(--foreground))]
+                text-[hsl(var(--background))]"
             >
               <FaInfoCircle size={22} />
             </button>
@@ -137,10 +152,8 @@ export default function Banner({ item, onSelect, onWatch }: BannerProps) {
               onClick={() => toggleWatchlist(item)}
               aria-pressed={isSaved}
               className="inline-flex items-center justify-center h-12 w-12
-                rounded-full
-                bg-[hsl(var(--foreground))]
-                text-[hsl(var(--background))]
-                transition-colors"
+                rounded-full bg-[hsl(var(--foreground))]
+                text-[hsl(var(--background))]"
             >
               <Bookmark
                 size={22}
