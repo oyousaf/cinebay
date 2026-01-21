@@ -13,13 +13,17 @@ import debounce from "lodash.debounce";
 import { fetchDetails, fetchFromProxy } from "@/lib/tmdb";
 import type { Movie } from "@/types/movie";
 
+/* -------------------------------------------------
+   TYPES
+-------------------------------------------------- */
 type Props = {
   onSelectMovie: (movie: Movie) => void;
   onSelectPerson?: (person: Movie) => void;
 };
 
-/* ================= Ranking ================= */
-
+/* -------------------------------------------------
+   RANKING
+-------------------------------------------------- */
 function scoreResult(item: Movie, query: string): number {
   let score = 0;
   const q = query.toLowerCase();
@@ -34,23 +38,35 @@ function scoreResult(item: Movie, query: string): number {
   if (item.media_type === "person") score += 5;
 
   score += (item.vote_average ?? 0) * 2;
-
   return score;
 }
 
-/* ================= Component ================= */
-
+/* -------------------------------------------------
+   COMPONENT
+-------------------------------------------------- */
 function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Movie[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  const inputRef = useRef<HTMLInputElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
   const iconControls = useAnimation();
 
-  /* ---------- Loading icon ---------- */
+  /* ---------- Initial focus ---------- */
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
 
+  /* ---------- Retain focus while searching ---------- */
+  useEffect(() => {
+    if (open) {
+      inputRef.current?.focus();
+    }
+  }, [open]);
+
+  /* ---------- Loading icon ---------- */
   useEffect(() => {
     if (!loading) {
       iconControls.stop();
@@ -65,7 +81,6 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
   }, [loading, iconControls]);
 
   /* ---------- Search ---------- */
-
   const runSearch = useCallback(async (term: string) => {
     const q = term.trim();
     if (!q) {
@@ -105,8 +120,7 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
     return () => debouncedSearch.cancel();
   }, [query, debouncedSearch]);
 
-  /* ---------- Outside / ESC ---------- */
-
+  /* ---------- Outside click / ESC ---------- */
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
       if (
@@ -131,7 +145,6 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
   }, []);
 
   /* ---------- Selection ---------- */
-
   const handleSelect = useCallback(
     async (item: Movie) => {
       const full = await fetchDetails(item.id, item.media_type);
@@ -149,51 +162,25 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
   );
 
   /* ---------- Animations ---------- */
-
   const listVariants: Variants = {
     hidden: { opacity: 0, y: -6 },
     show: {
       opacity: 1,
       y: 0,
-      transition: {
-        duration: 0.3,
-        ease: [0.16, 1, 0.3, 1],
-        staggerChildren: 0.04,
-      },
+      transition: { duration: 0.25, staggerChildren: 0.04 },
     },
-    exit: {
-      opacity: 0,
-      y: -4,
-      transition: {
-        duration: 0.2,
-        ease: [0.4, 0, 1, 1],
-        staggerDirection: -1,
-      },
-    },
+    exit: { opacity: 0, y: -4, transition: { duration: 0.15 } },
   };
 
   const itemVariants: Variants = {
     hidden: { opacity: 0, y: 6 },
-    show: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        duration: 0.25,
-        ease: [0.16, 1, 0.3, 1],
-      },
-    },
-    exit: {
-      opacity: 0,
-      y: -6,
-      transition: {
-        duration: 0.15,
-        ease: [0.4, 0, 1, 1],
-      },
-    },
+    show: { opacity: 1, y: 0, transition: { duration: 0.2 } },
+    exit: { opacity: 0, y: -6, transition: { duration: 0.12 } },
   };
 
-  /* ---------- Render ---------- */
-
+  /* -------------------------------------------------
+     RENDER
+  -------------------------------------------------- */
   return (
     <div className="w-full relative">
       <motion.form
@@ -202,18 +189,22 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
           debouncedSearch.cancel();
           runSearch(query);
         }}
-        className="w-full flex items-center gap-2 rounded-xl shadow-md border px-4 py-2"
-        style={{
-          backgroundColor: "hsl(var(--background))",
-          borderColor: "hsl(var(--foreground))",
-        }}
+        className="w-full flex items-center gap-2 rounded-xl shadow-md border px-4 py-2
+          bg-[hsl(var(--background))]
+          border-[hsl(var(--foreground))]"
       >
         <input
+          ref={inputRef}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search movies, shows, people..."
-          className="flex-1 bg-transparent outline-none text-base md:text-lg placeholder:text-gray-500"
-          style={{ color: "hsl(var(--foreground))" }}
+          className="
+            flex-1 bg-transparent outline-none
+            text-base md:text-lg
+            text-[hsl(var(--foreground))]
+            placeholder:text-[hsl(var(--foreground)/0.5)]
+            caret-[hsl(var(--foreground))]
+          "
         />
 
         <motion.button
@@ -225,10 +216,10 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
         >
           {loading ? (
             <motion.span animate={iconControls}>
-              <Loader2 className="h-5 w-5" />
+              <Loader2 className="h-5 w-5 text-[hsl(var(--foreground))]" />
             </motion.span>
           ) : (
-            <Search className="h-5 w-5" />
+            <Search className="h-5 w-5 text-[hsl(var(--foreground))]" />
           )}
         </motion.button>
       </motion.form>
@@ -241,7 +232,12 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
             initial="hidden"
             animate="show"
             exit="exit"
-            className="absolute top-full mt-2 w-full max-h-80 overflow-y-auto rounded-lg shadow-lg bg-[hsl(var(--background))] z-50 divide-y divide-[hsl(var(--foreground))]/10"
+            className="
+              absolute top-full mt-2 w-full max-h-80 overflow-y-auto
+              rounded-lg shadow-lg z-50
+              bg-[hsl(var(--background))]
+              divide-y divide-[hsl(var(--foreground))/0.1]
+            "
           >
             {results.map((item) => {
               const image =
@@ -256,7 +252,10 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
                   key={`${item.media_type}:${item.id}`}
                   variants={itemVariants}
                   onClick={() => handleSelect(item)}
-                  className="flex items-center gap-3 px-4 py-2 cursor-pointer hover:bg-[hsl(var(--foreground))]/10"
+                  className="
+                    flex items-center gap-3 px-4 py-2 cursor-pointer
+                    hover:bg-[hsl(var(--foreground))/0.1]
+                  "
                 >
                   <img
                     src={
@@ -269,7 +268,9 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
                     loading="lazy"
                   />
                   <div className="flex flex-col">
-                    <span className="text-sm font-medium">{name}</span>
+                    <span className="text-sm font-medium text-[hsl(var(--foreground))]">
+                      {name}
+                    </span>
                     <span className="text-xs uppercase opacity-60">
                       {item.media_type === "tv" ? "TV Show" : item.media_type}
                     </span>
