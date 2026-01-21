@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect, useState, useMemo } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Toaster, toast } from "sonner";
@@ -13,6 +15,8 @@ import PlayerModal from "@/components/PlayerModal";
 import ExitConfirmModal from "@/components/ExitConfirmModal";
 
 import { useModalManager } from "@/context/ModalContext";
+import { ResumeProvider } from "@/context/ResumeContext";
+
 import type { PlaybackIntent } from "@/lib/embed/buildEmbedUrl";
 
 export default function App() {
@@ -106,53 +110,60 @@ export default function App() {
   };
 
   return (
-    <Layout
-      activeTab={activeTab}
-      onTabChange={persistTab}
-      isModalOpen={Boolean(activeModal)}
-    >
-      <Toaster richColors position="bottom-center" theme="dark" />
+    <ResumeProvider>
+      <Layout
+        activeTab={activeTab}
+        onTabChange={persistTab}
+        isModalOpen={Boolean(activeModal)}
+      >
+        <Toaster richColors position="bottom-center" theme="dark" />
 
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={activeTab}
-          initial={{ opacity: 0, x: -40 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: 40 }}
-          transition={{ duration: 0.25, ease: "easeOut" }}
-          className="flex-1 overflow-y-auto scrollbar-hide min-h-0"
-        >
-          {renderContent()}
-        </motion.div>
-      </AnimatePresence>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, x: -40 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 40 }}
+            transition={{ duration: 0.25, ease: "easeOut" }}
+            className="flex-1 overflow-y-auto scrollbar-hide min-h-0"
+          >
+            {renderContent()}
+          </motion.div>
+        </AnimatePresence>
 
-      {activeModal === "content" && selectedItem && (
-        <Modal
-          movie={selectedItem}
-          onClose={close}
-          onSelect={openContent}
-          onBack={goBackContent}
-        />
-      )}
+        {activeModal === "content" && selectedItem && (
+          <Modal
+            movie={selectedItem}
+            onClose={close}
+            onSelect={openContent}
+            onBack={goBackContent}
+          />
+        )}
 
-      {activeModal === "player" && playerIntent && (
-        <PlayerModal intent={playerIntent as PlaybackIntent} onClose={close} />
-      )}
+        {activeModal === "player" && playerIntent && (
+          <PlayerModal
+            intent={playerIntent as PlaybackIntent}
+            onClose={close}
+            onPlayNext={openPlayer}
+          />
+        )}
 
-      {activeModal === "exit" && (
-        <ExitConfirmModal
-          open
-          onCancel={close}
-          onExit={() => {
-            if (isStandalone) window.close();
-            else
-              toast.error(
-                "Can’t auto-close in browser — please close this tab.",
-              );
-            close();
-          }}
-        />
-      )}
-    </Layout>
+        {activeModal === "exit" && (
+          <ExitConfirmModal
+            open
+            onCancel={close}
+            onExit={() => {
+              if (isStandalone) window.close();
+              else {
+                toast.error(
+                  "Can’t auto-close in browser — please close this tab.",
+                );
+              }
+              close();
+            }}
+          />
+        )}
+      </Layout>
+    </ResumeProvider>
   );
 }
