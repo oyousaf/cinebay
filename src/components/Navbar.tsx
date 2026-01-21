@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import {
   FaFilm,
@@ -10,13 +10,12 @@ import {
   FaBookmark,
 } from "react-icons/fa";
 
-import { useTooltip } from "@/context/TooltipContext";
 import { DarkModeToggle } from "../DarkModeToggle";
+import { useTooltip } from "@/context/TooltipContext";
+import { useNavigation } from "@/hooks/useNavigation";
+
 import logo from "/logo.png";
 
-/* -------------------------------------------------
-   TYPES
--------------------------------------------------- */
 type Tab = "movies" | "tvshows" | "search" | "devspick" | "watchlist";
 
 interface NavbarProps {
@@ -25,10 +24,7 @@ interface NavbarProps {
   isModalOpen?: boolean;
 }
 
-/* -------------------------------------------------
-   CONFIG
--------------------------------------------------- */
-const navItems: { id: Tab; icon: React.ReactElement; label: string }[] = [
+const navItems: { id: Tab; icon: JSX.Element; label: string }[] = [
   { id: "movies", icon: <FaFilm size={30} />, label: "Movies" },
   { id: "tvshows", icon: <FaTv size={30} />, label: "TV Shows" },
   { id: "search", icon: <FaSearch size={30} />, label: "Search" },
@@ -36,29 +32,65 @@ const navItems: { id: Tab; icon: React.ReactElement; label: string }[] = [
   { id: "watchlist", icon: <FaBookmark size={30} />, label: "Watchlist" },
 ];
 
-/* -------------------------------------------------
-   COMPONENT
--------------------------------------------------- */
-const Navbar: React.FC<NavbarProps> = ({
+export default function Navbar({
   activeTab,
   onTabChange,
   isModalOpen,
-}) => {
+}: NavbarProps) {
   const { showTooltip, hideTooltip } = useTooltip();
+  const { setTabNavigator } = useNavigation();
+
   const pressTimeout = useRef<NodeJS.Timeout | null>(null);
 
-  /* ---------- Long-press tooltip (mobile) ---------- */
-  const handleTouchStart = (
-    id: Tab,
-    e: React.TouchEvent<HTMLButtonElement>,
-  ) => {
-    const target = e.currentTarget;
-    pressTimeout.current = setTimeout(() => {
-      showTooltip(
-        navItems.find((n) => n.id === id)!.label,
-        "top",
-        target,
+  /* -------------------------------------------------
+     REGISTER TAB NAVIGATION (SINGLE SOURCE)
+  -------------------------------------------------- */
+  useEffect(() => {
+    setTabNavigator((direction) => {
+      if (isModalOpen) return;
+
+      const currentIndex = navItems.findIndex(
+        (n) => n.id === activeTab,
       );
+
+      if (currentIndex === -1) return;
+
+      switch (direction) {
+        case "up": {
+          const next =
+            navItems[
+              (currentIndex - 1 + navItems.length) % navItems.length
+            ];
+          onTabChange(next.id);
+          break;
+        }
+
+        case "down": {
+          const next =
+            navItems[(currentIndex + 1) % navItems.length];
+          onTabChange(next.id);
+          break;
+        }
+
+        case "escape": {
+          if (activeTab === "search") {
+            onTabChange("movies");
+          }
+          break;
+        }
+      }
+    });
+  }, [activeTab, onTabChange, isModalOpen, setTabNavigator]);
+
+  /* -------------------------------------------------
+     TOUCH TOOLTIP (MOBILE)
+  -------------------------------------------------- */
+  const handleTouchStart = (
+    label: string,
+    target: HTMLElement,
+  ) => {
+    pressTimeout.current = setTimeout(() => {
+      showTooltip(label, "top", target);
     }, 400);
   };
 
@@ -72,23 +104,21 @@ const Navbar: React.FC<NavbarProps> = ({
   -------------------------------------------------- */
   return (
     <>
-      {/* Desktop / Tablet Sidebar */}
+      {/* Desktop Sidebar */}
       <aside className="hidden md:flex fixed left-0 top-0 h-screen w-20 flex-col items-center justify-between bg-[hsl(var(--background))] border-r border-border z-40">
         {/* Logo */}
         <div className="pt-4">
           <motion.img
             src={logo}
             alt="CineBay"
-            className="w-12 h-12 object-contain rounded-full
-              drop-shadow-[0_0_8px_rgba(192,132,252,0.35)]
-              dark:drop-shadow-[0_0_10px_rgba(255,255,255,0.25)]"
+            className="w-12 h-12 object-contain rounded-full"
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.4, ease: "easeOut" }}
+            transition={{ duration: 0.35 }}
           />
         </div>
 
-        {/* Nav Items */}
+        {/* Nav */}
         <div className="flex flex-col gap-6">
           {navItems.map((item) => {
             const isActive = activeTab === item.id;
@@ -104,24 +134,18 @@ const Navbar: React.FC<NavbarProps> = ({
                 whileHover={{ scale: 1.15 }}
                 aria-current={isActive ? "page" : undefined}
                 aria-label={item.label}
-                className={`relative group p-2 rounded-lg transition-colors
-                  ${
-                    isActive
-                      ? "text-[hsl(var(--foreground))]"
-                      : "opacity-50"
-                  }`}
+                className={`relative p-2 rounded-lg transition-colors ${
+                  isActive
+                    ? "text-[hsl(var(--foreground))]"
+                    : "opacity-50"
+                }`}
               >
                 {item.icon}
 
                 {isActive && (
                   <motion.div
                     layoutId="active-indicator"
-                    className="
-                      absolute left-0 top-1/2 -translate-y-1/2
-                      w-1 h-8 rounded-full
-                      bg-[hsl(var(--foreground))]
-                      shadow-[0_0_6px_hsl(var(--foreground)/0.8)]
-                    "
+                    className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-full bg-[hsl(var(--foreground))]"
                   />
                 )}
               </motion.button>
@@ -129,15 +153,10 @@ const Navbar: React.FC<NavbarProps> = ({
           })}
         </div>
 
-        {/* Dark mode toggle */}
-        <motion.div
-          className="pb-6"
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6, duration: 0.4, ease: "easeOut" }}
-        >
+        {/* Dark mode */}
+        <div className="pb-6">
           <DarkModeToggle />
-        </motion.div>
+        </div>
       </aside>
 
       {/* Mobile Bottom Nav */}
@@ -149,29 +168,26 @@ const Navbar: React.FC<NavbarProps> = ({
             <motion.button
               key={item.id}
               onClick={() => onTabChange(item.id)}
-              onTouchStart={(e) => handleTouchStart(item.id, e)}
+              onTouchStart={(e) =>
+                handleTouchStart(item.label, e.currentTarget)
+              }
               onTouchEnd={handleTouchEnd}
               onContextMenu={(e) => e.preventDefault()}
               whileHover={{ scale: 1.15 }}
               aria-current={isActive ? "page" : undefined}
               aria-label={item.label}
-              className={`relative group flex flex-col items-center justify-center transition-colors
-                ${
-                  isActive
-                    ? "text-[hsl(var(--foreground))]"
-                    : "opacity-50"
-                }`}
+              className={`relative flex flex-col items-center justify-center ${
+                isActive
+                  ? "text-[hsl(var(--foreground))]"
+                  : "opacity-50"
+              }`}
             >
               {item.icon}
 
               {isActive && (
                 <motion.div
                   layoutId="active-indicator-mobile"
-                  className="
-                    absolute -bottom-1.5 w-8 h-1 rounded-full
-                    bg-[hsl(var(--foreground))]
-                    shadow-[0_0_6px_hsl(var(--foreground)/0.8)]
-                  "
+                  className="absolute -bottom-1.5 w-8 h-1 rounded-full bg-[hsl(var(--foreground))]"
                 />
               )}
             </motion.button>
@@ -180,6 +196,4 @@ const Navbar: React.FC<NavbarProps> = ({
       </nav>
     </>
   );
-};
-
-export default Navbar;
+}

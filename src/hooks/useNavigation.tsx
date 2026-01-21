@@ -14,6 +14,7 @@ import {
    TYPES
 -------------------------------------------------- */
 type FocusTarget = { section: number; index: number };
+type TabDirection = "up" | "down" | "escape";
 
 interface NavigationContextType {
   focus: FocusTarget;
@@ -25,6 +26,9 @@ interface NavigationContextType {
 
   isModalOpen: boolean;
   setModalOpen: (open: boolean) => void;
+
+  /** Navbar registers its tab logic here */
+  setTabNavigator: (fn: (dir: TabDirection) => void) => void;
 }
 
 /* -------------------------------------------------
@@ -41,6 +45,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   const [isModalOpen, setModalOpen] = useState(false);
 
   const railCount = useRef(0);
+  const tabNavigatorRef = useRef<((dir: TabDirection) => void) | null>(null);
 
   /* ---------- Rail registration ---------- */
   const registerRail = useCallback((length: number) => {
@@ -70,13 +75,20 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     setFocus({ section: 0, index: 0 });
   }, []);
 
+  /* ---------- Navbar hook ---------- */
+  const setTabNavigator = useCallback(
+    (fn: (dir: TabDirection) => void) => {
+      tabNavigatorRef.current = fn;
+    },
+    [],
+  );
+
   /* -------------------------------------------------
-     GLOBAL KEY HANDLER (HARD-GUARDED)
+     GLOBAL KEY HANDLER (SINGLE SOURCE OF TRUTH)
   -------------------------------------------------- */
   const handleKey = useCallback(
     (e: KeyboardEvent) => {
-      /* ---- Absolute guards ---- */
-
+      /* ---- Hard guards ---- */
       if (isModalOpen) return;
 
       const target = e.target as HTMLElement | null;
@@ -92,7 +104,23 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
 
       if (e.metaKey || e.ctrlKey || e.altKey) return;
 
-      /* ---- Navigation ---- */
+      /* ---- Tab navigation (Navbar) ---- */
+      if (tabNavigatorRef.current) {
+        if (e.key === "ArrowUp" || e.key === "w" || e.key === "W") {
+          tabNavigatorRef.current("up");
+          return;
+        }
+        if (e.key === "ArrowDown" || e.key === "s" || e.key === "S") {
+          tabNavigatorRef.current("down");
+          return;
+        }
+        if (e.key === "Escape") {
+          tabNavigatorRef.current("escape");
+          return;
+        }
+      }
+
+      /* ---- Rail navigation ---- */
       setFocus((prev) => {
         const maxIndex =
           rails[prev.section] !== undefined
@@ -112,30 +140,6 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
           case "a":
           case "A":
             next.index = Math.max(prev.index - 1, 0);
-            break;
-
-          case "ArrowDown":
-          case "s":
-          case "S":
-            if (prev.section < rails.length - 1) {
-              next.section = prev.section + 1;
-              next.index = Math.min(
-                prev.index,
-                Math.max((rails[next.section] ?? 1) - 1, 0),
-              );
-            }
-            break;
-
-          case "ArrowUp":
-          case "w":
-          case "W":
-            if (prev.section > 0) {
-              next.section = prev.section - 1;
-              next.index = Math.min(
-                prev.index,
-                Math.max((rails[next.section] ?? 1) - 1, 0),
-              );
-            }
             break;
 
           default:
@@ -167,6 +171,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
         resetNavigation,
         isModalOpen,
         setModalOpen,
+        setTabNavigator,
       }}
     >
       {children}
