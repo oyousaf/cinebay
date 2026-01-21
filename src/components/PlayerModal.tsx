@@ -13,6 +13,7 @@ import {
   resolveNextEpisode,
   type NextEpisodeResult,
 } from "@/lib/tv/resolveNextEpisode";
+import { fetchEpisodeRuntime } from "@/lib/tv/fetchEpisodeRuntime";
 import { useContinueWatching } from "@/hooks/useContinueWatching";
 import { useResumeSignal } from "@/context/ResumeContext";
 
@@ -23,6 +24,7 @@ interface PlayerModalProps {
 }
 
 const NEAR_END_SECONDS = 120;
+const FALLBACK_DURATION_SECONDS = 42 * 60;
 
 export default function PlayerModal({
   intent,
@@ -70,34 +72,58 @@ export default function PlayerModal({
       timerRef.current = null;
     }
 
-    const t = window.setTimeout(() => {
-      setStillLoading(true);
-    }, 15000);
-
+    const t = window.setTimeout(() => setStillLoading(true), 15000);
     return () => clearTimeout(t);
   }, [embedUrl]);
 
   /* -------------------------------------------------
-     NEAR-END OFFER (TIME HEURISTIC)
+     NEAR-END OFFER (RUNTIME-AWARE)
   -------------------------------------------------- */
   useEffect(() => {
     if (intent.mediaType !== "tv") return;
     if (!loaded) return;
 
-    const assumedDuration = 42 * 60;
-    const fireAt = assumedDuration - NEAR_END_SECONDS;
+    let cancelled = false;
 
-    timerRef.current = window.setTimeout(async () => {
-      if (offeredRef.current) return;
-      offeredRef.current = true;
+    const schedule = async () => {
+      let fireAt = FALLBACK_DURATION_SECONDS - NEAR_END_SECONDS;
 
-      const result = await resolveNextEpisode(intent);
-      if (!result) return;
+      try {
+        if (
+          typeof intent.season === "number" &&
+          typeof intent.episode === "number"
+        ) {
+          const runtime = await fetchEpisodeRuntime(
+            intent.tmdbId,
+            intent.season,
+            intent.episode,
+          );
 
-      setNextOffer(result);
-    }, fireAt * 1000);
+          if (runtime && runtime > NEAR_END_SECONDS + 60) {
+            fireAt = runtime - NEAR_END_SECONDS;
+          }
+        }
+      } catch {
+        // silent fallback
+      }
+
+      if (cancelled) return;
+
+      timerRef.current = window.setTimeout(async () => {
+        if (offeredRef.current) return;
+        offeredRef.current = true;
+
+        const result = await resolveNextEpisode(intent);
+        if (!result) return;
+
+        setNextOffer(result);
+      }, fireAt * 1000);
+    };
+
+    schedule();
 
     return () => {
+      cancelled = true;
       if (timerRef.current) {
         clearTimeout(timerRef.current);
         timerRef.current = null;
