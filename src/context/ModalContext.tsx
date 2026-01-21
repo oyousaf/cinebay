@@ -98,7 +98,10 @@ export function ModalManagerProvider({ children }: { children: ReactNode }) {
   );
 
   const openPlayer = useCallback((intent: PlaybackIntent) => {
-    setPlayerIntent(intent);
+    setPlayerIntent((prev) => {
+      if (JSON.stringify(prev) === JSON.stringify(intent)) return prev;
+      return intent;
+    });
     setActiveModal("player");
   }, []);
 
