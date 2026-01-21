@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { motion, AnimatePresence, Variants } from "framer-motion";
 import type { Movie } from "@/types/movie";
 import { FaInfoCircle, FaPlay } from "react-icons/fa";
@@ -23,20 +22,10 @@ export default function Banner({ item, onSelect, onWatch }: BannerProps) {
   const isSaved = isInWatchlist(item.id);
 
   const { getTVProgress } = useContinueWatching();
-  const { version } = useResumeSignal();
-
-  const [hasResume, setHasResume] = useState(false);
-
-  /* ---------- RESUME CHECK ---------- */
-  useEffect(() => {
-    if (!isTV) {
-      setHasResume(false);
-      return;
-    }
-
-    const progress = getTVProgress(item.id);
-    setHasResume(Boolean(progress));
-  }, [item.id, isTV, getTVProgress, version]);
+  const { version } = useResumeSignal(); 
+  
+  const hasResume =
+    isTV && Boolean(getTVProgress(item.id));
 
   /* ---------- MOTION ---------- */
   const containerVariants: Variants = {
@@ -62,7 +51,6 @@ export default function Banner({ item, onSelect, onWatch }: BannerProps) {
     },
   };
 
-  /* ---------- UI ---------- */
   return (
     <div className="relative w-full h-[70vh] sm:h-full flex flex-col justify-end overflow-hidden shadow-2xl snap-start bg-black">
       <AnimatePresence initial={false}>
@@ -107,10 +95,7 @@ export default function Banner({ item, onSelect, onWatch }: BannerProps) {
             {item.overview}
           </motion.p>
 
-          <motion.div
-            className="flex items-center gap-3"
-            variants={childVariants}
-          >
+          <motion.div className="flex items-center gap-3" variants={childVariants}>
             <motion.button
               disabled={!onWatch}
               onClick={onWatch}
@@ -131,19 +116,14 @@ export default function Banner({ item, onSelect, onWatch }: BannerProps) {
                 <span className="absolute inset-0 rounded-full ring-1 ring-white/15 pointer-events-none" />
               )}
 
-              <FaPlay size={22} className="translate-x-px" />
-              {hasResume && (
-                <span className="text-base font-semibold tracking-tight">
-                  Resume
-                </span>
-              )}
+              <FaPlay size={22} />
+              {hasResume && <span>Resume</span>}
             </motion.button>
 
             <button
               onClick={() => onSelect(item)}
-              className="inline-flex items-center justify-center h-12 w-12
-                rounded-full bg-[hsl(var(--foreground))]
-                text-[hsl(var(--background))]"
+              className="inline-flex items-center justify-center h-12 w-12 rounded-full
+                bg-[hsl(var(--foreground))] text-[hsl(var(--background))]"
             >
               <FaInfoCircle size={22} />
             </button>
@@ -151,9 +131,8 @@ export default function Banner({ item, onSelect, onWatch }: BannerProps) {
             <button
               onClick={() => toggleWatchlist(item)}
               aria-pressed={isSaved}
-              className="inline-flex items-center justify-center h-12 w-12
-                rounded-full bg-[hsl(var(--foreground))]
-                text-[hsl(var(--background))]"
+              className="inline-flex items-center justify-center h-12 w-12 rounded-full
+                bg-[hsl(var(--foreground))] text-[hsl(var(--background))]"
             >
               <Bookmark
                 size={22}
