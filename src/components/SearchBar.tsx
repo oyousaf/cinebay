@@ -1,12 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect, memo } from "react";
-import {
-  motion,
-  AnimatePresence,
-  useAnimation,
-  type Variants,
-} from "framer-motion";
+import { motion, AnimatePresence, type Variants } from "framer-motion";
 import { Search, Loader2 } from "lucide-react";
 import debounce from "lodash.debounce";
 
@@ -49,58 +44,38 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
   const [results, setResults] = useState<Movie[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [activeIndex, setActiveIndex] = useState<number>(-1);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
-  const iconControls = useAnimation();
+  const requestId = useRef(0);
 
-  /* ---------- Initial focus (once) ---------- */
+  /* ---------- Initial focus ---------- */
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
 
-  /* ---------- Focus recovery (theme / tab visibility) ---------- */
-  useEffect(() => {
-    const el = inputRef.current;
-    if (!el) return;
-
-    const restore = () => {
-      if (document.activeElement !== el) el.focus();
-    };
-
-    window.addEventListener("visibilitychange", restore);
-    return () => window.removeEventListener("visibilitychange", restore);
-  }, []);
-
-  /* ---------- Loading icon ---------- */
-  useEffect(() => {
-    if (!loading) {
-      iconControls.stop();
-      iconControls.set({ rotate: 0 });
-      return;
-    }
-
-    iconControls.start({
-      rotate: 360,
-      transition: { repeat: Infinity, duration: 1, ease: "linear" },
-    });
-  }, [loading, iconControls]);
-
-  /* ---------- Search ---------- */
+  /* -------------------------------------------------
+     SEARCH (RACE-SAFE)
+  -------------------------------------------------- */
   const runSearch = useCallback(async (term: string) => {
     const q = term.trim();
-    if (!q) {
+    if (q.length < 2) {
       setResults([]);
       setOpen(false);
+      setActiveIndex(-1);
       return;
     }
 
+    const id = ++requestId.current;
     setLoading(true);
 
     try {
       const data = await fetchFromProxy(
         `/search/multi?query=${encodeURIComponent(q)}`,
       );
+
+      if (id !== requestId.current) return;
 
       const ranked: Movie[] = (data?.results || [])
         .filter((r: Movie) => r?.id && r?.media_type)
@@ -110,10 +85,12 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
 
       setResults(ranked);
       setOpen(ranked.length > 0);
-    } catch (err) {
-      console.error("TMDB search failed", err);
+      setActiveIndex(ranked.length ? 0 : -1);
+    } catch {
+      setResults([]);
+      setOpen(false);
     } finally {
-      setLoading(false);
+      if (id === requestId.current) setLoading(false);
     }
   }, []);
 
@@ -126,7 +103,50 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
     return () => debouncedSearch.cancel();
   }, [query, debouncedSearch]);
 
-  /* ---------- Outside click / ESC ---------- */
+  /* -------------------------------------------------
+     KEYBOARD (LOCAL, CONTROLLED)
+  -------------------------------------------------- */
+  useEffect(() => {
+    if (!open) return;
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setActiveIndex((i) => Math.min(i + 1, results.length - 1));
+      }
+
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setActiveIndex((i) => Math.max(i - 1, 0));
+      }
+
+      if (e.key === "Enter" && activeIndex >= 0) {
+        e.preventDefault();
+        handleSelect(results[activeIndex]);
+      }
+
+      if (e.key === "Escape") {
+        setOpen(false);
+        setActiveIndex(-1);
+      }
+    };
+
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, results, activeIndex]);
+
+  /* -------------------------------------------------
+     SCROLL ACTIVE INTO VIEW
+  -------------------------------------------------- */
+  useEffect(() => {
+    if (!resultsRef.current || activeIndex < 0) return;
+    const el = resultsRef.current.children[activeIndex] as HTMLElement;
+    el?.scrollIntoView({ block: "nearest" });
+  }, [activeIndex]);
+
+  /* -------------------------------------------------
+     OUTSIDE CLICK
+  -------------------------------------------------- */
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
       if (
@@ -134,23 +154,17 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
         !resultsRef.current.contains(e.target as Node)
       ) {
         setOpen(false);
+        setActiveIndex(-1);
       }
     };
 
-    const onEsc = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
-    };
-
     document.addEventListener("mousedown", onClick);
-    document.addEventListener("keydown", onEsc);
-
-    return () => {
-      document.removeEventListener("mousedown", onClick);
-      document.removeEventListener("keydown", onEsc);
-    };
+    return () => document.removeEventListener("mousedown", onClick);
   }, []);
 
-  /* ---------- Selection ---------- */
+  /* -------------------------------------------------
+     SELECTION
+  -------------------------------------------------- */
   const handleSelect = useCallback(
     async (item: Movie) => {
       const full = await fetchDetails(item.id, item.media_type);
@@ -163,75 +177,53 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
       }
 
       setOpen(false);
+      setActiveIndex(-1);
     },
     [onSelectMovie, onSelectPerson],
   );
 
-  /* ---------- Animations ---------- */
+  /* -------------------------------------------------
+     ANIMATION
+  -------------------------------------------------- */
   const listVariants: Variants = {
     hidden: { opacity: 0, y: -6 },
-    show: {
-      opacity: 1,
-      y: 0,
-      transition: { duration: 0.2, staggerChildren: 0.03 },
-    },
-    exit: { opacity: 0, y: -4, transition: { duration: 0.15 } },
+    show: { opacity: 1, y: 0, transition: { staggerChildren: 0.03 } },
+    exit: { opacity: 0, y: -4 },
   };
 
   const itemVariants: Variants = {
     hidden: { opacity: 0, y: 6 },
-    show: { opacity: 1, y: 0, transition: { duration: 0.15 } },
-    exit: { opacity: 0, y: -6, transition: { duration: 0.12 } },
+    show: { opacity: 1, y: 0 },
+    exit: { opacity: 0, y: -6 },
   };
 
   /* -------------------------------------------------
      RENDER
   -------------------------------------------------- */
   return (
-    <div className="w-full relative">
-      <motion.form
+    <div className="relative w-full">
+      <form
         onSubmit={(e) => {
           e.preventDefault();
           debouncedSearch.cancel();
           runSearch(query);
         }}
-        className="
-          w-full flex items-center gap-2 px-4 py-2 rounded-xl
-          bg-[hsl(var(--background))]
-          border border-[hsl(var(--foreground))]
-          shadow-md
-        "
+        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[hsl(var(--background))] border border-[hsl(var(--foreground)/0.25)] shadow-md"
       >
         <input
           ref={inputRef}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search movies, shows, people..."
-          className="
-            flex-1 bg-transparent outline-none
-            text-base md:text-lg
-            text-[hsl(var(--foreground))]
-            placeholder:text-[hsl(var(--foreground)/0.5)]
-            caret-[hsl(var(--foreground))]
-          "
+          placeholder="Search movies, shows, people…"
+          className="flex-1 bg-transparent outline-none text-base text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--foreground)/0.5)]"
         />
 
-        <motion.button
-          type="submit"
-          disabled={loading}
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.96 }}
-          className="h-10 w-10 flex items-center justify-center rounded-full"
-        >
-          {loading ? (
-            <motion.span animate={iconControls}>
-              <Loader2 className="h-5 w-5 text-[hsl(var(--foreground))]" />
-            </motion.span>
-          ) : (
-            <Search className="h-5 w-5 text-[hsl(var(--foreground))]" />
-          )}
-        </motion.button>
-      </motion.form>
+        {loading ? (
+          <Loader2 className="h-5 w-5 animate-spin text-[hsl(var(--foreground))]" />
+        ) : (
+          <Search className="h-5 w-5 text-[hsl(var(--foreground))]" />
+        )}
+      </form>
 
       <AnimatePresence>
         {open && (
@@ -241,30 +233,27 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
             initial="hidden"
             animate="show"
             exit="exit"
-            className="
-              absolute top-full mt-2 w-full max-h-80 overflow-y-auto
-              rounded-lg shadow-lg z-50
-              bg-[hsl(var(--background))]
-              divide-y divide-[hsl(var(--foreground))/0.1]
-            "
+            className="absolute top-full mt-2 w-full max-h-80 overflow-y-auto rounded-lg shadow-lg z-50 bg-[hsl(var(--background))] border border-[hsl(var(--foreground)/0.15)]"
           >
-            {results.map((item) => {
+            {results.map((item, i) => {
+              const active = i === activeIndex;
               const image =
                 item.media_type === "person"
                   ? item.profile_path
                   : item.poster_path;
-
               const name = item.title || item.name || "Untitled";
 
               return (
                 <motion.div
                   key={`${item.media_type}:${item.id}`}
                   variants={itemVariants}
+                  onMouseEnter={() => setActiveIndex(i)}
                   onClick={() => handleSelect(item)}
-                  className="
-                    flex items-center gap-3 px-4 py-2 cursor-pointer
-                    hover:bg-[hsl(var(--foreground))/0.1]
-                  "
+                  className={`flex items-center gap-3 px-4 py-2 cursor-pointer ${
+                    active
+                      ? "bg-[hsl(var(--foreground)/0.15)]"
+                      : "hover:bg-[hsl(var(--foreground)/0.08)]"
+                  }`}
                 >
                   <img
                     src={
@@ -272,9 +261,9 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
                         ? `https://image.tmdb.org/t/p/w92${image}`
                         : "/fallback.jpg"
                     }
-                    alt={name}
                     className="w-10 h-14 object-cover rounded-md"
                     loading="lazy"
+                    alt={name}
                   />
                   <div className="flex flex-col">
                     <span className="text-sm font-medium">{name}</span>
