@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { X, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { toast } from "sonner";
 
 import {
   buildEmbedUrl,
@@ -33,6 +32,7 @@ export default function PlayerModal({
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
   const [stillLoading, setStillLoading] = useState(false);
+  const [nextOffer, setNextOffer] = useState<NextEpisodeResult | null>(null);
 
   const offeredRef = useRef(false);
   const timerRef = useRef<number | null>(null);
@@ -56,12 +56,13 @@ export default function PlayerModal({
   );
 
   /* -------------------------------------------------
-     LOAD WATCHDOG
+     LOAD WATCHDOG / RESET
   -------------------------------------------------- */
   useEffect(() => {
     setLoaded(false);
     setError(false);
     setStillLoading(false);
+    setNextOffer(null);
     offeredRef.current = false;
 
     if (timerRef.current) {
@@ -83,7 +84,7 @@ export default function PlayerModal({
     if (intent.mediaType !== "tv") return;
     if (!loaded) return;
 
-    const assumedDuration = 42 * 60; // conservative TV average
+    const assumedDuration = 42 * 60;
     const fireAt = assumedDuration - NEAR_END_SECONDS;
 
     timerRef.current = window.setTimeout(async () => {
@@ -93,28 +94,7 @@ export default function PlayerModal({
       const result = await resolveNextEpisode(intent);
       if (!result) return;
 
-      if (result.kind === "END") {
-        toast("End of series 🎉", { duration: 5000 });
-        bump?.();
-        return;
-      }
-
-      toast(
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-sm">
-            {result.kind === "NEXT_SEASON"
-              ? "Start next season?"
-              : "Next episode ready"}
-          </span>
-          <button
-            className="text-sm font-semibold underline"
-            onClick={() => onPlayNext(result.intent)}
-          >
-            Play
-          </button>
-        </div>,
-        { duration: 8000 },
-      );
+      setNextOffer(result);
     }, fireAt * 1000);
 
     return () => {
@@ -123,7 +103,7 @@ export default function PlayerModal({
         timerRef.current = null;
       }
     };
-  }, [intent, loaded, onPlayNext, bump]);
+  }, [intent, loaded]);
 
   /* -------------------------------------------------
      IFRAME LOAD
@@ -181,6 +161,28 @@ export default function PlayerModal({
             />
           )}
 
+          {/* ---------- NEXT EPISODE OVERLAY ---------- */}
+          {nextOffer && nextOffer.kind !== "END" && (
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 bg-black/80 backdrop-blur text-white px-4 py-3 rounded-xl flex items-center gap-4 shadow-lg">
+              <span className="text-sm">
+                {nextOffer.kind === "NEXT_SEASON"
+                  ? "Start next season?"
+                  : "Next episode ready"}
+              </span>
+              <button
+                className="text-sm font-semibold underline"
+                onClick={() => {
+                  bump?.();
+                  setNextOffer(null);
+                  onPlayNext(nextOffer.intent);
+                }}
+              >
+                Play
+              </button>
+            </div>
+          )}
+
+          {/* ---------- CLOSE ---------- */}
           <button
             onClick={onClose}
             className="absolute top-3 right-3 z-20 text-white"

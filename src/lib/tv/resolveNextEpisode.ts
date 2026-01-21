@@ -17,39 +17,41 @@ export type NextEpisodeResult =
 export async function resolveNextEpisode(
   intent: PlaybackIntent,
 ): Promise<NextEpisodeResult | null> {
-  if (intent.mediaType !== "tv") return null;
-  if (!intent.season || !intent.episode) return null;
-
-  /* ---------- Same season ---------- */
-  const episodes = await fetchSeasonEpisodes(intent.tmdbId, intent.season);
-  if (!episodes || episodes.length === 0) {
-    return { kind: "END" };
+  if (
+    intent.mediaType !== "tv" ||
+    typeof intent.season !== "number" ||
+    typeof intent.episode !== "number"
+  ) {
+    return null;
   }
 
-  const hasNextEpisode = episodes.some(
-    (e) => e.episode_number === intent.episode! + 1,
-  );
+  const episodes = await fetchSeasonEpisodes(intent.tmdbId, intent.season);
+  if (!Array.isArray(episodes)) return null;
+  if (episodes.length === 0) return { kind: "END" };
 
-  if (hasNextEpisode) {
+  const nextEpisodeNumber = intent.episode + 1;
+
+  if (episodes.some((e) => e.episode_number === nextEpisodeNumber)) {
     return {
       kind: "NEXT",
       intent: {
         mediaType: "tv",
         tmdbId: intent.tmdbId,
         season: intent.season,
-        episode: intent.episode + 1,
+        episode: nextEpisodeNumber,
       },
     };
   }
 
-  /* ---------- Next season ---------- */
   const nextSeason = intent.season + 1;
   const nextSeasonEpisodes = await fetchSeasonEpisodes(
     intent.tmdbId,
     nextSeason,
   );
 
-  if (nextSeasonEpisodes && nextSeasonEpisodes.length > 0) {
+  if (!Array.isArray(nextSeasonEpisodes)) return null;
+
+  if (nextSeasonEpisodes.length > 0) {
     return {
       kind: "NEXT_SEASON",
       intent: {
@@ -61,6 +63,5 @@ export async function resolveNextEpisode(
     };
   }
 
-  /* ---------- End of series ---------- */
   return { kind: "END" };
 }
