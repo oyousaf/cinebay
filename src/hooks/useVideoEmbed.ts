@@ -8,7 +8,7 @@ import {
   type PlaybackIntent,
 } from "@/lib/embed/buildEmbedUrl";
 
-import { useContinueWatching } from "@/lib/continueWatching";
+import { setTVProgress } from "@/lib/continueWatching";
 
 const INVALID_MARKERS = [
   "not found",
@@ -21,15 +21,14 @@ const INVALID_MARKERS = [
 ];
 
 const memoryCache = new Map<string, string>();
-
 const RESUME_DELAY_MS = 30_000;
 
 export function useVideoEmbed(intent?: PlaybackIntent): string | null {
   const [embedUrl, setEmbedUrl] = useState<string | null>(null);
-  const hasErroredRef = useRef(false);
-  const resumeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const { setTVProgress } = useContinueWatching();
+  const resumeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const resumeArmedRef = useRef(false);
+  const hasErroredRef = useRef(false);
 
   useEffect(() => {
     if (!intent) {
@@ -37,32 +36,19 @@ export function useVideoEmbed(intent?: PlaybackIntent): string | null {
       return;
     }
 
-    const cacheKey = buildEmbedCacheKey(intent);
-    const cached = memoryCache.get(cacheKey) ?? localStorage.getItem(cacheKey);
+    hasErroredRef.current = false;
+    resumeArmedRef.current = false;
 
-    if (cached) {
-      memoryCache.set(cacheKey, cached);
-      setEmbedUrl(cached);
-      return;
+    if (resumeTimerRef.current) {
+      clearTimeout(resumeTimerRef.current);
+      resumeTimerRef.current = null;
     }
 
-    let iframe: HTMLIFrameElement | null = document.createElement("iframe");
-    iframe.style.display = "none";
-    document.body.appendChild(iframe);
-
-    let index = 0;
-    let resolved = false;
-    let timeoutId: ReturnType<typeof setTimeout> | null = null;
-
-    const cleanup = () => {
-      if (timeoutId) clearTimeout(timeoutId);
-      if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
-      iframe?.remove();
-      iframe = null;
-    };
-
-    const armResumeTimer = () => {
+    const armResume = () => {
       if (intent.mediaType !== "tv") return;
+      if (resumeArmedRef.current) return;
+
+      resumeArmedRef.current = true;
 
       resumeTimerRef.current = setTimeout(() => {
         setTVProgress(
@@ -74,9 +60,46 @@ export function useVideoEmbed(intent?: PlaybackIntent): string | null {
       }, RESUME_DELAY_MS);
     };
 
+    const cacheKey = buildEmbedCacheKey(intent);
+    const cached = memoryCache.get(cacheKey) ?? localStorage.getItem(cacheKey);
+
+    if (cached) {
+      memoryCache.set(cacheKey, cached);
+      setEmbedUrl(cached);
+      armResume();
+      return () => {
+        if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
+      };
+    }
+
+    let iframe: HTMLIFrameElement | null = document.createElement("iframe");
+    iframe.style.display = "none";
+    document.body.appendChild(iframe);
+
+    let index = 0;
+    let resolved = false;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+    const cleanupProbe = () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      iframe?.remove();
+      iframe = null;
+    };
+
+    const resolve = (src: string) => {
+      if (resolved) return;
+      resolved = true;
+
+      memoryCache.set(cacheKey, src);
+      localStorage.setItem(cacheKey, src);
+      setEmbedUrl(src);
+      armResume();
+      cleanupProbe();
+    };
+
     const tryNext = () => {
       if (!iframe || index >= EMBED_PROVIDERS.length) {
-        cleanup();
+        cleanupProbe();
         if (!hasErroredRef.current) {
           hasErroredRef.current = true;
           toast.error("No streaming source available.");
@@ -84,9 +107,7 @@ export function useVideoEmbed(intent?: PlaybackIntent): string | null {
         return;
       }
 
-      const provider = EMBED_PROVIDERS[index];
-      iframe.src = buildEmbedUrl(provider, intent);
-
+      iframe.src = buildEmbedUrl(EMBED_PROVIDERS[index], intent);
       timeoutId = setTimeout(() => {
         index++;
         tryNext();
@@ -97,12 +118,7 @@ export function useVideoEmbed(intent?: PlaybackIntent): string | null {
       if (!iframe || resolved) return;
 
       if (EMBED_PROVIDERS[index].name === "vidlink") {
-        resolved = true;
-        memoryCache.set(cacheKey, iframe.src);
-        localStorage.setItem(cacheKey, iframe.src);
-        setEmbedUrl(iframe.src);
-        armResumeTimer();
-        cleanup();
+        resolve(iframe.src);
         return;
       }
 
@@ -110,26 +126,15 @@ export function useVideoEmbed(intent?: PlaybackIntent): string | null {
         const text =
           iframe.contentDocument?.body?.innerText?.toLowerCase() ?? "";
 
-        const invalid = INVALID_MARKERS.some((m) => text.includes(m));
-        if (invalid) {
+        if (INVALID_MARKERS.some((m) => text.includes(m))) {
           index++;
           tryNext();
           return;
         }
 
-        resolved = true;
-        memoryCache.set(cacheKey, iframe.src);
-        localStorage.setItem(cacheKey, iframe.src);
-        setEmbedUrl(iframe.src);
-        armResumeTimer();
-        cleanup();
+        resolve(iframe.src);
       } catch {
-        resolved = true;
-        memoryCache.set(cacheKey, iframe.src);
-        localStorage.setItem(cacheKey, iframe.src);
-        setEmbedUrl(iframe.src);
-        armResumeTimer();
-        cleanup();
+        resolve(iframe.src);
       }
     };
 
@@ -139,8 +144,12 @@ export function useVideoEmbed(intent?: PlaybackIntent): string | null {
     };
 
     tryNext();
-    return cleanup;
-  }, [intent, setTVProgress]);
+
+    return () => {
+      cleanupProbe();
+      if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
+    };
+  }, [intent]);
 
   return embedUrl;
 }
