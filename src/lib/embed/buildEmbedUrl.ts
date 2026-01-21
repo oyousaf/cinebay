@@ -6,6 +6,9 @@ export type MediaType = "movie" | "tv";
 export interface PlaybackIntent {
   mediaType: MediaType;
   tmdbId: number;
+
+  season?: number;
+  episode?: number;
 }
 
 /* -------------------------------------------------

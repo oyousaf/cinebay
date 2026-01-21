@@ -2,10 +2,11 @@ import { useEffect, useState } from "react";
 import ContentRail from "@/components/ContentRail";
 import { fetchMovies } from "@/lib/tmdb";
 import type { Movie } from "@/types/movie";
+import type { PlaybackIntent } from "@/lib/embed/buildEmbedUrl";
 
 interface MoviesProps {
   onSelect: (movie: Movie) => void;
-  onWatch: (url: string) => void;
+  onWatch: (intent: PlaybackIntent) => void;
 }
 
 export default function Movies({ onSelect, onWatch }: MoviesProps) {

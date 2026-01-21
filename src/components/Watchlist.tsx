@@ -144,7 +144,7 @@ export default function Watchlist({
   const { watchlist, toggleWatchlist } = useWatchlist();
   const { focus, setFocus, registerRail, updateRailLength } = useNavigation();
 
-  /* ---------- Init filters (localStorage only) ---------- */
+  /* ---------- Init filters ---------- */
   const [filters, setFilters] = useState<Filters>(() => {
     try {
       const stored = localStorage.getItem("watchlistFilters");
@@ -158,11 +158,9 @@ export default function Watchlist({
 
   /* ---------- Persist filters ---------- */
   useEffect(() => {
-    const next = JSON.stringify(filters);
-    const stored = localStorage.getItem("watchlistFilters");
-    if (stored !== next) {
-      localStorage.setItem("watchlistFilters", next);
-    }
+    try {
+      localStorage.setItem("watchlistFilters", JSON.stringify(filters));
+    } catch {}
   }, [filters]);
 
   /* ---------- Filter + sort ---------- */
@@ -204,7 +202,7 @@ export default function Watchlist({
     }
   }, [filteredList.length, railIndex, registerRail, updateRailLength]);
 
-  /* ---------- Render ---------- */
+  /* ---------- UI ---------- */
   return (
     <motion.main
       initial={{ opacity: 0, y: 20 }}

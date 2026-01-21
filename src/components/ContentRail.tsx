@@ -5,13 +5,13 @@ import type { Movie } from "@/types/movie";
 import Banner from "./Banner";
 import { useNavigation } from "@/hooks/useNavigation";
 import { Loader2 } from "lucide-react";
-import { useVideoEmbed } from "@/hooks/useVideoEmbed";
+import type { PlaybackIntent } from "@/lib/embed/buildEmbedUrl";
 
 interface ContentRailProps {
   title: string;
   items: Movie[];
   onSelect: (movie: Movie) => void;
-  onWatch: (url: string) => void;
+  onWatch: (intent: PlaybackIntent) => void;
 }
 
 /* ---------- Tile ---------- */
@@ -91,13 +91,15 @@ export default function ContentRail({
   const { focus, setFocus, registerRail, updateRailLength } = useNavigation();
   const [railIndex, setRailIndex] = useState<number | null>(null);
 
-  /* ---------- Embed resolution ---------- */
-  const embedUrl = useVideoEmbed(
-    activeItem?.id,
-    activeItem?.media_type === "movie" || activeItem?.media_type === "tv"
-      ? activeItem.media_type
-      : undefined,
-  );
+  /* ---------- Playback intent ---------- */
+  const playbackIntent: PlaybackIntent | null =
+    activeItem &&
+    (activeItem.media_type === "movie" || activeItem.media_type === "tv")
+      ? {
+          mediaType: activeItem.media_type,
+          tmdbId: activeItem.id,
+        }
+      : null;
 
   /* ---------- Register rail ---------- */
   useEffect(() => {
@@ -156,11 +158,11 @@ export default function ContentRail({
     }
   }, [items, activeItem, railIndex, focus.section, setFocus]);
 
-  /* ---------- Keyboard Navigation ---------- */
+  /* ---------- Keyboard navigation ---------- */
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (railIndex === null || focus.section !== railIndex) return;
-      if (!activeItem) return;
+      if (!activeItem || !playbackIntent) return;
 
       switch (e.key) {
         case "i":
@@ -174,16 +176,16 @@ export default function ContentRail({
         case "p":
         case "MediaPlayPause":
           e.preventDefault();
-          if (embedUrl) onWatch(embedUrl);
+          onWatch(playbackIntent);
           break;
       }
     }
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [railIndex, focus.section, activeItem, embedUrl, onSelect, onWatch]);
+  }, [railIndex, focus.section, activeItem, playbackIntent, onSelect, onWatch]);
 
-  /* ---------- Gamepad Support ---------- */
+  /* ---------- Gamepad support ---------- */
   useEffect(() => {
     let rafId: number;
     let pressedA = false;
@@ -194,13 +196,13 @@ export default function ContentRail({
       if (!gamepads) return;
 
       const gp = gamepads[0];
-      if (gp && activeItem) {
+      if (gp && activeItem && playbackIntent) {
         const aPressed = gp.buttons[0]?.pressed;
         const bPressed = gp.buttons[1]?.pressed;
 
         if (aPressed && !pressedA) {
           pressedA = true;
-          if (embedUrl) onWatch(embedUrl);
+          onWatch(playbackIntent);
         } else if (!aPressed) pressedA = false;
 
         if (bPressed && !pressedB) {
@@ -223,7 +225,7 @@ export default function ContentRail({
       window.removeEventListener("gamepaddisconnected", disconnect);
       cancelAnimationFrame(rafId);
     };
-  }, [activeItem, embedUrl, onSelect, onWatch]);
+  }, [activeItem, playbackIntent, onSelect, onWatch]);
 
   /* ---------- UI ---------- */
   return (

@@ -31,25 +31,18 @@ export function useContinueWatching() {
     (tvId: number, season: number, episode: number) => {
       localStorage.setItem(
         tvKeyFor(tvId),
-        JSON.stringify({ season, episode, updatedAt: Date.now() })
+        JSON.stringify({
+          season,
+          episode,
+          updatedAt: Date.now(),
+        }),
       );
     },
-    []
-  );
-
-  const getResumeUrl = useCallback(
-    (tvId: number) => {
-      const p = getTVProgress(tvId);
-      return p
-        ? `https://vidlink.pro/tv/${tvId}/${p.season}/${p.episode}?autoplay=1`
-        : `https://vidlink.pro/tv/${tvId}/1/1?autoplay=1`;
-    },
-    [getTVProgress]
+    [],
   );
 
   return {
     getTVProgress,
     setTVProgress,
-    getResumeUrl,
   };
 }

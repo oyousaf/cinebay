@@ -4,10 +4,11 @@ import { useEffect, useState } from "react";
 import ContentRail from "@/components/ContentRail";
 import { fetchDevsPick } from "@/lib/tmdb";
 import type { Movie } from "@/types/movie";
+import { PlaybackIntent } from "@/lib/embed/buildEmbedUrl";
 
 interface DevsPickProps {
   onSelect: (movie: Movie) => void;
-  onWatch: (url: string) => void;
+  onWatch: (intent: PlaybackIntent) => void;
 }
 
 export default function DevsPick({ onSelect, onWatch }: DevsPickProps) {

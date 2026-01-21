@@ -3,8 +3,8 @@ import type { Movie } from "@/types/movie";
 import { FaInfoCircle, FaPlay } from "react-icons/fa";
 import { Bookmark } from "lucide-react";
 import { useWatchlist } from "@/context/WatchlistContext";
-import { useVideoEmbed } from "@/hooks/useVideoEmbed";
 import { useContinueWatching } from "@/hooks/useContinueWatching";
+import type { PlaybackIntent } from "@/lib/embed/buildEmbedUrl";
 
 export default function Banner({
   item,
@@ -13,7 +13,7 @@ export default function Banner({
 }: {
   item: Movie;
   onSelect: (movie: Movie) => void;
-  onWatch: (url: string) => void;
+  onWatch: (intent: PlaybackIntent) => void;
 }) {
   const isTV = item.media_type === "tv";
   const isMovie = item.media_type === "movie";
@@ -21,13 +21,21 @@ export default function Banner({
   const { toggleWatchlist, isInWatchlist } = useWatchlist();
   const isSaved = isInWatchlist(item.id);
 
-  const { getTVProgress, getResumeUrl } = useContinueWatching();
+  const { getTVProgress } = useContinueWatching();
+  const progress = isTV ? getTVProgress(item.id) : null;
 
-  const hasResume = isTV && Boolean(getTVProgress(item.id));
+  const hasResume = Boolean(progress);
 
-  const movieEmbedUrl = isMovie ? useVideoEmbed(item.id, "movie") : null;
-
-  const playUrl = isMovie ? movieEmbedUrl : isTV ? getResumeUrl(item.id) : null;
+  const intent: PlaybackIntent | null = isMovie
+    ? { mediaType: "movie", tmdbId: item.id }
+    : isTV && progress
+      ? {
+          mediaType: "tv",
+          tmdbId: item.id,
+          season: progress.season,
+          episode: progress.episode,
+        }
+      : null;
 
   const containerVariants: Variants = {
     hidden: { opacity: 0, y: 15 },
@@ -91,10 +99,10 @@ export default function Banner({
           variants={childVariants}
         >
           <motion.button
-            disabled={!playUrl}
-            onClick={() => playUrl && onWatch(playUrl)}
+            disabled={!intent}
+            onClick={() => intent && onWatch(intent)}
             className={`flex items-center gap-3 px-6 py-3 rounded-full font-semibold ${
-              playUrl
+              intent
                 ? "bg-[hsl(var(--foreground))] text-[hsl(var(--background))]"
                 : "bg-gray-600/50 text-gray-400"
             }`}

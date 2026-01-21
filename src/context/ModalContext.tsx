@@ -8,6 +8,7 @@ import {
   ReactNode,
 } from "react";
 import type { Movie } from "@/types/movie";
+import type { PlaybackIntent } from "@/lib/embed/buildEmbedUrl";
 import { useNavigation } from "@/hooks/useNavigation";
 
 type ModalType = "content" | "player" | "exit" | null;
@@ -15,10 +16,12 @@ type ModalType = "content" | "player" | "exit" | null;
 interface ModalContextValue {
   activeModal: ModalType;
   selectedItem: Movie | null;
-  playerUrl: string | null;
+  playerIntent: PlaybackIntent | null;
+
   openContent: (movie: Movie) => void;
-  openPlayer: (url: string) => void;
+  openPlayer: (intent: PlaybackIntent) => void;
   openExit: () => void;
+
   goBackContent: () => void;
   close: () => void;
 }
@@ -28,13 +31,13 @@ const ModalManagerContext = createContext<ModalContextValue | null>(null);
 export function ModalManagerProvider({ children }: { children: ReactNode }) {
   const [activeModal, setActiveModal] = useState<ModalType>(null);
   const [selectedItem, setSelectedItem] = useState<Movie | null>(null);
-  const [playerUrl, setPlayerUrl] = useState<string | null>(null);
+  const [playerIntent, setPlayerIntent] = useState<PlaybackIntent | null>(null);
 
   const historyStack = useRef<Movie[]>([]);
   const modalRef = useRef<HTMLDivElement | null>(null);
   const lastFocusedElement = useRef<HTMLElement | null>(null);
 
-  // Optional navigation sync
+  /* ---------- Optional navigation sync ---------- */
   const { setModalOpen } = useNavigation?.() ?? { setModalOpen: () => {} };
 
   /* ---------- Scroll lock & focus sync ---------- */
@@ -44,8 +47,9 @@ export function ModalManagerProvider({ children }: { children: ReactNode }) {
 
     if (activeModal) {
       lastFocusedElement.current = document.activeElement as HTMLElement;
+
       const firstFocusable = modalRef.current?.querySelector<HTMLElement>(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
       );
       firstFocusable?.focus();
     } else {
@@ -61,7 +65,7 @@ export function ModalManagerProvider({ children }: { children: ReactNode }) {
       if (e.key !== "Tab") return;
 
       const focusable = modalRef.current?.querySelectorAll<HTMLElement>(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
       );
       if (!focusable?.length) return;
 
@@ -90,11 +94,11 @@ export function ModalManagerProvider({ children }: { children: ReactNode }) {
       setSelectedItem(movie);
       setActiveModal("content");
     },
-    [selectedItem]
+    [selectedItem],
   );
 
-  const openPlayer = useCallback((url: string) => {
-    setPlayerUrl(url);
+  const openPlayer = useCallback((intent: PlaybackIntent) => {
+    setPlayerIntent(intent);
     setActiveModal("player");
   }, []);
 
@@ -103,7 +107,7 @@ export function ModalManagerProvider({ children }: { children: ReactNode }) {
   const close = useCallback(() => {
     setActiveModal(null);
     setSelectedItem(null);
-    setPlayerUrl(null);
+    setPlayerIntent(null);
   }, []);
 
   const goBackContent = useCallback(() => {
@@ -112,7 +116,7 @@ export function ModalManagerProvider({ children }: { children: ReactNode }) {
     else close();
   }, [close]);
 
-  /* ---------- Back / Escape / Remote Handling ---------- */
+  /* ---------- Back / Escape / Remote ---------- */
   useEffect(() => {
     if (!window.history.state) {
       window.history.pushState({ cinebay: "root" }, "", window.location.href);
@@ -149,15 +153,16 @@ export function ModalManagerProvider({ children }: { children: ReactNode }) {
     };
   }, [activeModal, goBackContent, close, openExit]);
 
-  /* ---------- Favicon Restore Fix ---------- */
+  /* ---------- Favicon restore ---------- */
   useEffect(() => {
     const isTV = /Web0S|LG|Tizen/i.test(navigator.userAgent);
-    if (isTV) return; // Skip on TV / PWA
+    if (isTV) return;
 
     const restoreFavicon = () => {
       const existing = document.getElementById(
-        "favicon-link"
+        "favicon-link",
       ) as HTMLLinkElement | null;
+
       if (existing) {
         existing.href = "/favicon-32x32.png";
       } else {
@@ -182,7 +187,7 @@ export function ModalManagerProvider({ children }: { children: ReactNode }) {
         value={{
           activeModal,
           selectedItem,
-          playerUrl,
+          playerIntent,
           openContent,
           openPlayer,
           openExit,
