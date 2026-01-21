@@ -23,8 +23,14 @@ interface PlayerModalProps {
   onPlayNext: (intent: PlaybackIntent) => void;
 }
 
+/* -------------------------------------------------
+   CONFIG
+-------------------------------------------------- */
+
 const NEAR_END_SECONDS = 120;
 const FALLBACK_DURATION_SECONDS = 42 * 60;
+
+const TEST_FORCE_NEXT = false;
 
 export default function PlayerModal({
   intent,
@@ -58,7 +64,7 @@ export default function PlayerModal({
   );
 
   /* -------------------------------------------------
-     LOAD WATCHDOG / RESET
+     RESET ON REMOUNT
   -------------------------------------------------- */
   useEffect(() => {
     setLoaded(false);
@@ -77,7 +83,7 @@ export default function PlayerModal({
   }, [embedUrl]);
 
   /* -------------------------------------------------
-     NEAR-END OFFER (RUNTIME-AWARE)
+     NEAR-END OFFER (RUNTIME AWARE)
   -------------------------------------------------- */
   useEffect(() => {
     if (intent.mediaType !== "tv") return;
@@ -103,10 +109,9 @@ export default function PlayerModal({
             fireAt = runtime - NEAR_END_SECONDS;
           }
         }
-      } catch {
-        // silent fallback
-      }
+      } catch {}
 
+      if (TEST_FORCE_NEXT) fireAt = 5;
       if (cancelled) return;
 
       timerRef.current = window.setTimeout(async () => {
@@ -146,6 +151,18 @@ export default function PlayerModal({
     ) {
       setTVProgress(intent.tmdbId, intent.season, intent.episode);
     }
+  };
+
+  /* -------------------------------------------------
+     PLAY NEXT (CRITICAL FIX)
+  -------------------------------------------------- */
+  const handlePlayNext = (next: PlaybackIntent) => {
+    bump?.();
+    setNextOffer(null);
+
+    // HARD REMOUNT
+    onClose();
+    queueMicrotask(() => onPlayNext(next));
   };
 
   /* -------------------------------------------------
@@ -189,19 +206,27 @@ export default function PlayerModal({
 
           {/* ---------- NEXT EPISODE OVERLAY ---------- */}
           {nextOffer && nextOffer.kind !== "END" && (
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 bg-black/80 backdrop-blur text-white px-4 py-3 rounded-xl flex items-center gap-4 shadow-lg">
-              <span className="text-sm">
+            <div
+              className="absolute right-6 bottom-20 z-30 flex items-center gap-4 rounded-xl px-4 py-3 shadow-xl backdrop-blur border"
+              style={{
+                backgroundColor: "hsl(var(--background) / 0.92)",
+                color: "hsl(var(--foreground))",
+                borderColor: "hsl(var(--foreground) / 0.15)",
+              }}
+            >
+              <span className="text-sm opacity-90">
                 {nextOffer.kind === "NEXT_SEASON"
                   ? "Start next season?"
                   : "Next episode ready"}
               </span>
+
               <button
-                className="text-sm font-semibold underline"
-                onClick={() => {
-                  bump?.();
-                  setNextOffer(null);
-                  onPlayNext(nextOffer.intent);
+                className="text-sm font-semibold px-3 py-1 rounded-md transition hover:opacity-90"
+                style={{
+                  backgroundColor: "hsl(var(--foreground))",
+                  color: "hsl(var(--background))",
                 }}
+                onClick={() => handlePlayNext(nextOffer.intent)}
               >
                 Play
               </button>
