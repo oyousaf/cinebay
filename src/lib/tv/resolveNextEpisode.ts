@@ -1,17 +1,19 @@
 import { fetchSeasonEpisodes } from "@/lib/tmdb";
 import type { PlaybackIntent } from "@/lib/embed/buildEmbedUrl";
 
-/* -------------------------------------------------
-   TYPES
--------------------------------------------------- */
 export type NextEpisodeResult =
-  | { kind: "episode"; intent: PlaybackIntent }
-  | { kind: "season"; intent: PlaybackIntent }
-  | { kind: "end" };
+  | {
+      kind: "NEXT";
+      intent: PlaybackIntent;
+    }
+  | {
+      kind: "NEXT_SEASON";
+      intent: PlaybackIntent;
+    }
+  | {
+      kind: "END";
+    };
 
-/* -------------------------------------------------
-   RESOLVER
--------------------------------------------------- */
 export async function resolveNextEpisode(
   intent: PlaybackIntent,
 ): Promise<NextEpisodeResult | null> {
@@ -20,21 +22,22 @@ export async function resolveNextEpisode(
 
   /* ---------- Same season ---------- */
   const episodes = await fetchSeasonEpisodes(intent.tmdbId, intent.season);
-  if (!episodes || episodes.length === 0) return null;
+  if (!episodes || episodes.length === 0) {
+    return { kind: "END" };
+  }
 
-  const nextEpisodeNumber = intent.episode + 1;
   const hasNextEpisode = episodes.some(
-    (e) => e.episode_number === nextEpisodeNumber,
+    (e) => e.episode_number === intent.episode! + 1,
   );
 
   if (hasNextEpisode) {
     return {
-      kind: "episode",
+      kind: "NEXT",
       intent: {
         mediaType: "tv",
         tmdbId: intent.tmdbId,
         season: intent.season,
-        episode: nextEpisodeNumber,
+        episode: intent.episode + 1,
       },
     };
   }
@@ -48,7 +51,7 @@ export async function resolveNextEpisode(
 
   if (nextSeasonEpisodes && nextSeasonEpisodes.length > 0) {
     return {
-      kind: "season",
+      kind: "NEXT_SEASON",
       intent: {
         mediaType: "tv",
         tmdbId: intent.tmdbId,
@@ -59,5 +62,5 @@ export async function resolveNextEpisode(
   }
 
   /* ---------- End of series ---------- */
-  return { kind: "end" };
+  return { kind: "END" };
 }

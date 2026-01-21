@@ -38,19 +38,36 @@ export default function PlayerModal({
   const timerRef = useRef<number | null>(null);
 
   const { setTVProgress } = useContinueWatching();
-  const { bump } = useResumeSignal();
 
+  /* ---------- Resume signal (safe) ---------- */
+  let bump: (() => void) | null = null;
+  try {
+    bump = useResumeSignal().bump;
+  } catch {
+    bump = null;
+  }
+
+  /* -------------------------------------------------
+     EMBED URL
+  -------------------------------------------------- */
   const embedUrl = useMemo(
     () => buildEmbedUrl(EMBED_PROVIDERS[0], intent),
     [intent],
   );
 
-  /* ---------- Load watchdog ---------- */
+  /* -------------------------------------------------
+     LOAD WATCHDOG
+  -------------------------------------------------- */
   useEffect(() => {
     setLoaded(false);
     setError(false);
     setStillLoading(false);
     offeredRef.current = false;
+
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
 
     const t = window.setTimeout(() => {
       setStillLoading(true);
@@ -59,55 +76,58 @@ export default function PlayerModal({
     return () => clearTimeout(t);
   }, [embedUrl]);
 
-  /* ---------- Near-end offer ---------- */
+  /* -------------------------------------------------
+     NEAR-END OFFER (TIME HEURISTIC)
+  -------------------------------------------------- */
   useEffect(() => {
     if (intent.mediaType !== "tv") return;
     if (!loaded) return;
 
-    const assumedDuration = 42 * 60;
+    const assumedDuration = 42 * 60; // conservative TV average
     const fireAt = assumedDuration - NEAR_END_SECONDS;
 
     timerRef.current = window.setTimeout(async () => {
       if (offeredRef.current) return;
       offeredRef.current = true;
 
-      const next = await resolveNextEpisode(intent);
-      if (!next) return;
+      const result = await resolveNextEpisode(intent);
+      if (!result) return;
 
-      switch (next.kind) {
-        case "end":
-          toast("End of series 🎉", { duration: 5000 });
-          bump();
-          break;
-
-        case "episode":
-        case "season":
-          toast(
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-sm">
-                {next.kind === "season"
-                  ? "Start next season?"
-                  : "Next episode ready"}
-              </span>
-              <button
-                className="text-sm font-semibold underline"
-                onClick={() => onPlayNext(next.intent)}
-              >
-                Play
-              </button>
-            </div>,
-            { duration: 8000 },
-          );
-          break;
+      if (result.kind === "END") {
+        toast("End of series 🎉", { duration: 5000 });
+        bump?.();
+        return;
       }
+
+      toast(
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-sm">
+            {result.kind === "NEXT_SEASON"
+              ? "Start next season?"
+              : "Next episode ready"}
+          </span>
+          <button
+            className="text-sm font-semibold underline"
+            onClick={() => onPlayNext(result.intent)}
+          >
+            Play
+          </button>
+        </div>,
+        { duration: 8000 },
+      );
     }, fireAt * 1000);
 
     return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
     };
   }, [intent, loaded, onPlayNext, bump]);
 
-  /* ---------- On iframe load ---------- */
+  /* -------------------------------------------------
+     IFRAME LOAD
+  -------------------------------------------------- */
   const handleLoad = () => {
     setLoaded(true);
     setError(false);
@@ -122,7 +142,9 @@ export default function PlayerModal({
     }
   };
 
-  /* ---------- Render ---------- */
+  /* -------------------------------------------------
+     RENDER
+  -------------------------------------------------- */
   return (
     <AnimatePresence>
       <motion.div
@@ -153,7 +175,6 @@ export default function PlayerModal({
               src={embedUrl}
               className="w-full h-full border-none"
               allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-              allowFullScreen
               referrerPolicy="no-referrer"
               onLoad={handleLoad}
               onError={() => setError(true)}

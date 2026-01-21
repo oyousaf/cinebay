@@ -144,7 +144,9 @@ export default function App() {
           <PlayerModal
             intent={playerIntent as PlaybackIntent}
             onClose={close}
-            onPlayNext={openPlayer}
+            onPlayNext={(next) => {
+              openPlayer(next);
+            }}
           />
         )}
 
