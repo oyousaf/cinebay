@@ -94,7 +94,8 @@ export default function Banner({ item, onSelect, onWatch }: BannerProps) {
           </motion.h2>
 
           <motion.p
-            className="text-gray-200 max-w-4xl mb-7 line-clamp-4"
+            className="text-gray-200 max-w-4xl mb-8 text-[clamp(1rem,1.2vw,1.25rem)]
+            leading-relaxed line-clamp-5 md:line-clamp-6"
             variants={childVariants}
           >
             {item.overview}
