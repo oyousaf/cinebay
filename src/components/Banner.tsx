@@ -100,7 +100,10 @@ export default function Banner({ item, onSelect, onWatch }: BannerProps) {
             {item.overview}
           </motion.p>
 
-          <motion.div className="flex items-center gap-3" variants={childVariants}>
+          <motion.div
+            className="flex items-center gap-3"
+            variants={childVariants}
+          >
             <motion.button
               disabled={!onWatch}
               onClick={onWatch}
