@@ -4,6 +4,7 @@ import { motion, AnimatePresence, Variants } from "framer-motion";
 import type { Movie } from "@/types/movie";
 import { FaInfoCircle, FaPlay } from "react-icons/fa";
 import { Bookmark } from "lucide-react";
+import { useMemo } from "react";
 
 import { useWatchlist } from "@/context/WatchlistContext";
 import { useResumeSignal } from "@/context/ResumeContext";
@@ -22,10 +23,13 @@ export default function Banner({ item, onSelect, onWatch }: BannerProps) {
   const isSaved = isInWatchlist(item.id);
 
   const { getTVProgress } = useContinueWatching();
-  const { version } = useResumeSignal(); 
-  
-  const hasResume =
-    isTV && Boolean(getTVProgress(item.id));
+  const { version } = useResumeSignal();
+
+  /* ---------- RESUME (REACTIVE) ---------- */
+  const hasResume = useMemo(() => {
+    if (!isTV) return false;
+    return Boolean(getTVProgress(item.id));
+  }, [isTV, item.id, version, getTVProgress]);
 
   /* ---------- MOTION ---------- */
   const containerVariants: Variants = {
@@ -51,6 +55,7 @@ export default function Banner({ item, onSelect, onWatch }: BannerProps) {
     },
   };
 
+  /* ---------- UI ---------- */
   return (
     <div className="relative w-full h-[70vh] sm:h-full flex flex-col justify-end overflow-hidden shadow-2xl snap-start bg-black">
       <AnimatePresence initial={false}>
@@ -95,7 +100,10 @@ export default function Banner({ item, onSelect, onWatch }: BannerProps) {
             {item.overview}
           </motion.p>
 
-          <motion.div className="flex items-center gap-3" variants={childVariants}>
+          <motion.div
+            className="flex items-center gap-3"
+            variants={childVariants}
+          >
             <motion.button
               disabled={!onWatch}
               onClick={onWatch}

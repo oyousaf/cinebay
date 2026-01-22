@@ -51,6 +51,7 @@ export function useVideoEmbed(intent?: PlaybackIntent): string | null {
     const armResume = () => {
       if (intent.mediaType !== "tv") return;
       if (resumeArmedRef.current) return;
+      if (document.visibilityState !== "visible") return;
 
       resumeArmedRef.current = true;
 
@@ -61,7 +62,6 @@ export function useVideoEmbed(intent?: PlaybackIntent): string | null {
           intent.episode ?? 1,
           RESUME_DELAY_MS / 1000,
         );
-
         bump();
       }, RESUME_DELAY_MS);
     };

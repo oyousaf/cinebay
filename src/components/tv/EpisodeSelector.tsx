@@ -16,7 +16,7 @@ export default function EpisodeSelector({
   tv: Movie;
   onPlay: (intent: PlaybackIntent) => void;
 }) {
-  const { getTVProgress, setTVProgress } = useContinueWatching();
+  const { getTVProgress } = useContinueWatching();
   const { version } = useResumeSignal();
 
   const [seasons, setSeasons] = useState<Season[]>([]);
@@ -73,9 +73,6 @@ export default function EpisodeSelector({
   /* ---------- PLAY ---------- */
   const play = () => {
     if (!season || !episode) return;
-
-    // UI writes intent only
-    setTVProgress(tv.id, season, episode);
 
     onPlay({
       mediaType: "tv",
