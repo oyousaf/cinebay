@@ -15,6 +15,7 @@ import {
 } from "@/lib/tv/resolveNextEpisode";
 import { fetchEpisodeRuntime } from "@/lib/tv/fetchEpisodeRuntime";
 import { useResumeSignal } from "@/context/ResumeContext";
+import { useContinueWatching } from "@/hooks/useContinueWatching";
 
 interface PlayerModalProps {
   intent: PlaybackIntent;
@@ -23,6 +24,7 @@ interface PlayerModalProps {
 }
 
 const FALLBACK_DURATION_SECONDS = 42 * 60;
+const RESUME_SECONDS = 30;
 
 export default function PlayerModal({
   intent,
@@ -36,25 +38,24 @@ export default function PlayerModal({
 
   const offeredRef = useRef(false);
   const timerRef = useRef<number | null>(null);
+  const resumeWrittenRef = useRef(false);
 
-  let bump: (() => void) | null = null;
-  try {
-    bump = useResumeSignal().bump;
-  } catch {
-    bump = null;
-  }
+  const { bump } = useResumeSignal();
+  const { setTVProgress } = useContinueWatching();
 
   const embedUrl = useMemo(
     () => buildEmbedUrl(EMBED_PROVIDERS[0], intent),
     [intent],
   );
 
+  /* ---------- RESET ON REMOUNT ---------- */
   useEffect(() => {
     setLoaded(false);
     setError(false);
     setStillLoading(false);
     setNextOffer(null);
     offeredRef.current = false;
+    resumeWrittenRef.current = false;
 
     if (timerRef.current) {
       clearTimeout(timerRef.current);
@@ -65,6 +66,7 @@ export default function PlayerModal({
     return () => clearTimeout(t);
   }, [embedUrl]);
 
+  /* ---------- NEAR-END OFFER (TV) ---------- */
   useEffect(() => {
     if (intent.mediaType !== "tv") return;
     if (!loaded) return;
@@ -121,13 +123,38 @@ export default function PlayerModal({
     };
   }, [intent, loaded]);
 
+  /* ---------- IFRAME LOAD = PLAY CONFIRMED ---------- */
+  const handleLoad = () => {
+    setLoaded(true);
+    setError(false);
+    setStillLoading(false);
+
+    if (
+      !resumeWrittenRef.current &&
+      intent.mediaType === "tv" &&
+      typeof intent.season === "number" &&
+      typeof intent.episode === "number"
+    ) {
+      resumeWrittenRef.current = true;
+      setTVProgress(
+        intent.tmdbId,
+        intent.season,
+        intent.episode,
+        RESUME_SECONDS,
+      );
+      bump();
+    }
+  };
+
+  /* ---------- PLAY NEXT ---------- */
   const handlePlayNext = (next: PlaybackIntent) => {
-    bump?.();
+    bump();
     setNextOffer(null);
     onClose();
     queueMicrotask(() => onPlayNext(next));
   };
 
+  /* ---------- RENDER ---------- */
   return (
     <AnimatePresence>
       <motion.div
@@ -159,11 +186,7 @@ export default function PlayerModal({
               className="w-full h-full border-none"
               allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
               referrerPolicy="no-referrer"
-              onLoad={() => {
-                setLoaded(true);
-                setError(false);
-                setStillLoading(false);
-              }}
+              onLoad={handleLoad}
               onError={() => setError(true)}
             />
           )}
