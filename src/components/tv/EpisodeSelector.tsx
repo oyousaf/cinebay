@@ -9,18 +9,18 @@ import { useContinueWatching } from "@/hooks/useContinueWatching";
 import { useResumeSignal } from "@/context/ResumeContext";
 import type { PlaybackIntent } from "@/lib/embed/buildEmbedUrl";
 
-export default function EpisodeSelector({
-  tv,
-  onPlay,
-}: {
+interface Props {
   tv: Movie;
   onPlay: (intent: PlaybackIntent) => void;
-}) {
+}
+
+export default function EpisodeSelector({ tv, onPlay }: Props) {
   const { getTVProgress } = useContinueWatching();
   const { version } = useResumeSignal();
 
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [episodes, setEpisodes] = useState<Episode[]>([]);
+
   const [season, setSeason] = useState<number | null>(null);
   const [episode, setEpisode] = useState<number | null>(null);
 
@@ -28,7 +28,7 @@ export default function EpisodeSelector({
   const [openEpisode, setOpenEpisode] = useState(false);
   const [hydrated, setHydrated] = useState(false);
 
-  /* ---------- HYDRATE ---------- */
+  /* ---------- HYDRATE FROM RESUME ---------- */
   useEffect(() => {
     if (!Array.isArray(tv.seasons)) return;
 
