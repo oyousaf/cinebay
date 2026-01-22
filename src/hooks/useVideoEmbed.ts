@@ -51,17 +51,19 @@ export function useVideoEmbed(intent?: PlaybackIntent): string | null {
     const armResume = () => {
       if (intent.mediaType !== "tv") return;
       if (resumeArmedRef.current) return;
-      if (document.visibilityState !== "visible") return;
 
       resumeArmedRef.current = true;
 
       resumeTimerRef.current = setTimeout(() => {
+        if (document.visibilityState !== "visible") return;
+
         setTVProgress(
           intent.tmdbId,
           intent.season ?? 1,
           intent.episode ?? 1,
           RESUME_DELAY_MS / 1000,
         );
+
         bump();
       }, RESUME_DELAY_MS);
     };
@@ -69,11 +71,15 @@ export function useVideoEmbed(intent?: PlaybackIntent): string | null {
     const cacheKey = buildEmbedCacheKey(intent);
     const cached = memoryCache.get(cacheKey) ?? localStorage.getItem(cacheKey);
 
-    if (cached) {
-      memoryCache.set(cacheKey, cached);
-      setEmbedUrl(cached);
+    const resolve = (src: string) => {
+      memoryCache.set(cacheKey, src);
+      localStorage.setItem(cacheKey, src);
+      setEmbedUrl(src);
       armResume();
+    };
 
+    if (cached) {
+      resolve(cached);
       return () => {
         if (resumeTimerRef.current) {
           clearTimeout(resumeTimerRef.current);
@@ -94,17 +100,6 @@ export function useVideoEmbed(intent?: PlaybackIntent): string | null {
       if (timeoutId) clearTimeout(timeoutId);
       iframe?.remove();
       iframe = null;
-    };
-
-    const resolve = (src: string) => {
-      if (resolved) return;
-      resolved = true;
-
-      memoryCache.set(cacheKey, src);
-      localStorage.setItem(cacheKey, src);
-      setEmbedUrl(src);
-      armResume();
-      cleanupProbe();
     };
 
     const tryNext = () => {
@@ -129,7 +124,9 @@ export function useVideoEmbed(intent?: PlaybackIntent): string | null {
       if (!iframe || resolved) return;
 
       if (EMBED_PROVIDERS[index].name === "vidlink") {
+        resolved = true;
         resolve(iframe.src);
+        cleanupProbe();
         return;
       }
 
@@ -143,9 +140,13 @@ export function useVideoEmbed(intent?: PlaybackIntent): string | null {
           return;
         }
 
+        resolved = true;
         resolve(iframe.src);
+        cleanupProbe();
       } catch {
+        resolved = true;
         resolve(iframe.src);
+        cleanupProbe();
       }
     };
 
