@@ -1,10 +1,10 @@
 "use client";
 
+import { useMemo } from "react";
 import { motion, AnimatePresence, Variants } from "framer-motion";
 import type { Movie } from "@/types/movie";
 import { FaInfoCircle, FaPlay } from "react-icons/fa";
 import { Bookmark } from "lucide-react";
-import { useMemo } from "react";
 
 import { useWatchlist } from "@/context/WatchlistContext";
 import { useResumeSignal } from "@/context/ResumeContext";
@@ -100,10 +100,7 @@ export default function Banner({ item, onSelect, onWatch }: BannerProps) {
             {item.overview}
           </motion.p>
 
-          <motion.div
-            className="flex items-center gap-3"
-            variants={childVariants}
-          >
+          <motion.div className="flex items-center gap-3" variants={childVariants}>
             <motion.button
               disabled={!onWatch}
               onClick={onWatch}
