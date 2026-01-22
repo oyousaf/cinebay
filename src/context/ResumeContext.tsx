@@ -1,6 +1,12 @@
 "use client";
 
-import { createContext, useContext, useState, ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  ReactNode,
+  useCallback,
+} from "react";
 
 type ResumeContextValue = {
   version: number;
@@ -12,7 +18,9 @@ const ResumeContext = createContext<ResumeContextValue | null>(null);
 export function ResumeProvider({ children }: { children: ReactNode }) {
   const [version, setVersion] = useState(0);
 
-  const bump = () => setVersion((v) => v + 1);
+  const bump = useCallback(() => {
+    setVersion((v) => v + 1);
+  }, []);
 
   return (
     <ResumeContext.Provider value={{ version, bump }}>
