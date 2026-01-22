@@ -12,6 +12,8 @@ const MIN_RESUME_SECONDS = 30;
 
 export function useContinueWatching() {
   const getTVProgress = useCallback((tvId: number): TVProgress | null => {
+    if (typeof window === "undefined") return null;
+
     try {
       const raw = localStorage.getItem(tvKeyFor(tvId));
       if (!raw) return null;
@@ -40,10 +42,29 @@ export function useContinueWatching() {
       episode: number,
       position: number = MIN_RESUME_SECONDS,
     ) => {
+      if (typeof window === "undefined") return;
       if (position < MIN_RESUME_SECONDS) return;
 
+      const key = tvKeyFor(tvId);
+      const existing = localStorage.getItem(key);
+
+      if (existing) {
+        try {
+          const parsed = JSON.parse(existing);
+          if (
+            parsed.season === season &&
+            parsed.episode === episode &&
+            parsed.position === position
+          ) {
+            return;
+          }
+        } catch {
+          /* overwrite corrupted data */
+        }
+      }
+
       localStorage.setItem(
-        tvKeyFor(tvId),
+        key,
         JSON.stringify({
           season,
           episode,
@@ -56,6 +77,7 @@ export function useContinueWatching() {
   );
 
   const clearTVProgress = useCallback((tvId: number) => {
+    if (typeof window === "undefined") return;
     localStorage.removeItem(tvKeyFor(tvId));
   }, []);
 
