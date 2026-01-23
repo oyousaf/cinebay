@@ -1,35 +1,48 @@
 "use client";
 
 import { useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence, Variants } from "framer-motion";
 import type { Movie } from "@/types/movie";
 import { FaInfoCircle, FaPlay } from "react-icons/fa";
 import { Bookmark } from "lucide-react";
 
 import { useWatchlist } from "@/context/WatchlistContext";
-import { useResumeSignal } from "@/context/ResumeContext";
 import { useContinueWatching } from "@/hooks/useContinueWatching";
 
 interface BannerProps {
   item: Movie;
   onSelect: (movie: Movie) => void;
-  onWatch?: () => void;
 }
 
-export default function Banner({ item, onSelect, onWatch }: BannerProps) {
+export default function Banner({ item, onSelect }: BannerProps) {
+  const navigate = useNavigate();
   const isTV = item.media_type === "tv";
 
   const { toggleWatchlist, isInWatchlist } = useWatchlist();
   const isSaved = isInWatchlist(item.id);
 
   const { getTVProgress } = useContinueWatching();
-  const { version } = useResumeSignal();
 
-  /* ---------- RESUME (REACTIVE) ---------- */
-  const hasResume = useMemo(() => {
-    if (!isTV) return false;
-    return Boolean(getTVProgress(item.id));
-  }, [isTV, item.id, version, getTVProgress]);
+  /* ---------- RESUME (SYNC, FAST) ---------- */
+  const resume = useMemo(() => {
+    if (!isTV) return null;
+    return getTVProgress(item.id);
+  }, [isTV, item.id, getTVProgress]);
+
+  const hasResume = Boolean(resume);
+
+  /* ---------- PLAY (ROUTE-BASED) ---------- */
+  const handlePlay = () => {
+    if (isTV) {
+      navigate(
+        `/watch/tv/${item.id}/${resume?.season ?? 1}/${resume?.episode ?? 1}`,
+      );
+      return;
+    }
+
+    navigate(`/watch/movie/${item.id}`);
+  };
 
   /* ---------- MOTION ---------- */
   const containerVariants: Variants = {
@@ -39,11 +52,7 @@ export default function Banner({ item, onSelect, onWatch }: BannerProps) {
       y: 0,
       transition: { duration: 0.18, ease: "easeOut" },
     },
-    exit: {
-      opacity: 0,
-      y: 4,
-      transition: { duration: 0.12, ease: "easeIn" },
-    },
+    exit: { opacity: 0, y: 4 },
   };
 
   const childVariants: Variants = {
@@ -94,8 +103,7 @@ export default function Banner({ item, onSelect, onWatch }: BannerProps) {
           </motion.h2>
 
           <motion.p
-            className="text-gray-200 max-w-4xl mb-8 text-[clamp(1rem,1.2vw,1.25rem)]
-            leading-relaxed line-clamp-5 md:line-clamp-6"
+            className="text-gray-200 max-w-4xl mb-8 text-[clamp(1rem,1.2vw,1.25rem)] leading-relaxed line-clamp-5 md:line-clamp-6"
             variants={childVariants}
           >
             {item.overview}
@@ -106,25 +114,17 @@ export default function Banner({ item, onSelect, onWatch }: BannerProps) {
             variants={childVariants}
           >
             <motion.button
-              disabled={!onWatch}
-              onClick={onWatch}
-              whileHover={onWatch ? { scale: 1.04 } : {}}
-              whileTap={onWatch ? { scale: 0.96 } : {}}
+              onClick={handlePlay}
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.96 }}
               className={`relative inline-flex items-center justify-center gap-3 h-12
                 ${hasResume ? "px-7" : "px-6"}
                 rounded-full font-semibold leading-none
                 transition-colors select-none
                 shadow-lg shadow-black/40
-                ${
-                  onWatch
-                    ? "bg-[hsl(var(--foreground))] text-[hsl(var(--background))]"
-                    : "bg-gray-700/60 text-gray-400 shadow-none"
-                }`}
+                bg-[hsl(var(--foreground))] text-[hsl(var(--background))]`}
             >
-              {onWatch && (
-                <span className="absolute inset-0 rounded-full ring-1 ring-white/15 pointer-events-none" />
-              )}
-
+              <span className="absolute inset-0 rounded-full ring-1 ring-white/15 pointer-events-none" />
               <FaPlay size={22} />
               {hasResume && <span>Resume</span>}
             </motion.button>

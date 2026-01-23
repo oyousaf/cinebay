@@ -1,22 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { FaPlay, FaChevronDown } from "react-icons/fa";
 
 import type { Movie, Season, Episode } from "@/types/movie";
 import { fetchSeasonEpisodes } from "@/lib/tmdb";
 import { useContinueWatching } from "@/hooks/useContinueWatching";
-import { useResumeSignal } from "@/context/ResumeContext";
-import type { PlaybackIntent } from "@/lib/embed/buildEmbedUrl";
 
 interface Props {
   tv: Movie;
-  onPlay: (intent: PlaybackIntent) => void;
 }
 
-export default function EpisodeSelector({ tv, onPlay }: Props) {
+export default function EpisodeSelector({ tv }: Props) {
+  const navigate = useNavigate();
   const { getTVProgress } = useContinueWatching();
-  const { version } = useResumeSignal();
 
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [episodes, setEpisodes] = useState<Episode[]>([]);
@@ -26,31 +24,31 @@ export default function EpisodeSelector({ tv, onPlay }: Props) {
 
   const [openSeason, setOpenSeason] = useState(false);
   const [openEpisode, setOpenEpisode] = useState(false);
-  const [hydrated, setHydrated] = useState(false);
 
-  /* ---------- HYDRATE FROM RESUME ---------- */
+  /* ---------- RESUME (DERIVED) ---------- */
+  const resume = useMemo(() => {
+    return getTVProgress(tv.id);
+  }, [tv.id, getTVProgress]);
+
+  /* ---------- INITIAL SEASON / EPISODE ---------- */
   useEffect(() => {
     if (!Array.isArray(tv.seasons)) return;
 
     const validSeasons = tv.seasons.filter((s) => s.season_number > 0);
     setSeasons(validSeasons);
 
-    const progress = getTVProgress(tv.id);
-
-    if (progress) {
-      setSeason(progress.season);
-      setEpisode(progress.episode);
+    if (resume) {
+      setSeason(resume.season);
+      setEpisode(resume.episode);
     } else if (validSeasons.length) {
       setSeason(validSeasons[0].season_number);
       setEpisode(null);
     }
-
-    setHydrated(true);
-  }, [tv.id, tv.seasons, getTVProgress, version]);
+  }, [tv.id, tv.seasons, resume]);
 
   /* ---------- LOAD EPISODES ---------- */
   useEffect(() => {
-    if (!hydrated || !season) return;
+    if (!season) return;
 
     let active = true;
     setEpisodes([]);
@@ -60,7 +58,7 @@ export default function EpisodeSelector({ tv, onPlay }: Props) {
 
       setEpisodes(eps);
 
-      if (!eps.some((e) => e.episode_number === episode)) {
+      if (!episode || !eps.some((e) => e.episode_number === episode)) {
         setEpisode(eps[0].episode_number);
       }
     });
@@ -68,23 +66,17 @@ export default function EpisodeSelector({ tv, onPlay }: Props) {
     return () => {
       active = false;
     };
-  }, [hydrated, tv.id, season, episode]);
+  }, [tv.id, season]);
 
-  /* ---------- PLAY ---------- */
+  /* ---------- PLAY (ROUTE-BASED) ---------- */
   const play = () => {
     if (!season || !episode) return;
 
-    onPlay({
-      mediaType: "tv",
-      tmdbId: tv.id,
-      season,
-      episode,
-    });
+    navigate(`/watch/tv/${tv.id}/${season}/${episode}`);
   };
 
   /* ---------- LABEL ---------- */
-  const progress = getTVProgress(tv.id);
-  const isResume = progress?.season === season && progress?.episode === episode;
+  const isResume = resume?.season === season && resume?.episode === episode;
 
   const playLabel =
     season && episode
@@ -123,8 +115,7 @@ export default function EpisodeSelector({ tv, onPlay }: Props) {
           </button>
 
           {openSeason && (
-            <div
-              className="absolute z-50 mt-1 w-full max-h-60 overflow-y-auto
+            <div className="absolute z-50 mt-1 w-full max-h-60 overflow-y-auto
               rounded-lg shadow-xl bg-[hsl(var(--background))]
               border border-[hsl(var(--foreground)/0.4)]"
             >
@@ -160,8 +151,7 @@ export default function EpisodeSelector({ tv, onPlay }: Props) {
           </button>
 
           {openEpisode && (
-            <div
-              className="absolute z-50 mt-1 w-full max-h-60 overflow-y-auto
+            <div className="absolute z-50 mt-1 w-full max-h-60 overflow-y-auto
               rounded-lg shadow-xl bg-[hsl(var(--background))]
               border border-[hsl(var(--foreground)/0.4)]"
             >

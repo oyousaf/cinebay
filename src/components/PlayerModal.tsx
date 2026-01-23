@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { X, Loader2 } from "lucide-react";
+import { X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 import {
@@ -14,7 +14,6 @@ import {
   type NextEpisodeResult,
 } from "@/lib/tv/resolveNextEpisode";
 import { fetchEpisodeRuntime } from "@/lib/tv/fetchEpisodeRuntime";
-import { useResumeSignal } from "@/context/ResumeContext";
 import { useContinueWatching } from "@/hooks/useContinueWatching";
 
 interface PlayerModalProps {
@@ -26,21 +25,27 @@ interface PlayerModalProps {
 const FALLBACK_DURATION_SECONDS = 42 * 60;
 const RESUME_SECONDS = 30;
 
+/**
+ * Loader is intentionally short-lived.
+ * We hand off to the iframe early to avoid double loaders.
+ */
+const LOADER_MIN_MS = 900;
+
 export default function PlayerModal({
   intent,
   onClose,
   onPlayNext,
 }: PlayerModalProps) {
-  const [loaded, setLoaded] = useState(false);
+  const [showLoader, setShowLoader] = useState(true);
   const [error, setError] = useState(false);
-  const [stillLoading, setStillLoading] = useState(false);
   const [nextOffer, setNextOffer] = useState<NextEpisodeResult | null>(null);
 
   const offeredRef = useRef(false);
   const timerRef = useRef<number | null>(null);
+  const resumeTimerRef = useRef<number | null>(null);
   const resumeWrittenRef = useRef(false);
+  const loaderTimerRef = useRef<number | null>(null);
 
-  const { bump } = useResumeSignal();
   const { setTVProgress } = useContinueWatching();
 
   const embedUrl = useMemo(
@@ -48,28 +53,57 @@ export default function PlayerModal({
     [intent],
   );
 
-  /* ---------- RESET ON REMOUNT ---------- */
+  /* ---------- RESET ON INTENT CHANGE ---------- */
   useEffect(() => {
-    setLoaded(false);
     setError(false);
-    setStillLoading(false);
     setNextOffer(null);
+    setShowLoader(true);
+
     offeredRef.current = false;
     resumeWrittenRef.current = false;
 
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
+    if (timerRef.current) clearTimeout(timerRef.current);
+    if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
+    if (loaderTimerRef.current) clearTimeout(loaderTimerRef.current);
 
-    const t = window.setTimeout(() => setStillLoading(true), 15000);
-    return () => clearTimeout(t);
+    // Loader auto-dismiss (handoff to iframe)
+    loaderTimerRef.current = window.setTimeout(() => {
+      setShowLoader(false);
+    }, LOADER_MIN_MS);
+
+    return () => {
+      if (loaderTimerRef.current) clearTimeout(loaderTimerRef.current);
+    };
   }, [embedUrl]);
+
+  /* ---------- RESUME WRITE (DELAYED, SAFE) ---------- */
+  useEffect(() => {
+    if (intent.mediaType !== "tv") return;
+    if (resumeWrittenRef.current) return;
+
+    resumeTimerRef.current = window.setTimeout(() => {
+      if (
+        typeof intent.season === "number" &&
+        typeof intent.episode === "number"
+      ) {
+        resumeWrittenRef.current = true;
+        setTVProgress(
+          intent.tmdbId,
+          intent.season,
+          intent.episode,
+          RESUME_SECONDS,
+        );
+      }
+    }, RESUME_SECONDS * 1000);
+
+    return () => {
+      if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
+    };
+  }, [intent, setTVProgress]);
 
   /* ---------- NEAR-END OFFER (TV) ---------- */
   useEffect(() => {
     if (intent.mediaType !== "tv") return;
-    if (!loaded) return;
 
     let cancelled = false;
 
@@ -105,10 +139,7 @@ export default function PlayerModal({
         if (result) setNextOffer(result);
       };
 
-      timerRef.current = window.setTimeout(
-        attempt,
-        Math.max(0, windowStart * 1000),
-      );
+      timerRef.current = window.setTimeout(attempt, windowStart * 1000);
 
       window.setTimeout(() => {
         cancelled = true;
@@ -121,34 +152,10 @@ export default function PlayerModal({
       cancelled = true;
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [intent, loaded]);
-
-  /* ---------- IFRAME LOAD = PLAY CONFIRMED ---------- */
-  const handleLoad = () => {
-    setLoaded(true);
-    setError(false);
-    setStillLoading(false);
-
-    if (
-      !resumeWrittenRef.current &&
-      intent.mediaType === "tv" &&
-      typeof intent.season === "number" &&
-      typeof intent.episode === "number"
-    ) {
-      resumeWrittenRef.current = true;
-      setTVProgress(
-        intent.tmdbId,
-        intent.season,
-        intent.episode,
-        RESUME_SECONDS,
-      );
-      bump();
-    }
-  };
+  }, [intent]);
 
   /* ---------- PLAY NEXT ---------- */
   const handlePlayNext = (next: PlaybackIntent) => {
-    bump();
     setNextOffer(null);
     onClose();
     queueMicrotask(() => onPlayNext(next));
@@ -162,71 +169,104 @@ export default function PlayerModal({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur"
+        className="fixed inset-0 z-50 flex items-center justify-center
+          bg-black/70 backdrop-blur-md"
       >
-        <div className="relative w-full max-w-6xl aspect-video bg-black rounded-xl overflow-hidden shadow-2xl">
-          {!loaded && !error && (
-            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center text-white gap-2 text-sm px-4 text-center">
-              <Loader2 className="h-8 w-8 animate-spin" />
-              {stillLoading && (
-                <p className="text-xs text-zinc-300">
-                  Still loading… try another source if needed.
-                </p>
-              )}
-            </div>
-          )}
+        <motion.div
+          initial={{ scale: 0.97, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.98, opacity: 0 }}
+          transition={{ duration: 0.25, ease: "easeOut" }}
+          className="relative w-full max-w-6xl aspect-video
+            rounded-2xl overflow-hidden
+            bg-black
+            ring-1 ring-white/5
+            shadow-[0_40px_120px_rgba(0,0,0,0.9)]"
+        >
+          {/* ---------- EARLY LOADER (HANDOFF) ---------- */}
+          <AnimatePresence>
+            {showLoader && !error && (
+              <motion.div
+                initial={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.25, ease: "easeOut" }}
+                className="absolute inset-0 z-10
+                  flex items-center justify-center
+                  bg-black"
+              >
+                <div
+                  className="h-8 w-8 rounded-full
+                  border-2 border-white/20 border-t-white
+                  animate-spin"
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-          {error ? (
-            <div className="absolute inset-0 flex items-center justify-center text-white text-sm px-6 text-center">
+          {/* ---------- ERROR ---------- */}
+          {error && (
+            <div
+              className="absolute inset-0 flex items-center justify-center
+              text-white text-sm px-6 text-center"
+            >
               Sorry, the video could not be loaded.
             </div>
-          ) : (
-            <iframe
-              src={embedUrl}
-              className="w-full h-full border-none"
-              allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-              referrerPolicy="no-referrer"
-              onLoad={handleLoad}
-              onError={() => setError(true)}
-            />
           )}
 
-          {nextOffer && nextOffer.kind !== "END" && (
-            <div
-              className="absolute right-6 bottom-20 z-30 flex items-center gap-4 rounded-xl px-4 py-3 shadow-xl backdrop-blur border"
-              style={{
-                backgroundColor: "hsl(var(--background) / 0.92)",
-                color: "hsl(var(--foreground))",
-                borderColor: "hsl(var(--foreground) / 0.15)",
-              }}
-            >
-              <span className="text-sm opacity-90">
-                {nextOffer.kind === "NEXT_SEASON"
-                  ? "Start next season?"
-                  : "Next episode ready"}
-              </span>
+          {/* ---------- IFRAME ---------- */}
+          <iframe
+            src={embedUrl}
+            className="w-full h-full border-none"
+            allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+            referrerPolicy="no-referrer"
+            onError={() => setError(true)}
+          />
 
-              <button
-                className="text-sm font-semibold px-3 py-1 rounded-md transition hover:opacity-90"
-                style={{
-                  backgroundColor: "hsl(var(--foreground))",
-                  color: "hsl(var(--background))",
-                }}
-                onClick={() => handlePlayNext(nextOffer.intent)}
+          {/* ---------- NEXT EPISODE ---------- */}
+          <AnimatePresence>
+            {nextOffer && nextOffer.kind !== "END" && (
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 12 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+                className="absolute right-6 bottom-20 z-30
+                  flex items-center gap-4
+                  rounded-xl px-4 py-3
+                  bg-black/70 backdrop-blur
+                  ring-1 ring-white/10
+                  shadow-xl"
               >
-                Play
-              </button>
-            </div>
-          )}
+                <span className="text-sm text-zinc-200">
+                  {nextOffer.kind === "NEXT_SEASON"
+                    ? "Start next season?"
+                    : "Next episode ready"}
+                </span>
 
+                <button
+                  className="text-sm font-semibold px-3 py-1.5 rounded-md
+                    bg-white text-black
+                    hover:bg-zinc-200 transition"
+                  onClick={() => handlePlayNext(nextOffer.intent)}
+                >
+                  Play
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* ---------- CLOSE ---------- */}
           <button
             onClick={onClose}
-            className="absolute top-3 right-3 z-20 text-white"
             aria-label="Close player"
+            className="absolute top-4 right-4 z-20
+              rounded-full bg-black/60 backdrop-blur
+              ring-1 ring-white/10
+              hover:bg-black/80 transition"
           >
-            <X size={28} className="p-1 bg-black/60 rounded-full" />
+            <X size={22} className="m-2 text-white/90" />
           </button>
-        </div>
+        </motion.div>
       </motion.div>
     </AnimatePresence>
   );

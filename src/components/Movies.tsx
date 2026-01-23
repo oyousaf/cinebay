@@ -2,14 +2,12 @@ import { useEffect, useState } from "react";
 import ContentRail from "@/components/ContentRail";
 import { fetchMovies } from "@/lib/tmdb";
 import type { Movie } from "@/types/movie";
-import type { PlaybackIntent } from "@/lib/embed/buildEmbedUrl";
 
 interface MoviesProps {
   onSelect: (movie: Movie) => void;
-  onWatch: (intent: PlaybackIntent) => void;
 }
 
-export default function Movies({ onSelect, onWatch }: MoviesProps) {
+export default function Movies({ onSelect }: MoviesProps) {
   const [movies, setMovies] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -32,12 +30,7 @@ export default function Movies({ onSelect, onWatch }: MoviesProps) {
     };
   }, []);
 
-  return (
-    <ContentRail
-      title="Movies"
-      items={movies}
-      onSelect={onSelect}
-      onWatch={onWatch}
-    />
-  );
+  if (loading) return null;
+
+  return <ContentRail title="Movies" items={movies} onSelect={onSelect} />;
 }

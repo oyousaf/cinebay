@@ -8,9 +8,6 @@ import {
   type PlaybackIntent,
 } from "@/lib/embed/buildEmbedUrl";
 
-import { useContinueWatching } from "@/hooks/useContinueWatching";
-import { useResumeSignal } from "@/context/ResumeContext";
-
 const INVALID_MARKERS = [
   "not found",
   "video not found",
@@ -22,76 +19,24 @@ const INVALID_MARKERS = [
 ];
 
 const memoryCache = new Map<string, string>();
-const RESUME_DELAY_MS = 30_000;
 
 export function useVideoEmbed(intent?: PlaybackIntent): string | null {
   const [embedUrl, setEmbedUrl] = useState<string | null>(null);
 
-  const { setTVProgress } = useContinueWatching();
-  const { bump } = useResumeSignal();
-
-  const resumeTimerRef = useRef<number | null>(null);
-  const resumeArmedRef = useRef(false);
   const hasErroredRef = useRef(false);
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const timeoutRef = useRef<number | null>(null);
 
-  /* ---------------- RESET ---------------- */
+  /* ---------- CLEANUP ---------- */
   useEffect(() => {
     return () => {
-      if (resumeTimerRef.current) {
-        clearTimeout(resumeTimerRef.current);
-        resumeTimerRef.current = null;
-      }
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      iframeRef.current?.remove();
+      iframeRef.current = null;
     };
   }, []);
 
-  /* ---------------- RESUME ARMING ---------------- */
-  useEffect(() => {
-    if (!embedUrl) return;
-    if (intent?.mediaType !== "tv") return;
-    if (resumeArmedRef.current) return;
-
-    let elapsed = 0;
-    let lastTick = Date.now();
-
-    const tick = () => {
-      if (document.visibilityState !== "visible") {
-        lastTick = Date.now();
-        resumeTimerRef.current = window.setTimeout(tick, 1000);
-        return;
-      }
-
-      const now = Date.now();
-      elapsed += now - lastTick;
-      lastTick = now;
-
-      if (elapsed >= RESUME_DELAY_MS) {
-        resumeArmedRef.current = true;
-
-        setTVProgress(
-          intent.tmdbId,
-          intent.season ?? 1,
-          intent.episode ?? 1,
-          RESUME_DELAY_MS / 1000,
-        );
-
-        bump();
-        return;
-      }
-
-      resumeTimerRef.current = window.setTimeout(tick, 1000);
-    };
-
-    resumeTimerRef.current = window.setTimeout(tick, 1000);
-
-    return () => {
-      if (resumeTimerRef.current) {
-        clearTimeout(resumeTimerRef.current);
-        resumeTimerRef.current = null;
-      }
-    };
-  }, [embedUrl, intent, setTVProgress, bump]);
-
-  /* ---------------- EMBED RESOLUTION ---------------- */
+  /* ---------- EMBED RESOLUTION ---------- */
   useEffect(() => {
     if (!intent) {
       setEmbedUrl(null);
@@ -99,7 +44,6 @@ export function useVideoEmbed(intent?: PlaybackIntent): string | null {
     }
 
     hasErroredRef.current = false;
-    resumeArmedRef.current = false;
 
     const cacheKey = buildEmbedCacheKey(intent);
     const cached = memoryCache.get(cacheKey) ?? localStorage.getItem(cacheKey);
@@ -110,18 +54,13 @@ export function useVideoEmbed(intent?: PlaybackIntent): string | null {
       return;
     }
 
-    let iframe: HTMLIFrameElement | null = document.createElement("iframe");
-    iframe.style.display = "none";
-    document.body.appendChild(iframe);
-
     let index = 0;
     let resolved = false;
-    let timeoutId: number | null = null;
 
     const cleanup = () => {
-      if (timeoutId) clearTimeout(timeoutId);
-      iframe?.remove();
-      iframe = null;
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      iframeRef.current?.remove();
+      iframeRef.current = null;
     };
 
     const resolve = (src: string) => {
@@ -135,7 +74,7 @@ export function useVideoEmbed(intent?: PlaybackIntent): string | null {
     };
 
     const tryNext = () => {
-      if (!iframe || index >= EMBED_PROVIDERS.length) {
+      if (index >= EMBED_PROVIDERS.length) {
         cleanup();
         if (!hasErroredRef.current) {
           hasErroredRef.current = true;
@@ -144,41 +83,52 @@ export function useVideoEmbed(intent?: PlaybackIntent): string | null {
         return;
       }
 
-      iframe.src = buildEmbedUrl(EMBED_PROVIDERS[index], intent);
+      if (!iframeRef.current) {
+        iframeRef.current = document.createElement("iframe");
+        iframeRef.current.style.display = "none";
+        document.body.appendChild(iframeRef.current);
 
-      timeoutId = window.setTimeout(() => {
+        iframeRef.current.onload = () => {
+          if (!iframeRef.current || resolved) return;
+
+          const provider = EMBED_PROVIDERS[index];
+
+          // trusted provider → accept immediately
+          if (provider.name === "vidlink") {
+            resolve(iframeRef.current.src);
+            return;
+          }
+
+          try {
+            const text =
+              iframeRef.current.contentDocument?.body?.innerText?.toLowerCase() ??
+              "";
+
+            if (INVALID_MARKERS.some((m) => text.includes(m))) {
+              index++;
+              tryNext();
+              return;
+            }
+
+            resolve(iframeRef.current.src);
+          } catch {
+            // cross-origin → assume valid
+            resolve(iframeRef.current.src);
+          }
+        };
+
+        iframeRef.current.onerror = () => {
+          index++;
+          tryNext();
+        };
+      }
+
+      iframeRef.current.src = buildEmbedUrl(EMBED_PROVIDERS[index], intent);
+
+      timeoutRef.current = window.setTimeout(() => {
         index++;
         tryNext();
       }, 3000);
-    };
-
-    iframe.onload = () => {
-      if (!iframe || resolved) return;
-
-      if (EMBED_PROVIDERS[index].name === "vidlink") {
-        resolve(iframe.src);
-        return;
-      }
-
-      try {
-        const text =
-          iframe.contentDocument?.body?.innerText?.toLowerCase() ?? "";
-
-        if (INVALID_MARKERS.some((m) => text.includes(m))) {
-          index++;
-          tryNext();
-          return;
-        }
-
-        resolve(iframe.src);
-      } catch {
-        resolve(iframe.src);
-      }
-    };
-
-    iframe.onerror = () => {
-      index++;
-      tryNext();
     };
 
     tryNext();

@@ -2,14 +2,12 @@ import { useEffect, useState } from "react";
 import ContentRail from "@/components/ContentRail";
 import { fetchShows } from "@/lib/tmdb";
 import type { Movie } from "@/types/movie";
-import type { PlaybackIntent } from "@/lib/embed/buildEmbedUrl";
 
 interface ShowsProps {
   onSelect: (movie: Movie) => void;
-  onWatch: (intent: PlaybackIntent) => void;
 }
 
-export default function Shows({ onSelect, onWatch }: ShowsProps) {
+export default function Shows({ onSelect }: ShowsProps) {
   const [shows, setShows] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -32,12 +30,7 @@ export default function Shows({ onSelect, onWatch }: ShowsProps) {
     };
   }, []);
 
-  return (
-    <ContentRail
-      title="TV Shows"
-      items={shows}
-      onSelect={onSelect}
-      onWatch={onWatch}
-    />
-  );
+  if (loading) return null;
+
+  return <ContentRail title="TV Shows" items={shows} onSelect={onSelect} />;
 }

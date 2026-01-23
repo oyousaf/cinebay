@@ -8,18 +8,15 @@ import {
   ReactNode,
 } from "react";
 import type { Movie } from "@/types/movie";
-import type { PlaybackIntent } from "@/lib/embed/buildEmbedUrl";
 import { useNavigation } from "@/hooks/useNavigation";
 
-type ModalType = "content" | "player" | "exit" | null;
+type ModalType = "content" | "exit" | null;
 
 interface ModalContextValue {
   activeModal: ModalType;
   selectedItem: Movie | null;
-  playerIntent: PlaybackIntent | null;
 
   openContent: (movie: Movie) => void;
-  openPlayer: (intent: PlaybackIntent) => void;
   openExit: () => void;
 
   goBackContent: () => void;
@@ -31,13 +28,11 @@ const ModalManagerContext = createContext<ModalContextValue | null>(null);
 export function ModalManagerProvider({ children }: { children: ReactNode }) {
   const [activeModal, setActiveModal] = useState<ModalType>(null);
   const [selectedItem, setSelectedItem] = useState<Movie | null>(null);
-  const [playerIntent, setPlayerIntent] = useState<PlaybackIntent | null>(null);
 
   const historyStack = useRef<Movie[]>([]);
   const modalRef = useRef<HTMLDivElement | null>(null);
   const lastFocusedElement = useRef<HTMLElement | null>(null);
 
-  /* ---------- Optional navigation sync ---------- */
   const { setModalOpen } = useNavigation?.() ?? { setModalOpen: () => {} };
 
   /* ---------- Scroll lock & focus sync ---------- */
@@ -97,20 +92,11 @@ export function ModalManagerProvider({ children }: { children: ReactNode }) {
     [selectedItem],
   );
 
-  const openPlayer = useCallback((intent: PlaybackIntent) => {
-    setPlayerIntent((prev) => {
-      if (JSON.stringify(prev) === JSON.stringify(intent)) return prev;
-      return intent;
-    });
-    setActiveModal("player");
-  }, []);
-
   const openExit = useCallback(() => setActiveModal("exit"), []);
 
   const close = useCallback(() => {
     setActiveModal(null);
     setSelectedItem(null);
-    setPlayerIntent(null);
   }, []);
 
   const goBackContent = useCallback(() => {
@@ -119,80 +105,36 @@ export function ModalManagerProvider({ children }: { children: ReactNode }) {
     else close();
   }, [close]);
 
-  /* ---------- Back / Escape / Remote ---------- */
+  /* ---------- Escape (no popstate hijack) ---------- */
   useEffect(() => {
-    if (!window.history.state) {
-      window.history.pushState({ cinebay: "root" }, "", window.location.href);
-    }
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
 
-    const handleBack = () => {
-      if (activeModal === "player") close();
-      else if (activeModal === "content") {
+      if (activeModal === "content") {
+        e.preventDefault();
         if (historyStack.current.length > 0) goBackContent();
         else close();
-      } else if (activeModal === "exit") close();
-      else openExit();
-    };
+        return;
+      }
 
-    const onPopState = (e: PopStateEvent) => {
-      e.preventDefault();
-      handleBack();
-      window.history.pushState({ cinebay: "active" }, "");
-    };
-
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
+      if (activeModal === "exit") {
         e.preventDefault();
-        handleBack();
+        close();
+        return;
       }
     };
 
-    window.addEventListener("popstate", onPopState);
     window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [activeModal, goBackContent, close]);
 
-    return () => {
-      window.removeEventListener("popstate", onPopState);
-      window.removeEventListener("keydown", onKeyDown);
-    };
-  }, [activeModal, goBackContent, close, openExit]);
-
-  /* ---------- Favicon restore ---------- */
-  useEffect(() => {
-    const isTV = /Web0S|LG|Tizen/i.test(navigator.userAgent);
-    if (isTV) return;
-
-    const restoreFavicon = () => {
-      const existing = document.getElementById(
-        "favicon-link",
-      ) as HTMLLinkElement | null;
-
-      if (existing) {
-        existing.href = "/favicon-32x32.png";
-      } else {
-        const link = document.createElement("link");
-        link.id = "favicon-link";
-        link.rel = "icon";
-        link.type = "image/png";
-        link.href = "/favicon-32x32.png";
-        document.head.appendChild(link);
-      }
-    };
-
-    restoreFavicon();
-    window.addEventListener("popstate", restoreFavicon);
-    return () => window.removeEventListener("popstate", restoreFavicon);
-  }, []);
-
-  /* ---------- Render ---------- */
   return (
     <div ref={modalRef}>
       <ModalManagerContext.Provider
         value={{
           activeModal,
           selectedItem,
-          playerIntent,
           openContent,
-          openPlayer,
           openExit,
           goBackContent,
           close,

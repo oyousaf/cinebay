@@ -1,11 +1,10 @@
 "use client";
 
-import { useRef, useEffect, useState, useCallback, useMemo } from "react";
+import { useRef, useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import React from "react";
 
 import type { Movie } from "@/types/movie";
-import type { PlaybackIntent } from "@/lib/embed/buildEmbedUrl";
 
 import Banner from "./Banner";
 import { useNavigation } from "@/hooks/useNavigation";
@@ -18,7 +17,6 @@ interface ContentRailProps {
   title: string;
   items: Movie[];
   onSelect: (movie: Movie) => void;
-  onWatch: (intent: PlaybackIntent) => void;
 }
 
 /* -------------------------------------------------
@@ -84,7 +82,6 @@ export default function ContentRail({
   title,
   items,
   onSelect,
-  onWatch,
 }: ContentRailProps) {
   const [activeItem, setActiveItem] = useState<Movie | null>(null);
 
@@ -146,26 +143,6 @@ export default function ContentRail({
     }
   }, [items, activeItem, railIndex, setFocus]);
 
-  /* ---------- Build intent ---------- */
-  const bannerIntent: PlaybackIntent | null = useMemo(() => {
-    if (!activeItem) return null;
-
-    if (activeItem.media_type === "movie") {
-      return { mediaType: "movie", tmdbId: activeItem.id };
-    }
-
-    if (activeItem.media_type === "tv") {
-      return {
-        mediaType: "tv",
-        tmdbId: activeItem.id,
-        season: 1,
-        episode: 1,
-      };
-    }
-
-    return null;
-  }, [activeItem]);
-
   /* -------------------------------------------------
      UI
   -------------------------------------------------- */
@@ -178,11 +155,7 @@ export default function ContentRail({
           </motion.div>
         ) : (
           <motion.div className="w-full h-full">
-            <Banner
-              item={activeItem}
-              onSelect={onSelect}
-              onWatch={bannerIntent ? () => onWatch(bannerIntent) : undefined}
-            />
+            <Banner item={activeItem} onSelect={onSelect} />
           </motion.div>
         )}
       </div>
