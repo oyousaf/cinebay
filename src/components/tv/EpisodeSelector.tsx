@@ -1,19 +1,19 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { FaPlay, FaChevronDown } from "react-icons/fa";
 
 import type { Movie, Season, Episode } from "@/types/movie";
 import { fetchSeasonEpisodes } from "@/lib/tmdb";
 import { useContinueWatching } from "@/hooks/useContinueWatching";
+import type { PlaybackIntent } from "@/lib/embed/buildEmbedUrl";
 
 interface Props {
   tv: Movie;
+  onPlay: (intent: PlaybackIntent) => void;
 }
 
-export default function EpisodeSelector({ tv }: Props) {
-  const navigate = useNavigate();
+export default function EpisodeSelector({ tv, onPlay }: Props) {
   const { getTVProgress } = useContinueWatching();
 
   const [seasons, setSeasons] = useState<Season[]>([]);
@@ -25,7 +25,7 @@ export default function EpisodeSelector({ tv }: Props) {
   const [openSeason, setOpenSeason] = useState(false);
   const [openEpisode, setOpenEpisode] = useState(false);
 
-  /* ---------- RESUME (DERIVED) ---------- */
+  /* ---------- RESUME (DERIVED, ALWAYS CURRENT) ---------- */
   const resume = useMemo(() => {
     return getTVProgress(tv.id);
   }, [tv.id, getTVProgress]);
@@ -68,11 +68,16 @@ export default function EpisodeSelector({ tv }: Props) {
     };
   }, [tv.id, season]);
 
-  /* ---------- PLAY (ROUTE-BASED) ---------- */
+  /* ---------- PLAY ---------- */
   const play = () => {
     if (!season || !episode) return;
 
-    navigate(`/watch/tv/${tv.id}/${season}/${episode}`);
+    onPlay({
+      mediaType: "tv",
+      tmdbId: tv.id,
+      season,
+      episode,
+    });
   };
 
   /* ---------- LABEL ---------- */
@@ -87,7 +92,10 @@ export default function EpisodeSelector({ tv }: Props) {
 
   /* ---------- UI ---------- */
   return (
-    <div className="rounded-xl border border-[hsl(var(--foreground)/0.4)] bg-[hsl(var(--background)/0.85)] p-4 space-y-4">
+    <div
+      className="rounded-xl border border-[hsl(var(--foreground)/0.4)]
+      bg-[hsl(var(--background)/0.85)] p-4 space-y-4"
+    >
       <div className="flex items-center justify-center">
         <button
           onClick={play}
@@ -115,7 +123,8 @@ export default function EpisodeSelector({ tv }: Props) {
           </button>
 
           {openSeason && (
-            <div className="absolute z-50 mt-1 w-full max-h-60 overflow-y-auto
+            <div
+              className="absolute z-50 mt-1 w-full max-h-60 overflow-y-auto
               rounded-lg shadow-xl bg-[hsl(var(--background))]
               border border-[hsl(var(--foreground)/0.4)]"
             >
@@ -151,7 +160,8 @@ export default function EpisodeSelector({ tv }: Props) {
           </button>
 
           {openEpisode && (
-            <div className="absolute z-50 mt-1 w-full max-h-60 overflow-y-auto
+            <div
+              className="absolute z-50 mt-1 w-full max-h-60 overflow-y-auto
               rounded-lg shadow-xl bg-[hsl(var(--background))]
               border border-[hsl(var(--foreground)/0.4)]"
             >

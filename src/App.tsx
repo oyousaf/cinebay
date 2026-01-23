@@ -1,6 +1,6 @@
 "use client";
 
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import AppShell from "@/AppShell";
 import WatchPage from "@/routes/WatchPage";
 
@@ -8,17 +8,19 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* ---------- APP SHELL ---------- */}
         <Route path="/" element={<AppShell />} />
 
-        {/* ---------- WATCH (ROUTE-BASED PLAYER) ---------- */}
+        {/* TV */}
         <Route
-          path="/watch/:mediaType/:tmdbId/:season?/:episode?"
+          path="/watch/tv/:tmdbId/:season/:episode"
           element={<WatchPage />}
         />
 
-        {/* ---------- FALLBACK ---------- */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        {/* MOVIE */}
+        <Route
+          path="/watch/movie/:tmdbId"
+          element={<WatchPage />}
+        />
       </Routes>
     </BrowserRouter>
   );
