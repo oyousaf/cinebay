@@ -24,7 +24,7 @@ export default function Banner({ item, onSelect }: BannerProps) {
 
   const { getTVProgress } = useContinueWatching();
 
-  /* ---------- RESUME (SYNC, FAST) ---------- */
+  /* ---------- RESUME ---------- */
   const resume = useMemo(() => {
     if (!isTV) return null;
     return getTVProgress(item.id);
@@ -32,41 +32,54 @@ export default function Banner({ item, onSelect }: BannerProps) {
 
   const hasResume = Boolean(resume);
 
-  /* ---------- PLAY (ROUTE-BASED) ---------- */
+  /* ---------- PLAY ---------- */
   const handlePlay = () => {
     if (isTV) {
       navigate(
         `/watch/tv/${item.id}/${resume?.season ?? 1}/${resume?.episode ?? 1}`,
       );
-      return;
+    } else {
+      navigate(`/watch/movie/${item.id}`);
     }
-
-    navigate(`/watch/movie/${item.id}`);
   };
 
-  /* ---------- MOTION ---------- */
+  /* ---------- MOTION (TIGHTENED) ---------- */
   const containerVariants: Variants = {
+    hidden: { opacity: 0, y: 10 },
+    show: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.18,
+        ease: "easeOut",
+      },
+    },
+    exit: {
+      opacity: 0,
+      y: 6,
+      transition: {
+        duration: 0.14,
+        ease: "easeOut",
+      },
+    },
+  };
+
+  const childVariants: Variants = {
     hidden: { opacity: 0, y: 6 },
     show: {
       opacity: 1,
       y: 0,
-      transition: { duration: 0.18, ease: "easeOut" },
-    },
-    exit: { opacity: 0, y: 4 },
-  };
-
-  const childVariants: Variants = {
-    hidden: { opacity: 0, y: 4 },
-    show: {
-      opacity: 1,
-      y: 0,
-      transition: { duration: 0.16, ease: "easeOut" },
+      transition: {
+        duration: 0.16,
+        ease: "easeOut",
+      },
     },
   };
 
   /* ---------- UI ---------- */
   return (
-    <div className="relative w-full h-[70vh] sm:h-full flex flex-col justify-end overflow-hidden shadow-2xl snap-start bg-black">
+    <div className="relative w-full h-[70vh] sm:h-full flex flex-col justify-end overflow-hidden bg-black shadow-2xl snap-start">
+      {/* Background */}
       <AnimatePresence initial={false}>
         <motion.img
           key={item.id}
@@ -76,16 +89,18 @@ export default function Banner({ item, onSelect }: BannerProps) {
               : "/fallback-bg.png"
           }
           alt=""
-          className="absolute inset-0 w-full h-full object-cover"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.28, ease: "linear" }}
+          className="absolute inset-0 w-full h-full object-cover will-change-transform"
+          initial={{ opacity: 0.6, scale: 1.02 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0.6 }}
+          transition={{ duration: 0.2, ease: "easeOut" }}
         />
       </AnimatePresence>
 
+      {/* Gradient */}
       <div className="absolute inset-0 bg-linear-to-t from-black via-black/80 to-black/30 pointer-events-none" />
 
+      {/* Content */}
       <AnimatePresence mode="wait">
         <motion.div
           key={item.id}
@@ -96,32 +111,32 @@ export default function Banner({ item, onSelect }: BannerProps) {
           exit="exit"
         >
           <motion.h2
-            className="font-extrabold mb-4 text-[clamp(1.9rem,4.5vw,3.1rem)]"
             variants={childVariants}
+            className="font-extrabold mb-4 text-[clamp(1.9rem,4.5vw,3.1rem)]"
           >
             {item.title || item.name}
           </motion.h2>
 
           <motion.p
-            className="text-gray-200 max-w-4xl mb-8 text-[clamp(1rem,1.2vw,1.25rem)] leading-relaxed line-clamp-5 md:line-clamp-6"
             variants={childVariants}
+            className="text-gray-200 max-w-4xl mb-8 text-[clamp(1rem,1.2vw,1.25rem)] leading-relaxed line-clamp-5 md:line-clamp-6"
           >
             {item.overview}
           </motion.p>
 
           <motion.div
-            className="flex items-center gap-3"
             variants={childVariants}
+            className="flex items-center gap-3"
           >
             <motion.button
               onClick={handlePlay}
-              whileHover={{ scale: 1.04 }}
-              whileTap={{ scale: 0.96 }}
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              transition={{ duration: 0.12, ease: "easeOut" }}
               className={`relative inline-flex items-center justify-center gap-3 h-12
                 ${hasResume ? "px-7" : "px-6"}
                 rounded-full font-semibold leading-none
-                transition-colors select-none
-                shadow-lg shadow-black/40
+                select-none shadow-lg shadow-black/40
                 bg-[hsl(var(--foreground))] text-[hsl(var(--background))]`}
             >
               <span className="absolute inset-0 rounded-full ring-1 ring-white/15 pointer-events-none" />
