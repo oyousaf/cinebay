@@ -169,7 +169,7 @@ export default function Watchlist({
       .filter(
         (m) =>
           deferredFilters.type === "all" ||
-          m.media_type === deferredFilters.type
+          m.media_type === deferredFilters.type,
       )
       .map((m) => ({
         ...m,
@@ -186,7 +186,7 @@ export default function Watchlist({
         return list.sort((a, b) => b._date - a._date);
       default:
         return list.sort(
-          (a, b) => (b.vote_average ?? 0) - (a.vote_average ?? 0)
+          (a, b) => (b.vote_average ?? 0) - (a.vote_average ?? 0),
         );
     }
   }, [watchlist, deferredFilters]);
@@ -201,6 +201,19 @@ export default function Watchlist({
       updateRailLength(railIndex, filteredList.length);
     }
   }, [filteredList.length, railIndex, registerRail, updateRailLength]);
+
+  /* ---------- Focus clamp  ---------- */
+  useEffect(() => {
+    if (railIndex === null) return;
+    if (focus.section !== railIndex) return;
+
+    if (focus.index >= filteredList.length) {
+      setFocus({
+        section: railIndex,
+        index: Math.max(0, filteredList.length - 1),
+      });
+    }
+  }, [filteredList.length, railIndex, focus, setFocus]);
 
   /* ---------- UI ---------- */
   return (
