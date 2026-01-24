@@ -13,7 +13,7 @@ function normaliseTitle(item: KnownForItem) {
   return item.title || item.name || "Untitled";
 }
 
-const KnownFor = ({ items, onSelect }: Props) => {
+function KnownFor({ items, onSelect }: Props) {
   const filtered = useMemo(() => {
     const seen = new Set<string>();
 
@@ -34,10 +34,12 @@ const KnownFor = ({ items, onSelect }: Props) => {
   if (!filtered.length) return null;
 
   return (
-    <section className="pt-4">
-      <h3 className="text-sm font-semibold text-zinc-300 mb-2">Known For</h3>
+    <section className="pt-6 space-y-3">
+      <h3 className="text-base font-semibold tracking-tight text-[hsl(var(--foreground))]">
+        Known for
+      </h3>
 
-      <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+      <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
         {filtered.map((item) => {
           const title = normaliseTitle(item);
           const poster = item.poster_path
@@ -47,8 +49,8 @@ const KnownFor = ({ items, onSelect }: Props) => {
           const year = item.release_date
             ? new Date(item.release_date).getFullYear()
             : item.first_air_date
-            ? new Date(item.first_air_date).getFullYear()
-            : null;
+              ? new Date(item.first_air_date).getFullYear()
+              : null;
 
           return (
             <button
@@ -68,26 +70,35 @@ const KnownFor = ({ items, onSelect }: Props) => {
                   vote_average: item.vote_average,
                 })
               }
-              className="w-28 shrink-0 text-center space-y-1 focus:outline-none"
+              className="w-28 shrink-0 text-center space-y-1 rounded-lg focus-visible:outline-none focus-visible:ring-2
+                focus-visible:ring-[hsl(var(--foreground))]"
             >
               <img
                 src={poster}
                 alt={title}
                 loading="lazy"
-                className="w-28 h-40 rounded-lg object-cover shadow"
+                className="w-28 h-40 rounded-lg object-cover shadow-md transition-transform duration-200
+                  hover:scale-[1.03]"
               />
 
-              <div className="text-xs text-zinc-300 font-medium truncate">
+              <div className="text-xs font-medium truncate text-[hsl(var(--foreground))]">
                 {title}
               </div>
 
-              {year && <div className="text-[11px] text-zinc-500">{year}</div>}
+              {year && (
+                <div
+                  className="text-[11px]
+                    text-[hsl(var(--foreground)/0.6)]"
+                >
+                  {year}
+                </div>
+              )}
             </button>
           );
         })}
       </div>
     </section>
   );
-};
+}
 
 export default memo(KnownFor);

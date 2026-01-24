@@ -1,3 +1,5 @@
+"use client";
+
 import { memo } from "react";
 import { TMDB_IMAGE } from "@/lib/tmdb";
 import type { Movie } from "@/types/movie";
@@ -7,11 +9,11 @@ type Props = {
   onSelect?: (item: Movie) => void;
 };
 
-const RecommendationList: React.FC<Props & { label: string }> = ({
-  items,
-  onSelect,
-  label,
-}) => {
+type ListProps = Props & {
+  label: string;
+};
+
+const RecommendationList = ({ items, onSelect, label }: ListProps) => {
   const filtered = [...items]
     .filter((item) => (item.vote_average ?? 0) >= 6.5)
     .sort((a, b) => (b.vote_average ?? 0) - (a.vote_average ?? 0))
@@ -20,11 +22,13 @@ const RecommendationList: React.FC<Props & { label: string }> = ({
   if (!filtered.length) return null;
 
   return (
-    <div className="pt-4">
-      <h3 className="text-md font-semibold text-zinc-300 mb-2">{label}</h3>
+    <section className="pt-6 space-y-3">
+      <h3 className="text-base font-semibold tracking-tight text-[hsl(var(--foreground))]">
+        {label}
+      </h3>
+
       <div
-        className="carousel flex gap-3 overflow-x-auto pb-2 scrollbar-hide"
-        role="list"
+        className="flex gap-3 overflow-x-auto pb-2 no-scrollbar"
         aria-label={label}
       >
         {filtered.map((item) => {
@@ -34,33 +38,35 @@ const RecommendationList: React.FC<Props & { label: string }> = ({
             : "/fallback.jpg";
 
           return (
-            <div
+            <button
               key={item.id}
-              role="listitem"
+              type="button"
               onClick={() => onSelect?.(item)}
-              tabIndex={0}
-              className="relative w-28 shrink-0 text-center space-y-1 cursor-pointer outline-none"
+              className="w-28 shrink-0 text-center space-y-1 rounded-lg focus-visible:outline-none focus-visible:ring-2
+                focus-visible:ring-[hsl(var(--foreground))]"
             >
               <img
                 src={poster}
                 alt={title}
-                className="w-28 h-40 object-cover rounded-lg shadow-md hover:shadow-[0_0_12px_hsla(var(--foreground)/0.4)] transition duration-300"
                 loading="lazy"
                 draggable={false}
+                className="w-28 h-40 rounded-lg object-cover shadow-md transition-transform duration-200
+                  hover:scale-[1.03]"
               />
 
-              <div className="text-xs text-zinc-300 font-medium truncate">
+              <div className="text-xs font-medium truncate text-[hsl(var(--foreground))]">
                 {title}
               </div>
-            </div>
+            </button>
           );
         })}
       </div>
-    </div>
+    </section>
   );
 };
 
-// Export with different labels
+/* ---------- Exports ---------- */
+
 export const Recommendations = memo((props: Props) => (
   <RecommendationList {...props} label="Recommendations" />
 ));
