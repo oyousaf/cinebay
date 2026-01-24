@@ -43,7 +43,7 @@ const Layout: React.FC<LayoutProps> = ({
 
       {/* Content */}
       <main className="flex-1 min-h-0 overflow-y-auto md:pl-20 md:pr-0 pb-16 md:pb-0">
-        <AnimatePresence mode="wait" initial={false}>
+        <AnimatePresence initial={false}>
           <motion.div
             key={activeTab}
             initial={{ opacity: 0 }}

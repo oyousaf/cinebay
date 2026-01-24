@@ -103,7 +103,7 @@ export default function Banner({ item, onSelect }: BannerProps) {
       <div className="absolute inset-0 bg-linear-to-t from-black via-black/80 to-black/30 pointer-events-none" />
 
       {/* Content */}
-      <AnimatePresence mode="wait">
+      <AnimatePresence>
         <motion.div
           key={item.id}
           variants={containerVariants}
