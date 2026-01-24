@@ -13,7 +13,7 @@ function normaliseTitle(item: KnownForItem) {
   return item.title || item.name || "Untitled";
 }
 
-const KnownForSlider = ({ items, onSelect }: Props) => {
+const KnownFor = ({ items, onSelect }: Props) => {
   const filtered = useMemo(() => {
     const seen = new Set<string>();
 
@@ -90,4 +90,4 @@ const KnownForSlider = ({ items, onSelect }: Props) => {
   );
 };
 
-export default memo(KnownForSlider);
+export default memo(KnownFor);

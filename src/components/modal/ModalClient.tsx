@@ -19,7 +19,7 @@ const LazySimilar = lazy(() =>
 const LazyRecommendations = lazy(() =>
   import("./Recommendations").then((m) => ({ default: m.Recommendations })),
 );
-const LazyKnownForSlider = lazy(() => import("./KnownForSlider"));
+const LazyKnownForSlider = lazy(() => import("./KnownFor"));
 
 /* ---------- Visual tokens ---------- */
 
