@@ -64,7 +64,7 @@ export default function Banner({ item, onSelect }: BannerProps) {
   const handlePlay = () => {
     if (isTV) {
       navigate(
-        `/watch/tv/${item.id}/${resume?.season ?? 1}/${resume?.episode ?? 1}`
+        `/watch/tv/${item.id}/${resume?.season ?? 1}/${resume?.episode ?? 1}`,
       );
       return;
     }
@@ -131,10 +131,8 @@ export default function Banner({ item, onSelect }: BannerProps) {
               whileTap={{ scale: 0.97 }}
               transition={{ duration: 0.12, ease: "easeOut" }}
               className={`relative inline-flex items-center justify-center gap-3 h-12
-                ${hasResume ? "px-7" : "px-6"} rounded-full font-semibold
-                shadow-lg shadow-black/40
-                bg-[hsl(var(--foreground))] text-[hsl(var(--background))]
-                focus-visible:outline-none focus-visible:ring-2
+                ${hasResume ? "px-7" : "px-6"} rounded-full font-semibold shadow-lg shadow-black/40
+                bg-[hsl(var(--foreground))] text-[hsl(var(--background))] focus-visible:outline-none focus-visible:ring-2
                 focus-visible:ring-[hsl(var(--foreground))]`}
             >
               <span className="absolute inset-0 rounded-full ring-1 ring-white/15" />
@@ -145,10 +143,8 @@ export default function Banner({ item, onSelect }: BannerProps) {
             {/* INFO */}
             <button
               onClick={() => onSelect(item)}
-              className="inline-flex items-center justify-center h-12 w-12 rounded-full
-                         bg-[hsl(var(--foreground))] text-[hsl(var(--background))]
-                         transition hover:scale-105 active:scale-95
-                         focus-visible:outline-none focus-visible:ring-2
+              className="inline-flex items-center justify-center h-12 w-12 rounded-full bg-[hsl(var(--foreground))] text-[hsl(var(--background))]
+                         transition hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2
                          focus-visible:ring-[hsl(var(--foreground))]"
             >
               <FaInfoCircle size={22} />
@@ -158,11 +154,9 @@ export default function Banner({ item, onSelect }: BannerProps) {
             <button
               onClick={() => toggleWatchlist(item)}
               aria-pressed={isSaved}
-              className="inline-flex items-center justify-center h-12 w-12 rounded-full
-                         bg-[hsl(var(--foreground))] text-[hsl(var(--background))]
-                         transition hover:scale-105 active:scale-95
-                         focus-visible:outline-none focus-visible:ring-2
-                         focus-visible:ring-[hsl(var(--foreground))]"
+              className="inline-flex items-center justify-center h-12 w-12 rounded-full bg-[hsl(var(--foreground))] 
+              text-[hsl(var(--background))] transition hover:scale-105 active:scale-95 focus-visible:outline-none
+               focus-visible:ring-2 focus-visible:ring-[hsl(var(--foreground))]"
             >
               <Bookmark
                 size={22}
