@@ -69,13 +69,13 @@ export default function AppShell() {
   const renderContent = () => {
     switch (activeTab) {
       case "movies":
-        return <Movies onSelect={openContent} onWatch={handleWatch} />;
+        return <Movies onSelect={openContent} />;
 
       case "tvshows":
-        return <Shows onSelect={openContent} onWatch={handleWatch} />;
+        return <Shows onSelect={openContent} />;
 
       case "devspick":
-        return <DevsPick onSelect={openContent} onWatch={handleWatch} />;
+        return <DevsPick onSelect={openContent} />;
 
       case "watchlist":
         return <Watchlist onSelect={openContent} />;
