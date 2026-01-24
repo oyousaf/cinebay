@@ -73,11 +73,8 @@ export default function Banner({ item, onSelect }: BannerProps) {
 
   return (
     <div
-      className="
-        relative w-full h-[70vh] sm:h-full
-        flex flex-col justify-end
-        overflow-hidden bg-black shadow-2xl snap-start
-      "
+      className="relative w-full h-[70vh] sm:h-full flex flex-col justify-end overflow-hidden
+      bg-black shadow-2xl snap-start"
     >
       {/* Background */}
       <AnimatePresence initial={false}>
@@ -101,13 +98,7 @@ export default function Banner({ item, onSelect }: BannerProps) {
       </AnimatePresence>
 
       {/* Gradient overlay */}
-      <div
-        className="
-          absolute inset-0
-          bg-linear-to-t from-black via-black/80 to-black/30
-          pointer-events-none
-        "
-      />
+      <div className=" absolute inset-0 bg-linear-to-t from-black via-black/80 to-black/30 pointer-events-none" />
 
       {/* Content */}
       <AnimatePresence mode="wait">
@@ -116,20 +107,11 @@ export default function Banner({ item, onSelect }: BannerProps) {
           variants={containerVariants}
           initial="hidden"
           animate="show"
-          className="
-            relative z-10
-            px-4 md:px-12
-            py-6 md:py-10
-            max-w-6xl mx-auto
-          "
+          className="relative z-10 px-4 md:px-12 py-6 md:py-10 max-w-6xl mx-auto"
         >
           <motion.h2
             variants={itemVariants}
-            className="
-              font-extrabold mb-4
-              text-[clamp(1.9rem,4.5vw,3.1rem)]
-              text-[hsl(var(--foreground))]
-            "
+            className="font-extrabold mb-4 text-[clamp(1.9rem,4.5vw,3.1rem)] text-[hsl(var(--foreground))]"
           >
             {item.title || item.name}
           </motion.h2>
@@ -138,8 +120,7 @@ export default function Banner({ item, onSelect }: BannerProps) {
             <motion.p
               variants={itemVariants}
               className="max-w-4xl mb-8 text-[hsl(var(--foreground)/0.85)] text-[clamp(1rem,1.2vw,1.25rem)]
-                leading-relaxed line-clamp-5 md:line-clamp-6
-              "
+                leading-relaxed line-clamp-5 md:line-clamp-6"
             >
               {item.overview}
             </motion.p>
