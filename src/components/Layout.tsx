@@ -1,4 +1,5 @@
-import React, { ReactNode, useEffect } from "react";
+import React, { ReactNode, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import Navbar from "./Navbar";
 import { useNavigation } from "@/hooks/useNavigation";
 
@@ -11,6 +12,8 @@ interface LayoutProps {
   isModalOpen?: boolean;
 }
 
+const FADE_EASE = [0.22, 1, 0.36, 1] as const;
+
 const Layout: React.FC<LayoutProps> = ({
   children,
   activeTab,
@@ -18,9 +21,16 @@ const Layout: React.FC<LayoutProps> = ({
   isModalOpen,
 }) => {
   const { resetNavigation } = useNavigation();
+  const prevTabRef = useRef<Tab | null>(null);
 
+  /* -------------------------------------------------
+     RESET NAVIGATION
+  -------------------------------------------------- */
   useEffect(() => {
-    resetNavigation();
+    if (prevTabRef.current !== activeTab) {
+      resetNavigation();
+      prevTabRef.current = activeTab;
+    }
   }, [activeTab, resetNavigation]);
 
   return (
@@ -31,9 +41,23 @@ const Layout: React.FC<LayoutProps> = ({
         isModalOpen={isModalOpen}
       />
 
-      {/* Padding so content isn’t hidden by sidebar or bottom nav */}
+      {/* Content */}
       <main className="flex-1 min-h-0 overflow-y-auto md:pl-20 md:pr-0 pb-16 md:pb-0">
-        {children}
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{
+              duration: 0.25,
+              ease: FADE_EASE,
+            }}
+            className="h-full"
+          >
+            {children}
+          </motion.div>
+        </AnimatePresence>
       </main>
     </div>
   );
