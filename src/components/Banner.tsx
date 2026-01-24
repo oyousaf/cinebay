@@ -81,8 +81,8 @@ export default function Banner({ item, onSelect }: BannerProps) {
   -------------------------------------------------- */
   return (
     <div className="relative w-full h-[70vh] sm:h-full flex flex-col justify-end overflow-hidden bg-black shadow-2xl snap-start">
-      {/* Background (cinematic fade) */}
-      <AnimatePresence initial={false}>
+      {/* Background */}
+      <AnimatePresence initial={false} >
         <motion.img
           key={item.id}
           src={
@@ -103,7 +103,7 @@ export default function Banner({ item, onSelect }: BannerProps) {
       <div className="absolute inset-0 bg-linear-to-t from-black via-black/80 to-black/30 pointer-events-none" />
 
       {/* Content */}
-      <AnimatePresence>
+      <AnimatePresence mode="wait">
         <motion.div
           key={item.id}
           variants={containerVariants}
