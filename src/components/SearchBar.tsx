@@ -158,7 +158,7 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search movies, shows, people…"
-          className="flex-1 bg-transparent outline-none text-base text-[hsl(var(--foreground))]
+          className="flex-1 bg-transparent outline-none text-xl text-[hsl(var(--foreground))]
              placeholder:text-[hsl(var(--foreground)/0.5)]"
         />
 
