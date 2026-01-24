@@ -9,28 +9,24 @@ interface ShowsProps {
 
 export default function Shows({ onSelect }: ShowsProps) {
   const [shows, setShows] = useState<Movie[]>([]);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let active = true;
 
-    (async () => {
-      try {
-        const data = await fetchShows();
-        if (active) setShows(data);
-      } catch (err) {
+    fetchShows()
+      .then((data) => {
+        if (active && Array.isArray(data)) {
+          setShows(data);
+        }
+      })
+      .catch((err) => {
         console.error("Failed to fetch shows:", err);
-      } finally {
-        if (active) setLoading(false);
-      }
-    })();
+      });
 
     return () => {
       active = false;
     };
   }, []);
 
-  if (loading) return null;
-
-  return <ContentRail title="TV Shows" items={shows} onSelect={onSelect} />;
+  return <ContentRail items={shows} onSelect={onSelect} />;
 }
