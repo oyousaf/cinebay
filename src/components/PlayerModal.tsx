@@ -19,7 +19,7 @@ import { useContinueWatching } from "@/hooks/useContinueWatching";
 interface PlayerModalProps {
   intent: PlaybackIntent;
   onClose: () => void;
-  onPlayNext: (intent: PlaybackIntent) => void;
+  onPlayNext: (intent: PlaybackIntent) => void; // route push
 }
 
 const FALLBACK_DURATION_SECONDS = 42 * 60;
@@ -35,12 +35,9 @@ export default function PlayerModal({
   const [error, setError] = useState(false);
   const [nextOffer, setNextOffer] = useState<NextEpisodeResult | null>(null);
 
-  /* -------------------------------------------------
-     REFS 
-  -------------------------------------------------- */
+  const intentRef = useRef(intent);
   const offeredRef = useRef(false);
   const resumeWrittenRef = useRef(false);
-  const intentRef = useRef(intent);
 
   const loaderTimerRef = useRef<number | null>(null);
   const resumeTimerRef = useRef<number | null>(null);
@@ -54,16 +51,11 @@ export default function PlayerModal({
     [intent],
   );
 
-  /* -------------------------------------------------
-     KEEP CURRENT INTENT SAFE FROM STALE CLOSURES
-  -------------------------------------------------- */
   useEffect(() => {
     intentRef.current = intent;
   }, [intent]);
 
-  /* -------------------------------------------------
-     RESET ON ROUTE / EMBED CHANGE
-  -------------------------------------------------- */
+  /* RESET ON ROUTE CHANGE */
   useEffect(() => {
     setError(false);
     setNextOffer(null);
@@ -72,26 +64,24 @@ export default function PlayerModal({
     offeredRef.current = false;
     resumeWrittenRef.current = false;
 
-    if (loaderTimerRef.current) clearTimeout(loaderTimerRef.current);
-    if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
-    if (offerTimerRef.current) clearTimeout(offerTimerRef.current);
-    if (cancelTimerRef.current) clearTimeout(cancelTimerRef.current);
+    loaderTimerRef.current && clearTimeout(loaderTimerRef.current);
+    resumeTimerRef.current && clearTimeout(resumeTimerRef.current);
+    offerTimerRef.current && clearTimeout(offerTimerRef.current);
+    cancelTimerRef.current && clearTimeout(cancelTimerRef.current);
 
-    loaderTimerRef.current = window.setTimeout(() => {
-      setShowLoader(false);
-    }, LOADER_MIN_MS);
+    loaderTimerRef.current = window.setTimeout(
+      () => setShowLoader(false),
+      LOADER_MIN_MS,
+    );
 
     return () => {
-      if (loaderTimerRef.current) clearTimeout(loaderTimerRef.current);
+      loaderTimerRef.current && clearTimeout(loaderTimerRef.current);
     };
   }, [embedUrl]);
 
-  /* -------------------------------------------------
-     RESUME WRITE
-  -------------------------------------------------- */
+  /* RESUME WRITE */
   useEffect(() => {
-    if (intent.mediaType !== "tv") return;
-    if (resumeWrittenRef.current) return;
+    if (intent.mediaType !== "tv" || resumeWrittenRef.current) return;
 
     resumeTimerRef.current = window.setTimeout(() => {
       const i = intentRef.current;
@@ -102,73 +92,62 @@ export default function PlayerModal({
     }, RESUME_SECONDS * 1000);
 
     return () => {
-      if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
+      resumeTimerRef.current && clearTimeout(resumeTimerRef.current);
     };
   }, [embedUrl, setTVProgress]);
 
-  /* -------------------------------------------------
-     NEAR-END NEXT EPISODE OFFER (TV)
-  -------------------------------------------------- */
+  /* NEXT EPISODE OFFER */
   useEffect(() => {
     if (intent.mediaType !== "tv") return;
-
     let cancelled = false;
 
+    const maybeOffer = async () => {
+      if (cancelled || offeredRef.current) return;
+      if (document.visibilityState !== "visible") return;
+
+      offeredRef.current = true;
+      const result = await resolveNextEpisode(intentRef.current);
+      if (result) setNextOffer(result);
+    };
+
     const start = async () => {
-      let runtimeSeconds = FALLBACK_DURATION_SECONDS;
+      let runtime = FALLBACK_DURATION_SECONDS;
 
       try {
         const i = intentRef.current;
         if (typeof i.season === "number" && typeof i.episode === "number") {
           const r = await fetchEpisodeRuntime(i.tmdbId, i.season, i.episode);
-          if (r && r > 600 && r < 10800) runtimeSeconds = r;
+          if (r && r > 600 && r < 10800) runtime = r;
         }
       } catch {}
 
-      const windowStart = Math.floor(runtimeSeconds * 0.9);
-      const windowEnd = Math.floor(runtimeSeconds * 0.98);
+      offerTimerRef.current = window.setTimeout(
+        maybeOffer,
+        runtime * 0.9 * 1000,
+      );
 
-      const attempt = async () => {
-        if (cancelled || offeredRef.current) return;
-
-        if (document.visibilityState !== "visible") {
-          offerTimerRef.current = window.setTimeout(attempt, 15000);
-          return;
-        }
-
-        offeredRef.current = true;
-        const result = await resolveNextEpisode(intentRef.current);
-        if (result) setNextOffer(result);
-      };
-
-      offerTimerRef.current = window.setTimeout(attempt, windowStart * 1000);
-
-      cancelTimerRef.current = window.setTimeout(() => {
-        cancelled = true;
-      }, windowEnd * 1000);
+      cancelTimerRef.current = window.setTimeout(
+        () => (cancelled = true),
+        runtime * 0.98 * 1000,
+      );
     };
 
+    document.addEventListener("visibilitychange", maybeOffer);
     start();
 
     return () => {
       cancelled = true;
-      if (offerTimerRef.current) clearTimeout(offerTimerRef.current);
-      if (cancelTimerRef.current) clearTimeout(cancelTimerRef.current);
+      document.removeEventListener("visibilitychange", maybeOffer);
+      offerTimerRef.current && clearTimeout(offerTimerRef.current);
+      cancelTimerRef.current && clearTimeout(cancelTimerRef.current);
     };
   }, [embedUrl]);
 
-  /* -------------------------------------------------
-     PLAY NEXT
-  -------------------------------------------------- */
   const handlePlayNext = (next: PlaybackIntent) => {
     setNextOffer(null);
-    onClose();
-    queueMicrotask(() => onPlayNext(next));
+    onPlayNext(next);
   };
 
-  /* -------------------------------------------------
-     RENDER
-  -------------------------------------------------- */
   return (
     <AnimatePresence>
       <motion.div
@@ -176,19 +155,25 @@ export default function PlayerModal({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 flex items-center justify-center
-          bg-black/70 backdrop-blur-md"
+        className="
+          fixed inset-0 z-50 flex items-center justify-center
+          bg-[hsl(var(--foreground)/0.35)]
+          backdrop-blur-md
+          px-3 sm:px-6
+        "
       >
         <motion.div
           initial={{ scale: 0.97, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.98, opacity: 0 }}
           transition={{ duration: 0.25, ease: "easeOut" }}
-          className="relative w-full max-w-6xl aspect-video
+          className="
+            relative w-full max-w-6xl aspect-video
             rounded-2xl overflow-hidden
-            bg-black
-            ring-1 ring-white/5
-            shadow-[0_40px_120px_rgba(0,0,0,0.9)]"
+            bg-[hsl(var(--background))]
+            ring-2 ring-[hsl(var(--foreground))]
+            shadow-[0_40px_120px_rgba(0,0,0,0.9)]
+          "
         >
           {/* LOADER */}
           <AnimatePresence>
@@ -196,20 +181,22 @@ export default function PlayerModal({
               <motion.div
                 initial={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                transition={{ duration: 0.25, ease: "easeOut" }}
-                className="absolute inset-0 z-10 flex items-center justify-center bg-black"
+                className="
+                  absolute inset-0 z-10 flex items-center justify-center
+                  bg-[hsl(var(--background))]
+                "
               >
-                <div className="h-8 w-8 rounded-full border-2 border-white/20 border-t-white animate-spin" />
+                <div
+                  className="
+                    h-8 w-8 rounded-full
+                    border-2 border-[hsl(var(--foreground)/0.4)]
+                    border-t-[hsl(var(--foreground))]
+                    animate-spin
+                  "
+                />
               </motion.div>
             )}
           </AnimatePresence>
-
-          {/* ERROR */}
-          {error && (
-            <div className="absolute inset-0 flex items-center justify-center text-white text-sm px-6 text-center">
-              Sorry, the video could not be loaded.
-            </div>
-          )}
 
           {/* IFRAME */}
           <iframe
@@ -227,24 +214,29 @@ export default function PlayerModal({
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 12 }}
-                transition={{ duration: 0.2, ease: "easeOut" }}
-                className="absolute right-6 bottom-20 z-30
+                className="
+                  absolute right-4 bottom-4 sm:right-6 sm:bottom-6 z-30
                   flex items-center gap-4
                   rounded-xl px-4 py-3
-                  bg-black/70 backdrop-blur
-                  ring-1 ring-white/10
-                  shadow-xl"
+                  bg-[hsl(var(--background))]
+                  ring-2 ring-[hsl(var(--foreground))]
+                  shadow-xl
+                "
               >
-                <span className="text-sm text-zinc-200">
+                <span className="text-sm text-[hsl(var(--foreground)/0.8)]">
                   {nextOffer.kind === "NEXT_SEASON"
                     ? "Start next season?"
                     : "Next episode ready"}
                 </span>
 
                 <button
-                  className="text-sm font-semibold px-3 py-1.5 rounded-md
-                    bg-white text-black hover:bg-zinc-200 transition"
                   onClick={() => handlePlayNext(nextOffer.intent)}
+                  className="
+                    text-sm font-semibold px-3 py-1.5 rounded-md
+                    bg-[hsl(var(--foreground))]
+                    text-[hsl(var(--background))]
+                    hover:scale-105 transition
+                  "
                 >
                   Play
                 </button>
@@ -256,12 +248,15 @@ export default function PlayerModal({
           <button
             onClick={onClose}
             aria-label="Close player"
-            className="absolute top-4 right-4 z-20
-              rounded-full bg-black/60 backdrop-blur
-              ring-1 ring-white/10
-              hover:bg-black/80 transition"
+            className="
+              absolute top-3 right-3 sm:top-4 sm:right-4 z-20
+              rounded-full
+              bg-[hsl(var(--background))]
+              ring-2 ring-[hsl(var(--foreground))]
+              hover:scale-105 transition
+            "
           >
-            <X size={22} className="m-2 text-white/90" />
+            <X size={22} className="m-2 text-[hsl(var(--foreground))]" />
           </button>
         </motion.div>
       </motion.div>
