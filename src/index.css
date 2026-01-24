@@ -12,9 +12,12 @@
   --font-sans: "Concert One", ui-sans-serif, system-ui, sans-serif;
   --font-heading: "Permanent Marker", cursive;
 
-  /* Colors */
-  --background: 157 100% 75%; /* #80ffcc */
-  --foreground: 276 100% 21%; /* #3b006a */
+  /* Core colors */
+  --background: 157 100% 75%;
+  --foreground: 276 100% 21%;
+
+  /* Semantic surface text (banners, modals, overlays) */
+  --surface-foreground: 157 100% 75%;
 
   /* Viewport fix */
   --vh: 1vh;
@@ -23,6 +26,8 @@
 .dark {
   --background: 276 100% 21%;
   --foreground: 157 100% 75%;
+
+  --surface-foreground: 157 100% 75%;
 }
 
 /* -------------------------------------------------
@@ -35,7 +40,9 @@ body {
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));
   font-family: var(--font-sans);
-  transition: background-color 0.3s, color 0.2s;
+  transition:
+    background-color 0.3s,
+    color 0.2s;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: contain;
 }
@@ -56,15 +63,6 @@ body {
   display: none;
 }
 
-.scrollbar-hide {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;
-}
-
 /* -------------------------------------------------
    MEDIA SAFETY
 -------------------------------------------------- */
@@ -80,12 +78,14 @@ img {
 @keyframes shadow-pulse {
   0%,
   100% {
-    box-shadow: 0 0 0 2px hsl(var(--foreground)),
+    box-shadow:
+      0 0 0 2px hsl(var(--foreground)),
       0 0 6px hsl(var(--foreground) / 0.6),
       0 0 12px hsl(var(--foreground) / 0.4);
   }
   50% {
-    box-shadow: 0 0 0 2px hsl(var(--foreground)),
+    box-shadow:
+      0 0 0 2px hsl(var(--foreground)),
       0 0 12px hsl(var(--foreground) / 0.8),
       0 0 24px hsl(var(--foreground) / 0.6);
   }
