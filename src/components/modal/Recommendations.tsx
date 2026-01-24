@@ -23,7 +23,7 @@ const RecommendationList = ({ items, onSelect, label }: ListProps) => {
 
   return (
     <section className="pt-6 space-y-3">
-      <h3 className="text-base font-semibold tracking-tight text-[hsl(var(--foreground))]">
+      <h3 className="text-base font-semibold tracking-tight text-[hsl(var(--surface-foreground))]">
         {label}
       </h3>
 
@@ -54,7 +54,7 @@ const RecommendationList = ({ items, onSelect, label }: ListProps) => {
                   hover:scale-[1.03]"
               />
 
-              <div className="text-xs font-medium truncate text-[hsl(var(--foreground))]">
+              <div className="text-xs font-medium truncate text-[hsl(var(--surface-foreground))]">
                 {title}
               </div>
             </button>

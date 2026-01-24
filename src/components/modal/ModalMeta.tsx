@@ -51,11 +51,13 @@ export default function ModalMeta({
   if (isPerson) {
     return (
       <div className="space-y-3">
-        <h2 className="text-3xl font-semibold tracking-tight">{movie.name}</h2>
+        <h2 className="text-3xl font-semibold tracking-tight text-[hsl(var(--surface-foreground))]">
+          {movie.name}
+        </h2>
 
         <div className="h-px w-20 bg-[hsl(var(--foreground)/0.25)]" />
 
-        <div className="text-sm sm:text-base text-[hsl(var(--foreground)/0.8)] space-y-1">
+        <div className="text-sm sm:text-base text-[hsl(var(--surface-foreground)/0.8)] space-y-1">
           {movie.birthday && <div>🎂 Born: {formatDate(movie.birthday)}</div>}
 
           {movie.deathday ? (
@@ -112,7 +114,7 @@ export default function ModalMeta({
       </div>
 
       {genres && (
-        <div className="text-xs text-[hsl(var(--foreground)/0.6)] text-center sm:text-left">
+        <div className="text-xs text-[hsl(var(--surface-foreground)/0.7)] text-center sm:text-left">
           {genres}
         </div>
       )}
