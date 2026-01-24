@@ -4,48 +4,35 @@ import { useEffect, useState } from "react";
 import ContentRail from "@/components/ContentRail";
 import { fetchDevsPick } from "@/lib/tmdb";
 import type { Movie } from "@/types/movie";
-import { PlaybackIntent } from "@/lib/embed/buildEmbedUrl";
 
 interface DevsPickProps {
   onSelect: (movie: Movie) => void;
-  onWatch: (intent: PlaybackIntent) => void;
 }
 
-export default function DevsPick({ onSelect, onWatch }: DevsPickProps) {
+export default function DevsPick({ onSelect }: DevsPickProps) {
   const [items, setItems] = useState<Movie[]>([]);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let alive = true;
 
-    (async () => {
-      try {
-        const data = await fetchDevsPick();
+    fetchDevsPick()
+      .then((data) => {
         if (!alive || !Array.isArray(data)) return;
 
         setItems(
           data.filter(
-            (m) => m?.id && (m.title || m.name) && m.media_type !== "person"
-          )
+            (m) => m?.id && (m.title || m.name) && m.media_type !== "person",
+          ),
         );
-      } catch (err) {
+      })
+      .catch((err) => {
         console.error("Dev’s Pick fetch failed", err);
-      } finally {
-        if (alive) setLoading(false);
-      }
-    })();
+      });
 
     return () => {
       alive = false;
     };
   }, []);
 
-  return (
-    <ContentRail
-      title="Dev’s Pick"
-      items={items}
-      onSelect={onSelect}
-      onWatch={onWatch}
-    />
-  );
+  return <ContentRail title="Dev’s Pick" items={items} onSelect={onSelect} />;
 }
