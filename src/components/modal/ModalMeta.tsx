@@ -55,9 +55,9 @@ export default function ModalMeta({
           {movie.name}
         </h2>
 
-        <div className="h-px w-20 bg-zinc-700/60" />
+        <div className="h-px w-20 bg-[hsl(var(--foreground)/0.25)]" />
 
-        <div className="text-sm text-zinc-300 space-y-1">
+        <div className="text-sm text-[hsl(var(--foreground)/0.8)] space-y-1">
           {movie.birthday && (
             <div>🎂 Born: {formatDate(movie.birthday)}</div>
           )}
@@ -94,21 +94,21 @@ export default function ModalMeta({
 
   return (
     <div className="space-y-2">
-      <div className="flex flex-wrap gap-2 text-xs text-zinc-200 justify-center sm:justify-start">
+      <div className="flex flex-wrap gap-2 text-xs justify-center sm:justify-start">
         {creators && (
-          <span className="px-3 py-1 rounded-full bg-zinc-900/70 border border-zinc-700">
+          <span className="px-3 py-1 rounded-full bg-[hsl(var(--background))] ring-1 ring-[hsl(var(--foreground)/0.25)] text-[hsl(var(--foreground)/0.9)]">
             📺 {creators}
           </span>
         )}
 
         {director && (
-          <span className="px-3 py-1 rounded-full bg-zinc-900/70 border border-zinc-700">
+          <span className="px-3 py-1 rounded-full bg-[hsl(var(--background))] ring-1 ring-[hsl(var(--foreground)/0.25)] text-[hsl(var(--foreground)/0.9)]">
             🎬 {director}
           </span>
         )}
 
         {movie.release_date && (
-          <span className="px-3 py-1 rounded-full bg-zinc-900/70 border border-zinc-700">
+          <span className="px-3 py-1 rounded-full bg-[hsl(var(--background))] ring-1 ring-[hsl(var(--foreground)/0.25)] text-[hsl(var(--foreground)/0.9)]">
             📅 {formatDate(movie.release_date)}
           </span>
         )}
@@ -121,7 +121,7 @@ export default function ModalMeta({
       </div>
 
       {genres && (
-        <div className="text-xs text-zinc-400 text-center sm:text-left">
+        <div className="text-xs text-[hsl(var(--foreground)/0.6)] text-center sm:text-left">
           {genres}
         </div>
       )}
