@@ -5,10 +5,13 @@ import { motion } from "framer-motion";
 import React from "react";
 
 import type { Movie } from "@/types/movie";
-
 import Banner from "./Banner";
 import { useNavigation } from "@/hooks/useNavigation";
-import { Loader2 } from "lucide-react";
+
+/* -------------------------------------------------
+   MOTION PRESET
+-------------------------------------------------- */
+const EASE_OUT = [0.22, 1, 0.36, 1] as const;
 
 /* -------------------------------------------------
    TYPES
@@ -47,12 +50,7 @@ const Tile = React.memo(function Tile({
         isFocused ? { scale: 1.1, opacity: 1 } : { scale: 1, opacity: 0.7 }
       }
       whileHover={!isFocused ? { scale: 1.03, opacity: 0.9 } : {}}
-      transition={{
-        type: "spring",
-        stiffness: 300,
-        damping: 20,
-        mass: 0.9,
-      }}
+      transition={{ type: "spring", stiffness: 300, damping: 20, mass: 0.9 }}
       onClick={onFocus}
     >
       <img
@@ -67,7 +65,11 @@ const Tile = React.memo(function Tile({
       />
 
       {showStatus && (
-        <div className="absolute top-2 left-2 bg-[hsl(var(--foreground))] text-[hsl(var(--background))] text-[10px] md:text-xs font-bold px-2 py-0.5 rounded-full uppercase shadow-md shadow-pulse">
+        <div
+          className="absolute top-2 left-2 bg-[hsl(var(--foreground))]
+          text-[hsl(var(--background))] text-[10px] md:text-xs font-bold
+          px-2 py-0.5 rounded-full uppercase shadow-md shadow-pulse"
+        >
           {movie.status!.toUpperCase()}
         </div>
       )}
@@ -83,13 +85,13 @@ export default function ContentRail({
   items,
   onSelect,
 }: ContentRailProps) {
-  const [activeItem, setActiveItem] = useState<Movie | null>(null);
-
   const railRef = useRef<HTMLDivElement | null>(null);
   const tileRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   const { focus, setFocus, registerRail, updateRailLength } = useNavigation();
   const [railIndex, setRailIndex] = useState<number | null>(null);
+
+  const [activeItem, setActiveItem] = useState<Movie | null>(null);
 
   /* ---------- Register rail ---------- */
   useEffect(() => {
@@ -98,7 +100,7 @@ export default function ContentRail({
     }
   }, [railIndex, registerRail, items.length]);
 
-  /* ---------- Focus handling ---------- */
+  /* ---------- Focus handler ---------- */
   const handleFocus = useCallback(
     (movie: Movie, idx: number) => {
       setActiveItem(movie);
@@ -143,34 +145,39 @@ export default function ContentRail({
     }
   }, [items, activeItem, railIndex, setFocus]);
 
+  if (items.length === 0) return null;
+
   /* -------------------------------------------------
      UI
   -------------------------------------------------- */
   return (
     <section className="relative w-full min-h-[90vh] sm:h-screen snap-start flex flex-col">
+      {/* Banner */}
       <div className="flex-1">
-        {!activeItem ? (
-          <motion.div className="flex items-center justify-center h-full">
-            <Loader2 className="animate-spin w-8 h-8 text-[hsl(var(--foreground))]" />
-          </motion.div>
-        ) : (
-          <motion.div className="w-full h-full">
-            <Banner item={activeItem} onSelect={onSelect} />
-          </motion.div>
-        )}
-      </div>
-
-      {items.length > 0 && railIndex !== null && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.35, ease: "easeOut" }}
+          transition={{ duration: 0.3, ease: EASE_OUT }}
+          className="w-full h-full"
+        >
+          <Banner item={activeItem ?? items[0]} onSelect={onSelect} />
+        </motion.div>
+      </div>
+
+      {/* Rail */}
+      {railIndex !== null && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.25, ease: EASE_OUT }}
           className="relative z-50 px-4 pb-[calc(0.5rem+env(safe-area-inset-bottom))]"
         >
           <div
             ref={railRef}
             role="list"
-            className="flex overflow-x-auto overflow-y-hidden gap-3 no-scrollbar snap-x snap-mandatory pl-2 md:pl-4 pr-2 md:pr-4 py-4"
+            className="flex overflow-x-auto overflow-y-hidden gap-3
+              no-scrollbar snap-x snap-mandatory
+              pl-2 md:pl-4 pr-2 md:pr-4 py-4"
           >
             {items.map((movie, idx) => (
               <Tile
