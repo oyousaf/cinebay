@@ -55,7 +55,7 @@ export default function ModalMeta({
 
         <div className="h-px w-20 bg-[hsl(var(--foreground)/0.25)]" />
 
-        <div className="text-sm text-[hsl(var(--foreground)/0.8)] space-y-1">
+        <div className="text-sm sm:text-base text-[hsl(var(--foreground)/0.8)] space-y-1">
           {movie.birthday && <div>🎂 Born: {formatDate(movie.birthday)}</div>}
 
           {movie.deathday ? (
