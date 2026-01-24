@@ -27,9 +27,7 @@ export default function ModalActions({ movie }: { movie: Movie }) {
       return;
     }
 
-    navigate(
-      `/watch/tv/${intent.tmdbId}/${intent.season}/${intent.episode}`,
-    );
+    navigate(`/watch/tv/${intent.tmdbId}/${intent.season}/${intent.episode}`);
   };
 
   return (
@@ -69,12 +67,7 @@ export default function ModalActions({ movie }: { movie: Movie }) {
       </div>
 
       {/* TV EPISODES */}
-      {isTV && (
-        <EpisodeSelector
-          tv={movie}
-          onPlay={(intent) => play(intent)}
-        />
-      )}
+      {isTV && <EpisodeSelector tv={movie} onPlay={(intent) => play(intent)} />}
     </div>
   );
 }

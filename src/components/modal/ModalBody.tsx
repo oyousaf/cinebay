@@ -72,12 +72,8 @@ export default function ModalBody({
                     (res) => res && onSelect?.(res),
                   )
                 }
-                className="underline underline-offset-2
-                  hover:text-[hsl(var(--foreground))]
-                  transition
-                  focus-visible:outline-none
-                  focus-visible:ring-1
-                  focus-visible:ring-[hsl(var(--foreground))]"
+                className="underline underline-offset-2 hover:text-[hsl(var(--foreground))] transition
+                  focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[hsl(var(--foreground))]"
               >
                 {actor.name}
               </button>

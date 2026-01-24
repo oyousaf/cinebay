@@ -122,12 +122,8 @@ export default function ModalClient({
 
           {/* CONTENT */}
           <div
-            className="
-              px-4 py-6 sm:px-8 sm:py-8
-              bg-linear-to-b
-              from-black/80 via-black/60 to-black/90
-              max-h-[90vh] overflow-y-auto space-y-8
-            "
+            className="px-4 py-6 sm:px-8 sm:py-8 bg-linear-to-b from-black/80 via-black/60 to-black/90
+              max-h-[90vh] overflow-y-auto space-y-8"
           >
             {/* HERO ROW */}
             <div className="flex flex-col sm:flex-row gap-6 items-center sm:items-start">

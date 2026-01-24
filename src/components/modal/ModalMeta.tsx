@@ -24,7 +24,7 @@ const calculateAge = (birthday?: string, deathday?: string) => {
   const birth = new Date(birthday);
   const end = deathday ? new Date(deathday) : new Date();
   return Math.floor(
-    (end.getTime() - birth.getTime()) / (1000 * 60 * 60 * 24 * 365.25)
+    (end.getTime() - birth.getTime()) / (1000 * 60 * 60 * 24 * 365.25),
   );
 };
 
@@ -51,25 +51,18 @@ export default function ModalMeta({
   if (isPerson) {
     return (
       <div className="space-y-3">
-        <h2 className="text-3xl font-semibold tracking-tight">
-          {movie.name}
-        </h2>
+        <h2 className="text-3xl font-semibold tracking-tight">{movie.name}</h2>
 
         <div className="h-px w-20 bg-[hsl(var(--foreground)/0.25)]" />
 
         <div className="text-sm text-[hsl(var(--foreground)/0.8)] space-y-1">
-          {movie.birthday && (
-            <div>🎂 Born: {formatDate(movie.birthday)}</div>
-          )}
+          {movie.birthday && <div>🎂 Born: {formatDate(movie.birthday)}</div>}
 
           {movie.deathday ? (
             <div>
               🕊️ Passed: {formatDate(movie.deathday)}
               {movie.birthday &&
-                ` (aged ${calculateAge(
-                  movie.birthday,
-                  movie.deathday
-                )})`}
+                ` (aged ${calculateAge(movie.birthday, movie.deathday)})`}
             </div>
           ) : (
             movie.birthday && (
@@ -77,9 +70,7 @@ export default function ModalMeta({
             )
           )}
 
-          {movie.place_of_birth && (
-            <div>📍 {movie.place_of_birth}</div>
-          )}
+          {movie.place_of_birth && <div>📍 {movie.place_of_birth}</div>}
         </div>
       </div>
     );
