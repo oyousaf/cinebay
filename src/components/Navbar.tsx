@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { FaFilm, FaTv, FaSearch, FaStar, FaBookmark } from "react-icons/fa";
 
 import { DarkModeToggle } from "../DarkModeToggle";
@@ -97,7 +97,7 @@ export default function Navbar({
             className="w-12 h-12 rounded-full"
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.35 }}
+            transition={{ duration: 0.35, ease: "easeOut" }}
           />
         </div>
 
@@ -106,28 +106,34 @@ export default function Navbar({
             const active = activeTab === item.id;
 
             return (
-              <motion.button
+              <button
                 key={item.id}
                 onClick={() => onTabChange(item.id)}
                 onMouseEnter={(e) =>
                   showTooltip(item.label, "side", e.currentTarget)
                 }
                 onMouseLeave={hideTooltip}
-                whileHover={{ scale: 1.15 }}
                 aria-current={active ? "page" : undefined}
-                className={`relative p-2 rounded-lg ${
+                className={`relative p-2 rounded-lg transition-transform ${
                   active ? "text-[hsl(var(--foreground))]" : "opacity-50"
                 }`}
               >
-                {item.icon}
+                <motion.span whileHover={{ scale: 1.15 }}>
+                  {item.icon}
+                </motion.span>
 
-                {active && (
-                  <motion.div
-                    layoutId="active-indicator"
-                    className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-full bg-[hsl(var(--foreground))]"
-                  />
-                )}
-              </motion.button>
+                <AnimatePresence>
+                  {active && (
+                    <motion.div
+                      initial={{ scaleY: 0 }}
+                      animate={{ scaleY: 1 }}
+                      exit={{ scaleY: 0 }}
+                      transition={{ duration: 0.2, ease: "easeOut" }}
+                      className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-full bg-[hsl(var(--foreground))] origin-center"
+                    />
+                  )}
+                </AnimatePresence>
+              </button>
             );
           })}
         </div>
@@ -143,28 +149,32 @@ export default function Navbar({
           const active = activeTab === item.id;
 
           return (
-            <motion.button
+            <button
               key={item.id}
               onClick={() => onTabChange(item.id)}
               onTouchStart={(e) =>
                 handleTouchStart(item.label, e.currentTarget)
               }
               onTouchEnd={handleTouchEnd}
-              whileHover={{ scale: 1.15 }}
               aria-current={active ? "page" : undefined}
-              className={`relative ${
+              className={`relative transition-transform ${
                 active ? "text-[hsl(var(--foreground))]" : "opacity-50"
               }`}
             >
-              {item.icon}
+              <motion.span whileTap={{ scale: 0.9 }}>{item.icon}</motion.span>
 
-              {active && (
-                <motion.div
-                  layoutId="active-indicator-mobile"
-                  className="absolute -bottom-1.5 w-8 h-1 rounded-full bg-[hsl(var(--foreground))]"
-                />
-              )}
-            </motion.button>
+              <AnimatePresence>
+                {active && (
+                  <motion.div
+                    initial={{ scaleX: 0 }}
+                    animate={{ scaleX: 1 }}
+                    exit={{ scaleX: 0 }}
+                    transition={{ duration: 0.2, ease: "easeOut" }}
+                    className="absolute -bottom-1.5 w-8 h-1 rounded-full bg-[hsl(var(--foreground))] origin-center"
+                  />
+                )}
+              </AnimatePresence>
+            </button>
           );
         })}
       </nav>
