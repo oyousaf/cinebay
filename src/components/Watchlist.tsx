@@ -96,8 +96,8 @@ const WatchlistTile = React.memo(function WatchlistTile({
             e.stopPropagation();
             onRemove();
           }}
-          className="absolute top-2 right-2 rounded-full bg-black/60 backdrop-blur text-red-400 transition
-          p-3 sm:p-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+          className="absolute top-2 right-2 rounded-full bg-black/60 backdrop-blur text-red-400 transition duration-300
+          p-3 sm:p-2 opacity-100 sm:opacity-100 lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100"
         >
           <X size={16} />
         </button>
