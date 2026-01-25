@@ -26,11 +26,11 @@ const containerVariants: Variants = {
 };
 
 const itemVariants: Variants = {
-  hidden: { opacity: 0, y: 14 },
+  hidden: { opacity: 0, y: 10 },
   show: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.4, ease: EASE_OUT },
+    transition: { duration: 0.35, ease: EASE_OUT },
   },
 };
 
@@ -73,7 +73,9 @@ export default function Banner({ item, onSelect }: BannerProps) {
 
   return (
     <div className="relative w-full h-[70vh] sm:h-full flex flex-col justify-end overflow-hidden bg-black shadow-2xl snap-start">
-      {/* Background */}
+      {/* -------------------------------------------------
+         BACKGROUND
+      -------------------------------------------------- */}
       <AnimatePresence initial={false}>
         <motion.img
           key={item.id}
@@ -83,6 +85,8 @@ export default function Banner({ item, onSelect }: BannerProps) {
               : "/fallback-bg.png"
           }
           alt=""
+          decoding="async"
+          fetchPriority="low"
           className="absolute inset-0 w-full h-full object-cover"
           initial={{ opacity: 0, scale: 1.04 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -94,79 +98,93 @@ export default function Banner({ item, onSelect }: BannerProps) {
       {/* Gradient overlay */}
       <div className="absolute inset-0 bg-linear-to-t from-black via-black/80 to-black/30 pointer-events-none" />
 
-      {/* Content */}
-      <AnimatePresence mode="wait">
+      {/* -------------------------------------------------
+         CONTENT WRAPPER
+      -------------------------------------------------- */}
+      <div className="relative z-10 px-4 md:px-12 py-6 md:py-10 max-w-6xl mx-auto">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={item.id}
+            variants={containerVariants}
+            initial="hidden"
+            animate="show"
+            exit="hidden"
+          >
+            <motion.h2
+              variants={itemVariants}
+              className="font-extrabold mb-4 text-[clamp(1.9rem,4.5vw,3.1rem)] text-[hsl(var(--surface-foreground))]"
+            >
+              {item.title || item.name}
+            </motion.h2>
+
+            {item.overview && (
+              <motion.p
+                variants={itemVariants}
+                className="max-w-4xl mb-8 text-[hsl(var(--surface-foreground)/0.85)] text-[clamp(1rem,1.2vw,1.25rem)] 
+                leading-relaxed line-clamp-5 md:line-clamp-6"
+              >
+                {item.overview}
+              </motion.p>
+            )}
+          </motion.div>
+        </AnimatePresence>
+
+        {/* -------------------------------------------------
+           BUTTONS
+        -------------------------------------------------- */}
         <motion.div
-          key={item.id}
-          variants={containerVariants}
+          variants={itemVariants}
           initial="hidden"
           animate="show"
-          className="relative z-10 px-4 md:px-12 py-6 md:py-10 max-w-6xl mx-auto"
+          className="flex items-center gap-3"
         >
-          <motion.h2
-            variants={itemVariants}
-            className="font-extrabold mb-4 text-[clamp(1.9rem,4.5vw,3.1rem)] text-[hsl(var(--surface-foreground))]"
+          {/* PLAY */}
+          <motion.button
+            onClick={handlePlay}
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            transition={{ duration: 0.12, ease: "easeOut" }}
+            className={`relative inline-flex items-center justify-center gap-3 h-12
+              ${hasResume ? "px-7" : "px-6"} rounded-full font-semibold shadow-lg shadow-black/40
+              bg-[hsl(var(--foreground))] text-[hsl(var(--background))]
+              focus-visible:outline-none focus-visible:ring-2
+              focus-visible:ring-[hsl(var(--foreground))]`}
           >
-            {item.title || item.name}
-          </motion.h2>
+            <span className="absolute inset-0 rounded-full ring-1 ring-white/15" />
+            <FaPlay size={22} />
+            {hasResume && <span>Resume</span>}
+          </motion.button>
 
-          {item.overview && (
-            <motion.p
-              variants={itemVariants}
-              className="max-w-4xl mb-8 text-[hsl(var(--surface-foreground)/0.85)] text-[clamp(1rem,1.2vw,1.25rem)]
-                         leading-relaxed line-clamp-5 md:line-clamp-6"
-            >
-              {item.overview}
-            </motion.p>
-          )}
-
-          <motion.div
-            variants={itemVariants}
-            className="flex items-center gap-3"
+          {/* INFO */}
+          <button
+            onClick={() => onSelect(item)}
+            className="inline-flex items-center justify-center h-12 w-12 rounded-full
+                       bg-[hsl(var(--foreground))] text-[hsl(var(--background))]
+                       transition hover:scale-105 active:scale-95
+                       focus-visible:outline-none focus-visible:ring-2
+                       focus-visible:ring-[hsl(var(--foreground))]"
           >
-            {/* PLAY */}
-            <motion.button
-              onClick={handlePlay}
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
-              transition={{ duration: 0.12, ease: "easeOut" }}
-              className={`relative inline-flex items-center justify-center gap-3 h-12
-                ${hasResume ? "px-7" : "px-6"} rounded-full font-semibold shadow-lg shadow-black/40
-                bg-[hsl(var(--foreground))] text-[hsl(var(--background))] focus-visible:outline-none focus-visible:ring-2
-                focus-visible:ring-[hsl(var(--foreground))]`}
-            >
-              <span className="absolute inset-0 rounded-full ring-1 ring-white/15" />
-              <FaPlay size={22} />
-              {hasResume && <span>Resume</span>}
-            </motion.button>
+            <FaInfoCircle size={22} />
+          </button>
 
-            {/* INFO */}
-            <button
-              onClick={() => onSelect(item)}
-              className="inline-flex items-center justify-center h-12 w-12 rounded-full bg-[hsl(var(--foreground))] text-[hsl(var(--background))]
-                         transition hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2
-                         focus-visible:ring-[hsl(var(--foreground))]"
-            >
-              <FaInfoCircle size={22} />
-            </button>
-
-            {/* WATCHLIST */}
-            <button
-              onClick={() => toggleWatchlist(item)}
-              aria-pressed={isSaved}
-              className="inline-flex items-center justify-center h-12 w-12 rounded-full bg-[hsl(var(--foreground))] 
-              text-[hsl(var(--background))] transition hover:scale-105 active:scale-95 focus-visible:outline-none
-               focus-visible:ring-2 focus-visible:ring-[hsl(var(--foreground))]"
-            >
-              <Bookmark
-                size={22}
-                strokeWidth={isSaved ? 3 : 2}
-                className={isSaved ? "fill-current" : "fill-none"}
-              />
-            </button>
-          </motion.div>
+          {/* WATCHLIST */}
+          <button
+            onClick={() => toggleWatchlist(item)}
+            aria-pressed={isSaved}
+            className="inline-flex items-center justify-center h-12 w-12 rounded-full
+                       bg-[hsl(var(--foreground))] text-[hsl(var(--background))]
+                       transition hover:scale-105 active:scale-95
+                       focus-visible:outline-none focus-visible:ring-2
+                       focus-visible:ring-[hsl(var(--foreground))]"
+          >
+            <Bookmark
+              size={22}
+              strokeWidth={isSaved ? 3 : 2}
+              className={isSaved ? "fill-current" : "fill-none"}
+            />
+          </button>
         </motion.div>
-      </AnimatePresence>
+      </div>
     </div>
   );
 }
