@@ -154,6 +154,7 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
                    border border-[hsl(var(--foreground)/0.25)] shadow-md"
       >
         <input
+          id="search"
           ref={inputRef}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
