@@ -9,6 +9,7 @@ import type { Movie } from "@/types/movie";
 import { TMDB_IMAGE } from "@/lib/tmdb";
 import { useWatchlist } from "@/context/WatchlistContext";
 import { useNavigation } from "@/hooks/useNavigation";
+import Skeleton from "@/components/Skeleton";
 
 /* ---------- Filters ---------- */
 type SortKey = "rating-desc" | "newest" | "title-asc" | "title-desc";
@@ -72,7 +73,7 @@ const WatchlistTile = React.memo(function WatchlistTile({
       <button
         type="button"
         onClick={() => onSelect(movie)}
-        className="relative block w-full h-full bg-black"
+        className="relative block w-full h-full"
         aria-label={`Open ${movie.title || movie.name}`}
       >
         <img
@@ -96,8 +97,8 @@ const WatchlistTile = React.memo(function WatchlistTile({
             e.stopPropagation();
             onRemove();
           }}
-          className="absolute top-2 right-2 rounded-full bg-black/60 backdrop-blur text-red-400 transition duration-300
-          p-3 sm:p-2 opacity-100 sm:opacity-100 lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100"
+          className="absolute top-2 right-2 rounded-full bg-black/60 backdrop-blur text-red-400 transition
+          p-3 sm:p-2 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100"
         >
           <X size={16} />
         </button>
@@ -143,6 +144,11 @@ export default function Watchlist({
 }) {
   const { watchlist, toggleWatchlist } = useWatchlist();
   const { focus, setFocus, registerRail, updateRailLength } = useNavigation();
+
+  /* ---------- Guard: loading / hydration ---------- */
+  if (!watchlist) {
+    return <Skeleton variant="watchlist" />;
+  }
 
   /* ---------- Init filters ---------- */
   const [filters, setFilters] = useState<Filters>(() => {
@@ -202,12 +208,13 @@ export default function Watchlist({
     }
   }, [filteredList.length, railIndex, registerRail, updateRailLength]);
 
-  /* ---------- Focus clamp  ---------- */
+  /* ---------- Focus clamp ---------- */
   useEffect(() => {
-    if (railIndex === null) return;
-    if (focus.section !== railIndex) return;
-
-    if (focus.index >= filteredList.length) {
+    if (
+      railIndex !== null &&
+      focus.section === railIndex &&
+      focus.index >= filteredList.length
+    ) {
       setFocus({
         section: railIndex,
         index: Math.max(0, filteredList.length - 1),
