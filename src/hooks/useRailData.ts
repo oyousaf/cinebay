@@ -2,7 +2,23 @@
 
 import { useEffect, useState } from "react";
 
-export function useRailData<T>(
+/* -------------------------------------------------
+   HELPERS
+-------------------------------------------------- */
+function dedupeById<T extends { id?: number | string }>(items: T[]): T[] {
+  const seen = new Set<string | number>();
+  return items.filter((item) => {
+    if (item?.id == null) return false;
+    if (seen.has(item.id)) return false;
+    seen.add(item.id);
+    return true;
+  });
+}
+
+/* -------------------------------------------------
+   HOOK
+-------------------------------------------------- */
+export function useRailData<T extends { id?: number | string }>(
   fetcher: () => Promise<T[]>,
   filter?: (item: T) => boolean,
 ) {
@@ -13,9 +29,20 @@ export function useRailData<T>(
 
     fetcher()
       .then((res) => {
-        if (!alive || !Array.isArray(res)) return;
+        if (!alive) return;
+        if (!Array.isArray(res)) {
+          setData([]);
+          return;
+        }
 
-        const next = filter ? res.filter(filter) : res;
+        let next = res;
+
+        if (filter) {
+          next = next.filter(filter);
+        }
+
+        next = dedupeById(next);
+
         setData(next);
       })
       .catch((err) => {
