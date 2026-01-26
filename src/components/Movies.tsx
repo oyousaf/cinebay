@@ -1,34 +1,17 @@
-import { useEffect, useState } from "react";
+"use client";
+
 import ContentRail from "@/components/ContentRail";
 import Skeleton from "@/components/Skeleton";
 import { fetchMovies } from "@/lib/tmdb";
 import type { Movie } from "@/types/movie";
+import { useRailData } from "@/hooks/useRailData";
 
 interface MoviesProps {
   onSelect: (movie: Movie) => void;
 }
 
 export default function Movies({ onSelect }: MoviesProps) {
-  const [movies, setMovies] = useState<Movie[] | null>(null);
-
-  useEffect(() => {
-    let active = true;
-
-    fetchMovies()
-      .then((data) => {
-        if (active && Array.isArray(data)) {
-          setMovies(data);
-        }
-      })
-      .catch((err) => {
-        console.error("Failed to fetch movies:", err);
-        if (active) setMovies([]);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, []);
+  const movies = useRailData<Movie>(fetchMovies);
 
   /* ---------- Loading ---------- */
   if (movies === null) {
