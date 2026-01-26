@@ -306,7 +306,7 @@ export default function Watchlist({
 
       <div className="max-w-6xl mx-auto px-4 py-10">
         {filteredList.length === 0 ? (
-          <p className="text-center text-foreground text-sm">
+          <p className="text-center text-foreground md:text-xl text-md">
             Nothing queued. That’s a dangerous amount of free time.
           </p>
         ) : (
