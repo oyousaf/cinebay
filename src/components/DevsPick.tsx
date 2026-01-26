@@ -1,7 +1,6 @@
 "use client";
 
 import ContentRail from "@/components/ContentRail";
-import Skeleton from "@/components/Skeleton";
 import { fetchDevsPick } from "@/lib/tmdb";
 import type { Movie } from "@/types/movie";
 import { useRailData } from "@/hooks/useRailData";
@@ -17,9 +16,9 @@ export default function DevsPick({ onSelect }: DevsPickProps) {
       Boolean(m?.id) && Boolean(m.title || m.name) && m.media_type !== "person",
   );
 
-  /* ---------- Loading ---------- */
+  /* ---------- Not ready ---------- */
   if (items === null) {
-    return <Skeleton />;
+    return null;
   }
 
   /* ---------- Empty ---------- */

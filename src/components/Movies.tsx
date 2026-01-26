@@ -1,7 +1,6 @@
 "use client";
 
 import ContentRail from "@/components/ContentRail";
-import Skeleton from "@/components/Skeleton";
 import { fetchMovies } from "@/lib/tmdb";
 import type { Movie } from "@/types/movie";
 import { useRailData } from "@/hooks/useRailData";
@@ -13,9 +12,9 @@ interface MoviesProps {
 export default function Movies({ onSelect }: MoviesProps) {
   const movies = useRailData<Movie>(fetchMovies);
 
-  /* ---------- Loading ---------- */
+  /* ---------- Not ready ---------- */
   if (movies === null) {
-    return <Skeleton />;
+    return null;
   }
 
   /* ---------- Empty ---------- */
