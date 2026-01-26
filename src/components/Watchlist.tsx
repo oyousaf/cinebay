@@ -306,8 +306,8 @@ export default function Watchlist({
 
       <div className="max-w-6xl mx-auto px-4 py-10">
         {filteredList.length === 0 ? (
-          <p className="text-center text-white/60 text-sm">
-            Nothing queued yet. Future favourites land here.
+          <p className="text-center text-foreground text-sm">
+            Nothing queued. That’s a dangerous amount of free time.
           </p>
         ) : (
           <motion.div
