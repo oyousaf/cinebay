@@ -16,17 +16,23 @@
   --background: 157 100% 75%;
   --foreground: 276 100% 21%;
 
-  /* Semantic surface text (banners, modals, overlays) */
+  /* Semantic surface text */
   --surface-foreground: 157 100% 75%;
 
-  /* Viewport fix */
-  --vh: 1vh;
+  /* Viewport height fix (fallback) */
+  --vh: 100vh;
+}
+
+/* Prefer modern dynamic viewport units */
+@supports (height: 100dvh) {
+  :root {
+    --vh: 100dvh;
+  }
 }
 
 .dark {
   --background: 276 100% 21%;
   --foreground: 157 100% 75%;
-
   --surface-foreground: 157 100% 75%;
 }
 
@@ -35,20 +41,30 @@
 -------------------------------------------------- */
 html,
 body {
-  height: 100%;
-  overflow-x: hidden;
+  min-height: var(--vh);
+  width: 100%;
+  margin: 0;
+  padding: 0;
+
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));
   font-family: var(--font-sans);
+
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+
   transition:
     background-color 0.3s,
     color 0.2s;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-y: contain;
 }
 
+/* Safe-area handling */
 body {
-  overflow-y: scroll;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }
 
 /* -------------------------------------------------
@@ -93,13 +109,4 @@ img {
 
 .shadow-pulse {
   animation: shadow-pulse 2s ease-in-out infinite;
-}
-
-/* -------------------------------------------------
-   MOBILE LANDSCAPE FIX
--------------------------------------------------- */
-@media (max-width: 768px) and (orientation: landscape) {
-  :root {
-    --vh: 0.8vh;
-  }
 }
