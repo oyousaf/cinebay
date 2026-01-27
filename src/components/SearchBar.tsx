@@ -2,7 +2,7 @@
 
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { motion, useAnimation, type Variants } from "framer-motion";
-import { Search, Loader2, X } from "lucide-react";
+import { Search, Loader2, X, Mic, MicOff } from "lucide-react";
 import debounce from "lodash.debounce";
 
 import { fetchDetails, fetchFromProxy } from "@/lib/tmdb";
@@ -32,7 +32,7 @@ const readRecent = (): string[] => {
     const raw = localStorage.getItem(RECENT_KEY);
     const parsed = raw ? JSON.parse(raw) : [];
     return Array.isArray(parsed)
-      ? parsed.filter((s) => typeof s === "string")
+      ? parsed.filter((s): s is string => typeof s === "string")
       : [];
   } catch {
     return [];
@@ -73,12 +73,14 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
   const [loading, setLoading] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const [focused, setFocused] = useState(false);
+  const [listening, setListening] = useState(false);
   const [, forceRender] = useState(0);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const requestId = useRef(0);
   const recent = useRef<string[]>([]);
   const searchedOnce = useRef(false);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
 
   const controls = useAnimation();
   const open = query.trim().length >= 2;
@@ -112,7 +114,7 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
         if (id !== requestId.current) return;
 
         const ranked = (data?.results ?? [])
-          .filter((r: Movie) => r?.id && r?.media_type)
+          .filter((r: Movie): r is Movie => Boolean(r?.id && r?.media_type))
           .sort((a: Movie, b: Movie) => scoreResult(b, q) - scoreResult(a, q))
           .slice(0, 10);
 
@@ -150,7 +152,50 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
   }, [query, open, runSearch, debouncedSearch, controls]);
 
   /* -------------------------------------------------
-     RECENT (PERSISTED)
+     VOICE SEARCH
+  -------------------------------------------------- */
+  const startVoiceSearch = useCallback(() => {
+    if (listening) return;
+
+    const Recognition =
+      window.SpeechRecognition ?? window.webkitSpeechRecognition;
+
+    if (!Recognition) {
+      console.warn("Speech recognition not supported");
+      return;
+    }
+
+    if (!recognitionRef.current) {
+      const rec = new Recognition();
+      rec.lang = "en-US";
+      rec.interimResults = false;
+      rec.maxAlternatives = 1;
+
+      rec.onresult = (e: SpeechRecognitionEvent) => {
+        const transcript = e.results[0][0].transcript.trim();
+        searchedOnce.current = true;
+        setQuery(transcript);
+        runSearch(transcript);
+      };
+
+      rec.onerror = () => setListening(false);
+      rec.onend = () => setListening(false);
+
+      recognitionRef.current = rec;
+    }
+
+    setListening(true);
+    recognitionRef.current.start();
+  }, [listening, runSearch]);
+
+  useEffect(() => {
+    return () => {
+      recognitionRef.current?.stop();
+    };
+  }, []);
+
+  /* -------------------------------------------------
+     RECENT
   -------------------------------------------------- */
   const saveRecent = useCallback((term: string) => {
     const t = term.trim();
@@ -196,14 +241,8 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
     [onSelectMovie, onSelectPerson, query, saveRecent],
   );
 
-  const handleRecentSelect = (term: string) => {
-    searchedOnce.current = true;
-    setQuery(term);
-    runSearch(term);
-  };
-
   /* -------------------------------------------------
-     UI STATE
+     UI
   -------------------------------------------------- */
   const hasRecent = recent.current.length > 0;
   const showRecent = focused && !open && hasRecent;
@@ -213,9 +252,6 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
     show: { opacity: 1, y: 0, transition: { duration: 0.18 } },
   };
 
-  /* -------------------------------------------------
-     RENDER
-  -------------------------------------------------- */
   return (
     <div className="relative w-full flex justify-center">
       <div className="relative w-full max-w-xl">
@@ -225,12 +261,17 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
               {recent.current.map((term) => (
                 <div
                   key={term}
-                  className="flex items-center rounded-full overflow-hidden bg-[hsl(var(--foreground)/0.08)]"
+                  className="flex items-center rounded-full overflow-hidden
+                             bg-[hsl(var(--foreground)/0.08)]"
                 >
                   <button
                     type="button"
                     onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => handleRecentSelect(term)}
+                    onClick={() => {
+                      searchedOnce.current = true;
+                      setQuery(term);
+                      runSearch(term);
+                    }}
                     className="px-3 py-1 text-sm hover:bg-[hsl(var(--foreground)/0.1)]"
                   >
                     {term}
@@ -267,7 +308,7 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
             runSearch(query);
           }}
           className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[hsl(var(--background))]
-          border border-[hsl(var(--foreground)/0.25)] shadow-md"
+                     border border-[hsl(var(--foreground)/0.25)] shadow-md"
         >
           <input
             ref={inputRef}
@@ -276,13 +317,21 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
             placeholder="Search movies, shows, people…"
-            className="flex-1 bg-transparent outline-none text-xl text-[hsl(var(--foreground))]
-            placeholder:text-[hsl(var(--foreground)/0.5)]"
+            className="flex-1 bg-transparent outline-none text-xl"
           />
+
+          <button
+            type="button"
+            onClick={startVoiceSearch}
+            aria-label="Voice search"
+            className={listening ? "text-red-500 animate-pulse" : ""}
+          >
+            {listening ? <MicOff /> : <Mic />}
+          </button>
 
           {query && (
             <button type="button" onClick={() => setQuery("")}>
-              <X className="opacity-60 hover:opacity-100" />
+              <X />
             </button>
           )}
 
