@@ -32,8 +32,7 @@ function scoreResult(item: Movie, query: string): number {
   if (item.media_type === "tv") score += 15;
   if (item.media_type === "person") score += 5;
 
-  score += (item.vote_average ?? 0) * 2;
-  return score;
+  return score + (item.vote_average ?? 0) * 2;
 }
 
 /* -------------------------------------------------
@@ -46,12 +45,10 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
   const [activeIndex, setActiveIndex] = useState(-1);
 
   const inputRef = useRef<HTMLInputElement>(null);
-  const resultsRef = useRef<HTMLDivElement>(null);
   const requestId = useRef(0);
+  const hasSearchedRef = useRef(false);
 
   const controls = useAnimation();
-
-  // intent-based visibility (never async)
   const open = query.trim().length >= 2;
 
   useEffect(() => {
@@ -59,7 +56,7 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
   }, []);
 
   /* -------------------------------------------------
-     SEARCH (RACE SAFE)
+     SEARCH (SINGLE SOURCE OF TRUTH)
   -------------------------------------------------- */
   const runSearch = useCallback(async (term: string) => {
     const q = term.trim();
@@ -79,7 +76,7 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
 
       if (id !== requestId.current) return;
 
-      const ranked: Movie[] = (data?.results || [])
+      const ranked = (data?.results || [])
         .filter((r: Movie) => r?.id && r?.media_type)
         .sort((a: Movie, b: Movie) => scoreResult(b, q) - scoreResult(a, q))
         .slice(0, 10);
@@ -92,22 +89,33 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
   }, []);
 
   /* -------------------------------------------------
-     DEBOUNCE → ANIMATION TRIGGER
+     DEBOUNCED SEARCH
   -------------------------------------------------- */
   const debouncedSearch = useRef(
     debounce(async (term: string) => {
       await runSearch(term);
-      controls.start("show"); // animate only after pause
+      controls.start("show");
     }, 300),
   ).current;
 
+  useEffect(() => () => debouncedSearch.cancel(), [debouncedSearch]);
+
+  /* -------------------------------------------------
+     QUERY EFFECT
+  -------------------------------------------------- */
   useEffect(() => {
     if (!open) return;
-    controls.set("hidden");
-    debouncedSearch(query);
-  }, [query, open, debouncedSearch, controls]);
 
-  useEffect(() => () => debouncedSearch.cancel(), [debouncedSearch]);
+    controls.set("hidden");
+
+    if (!hasSearchedRef.current) {
+      hasSearchedRef.current = true;
+      runSearch(query);
+      return;
+    }
+
+    debouncedSearch(query);
+  }, [query, open, runSearch, debouncedSearch, controls]);
 
   /* -------------------------------------------------
      SELECTION
@@ -148,7 +156,10 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
         onSubmit={(e) => {
           e.preventDefault();
           if (!query.trim()) return;
-          runSearch(query);
+
+          setLoading(true);
+          controls.set("hidden");
+          debouncedSearch(query);
         }}
         className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[hsl(var(--background))]
                    border border-[hsl(var(--foreground)/0.25)] shadow-md"
@@ -158,17 +169,21 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
           ref={inputRef}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          onFocus={() => {
+            if (open && results.length === 0) runSearch(query);
+          }}
           placeholder="Search movies, shows, people…"
           className="flex-1 bg-transparent outline-none text-xl text-[hsl(var(--foreground))]
-             placeholder:text-[hsl(var(--foreground)/0.5)]"
+                     placeholder:text-[hsl(var(--foreground)/0.5)]"
         />
 
-        {loading ? <Loader2 className="animate-spin" /> : <Search />}
+        <button type="submit" aria-label="Search" className="flex items-center">
+          {loading ? <Loader2 className="animate-spin" /> : <Search />}
+        </button>
       </form>
 
-      {open && (
+      {open && results.length > 0 && (
         <motion.div
-          ref={resultsRef}
           variants={listVariants}
           initial="hidden"
           animate={controls}
@@ -177,13 +192,10 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
         >
           {results.map((item, i) => {
             const active = i === activeIndex;
-
             const image =
               item.media_type === "person"
                 ? item.profile_path
                 : item.poster_path;
-
-            const name = item.title || item.name || "Untitled";
 
             return (
               <div
@@ -204,11 +216,13 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
                   }
                   className="w-10 h-14 object-cover rounded-md"
                   loading="lazy"
-                  alt={name}
+                  alt={item.title || item.name || "Untitled"}
                 />
 
                 <div className="flex flex-col">
-                  <span className="text-sm font-medium">{name}</span>
+                  <span className="text-sm font-medium">
+                    {item.title || item.name || "Untitled"}
+                  </span>
                   <span className="text-xs uppercase opacity-60">
                     {item.media_type === "tv" ? "TV Show" : item.media_type}
                   </span>
