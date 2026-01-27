@@ -103,8 +103,7 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
     }
     try {
       await sndReadyRef.current;
-    } catch {
-    }
+    } catch {}
   }, []);
 
   const playEarcon = useCallback(
