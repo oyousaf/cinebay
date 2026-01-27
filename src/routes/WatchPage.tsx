@@ -7,16 +7,18 @@ import type { PlaybackIntent } from "@/lib/embed/buildEmbedUrl";
 
 export default function WatchPage() {
   const navigate = useNavigate();
-  const params = useParams()
+  const params = useParams();
 
   /* -------------------------------------------------
-     LOCK BODY SCROLL (ROUTE-LEVEL PLAYER)
+     BODY STATE (SYNC, NO LAYOUT SHIFT)
   -------------------------------------------------- */
+  if (typeof document !== "undefined") {
+    document.body.classList.add("player-open");
+  }
+
   useEffect(() => {
-    const original = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
     return () => {
-      document.body.style.overflow = original;
+      document.body.classList.remove("player-open");
     };
   }, []);
 
@@ -41,10 +43,13 @@ export default function WatchPage() {
     }
 
     return null;
-  }, [params]);
+  }, [params.tmdbId, params.season, params.episode]);
 
   if (!intent) return null;
 
+  /* -------------------------------------------------
+     RENDER
+  -------------------------------------------------- */
   return (
     <PlayerModal
       intent={intent}
