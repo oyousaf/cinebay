@@ -122,8 +122,8 @@ export default function ModalClient({
           exit={{ scale: 0.96, opacity: 0 }}
           transition={{ duration: 0.25, ease: EASE_OUT }}
           className={SURFACE}
-          onPointerDown={(e) => e.stopPropagation()} // 🔒 seal modal
-          onClick={(e) => e.stopPropagation()} // 🔒 seal modal
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
         >
           <ModalHeader onClose={onClose} onBack={onBack} />
 
