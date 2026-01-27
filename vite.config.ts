@@ -10,6 +10,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
+
       includeAssets: [
         "favicon.ico",
         "favicon-16x16.png",
@@ -17,6 +18,7 @@ export default defineConfig({
         "apple-touch-icon.png",
         "robots.txt",
       ],
+
       manifest: {
         name: "CineBay",
         short_name: "CineBay",
@@ -26,48 +28,31 @@ export default defineConfig({
         background_color: "#80FFCC",
         start_url: "/",
         display: "fullscreen",
-        orientation: "landscape",
+        orientation: "any",
         lang: "en-GB",
         dir: "ltr",
         categories: ["entertainment", "streaming", "media"],
 
         icons: [
-          {
-            src: "/icon-512.png",
-            sizes: "512x512",
-            type: "image/png",
-          },
-          {
-            src: "/icon-192.png",
-            sizes: "192x192",
-            type: "image/png",
-          },
-        ],
-
-        // 📱 Optional screenshots for store / PWA info
-        screenshots: [
-          {
-            src: "/screenshot-desktop.png",
-            sizes: "1280x720",
-            type: "image/png",
-            form_factor: "wide",
-          },
-          {
-            src: "/screenshot-mobile.png",
-            sizes: "720x1280",
-            type: "image/png",
-            form_factor: "narrow",
-          },
+          { src: "/icon-192.png", sizes: "192x192", type: "image/png" },
+          { src: "/icon-512.png", sizes: "512x512", type: "image/png" },
         ],
       },
 
-      /* ---------- ⚡ Workbox Caching Strategy ---------- */
       workbox: {
         skipWaiting: true,
         clientsClaim: true,
         navigateFallback: "/",
+
+        /* ⛔ Correct way to exclude from precache (typed) */
+        globIgnores: [
+          "**/mc.yandex.ru/**",
+          "**/google-analytics.com/**",
+          "**/googletagmanager.com/**",
+        ],
+
         runtimeCaching: [
-          // 🎬 TMDB API
+          /* 🎬 TMDB API */
           {
             urlPattern: /^https:\/\/api\.themoviedb\.org\/.*/i,
             handler: "CacheFirst",
@@ -77,7 +62,8 @@ export default defineConfig({
               cacheableResponse: { statuses: [0, 200] },
             },
           },
-          // 📊 TMDB Lists (popular/top-rated)
+
+          /* 📊 TMDB lists */
           {
             urlPattern:
               /^https:\/\/api\.themoviedb\.org\/3\/movie\/(popular|top_rated)/,
@@ -85,23 +71,10 @@ export default defineConfig({
             options: {
               cacheName: "tmdb-popular",
               expiration: { maxEntries: 50, maxAgeSeconds: 86400 },
-              backgroundSync: {
-                name: "tmdb-popular-queue",
-                options: { maxRetentionTime: 24 * 60 },
-              },
             },
           },
-          // 🎥 Video Embed
-          {
-            urlPattern: /^https:\/\/vidsrc\.to\/embed\/.*/i,
-            handler: "NetworkFirst",
-            options: {
-              cacheName: "vidsrc-embed-cache",
-              expiration: { maxEntries: 20, maxAgeSeconds: 3600 },
-              cacheableResponse: { statuses: [0, 200] },
-            },
-          },
-          // 🖼️ TMDB Images
+
+          /* 🖼️ TMDB Images */
           {
             urlPattern: /^https:\/\/image\.tmdb\.org\/t\/p\/.*/i,
             handler: "CacheFirst",
@@ -111,20 +84,31 @@ export default defineConfig({
               cacheableResponse: { statuses: [0, 200] },
             },
           },
-          // ⚙️ Modal / UI Bundles
+
+          /* 🎥 Video embeds — never cache */
           {
-            urlPattern: /\/assets\/Modal.*\.js$/,
+            urlPattern: /^https:\/\/vid(src|link)\./i,
+            handler: "NetworkOnly",
+          },
+
+          /* ⚙️ UI / modal chunks */
+          {
+            urlPattern: /\/assets\/.*Modal.*\.js$/i,
             handler: "StaleWhileRevalidate",
             options: {
-              cacheName: "modal-component-cache",
+              cacheName: "ui-modal-cache",
               expiration: { maxEntries: 5, maxAgeSeconds: 604800 },
-              cacheableResponse: { statuses: [0, 200] },
             },
+          },
+
+          /* 📡 Analytics — always network */
+          {
+            urlPattern: /mc\.yandex\.ru/,
+            handler: "NetworkOnly",
           },
         ],
       },
 
-      /* ---------- 💻 Dev Mode ---------- */
       devOptions: {
         enabled: true,
         type: "module",
