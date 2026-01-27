@@ -19,7 +19,7 @@ import { useContinueWatching } from "@/hooks/useContinueWatching";
 interface PlayerModalProps {
   intent: PlaybackIntent;
   onClose: () => void;
-  onPlayNext: (intent: PlaybackIntent) => void; // route push
+  onPlayNext: (intent: PlaybackIntent) => void;
 }
 
 const FALLBACK_DURATION_SECONDS = 42 * 60;
@@ -155,25 +155,16 @@ export default function PlayerModal({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="
-          fixed inset-0 z-50 flex items-center justify-center
-          bg-[hsl(var(--foreground)/0.35)]
-          backdrop-blur-md
-          px-3 sm:px-6
-        "
+        className="fixed inset-0 z-50 flex items-center justify-center bg-[hsl(var(--foreground)/0.35)]
+          backdrop-blur-md px-3 sm:px-6"
       >
         <motion.div
           initial={{ scale: 0.97, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.98, opacity: 0 }}
           transition={{ duration: 0.25, ease: "easeOut" }}
-          className="
-            relative w-full max-w-6xl aspect-video
-            rounded-2xl overflow-hidden
-            bg-[hsl(var(--background))]
-            ring-2 ring-[hsl(var(--foreground))]
-            shadow-[0_40px_120px_rgba(0,0,0,0.9)]
-          "
+          className="relative w-full max-w-6xl aspect-video rounded-2xl overflow-hidden bg-[hsl(var(--background))]
+            ring-2 ring-[hsl(var(--foreground))] shadow-[0_40px_120px_rgba(0,0,0,0.9)]"
         >
           {/* LOADER */}
           <AnimatePresence>
@@ -181,18 +172,11 @@ export default function PlayerModal({
               <motion.div
                 initial={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="
-                  absolute inset-0 z-10 flex items-center justify-center
-                  bg-[hsl(var(--background))]
-                "
+                className="absolute inset-0 z-10 flex items-center justify-center bg-[hsl(var(--background))]"
               >
                 <div
-                  className="
-                    h-8 w-8 rounded-full
-                    border-2 border-[hsl(var(--foreground)/0.4)]
-                    border-t-[hsl(var(--foreground))]
-                    animate-spin
-                  "
+                  className="h-8 w-8 rounded-full border-2 border-[hsl(var(--foreground)/0.4)] border-t-[hsl(var(--foreground))]
+                    animate-spin"
                 />
               </motion.div>
             )}
@@ -214,14 +198,9 @@ export default function PlayerModal({
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 12 }}
-                className="
-                  absolute right-4 bottom-4 sm:right-6 sm:bottom-6 z-30
-                  flex items-center gap-4
-                  rounded-xl px-4 py-3
-                  bg-[hsl(var(--background))]
-                  ring-2 ring-[hsl(var(--foreground))]
-                  shadow-xl
-                "
+                className="absolute right-4 bottom-4 sm:right-6 sm:bottom-6 z-30 flex items-center gap-4
+                  rounded-xl px-4 py-3 bg-[hsl(var(--background))] ring-2 ring-[hsl(var(--foreground))]
+                  shadow-xl"
               >
                 <span className="text-sm text-[hsl(var(--foreground)/0.8)]">
                   {nextOffer.kind === "NEXT_SEASON"
@@ -231,12 +210,8 @@ export default function PlayerModal({
 
                 <button
                   onClick={() => handlePlayNext(nextOffer.intent)}
-                  className="
-                    text-sm font-semibold px-3 py-1.5 rounded-md
-                    bg-[hsl(var(--foreground))]
-                    text-[hsl(var(--background))]
-                    hover:scale-105 transition
-                  "
+                  className="text-sm font-semibold px-3 py-1.5 rounded-md bg-[hsl(var(--foreground))] text-[hsl(var(--background))]
+                    hover:scale-105 transition"
                 >
                   Play
                 </button>
@@ -248,13 +223,8 @@ export default function PlayerModal({
           <button
             onClick={onClose}
             aria-label="Close player"
-            className="
-              absolute top-3 right-3 sm:top-4 sm:right-4 z-20
-              rounded-full
-              bg-[hsl(var(--background))]
-              ring-2 ring-[hsl(var(--foreground))]
-              hover:scale-105 transition
-            "
+            className="absolute top-3 right-3 sm:top-4 sm:right-4 z-20 rounded-full bg-[hsl(var(--background))]
+              ring-2 ring-[hsl(var(--foreground))] hover:scale-105 transition"
           >
             <X size={22} className="m-2 text-[hsl(var(--foreground))]" />
           </button>
