@@ -48,7 +48,6 @@ export default function ModalClient({
   onBack?: () => void;
 }) {
   const modalRef = useRef<HTMLDivElement>(null);
-  const draggingRef = useRef(false);
 
   const isPerson = movie.media_type === "person";
   const isTV = movie.media_type === "tv";
@@ -114,11 +113,7 @@ export default function ModalClient({
         exit={{ opacity: 0 }}
         transition={{ duration: 0.25, ease: EASE_OUT }}
         className={`fixed inset-0 z-50 flex items-center justify-center ${BACKDROP}`}
-        onPointerDown={() => (draggingRef.current = false)}
-        onPointerMove={() => (draggingRef.current = true)}
-        onPointerUp={() => {
-          if (!draggingRef.current) onClose();
-        }}
+        onClick={onClose}
       >
         <motion.div
           ref={modalRef}
@@ -127,7 +122,8 @@ export default function ModalClient({
           exit={{ scale: 0.96, opacity: 0 }}
           transition={{ duration: 0.25, ease: EASE_OUT }}
           className={SURFACE}
-          onClick={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()} // 🔒 seal modal
+          onClick={(e) => e.stopPropagation()} // 🔒 seal modal
         >
           <ModalHeader onClose={onClose} onBack={onBack} />
 
