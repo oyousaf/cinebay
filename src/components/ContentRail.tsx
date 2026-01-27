@@ -60,6 +60,7 @@ const Tile = React.memo(function Tile({
         }
         alt={movie.title || movie.name}
         loading="lazy"
+        draggable={false}
         className="h-44 w-32 lg:h-56 lg:w-40 object-cover rounded-lg shadow-md"
       />
 
@@ -166,13 +167,12 @@ export default function ContentRail({ items, onSelect }: ContentRailProps) {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35, delay: 0.2, ease: EASE_OUT }}
-          className="relative z-50 px-4 pb-[calc(0.5rem+env(safe-area-inset-bottom))]"
+          className="relative z-20 px-4 pb-[calc(0.5rem+env(safe-area-inset-bottom))]"
         >
           <div
             ref={railRef}
             role="list"
-            className="flex gap-3 overflow-x-auto overflow-y-hidden
-              snap-x snap-mandatory no-scrollbar
+            className="flex gap-3 overflow-x-auto overflow-y-hidden snap-x snap-proximity no-scrollbar
               pl-2 md:pl-4 pr-2 md:pr-4 py-4"
           >
             {items.map((movie, idx) => (

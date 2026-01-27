@@ -76,7 +76,7 @@ export default function Banner({ item, onSelect }: BannerProps) {
 
   return (
     <div
-      className="relative w-full h-[70vh] sm:h-full flex flex-col justify-end overflow-hidden bg-[hsl(var(--background))]
+      className="relative w-full h-[calc(var(--vh)*0.7)] sm:h-full flex flex-col justify-end overflow-hidden bg-[hsl(var(--background))]
  shadow-2xl snap-start"
     >
       {/* -------------------------------------------------
@@ -94,6 +94,7 @@ export default function Banner({ item, onSelect }: BannerProps) {
           decoding="async"
           fetchPriority="low"
           className="absolute inset-0 w-full h-full object-cover"
+          style={{ aspectRatio: "16 / 9" }}
           initial={{ opacity: 0, scale: 1.04 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0 }}
