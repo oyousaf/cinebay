@@ -4,6 +4,7 @@ import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { motion, useAnimation, type Variants } from "framer-motion";
 import { Search, Loader2, X, Mic, MicOff } from "lucide-react";
 import debounce from "lodash.debounce";
+import Snd from "snd-lib";
 
 import { fetchDetails, fetchFromProxy } from "@/lib/tmdb";
 import type { Movie } from "@/types/movie";
@@ -82,10 +83,41 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
   const searchedOnce = useRef(false);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
 
+  // snd-lib (cached)
+  const sndRef = useRef<Snd | null>(null);
+  const sndReadyRef = useRef<Promise<void> | null>(null);
+
   const controls = useAnimation();
   const open = query.trim().length >= 2;
 
   const bump = () => forceRender((n) => n + 1);
+
+  const ensureSnd = useCallback(async () => {
+    if (!sndRef.current) {
+      sndRef.current = new Snd({
+        easySetup: false,
+        preloadSoundKit: null,
+        muteOnWindowBlur: true,
+      });
+      sndReadyRef.current = sndRef.current.load(Snd.KITS.SND01);
+    }
+    try {
+      await sndReadyRef.current;
+    } catch {
+    }
+  }, []);
+
+  const playEarcon = useCallback(
+    async (soundKey: string) => {
+      await ensureSnd();
+      try {
+        sndRef.current?.play(soundKey, { volume: 0.5 });
+      } catch {
+        // ignore
+      }
+    },
+    [ensureSnd],
+  );
 
   /* -------------------------------------------------
      INIT
@@ -154,7 +186,7 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
   /* -------------------------------------------------
      VOICE SEARCH
   -------------------------------------------------- */
-  const startVoiceSearch = useCallback(() => {
+  const startVoiceSearch = useCallback(async () => {
     if (listening) return;
 
     const Recognition =
@@ -162,6 +194,7 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
 
     if (!Recognition) {
       console.warn("Speech recognition not supported");
+      void playEarcon(Snd.SOUNDS.CAUTION);
       return;
     }
 
@@ -178,15 +211,23 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
         runSearch(transcript);
       };
 
-      rec.onerror = () => setListening(false);
-      rec.onend = () => setListening(false);
+      rec.onerror = () => {
+        setListening(false);
+        void playEarcon(Snd.SOUNDS.CAUTION);
+      };
+
+      rec.onend = () => {
+        setListening(false);
+        void playEarcon(Snd.SOUNDS.TRANSITION_DOWN);
+      };
 
       recognitionRef.current = rec;
     }
 
     setListening(true);
+    await playEarcon(Snd.SOUNDS.TRANSITION_UP);
     recognitionRef.current.start();
-  }, [listening, runSearch]);
+  }, [listening, playEarcon, runSearch]);
 
   useEffect(() => {
     return () => {
@@ -261,8 +302,7 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
               {recent.current.map((term) => (
                 <div
                   key={term}
-                  className="flex items-center rounded-full overflow-hidden
-                             bg-[hsl(var(--foreground)/0.08)]"
+                  className="flex items-center rounded-full overflow-hidden bg-[hsl(var(--foreground)/0.08)]"
                 >
                   <button
                     type="button"
@@ -311,31 +351,37 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
                      border border-[hsl(var(--foreground)/0.25)] shadow-md"
         >
           <input
+            id="search"
             ref={inputRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
             placeholder="Search movies, shows, people…"
-            className="flex-1 bg-transparent outline-none text-xl"
+            className="flex-1 bg-transparent outline-none text-xl h-12 leading-none text-[hsl(var(--foreground))]
+                       placeholder:text-[hsl(var(--mint-green))] placeholder:opacity-50"
           />
+
+          {query && (
+            <button
+              type="button"
+              onClick={() => setQuery("")}
+              aria-label="Clear"
+            >
+              <X />
+            </button>
+          )}
 
           <button
             type="button"
-            onClick={startVoiceSearch}
+            onClick={() => void startVoiceSearch()}
             aria-label="Voice search"
             className={listening ? "text-red-500 animate-pulse" : ""}
           >
             {listening ? <MicOff /> : <Mic />}
           </button>
 
-          {query && (
-            <button type="button" onClick={() => setQuery("")}>
-              <X />
-            </button>
-          )}
-
-          <button type="submit">
+          <button type="submit" aria-label="Search">
             {loading ? <Loader2 className="animate-spin" /> : <Search />}
           </button>
         </form>
