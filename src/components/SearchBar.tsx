@@ -12,7 +12,7 @@ import type { Movie } from "@/types/movie";
    CONFIG
 -------------------------------------------------- */
 const RECENT_KEY = "tmdb_recent_searches_v1";
-const RECENT_LIMIT = 6;
+const RECENT_LIMIT = 5;
 
 /* -------------------------------------------------
    TYPES
