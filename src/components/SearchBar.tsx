@@ -1,12 +1,18 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect, memo } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { motion, useAnimation, type Variants } from "framer-motion";
-import { Search, Loader2 } from "lucide-react";
+import { Search, Loader2, X } from "lucide-react";
 import debounce from "lodash.debounce";
 
 import { fetchDetails, fetchFromProxy } from "@/lib/tmdb";
 import type { Movie } from "@/types/movie";
+
+/* -------------------------------------------------
+   CONFIG
+-------------------------------------------------- */
+const RECENT_KEY = "tmdb_recent_searches_v1";
+const RECENT_LIMIT = 6;
 
 /* -------------------------------------------------
    TYPES
@@ -17,23 +23,46 @@ type Props = {
 };
 
 /* -------------------------------------------------
-   RANKING
+   HELPERS
 -------------------------------------------------- */
-function scoreResult(item: Movie, query: string): number {
-  const q = query.toLowerCase();
-  const title = (item.title || item.name || "").toLowerCase();
+const isValidRecent = (s: string) => s.length >= 3 && /[a-zA-Z]/.test(s);
 
-  let score = 0;
-  if (title === q) score += 100;
-  else if (title.startsWith(q)) score += 60;
-  else if (title.includes(q)) score += 30;
+const readRecent = (): string[] => {
+  try {
+    const raw = localStorage.getItem(RECENT_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed)
+      ? parsed.filter((s) => typeof s === "string")
+      : [];
+  } catch {
+    return [];
+  }
+};
+
+const writeRecent = (v: string[]) => {
+  try {
+    localStorage.setItem(RECENT_KEY, JSON.stringify(v));
+  } catch {}
+};
+
+const scoreResult = (item: Movie, q: string) => {
+  const title = (item.title || item.name || "").toLowerCase();
+  const query = q.toLowerCase();
+
+  let score =
+    title === query
+      ? 100
+      : title.startsWith(query)
+        ? 60
+        : title.includes(query)
+          ? 30
+          : 0;
 
   if (item.media_type === "movie") score += 20;
   if (item.media_type === "tv") score += 15;
-  if (item.media_type === "person") score += 5;
 
   return score + (item.vote_average ?? 0) * 2;
-}
+};
 
 /* -------------------------------------------------
    COMPONENT
@@ -43,79 +72,109 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
   const [results, setResults] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
+  const [focused, setFocused] = useState(false);
+  const [, forceRender] = useState(0);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const requestId = useRef(0);
-  const hasSearchedRef = useRef(false);
+  const recent = useRef<string[]>([]);
+  const searchedOnce = useRef(false);
 
   const controls = useAnimation();
   const open = query.trim().length >= 2;
 
+  const bump = () => forceRender((n) => n + 1);
+
+  /* -------------------------------------------------
+     INIT
+  -------------------------------------------------- */
   useEffect(() => {
     inputRef.current?.focus();
+    recent.current = readRecent().slice(0, RECENT_LIMIT);
+    bump();
   }, []);
 
   /* -------------------------------------------------
-     SEARCH (SINGLE SOURCE OF TRUTH)
+     SEARCH
   -------------------------------------------------- */
-  const runSearch = useCallback(async (term: string) => {
-    const q = term.trim();
-    if (q.length < 2) {
-      setResults([]);
-      setActiveIndex(-1);
-      return;
-    }
+  const runSearch = useCallback(
+    async (term: string) => {
+      const q = term.trim();
+      if (q.length < 2) return;
 
-    const id = ++requestId.current;
-    setLoading(true);
+      const id = ++requestId.current;
+      setLoading(true);
 
-    try {
-      const data = await fetchFromProxy(
-        `/search/multi?query=${encodeURIComponent(q)}`,
-      );
+      try {
+        const data = await fetchFromProxy(
+          `/search/multi?query=${encodeURIComponent(q)}`,
+        );
+        if (id !== requestId.current) return;
 
-      if (id !== requestId.current) return;
+        const ranked = (data?.results ?? [])
+          .filter((r: Movie) => r?.id && r?.media_type)
+          .sort((a: Movie, b: Movie) => scoreResult(b, q) - scoreResult(a, q))
+          .slice(0, 10);
 
-      const ranked = (data?.results || [])
-        .filter((r: Movie) => r?.id && r?.media_type)
-        .sort((a: Movie, b: Movie) => scoreResult(b, q) - scoreResult(a, q))
-        .slice(0, 10);
+        setResults(ranked);
+        setActiveIndex(ranked.length ? 0 : -1);
+        controls.start("show");
+      } finally {
+        if (id === requestId.current) setLoading(false);
+      }
+    },
+    [controls],
+  );
 
-      setResults(ranked);
-      setActiveIndex(ranked.length ? 0 : -1);
-    } finally {
-      if (id === requestId.current) setLoading(false);
-    }
-  }, []);
-
-  /* -------------------------------------------------
-     DEBOUNCED SEARCH
-  -------------------------------------------------- */
   const debouncedSearch = useRef(
-    debounce(async (term: string) => {
-      await runSearch(term);
-      controls.start("show");
-    }, 300),
+    debounce((t: string) => runSearch(t), 300),
   ).current;
 
   useEffect(() => () => debouncedSearch.cancel(), [debouncedSearch]);
 
-  /* -------------------------------------------------
-     QUERY EFFECT
-  -------------------------------------------------- */
   useEffect(() => {
-    if (!open) return;
-
-    controls.set("hidden");
-
-    if (!hasSearchedRef.current) {
-      hasSearchedRef.current = true;
-      runSearch(query);
+    if (!open) {
+      controls.stop();
+      setResults([]);
+      setActiveIndex(-1);
+      setLoading(false);
       return;
     }
 
-    debouncedSearch(query);
+    if (!searchedOnce.current) {
+      searchedOnce.current = true;
+      runSearch(query);
+    } else {
+      debouncedSearch(query);
+    }
   }, [query, open, runSearch, debouncedSearch, controls]);
+
+  /* -------------------------------------------------
+     RECENT (PERSISTED)
+  -------------------------------------------------- */
+  const saveRecent = useCallback((term: string) => {
+    const t = term.trim();
+    if (!isValidRecent(t)) return;
+
+    recent.current = [t, ...recent.current.filter((s) => s !== t)].slice(
+      0,
+      RECENT_LIMIT,
+    );
+    writeRecent(recent.current);
+    bump();
+  }, []);
+
+  const removeRecent = useCallback((term: string) => {
+    recent.current = recent.current.filter((s) => s !== term);
+    writeRecent(recent.current);
+    bump();
+  }, []);
+
+  const clearRecent = useCallback(() => {
+    recent.current = [];
+    writeRecent([]);
+    bump();
+  }, []);
 
   /* -------------------------------------------------
      SELECTION
@@ -129,109 +188,159 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
         ? onSelectPerson?.(full)
         : onSelectMovie(full);
 
+      saveRecent(query);
+      setQuery("");
       setResults([]);
       setActiveIndex(-1);
     },
-    [onSelectMovie, onSelectPerson],
+    [onSelectMovie, onSelectPerson, query, saveRecent],
   );
 
+  const handleRecentSelect = (term: string) => {
+    searchedOnce.current = true;
+    setQuery(term);
+    runSearch(term);
+  };
+
   /* -------------------------------------------------
-     ANIMATION
+     UI STATE
   -------------------------------------------------- */
+  const hasRecent = recent.current.length > 0;
+  const showRecent = focused && !open && hasRecent;
+
   const listVariants: Variants = {
-    hidden: { opacity: 0, y: -8 },
-    show: {
-      opacity: 1,
-      y: 0,
-      transition: { duration: 0.25, ease: "easeOut" },
-    },
+    hidden: { opacity: 0, y: -6 },
+    show: { opacity: 1, y: 0, transition: { duration: 0.18 } },
   };
 
   /* -------------------------------------------------
      RENDER
   -------------------------------------------------- */
   return (
-    <div className="relative w-full">
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (!query.trim()) return;
-
-          setLoading(true);
-          controls.set("hidden");
-          debouncedSearch(query);
-        }}
-        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[hsl(var(--background))]
-                   border border-[hsl(var(--foreground)/0.25)] shadow-md"
-      >
-        <input
-          id="search"
-          ref={inputRef}
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onFocus={() => {
-            if (open && results.length === 0) runSearch(query);
-          }}
-          placeholder="Search movies, shows, people…"
-          className="flex-1 bg-transparent outline-none text-xl text-[hsl(var(--foreground))]
-                     placeholder:text-[hsl(var(--foreground)/0.5)]"
-        />
-
-        <button type="submit" aria-label="Search" className="flex items-center">
-          {loading ? <Loader2 className="animate-spin" /> : <Search />}
-        </button>
-      </form>
-
-      {open && results.length > 0 && (
-        <motion.div
-          variants={listVariants}
-          initial="hidden"
-          animate={controls}
-          className="absolute top-full mt-2 w-full max-h-80 overflow-y-auto rounded-lg shadow-lg z-50
-                     bg-[hsl(var(--background))] border border-[hsl(var(--foreground)/0.15)]"
-        >
-          {results.map((item, i) => {
-            const active = i === activeIndex;
-            const image =
-              item.media_type === "person"
-                ? item.profile_path
-                : item.poster_path;
-
-            return (
-              <div
-                key={`${item.media_type}:${item.id}`}
-                onMouseEnter={() => setActiveIndex(i)}
-                onClick={() => handleSelect(item)}
-                className={`flex items-center gap-3 px-4 py-2 cursor-pointer ${
-                  active
-                    ? "bg-[hsl(var(--foreground)/0.15)]"
-                    : "hover:bg-[hsl(var(--foreground)/0.08)]"
-                }`}
-              >
-                <img
-                  src={
-                    image
-                      ? `https://image.tmdb.org/t/p/w92${image}`
-                      : "/fallback.jpg"
-                  }
-                  className="w-10 h-14 object-cover rounded-md"
-                  loading="lazy"
-                  alt={item.title || item.name || "Untitled"}
-                />
-
-                <div className="flex flex-col">
-                  <span className="text-sm font-medium">
-                    {item.title || item.name || "Untitled"}
-                  </span>
-                  <span className="text-xs uppercase opacity-60">
-                    {item.media_type === "tv" ? "TV Show" : item.media_type}
-                  </span>
+    <div className="relative w-full flex justify-center">
+      <div className="relative w-full max-w-xl">
+        {showRecent && (
+          <div className="absolute -top-14 left-0 right-0 flex flex-col items-center gap-2">
+            <div className="flex flex-wrap gap-2 justify-center">
+              {recent.current.map((term) => (
+                <div
+                  key={term}
+                  className="flex items-center rounded-full overflow-hidden bg-[hsl(var(--foreground)/0.08)]"
+                >
+                  <button
+                    type="button"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => handleRecentSelect(term)}
+                    className="px-3 py-1 text-sm hover:bg-[hsl(var(--foreground)/0.1)]"
+                  >
+                    {term}
+                  </button>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => removeRecent(term)}
+                    className="px-2 py-1 opacity-60 hover:opacity-100"
+                    aria-label={`Remove ${term}`}
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
                 </div>
-              </div>
-            );
-          })}
-        </motion.div>
-      )}
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={clearRecent}
+              className="text-xs opacity-60 hover:opacity-100"
+            >
+              Clear recent
+            </button>
+          </div>
+        )}
+
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!open) return;
+            saveRecent(query);
+            runSearch(query);
+          }}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[hsl(var(--background))]
+          border border-[hsl(var(--foreground)/0.25)] shadow-md"
+        >
+          <input
+            ref={inputRef}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            placeholder="Search movies, shows, people…"
+            className="flex-1 bg-transparent outline-none text-xl text-[hsl(var(--foreground))]
+            placeholder:text-[hsl(var(--foreground)/0.5)]"
+          />
+
+          {query && (
+            <button type="button" onClick={() => setQuery("")}>
+              <X className="opacity-60 hover:opacity-100" />
+            </button>
+          )}
+
+          <button type="submit">
+            {loading ? <Loader2 className="animate-spin" /> : <Search />}
+          </button>
+        </form>
+
+        {open && results.length > 0 && (
+          <motion.div
+            variants={listVariants}
+            initial="hidden"
+            animate={controls}
+            className="absolute top-full mt-2 w-full max-h-80 overflow-y-auto rounded-lg shadow-lg z-50
+                       bg-[hsl(var(--background))] border border-[hsl(var(--foreground)/0.15)]"
+          >
+            {results.map((item, i) => {
+              const active = i === activeIndex;
+              const img =
+                item.media_type === "person"
+                  ? item.profile_path
+                  : item.poster_path;
+
+              return (
+                <div
+                  key={`${item.media_type}:${item.id}`}
+                  onMouseEnter={() => setActiveIndex(i)}
+                  onClick={() => handleSelect(item)}
+                  className={`flex items-center gap-3 px-4 py-2 cursor-pointer ${
+                    active
+                      ? "bg-[hsl(var(--foreground)/0.15)]"
+                      : "hover:bg-[hsl(var(--foreground)/0.08)]"
+                  }`}
+                >
+                  <img
+                    src={
+                      img
+                        ? `https://image.tmdb.org/t/p/w92${img}`
+                        : "/fallback.jpg"
+                    }
+                    className="w-10 h-14 rounded-md object-cover"
+                    loading="lazy"
+                    alt={item.title || item.name || "Untitled"}
+                  />
+                  <div>
+                    <div className="text-sm font-medium">
+                      {item.title || item.name || "Untitled"}
+                    </div>
+                    <div className="text-xs uppercase opacity-60">
+                      {item.media_type === "tv" ? "TV Show" : item.media_type}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </motion.div>
+        )}
+      </div>
     </div>
   );
 }

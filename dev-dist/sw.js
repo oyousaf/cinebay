@@ -67,7 +67,7 @@ if (!self.define) {
     });
   };
 }
-define(['./workbox-bb136d98'], (function (workbox) { 'use strict';
+define(['./workbox-e67eb281'], (function (workbox) { 'use strict';
 
   self.skipWaiting();
   workbox.clientsClaim();
@@ -82,7 +82,7 @@ define(['./workbox-bb136d98'], (function (workbox) { 'use strict';
     "revision": "3ca0b8505b4bec776b69afdba2768812"
   }, {
     "url": "/",
-    "revision": "0.qn25sguvd9"
+    "revision": "0.cevh7v79rc8"
   }], {});
   workbox.cleanupOutdatedCaches();
   workbox.registerRoute(new workbox.NavigationRoute(workbox.createHandlerBoundToURL("/"), {
@@ -102,17 +102,6 @@ define(['./workbox-bb136d98'], (function (workbox) { 'use strict';
     plugins: [new workbox.ExpirationPlugin({
       maxEntries: 50,
       maxAgeSeconds: 86400
-    }), new workbox.BackgroundSyncPlugin("tmdb-popular-queue", {
-      maxRetentionTime: 1440
-    })]
-  }), 'GET');
-  workbox.registerRoute(/^https:\/\/vidsrc\.to\/embed\/.*/i, new workbox.NetworkFirst({
-    "cacheName": "vidsrc-embed-cache",
-    plugins: [new workbox.ExpirationPlugin({
-      maxEntries: 20,
-      maxAgeSeconds: 3600
-    }), new workbox.CacheableResponsePlugin({
-      statuses: [0, 200]
     })]
   }), 'GET');
   workbox.registerRoute(/^https:\/\/image\.tmdb\.org\/t\/p\/.*/i, new workbox.CacheFirst({
@@ -124,14 +113,14 @@ define(['./workbox-bb136d98'], (function (workbox) { 'use strict';
       statuses: [0, 200]
     })]
   }), 'GET');
-  workbox.registerRoute(/\/assets\/Modal.*\.js$/, new workbox.StaleWhileRevalidate({
-    "cacheName": "modal-component-cache",
+  workbox.registerRoute(/^https:\/\/vid(src|link)\./i, new workbox.NetworkOnly(), 'GET');
+  workbox.registerRoute(/\/assets\/.*Modal.*\.js$/i, new workbox.StaleWhileRevalidate({
+    "cacheName": "ui-modal-cache",
     plugins: [new workbox.ExpirationPlugin({
       maxEntries: 5,
       maxAgeSeconds: 604800
-    }), new workbox.CacheableResponsePlugin({
-      statuses: [0, 200]
     })]
   }), 'GET');
+  workbox.registerRoute(/mc\.yandex\.ru/, new workbox.NetworkOnly(), 'GET');
 
 }));
