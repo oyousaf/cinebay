@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Toaster, toast } from "sonner";
-import { useNavigate } from "react-router-dom";
 
 import Layout from "@/components/Layout";
 import Movies from "@/components/Movies";
@@ -15,33 +14,32 @@ import Modal from "@/components/modal/ModalClient";
 import ExitConfirmModal from "@/components/ExitConfirmModal";
 
 import { useModalManager } from "@/context/ModalContext";
-import type { PlaybackIntent } from "@/lib/embed/buildEmbedUrl";
+
+type Tab = "movies" | "tvshows" | "search" | "devspick" | "watchlist";
 
 export default function AppShell() {
-  /* ---------- viewport stabiliser ---------- */
-  useEffect(() => {
-    const setVH = () => {
-      document.documentElement.style.setProperty(
-        "--vh",
-        `${window.innerHeight * 0.01}px`,
-      );
-    };
-    setVH();
-    window.addEventListener("resize", setVH);
-    return () => window.removeEventListener("resize", setVH);
-  }, []);
-
-  const navigate = useNavigate();
-
-  const [activeTab, setActiveTab] = useState<
-    "movies" | "tvshows" | "search" | "devspick" | "watchlist"
-  >(() => {
-    return (localStorage.getItem("activeTab") as any) ?? "movies";
+  /* -------------------------------------------------
+     ACTIVE TAB (PERSISTED)
+  -------------------------------------------------- */
+  const [activeTab, setActiveTab] = useState<Tab>(() => {
+    const stored = localStorage.getItem("activeTab");
+    return (stored as Tab) ?? "movies";
   });
 
+  const persistTab = (tab: Tab) => {
+    setActiveTab(tab);
+    localStorage.setItem("activeTab", tab);
+  };
+
+  /* -------------------------------------------------
+     MODAL STATE
+  -------------------------------------------------- */
   const { activeModal, selectedItem, openContent, close, goBackContent } =
     useModalManager();
 
+  /* -------------------------------------------------
+     STANDALONE DETECTION
+  -------------------------------------------------- */
   const isStandalone = useMemo(() => {
     return (
       window.matchMedia("(display-mode: standalone)").matches ||
@@ -49,23 +47,9 @@ export default function AppShell() {
     );
   }, []);
 
-  const persistTab = (tab: typeof activeTab) => {
-    setActiveTab(tab);
-    localStorage.setItem("activeTab", tab);
-  };
-
-  /* ---------- ROUTE-BASED PLAY ---------- */
-  const handleWatch = (intent: PlaybackIntent) => {
-    if (intent.mediaType === "tv") {
-      navigate(
-        `/watch/tv/${intent.tmdbId}/${intent.season ?? 1}/${intent.episode ?? 1}`,
-      );
-      return;
-    }
-
-    toast.error("Movie playback route not wired yet.");
-  };
-
+  /* -------------------------------------------------
+     TAB CONTENT
+  -------------------------------------------------- */
   const renderContent = () => {
     switch (activeTab) {
       case "movies":
@@ -82,7 +66,7 @@ export default function AppShell() {
 
       case "search":
         return (
-          <div className="flex items-center justify-center px-4 min-h-screen">
+          <div className="flex flex-1 items-center justify-center px-4">
             <div className="w-full max-w-md">
               <SearchBar
                 onSelectMovie={openContent}
@@ -112,12 +96,15 @@ export default function AppShell() {
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: 40 }}
           transition={{ duration: 0.25, ease: "easeOut" }}
-          className="flex-1 overflow-y-auto min-h-0"
+          className="flex-1 min-h-0 overflow-y-auto"
         >
           {renderContent()}
         </motion.div>
       </AnimatePresence>
 
+      {/* -------------------------------------------------
+         MODALS
+      -------------------------------------------------- */}
       {activeModal === "content" && selectedItem && (
         <Modal
           movie={selectedItem}

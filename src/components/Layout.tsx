@@ -24,7 +24,7 @@ const Layout: React.FC<LayoutProps> = ({
   const prevTabRef = useRef<Tab | null>(null);
 
   /* -------------------------------------------------
-     RESET NAVIGATION
+     RESET NAVIGATION ON TAB CHANGE
   -------------------------------------------------- */
   useEffect(() => {
     if (prevTabRef.current !== activeTab) {
@@ -34,7 +34,7 @@ const Layout: React.FC<LayoutProps> = ({
   }, [activeTab, resetNavigation]);
 
   return (
-    <div className="h-screen w-full flex flex-col overflow-hidden">
+    <div className="w-full flex flex-col min-h-(--vh) overflow-hidden">
       <Navbar
         activeTab={activeTab}
         onTabChange={onTabChange}
@@ -43,7 +43,7 @@ const Layout: React.FC<LayoutProps> = ({
 
       {/* Content */}
       <main className="flex-1 min-h-0 overflow-y-auto md:pl-20 md:pr-0 pb-16 md:pb-0">
-        <AnimatePresence initial={false}>
+        <AnimatePresence initial={false} mode="wait">
           <motion.div
             key={activeTab}
             initial={{ opacity: 0 }}
@@ -53,7 +53,7 @@ const Layout: React.FC<LayoutProps> = ({
               duration: 0.25,
               ease: FADE_EASE,
             }}
-            className="h-full"
+            className="min-h-full"
           >
             {children}
           </motion.div>
