@@ -66,7 +66,7 @@ export default function AppShell() {
 
       case "search":
         return (
-          <div className="flex flex-1 items-center justify-center px-4">
+          <div className="flex items-center justify-center px-4 min-h-screen">
             <div className="w-full max-w-md">
               <SearchBar
                 onSelectMovie={openContent}
