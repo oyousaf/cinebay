@@ -156,7 +156,7 @@ export default function PlayerModal({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="fixed inset-0 z-50 flex items-center justify-center bg-[hsl(var(--foreground)/0.35)]
-          backdrop-blur-md px-3 sm:px-6"
+          backdrop-blur-md px-3 sm:px-6 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
       >
         <motion.div
           initial={{ scale: 0.97, opacity: 0 }}
@@ -184,6 +184,7 @@ export default function PlayerModal({
 
           {/* IFRAME */}
           <iframe
+            key={embedUrl}
             src={embedUrl}
             className="w-full h-full border-none"
             allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
