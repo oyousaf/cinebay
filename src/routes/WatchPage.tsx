@@ -1,36 +1,47 @@
 "use client";
 
-import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { useEffect, useMemo } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import PlayerModal from "@/components/PlayerModal";
 import type { PlaybackIntent } from "@/lib/embed/buildEmbedUrl";
 
 export default function WatchPage() {
   const navigate = useNavigate();
-  const location = useLocation();
-  const params = useParams();
+  const params = useParams()
 
-  let intent: PlaybackIntent | null = null;
-
-  if (location.pathname.startsWith("/watch/movie")) {
-    if (!params.tmdbId) return null;
-
-    intent = {
-      mediaType: "movie",
-      tmdbId: Number(params.tmdbId),
+  /* -------------------------------------------------
+     LOCK BODY SCROLL (ROUTE-LEVEL PLAYER)
+  -------------------------------------------------- */
+  useEffect(() => {
+    const original = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = original;
     };
-  }
+  }, []);
 
-  if (location.pathname.startsWith("/watch/tv")) {
-    const { tmdbId, season, episode } = params;
-    if (!tmdbId || !season || !episode) return null;
+  /* -------------------------------------------------
+     BUILD PLAYBACK INTENT
+  -------------------------------------------------- */
+  const intent = useMemo<PlaybackIntent | null>(() => {
+    if (params.tmdbId && params.season && params.episode) {
+      return {
+        mediaType: "tv",
+        tmdbId: Number(params.tmdbId),
+        season: Number(params.season),
+        episode: Number(params.episode),
+      };
+    }
 
-    intent = {
-      mediaType: "tv",
-      tmdbId: Number(tmdbId),
-      season: Number(season),
-      episode: Number(episode),
-    };
-  }
+    if (params.tmdbId) {
+      return {
+        mediaType: "movie",
+        tmdbId: Number(params.tmdbId),
+      };
+    }
+
+    return null;
+  }, [params]);
 
   if (!intent) return null;
 
