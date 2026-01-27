@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { FaFilm, FaTv, FaSearch, FaStar, FaBookmark } from "react-icons/fa";
 
@@ -18,11 +18,13 @@ interface NavbarProps {
   isModalOpen?: boolean;
 }
 
-const navItems: {
+type NavItem = {
   id: Tab;
   icon: React.ReactElement;
   label: string;
-}[] = [
+};
+
+const navItems: NavItem[] = [
   { id: "movies", icon: <FaFilm size={30} />, label: "Movies" },
   { id: "tvshows", icon: <FaTv size={30} />, label: "TV Shows" },
   { id: "search", icon: <FaSearch size={30} />, label: "Search" },
@@ -67,7 +69,7 @@ export default function Navbar({
   }, [activeTab, isModalOpen, onTabChange, setTabNavigator]);
 
   /* -------------------------------------------------
-     TOUCH TOOLTIP
+     TOUCH TOOLTIP (MOBILE)
   -------------------------------------------------- */
   const handleTouchStart = (label: string, target: HTMLElement) => {
     pressTimeout.current = window.setTimeout(() => {
@@ -82,6 +84,18 @@ export default function Navbar({
     }
     hideTooltip();
   };
+
+  /* -------------------------------------------------
+     CLEANUP
+  -------------------------------------------------- */
+  useEffect(() => {
+    return () => {
+      if (pressTimeout.current !== null) {
+        clearTimeout(pressTimeout.current);
+        pressTimeout.current = null;
+      }
+    };
+  }, []);
 
   /* -------------------------------------------------
      RENDER
@@ -108,12 +122,14 @@ export default function Navbar({
             return (
               <button
                 key={item.id}
+                type="button"
+                aria-label={item.label}
+                aria-current={active ? "page" : undefined}
                 onClick={() => onTabChange(item.id)}
                 onMouseEnter={(e) =>
                   showTooltip(item.label, "side", e.currentTarget)
                 }
                 onMouseLeave={hideTooltip}
-                aria-current={active ? "page" : undefined}
                 className={`relative p-2 rounded-lg transition-transform ${
                   active ? "text-[hsl(var(--foreground))]" : "opacity-50"
                 }`}
@@ -144,19 +160,26 @@ export default function Navbar({
       </aside>
 
       {/* Mobile Bottom Nav */}
-      <nav className="md:hidden fixed bottom-0 left-0 w-full h-16 bg-[hsl(var(--background))] border-t border-border flex justify-around items-center z-40 pb-[env(safe-area-inset-bottom)]">
+      <nav
+        className="md:hidden fixed bottom-0 left-0 w-full h-16 box-border bg-[hsl(var(--background))]
+          border-t border-border flex justify-around items-center z-40 pb-[env(safe-area-inset-bottom)]"
+        aria-label="Primary"
+      >
         {navItems.map((item) => {
           const active = activeTab === item.id;
 
           return (
             <button
               key={item.id}
+              type="button"
+              aria-label={item.label}
+              aria-current={active ? "page" : undefined}
               onClick={() => onTabChange(item.id)}
               onTouchStart={(e) =>
                 handleTouchStart(item.label, e.currentTarget)
               }
               onTouchEnd={handleTouchEnd}
-              aria-current={active ? "page" : undefined}
+              onTouchCancel={handleTouchEnd}
               className={`relative transition-transform ${
                 active ? "text-[hsl(var(--foreground))]" : "opacity-50"
               }`}
