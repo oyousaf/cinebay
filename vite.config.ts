@@ -44,7 +44,7 @@ export default defineConfig({
         clientsClaim: true,
         navigateFallback: "/",
 
-        /* ⛔ Correct way to exclude from precache */
+        /* ⛔ Excluded from precache */
         globIgnores: [
           "**/mc.yandex.ru/**",
           "**/google-analytics.com/**",
