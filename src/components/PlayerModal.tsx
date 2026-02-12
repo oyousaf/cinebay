@@ -22,9 +22,9 @@ interface PlayerModalProps {
   onPlayNext: (intent: PlaybackIntent) => void;
 }
 
-const RESUME_SECONDS = 30;
 const LOADER_MIN_MS = 900;
-const PROGRESS_TRIGGER = 0.95;
+const PROGRESS_TRIGGER = 0.95; // 95% for next episode
+const SAVE_INTERVAL = 10; // seconds between resume saves
 
 export default function PlayerModal({
   intent,
@@ -42,9 +42,9 @@ export default function PlayerModal({
   const offeredRef = useRef(false);
   const cooldownRef = useRef(false);
   const inFlightRef = useRef(false);
-  const resumeWrittenRef = useRef(false);
+  const lastSavedRef = useRef(0);
 
-  const { setTVProgress } = useContinueWatching();
+  const { setTVProgress, clearTVProgress } = useContinueWatching();
 
   const embedUrl = useMemo(
     () => buildEmbedUrl(EMBED_PROVIDERS[0], intent),
@@ -55,7 +55,7 @@ export default function PlayerModal({
     intentRef.current = intent;
   }, [intent]);
 
-  /* Loader reset */
+  /* Reset on episode change */
   useEffect(() => {
     setError(false);
     setNextOffer(null);
@@ -64,26 +64,13 @@ export default function PlayerModal({
     offeredRef.current = false;
     cooldownRef.current = false;
     inFlightRef.current = false;
-    resumeWrittenRef.current = false;
+    lastSavedRef.current = 0;
 
     const t = window.setTimeout(() => setShowLoader(false), LOADER_MIN_MS);
     return () => clearTimeout(t);
   }, [embedUrl]);
 
-  /* Continue Watching */
-  useEffect(() => {
-    if (intent.mediaType !== "tv") return;
-
-    const t = window.setTimeout(() => {
-      const i = intentRef.current;
-      if (typeof i.season === "number" && typeof i.episode === "number") {
-        setTVProgress(i.tmdbId, i.season, i.episode, RESUME_SECONDS);
-      }
-    }, RESUME_SECONDS * 1000);
-
-    return () => clearTimeout(t);
-  }, [embedUrl, setTVProgress]);
-
+  /* Player event handling */
   useEffect(() => {
     if (intent.mediaType !== "tv") return;
 
@@ -110,6 +97,7 @@ export default function PlayerModal({
       try {
         const result = await resolveNextEpisode(intentRef.current);
 
+        // Ignore if episode changed while waiting
         if (
           intentRef.current.season !== startSeason ||
           intentRef.current.episode !== startEpisode
@@ -145,28 +133,45 @@ export default function PlayerModal({
       )
         return;
 
+      const i = intentRef.current;
+
+      /* ---------- REAL RESUME TRACKING ---------- */
+      if (
+        eventName === "timeupdate" &&
+        i.mediaType === "tv" &&
+        typeof i.season === "number" &&
+        typeof i.episode === "number" &&
+        current - lastSavedRef.current >= SAVE_INTERVAL
+      ) {
+        lastSavedRef.current = current;
+
+        setTVProgress(i.tmdbId, i.season, i.episode, Math.floor(current));
+      }
+
+      /* ---------- NEXT EPISODE DETECTION ---------- */
       const progress = current / duration;
 
-      // Reliable trigger: progress based
       if (eventName === "timeupdate" && progress >= PROGRESS_TRIGGER) {
         triggerOffer();
       }
 
-      // Always trigger at true end
       if (eventName === "ended") {
+        // Episode finished → clear resume
+        clearTVProgress(i.tmdbId);
         triggerOffer();
       }
     };
 
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [embedUrl, intent.mediaType]);
+  }, [embedUrl, intent.mediaType, setTVProgress, clearTVProgress]);
 
   /* Play next */
   const handlePlayNext = (next: PlaybackIntent) => {
     offeredRef.current = false;
     inFlightRef.current = false;
     cooldownRef.current = false;
+    lastSavedRef.current = 0;
 
     setNextOffer(null);
     setFrameKey((k) => k + 1);
@@ -212,7 +217,7 @@ export default function PlayerModal({
             onError={() => setError(true)}
           />
 
-          {/* Next Overlay */}
+          {/* Next overlay */}
           <AnimatePresence>
             {nextOffer && nextOffer.kind !== "END" && (
               <motion.div
