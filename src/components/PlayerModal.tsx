@@ -25,7 +25,7 @@ interface PlayerModalProps {
 const RESUME_SECONDS = 30;
 const LOADER_MIN_MS = 900;
 const FALLBACK_RUNTIME = 42 * 60;
-const TRIGGER_BEFORE_END = 180;
+const TRIGGER_BEFORE_END = 180; // 3 minutes
 
 export default function PlayerModal({
   intent,
@@ -36,11 +36,12 @@ export default function PlayerModal({
   const [error, setError] = useState(false);
   const [nextOffer, setNextOffer] = useState<NextEpisodeResult | null>(null);
 
-  const intentRef = useRef(intent);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const intentRef = useRef(intent);
 
   const offeredRef = useRef(false);
   const resumeWrittenRef = useRef(false);
+  const lastTimeRef = useRef(0);
 
   const loaderTimerRef = useRef<number | null>(null);
   const resumeTimerRef = useRef<number | null>(null);
@@ -65,6 +66,7 @@ export default function PlayerModal({
 
     offeredRef.current = false;
     resumeWrittenRef.current = false;
+    lastTimeRef.current = 0;
 
     loaderTimerRef.current && clearTimeout(loaderTimerRef.current);
     resumeTimerRef.current && clearTimeout(resumeTimerRef.current);
@@ -116,7 +118,6 @@ export default function PlayerModal({
       setNextOffer(result);
     };
 
-    /* Vidlink events */
     const handleMessage = (event: MessageEvent) => {
       if (!iframeRef.current) return;
       if (event.source !== iframeRef.current.contentWindow) return;
@@ -136,7 +137,15 @@ export default function PlayerModal({
 
       const remaining = duration - current;
 
-      if (eventName === "timeupdate" && remaining <= TRIGGER_BEFORE_END) {
+      // Detect large forward seek (scrubbing)
+      const jumpedForward = current - lastTimeRef.current > 20;
+      lastTimeRef.current = current;
+
+      if (
+        eventName === "timeupdate" &&
+        (remaining <= TRIGGER_BEFORE_END ||
+          (jumpedForward && remaining <= TRIGGER_BEFORE_END))
+      ) {
         triggerOffer();
       }
 
@@ -147,7 +156,7 @@ export default function PlayerModal({
 
     window.addEventListener("message", handleMessage);
 
-    /* Runtime fallback */
+    /* Runtime fallback (silent safety) */
     const startFallback = async () => {
       let runtime = FALLBACK_RUNTIME;
 
@@ -219,33 +228,36 @@ export default function PlayerModal({
             onError={() => setError(true)}
           />
 
-          {/* Single overlay */}
           <AnimatePresence>
             {nextOffer && nextOffer.kind !== "END" && (
               <motion.div
                 initial={{ opacity: 0, y: 24, scale: 0.96 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 20, scale: 0.96 }}
-                className="absolute right-6 bottom-24 z-30
-                  rounded-xl px-5 py-4
-                  bg-[hsl(var(--background))]
-                  ring-2 ring-[hsl(var(--foreground))]
-                  shadow-2xl flex flex-col gap-3 min-w-55"
+                className="absolute right-6 bottom-24 z-30 rounded-xl px-5 py-4 bg-[hsl(var(--background))]
+                  ring-2 ring-[hsl(var(--foreground))] shadow-2xl flex items-center gap-4 min-w-60"
               >
-                <span className="text-sm font-medium text-[hsl(var(--foreground)/0.85)]">
-                  {nextOffer.kind === "NEXT_SEASON"
-                    ? "Next season ready"
-                    : "Next episode ready"}
-                </span>
+                <div className="flex flex-col">
+                  <span className="text-sm font-semibold text-[hsl(var(--foreground)/0.9)]">
+                    {nextOffer.kind === "NEXT_SEASON"
+                      ? "Next season ready"
+                      : "Next episode ready"}
+                  </span>
+
+                  {typeof nextOffer.intent.season === "number" &&
+                    typeof nextOffer.intent.episode === "number" && (
+                      <span className="text-xs text-[hsl(var(--foreground)/0.6)]">
+                        S{nextOffer.intent.season} · E{nextOffer.intent.episode}
+                      </span>
+                    )}
+                </div>
 
                 <button
                   onClick={() => handlePlayNext(nextOffer.intent)}
-                  className="text-sm font-semibold px-3 py-1.5 rounded-md
-                    bg-[hsl(var(--foreground))]
-                    text-[hsl(var(--background))]
-                    hover:scale-105 transition"
+                  className="text-sm font-semibold px-4 py-2 rounded-md bg-[hsl(var(--foreground))]
+                    text-[hsl(var(--background))] hover:scale-105 transition whitespace-nowrap"
                 >
-                  Play next
+                  Play
                 </button>
               </motion.div>
             )}
