@@ -25,7 +25,7 @@ interface PlayerModalProps {
 const RESUME_SECONDS = 30;
 const LOADER_MIN_MS = 900;
 const FALLBACK_RUNTIME = 42 * 60;
-const TRIGGER_BEFORE_END = 180; // 3 minutes
+const TRIGGER_BEFORE_END = 120;
 
 export default function PlayerModal({
   intent,
