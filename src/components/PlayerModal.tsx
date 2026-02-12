@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { X } from "lucide-react";
+import { FaPlay } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 
 import {
@@ -25,7 +26,6 @@ interface PlayerModalProps {
 const RESUME_SECONDS = 30;
 const LOADER_MIN_MS = 900;
 const FALLBACK_RUNTIME = 42 * 60;
-const TRIGGER_BEFORE_END = 120;
 
 export default function PlayerModal({
   intent,
@@ -42,6 +42,7 @@ export default function PlayerModal({
   const offeredRef = useRef(false);
   const resumeWrittenRef = useRef(false);
   const lastTimeRef = useRef(0);
+  const triggerWindowRef = useRef(120);
 
   const loaderTimerRef = useRef<number | null>(null);
   const resumeTimerRef = useRef<number | null>(null);
@@ -58,7 +59,7 @@ export default function PlayerModal({
     intentRef.current = intent;
   }, [intent]);
 
-  /* Reset on video change */
+  /* Reset when episode changes */
   useEffect(() => {
     setError(false);
     setNextOffer(null);
@@ -67,6 +68,7 @@ export default function PlayerModal({
     offeredRef.current = false;
     resumeWrittenRef.current = false;
     lastTimeRef.current = 0;
+    triggerWindowRef.current = 120;
 
     loaderTimerRef.current && clearTimeout(loaderTimerRef.current);
     resumeTimerRef.current && clearTimeout(resumeTimerRef.current);
@@ -119,8 +121,8 @@ export default function PlayerModal({
     };
 
     const handleMessage = (event: MessageEvent) => {
-      if (!iframeRef.current) return;
-      if (event.source !== iframeRef.current.contentWindow) return;
+      const iframeWindow = iframeRef.current?.contentWindow;
+      if (!iframeWindow || event.source !== iframeWindow) return;
 
       const message = event.data;
       if (!message || typeof message !== "object") return;
@@ -137,14 +139,13 @@ export default function PlayerModal({
 
       const remaining = duration - current;
 
-      // Detect large forward seek (scrubbing)
       const jumpedForward = current - lastTimeRef.current > 20;
       lastTimeRef.current = current;
 
       if (
         eventName === "timeupdate" &&
-        (remaining <= TRIGGER_BEFORE_END ||
-          (jumpedForward && remaining <= TRIGGER_BEFORE_END))
+        (remaining <= triggerWindowRef.current ||
+          (jumpedForward && remaining <= triggerWindowRef.current))
       ) {
         triggerOffer();
       }
@@ -156,7 +157,7 @@ export default function PlayerModal({
 
     window.addEventListener("message", handleMessage);
 
-    /* Runtime fallback (silent safety) */
+    /* Adaptive runtime window */
     const startFallback = async () => {
       let runtime = FALLBACK_RUNTIME;
 
@@ -168,8 +169,11 @@ export default function PlayerModal({
         }
       } catch {}
 
-      const delay = Math.max(runtime - TRIGGER_BEFORE_END, 60);
+      if (runtime < 25 * 60) triggerWindowRef.current = 90;
+      else if (runtime < 60 * 60) triggerWindowRef.current = 120;
+      else triggerWindowRef.current = 180;
 
+      const delay = Math.max(runtime - triggerWindowRef.current, 60);
       fallbackTimerRef.current = window.setTimeout(triggerOffer, delay * 1000);
     };
 
@@ -182,7 +186,12 @@ export default function PlayerModal({
     };
   }, [embedUrl]);
 
+  /* Play next */
   const handlePlayNext = (next: PlaybackIntent) => {
+    // reset gates immediately
+    offeredRef.current = false;
+    lastTimeRef.current = 0;
+
     setNextOffer(null);
     onPlayNext(next);
   };
@@ -228,16 +237,17 @@ export default function PlayerModal({
             onError={() => setError(true)}
           />
 
+          {/* Next episode overlay */}
           <AnimatePresence>
             {nextOffer && nextOffer.kind !== "END" && (
               <motion.div
-                initial={{ opacity: 0, y: 24, scale: 0.96 }}
+                initial={{ opacity: 0, y: 20, scale: 0.96 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 20, scale: 0.96 }}
-                className="absolute right-6 bottom-24 z-30 rounded-xl px-5 py-4 bg-[hsl(var(--background))]
-                  ring-2 ring-[hsl(var(--foreground))] shadow-2xl flex items-center gap-4 min-w-60"
+                className="absolute right-6 bottom-24 z-30 rounded-xl px-4 py-3 bg-[hsl(var(--background))]
+                  ring-2 ring-[hsl(var(--foreground))] shadow-2xl flex items-center gap-3"
               >
-                <div className="flex flex-col">
+                <div className="flex flex-col leading-tight">
                   <span className="text-sm font-semibold text-[hsl(var(--foreground)/0.9)]">
                     {nextOffer.kind === "NEXT_SEASON"
                       ? "Next season ready"
@@ -254,10 +264,11 @@ export default function PlayerModal({
 
                 <button
                   onClick={() => handlePlayNext(nextOffer.intent)}
-                  className="text-sm font-semibold px-4 py-2 rounded-md bg-[hsl(var(--foreground))]
-                    text-[hsl(var(--background))] hover:scale-105 transition whitespace-nowrap"
+                  className="flex items-center justify-center h-10 w-10 rounded-full
+                    bg-[hsl(var(--foreground))] text-[hsl(var(--background))]
+                    hover:scale-105 transition"
                 >
-                  Play
+                  <FaPlay size={18} />
                 </button>
               </motion.div>
             )}
