@@ -16,9 +16,10 @@ export interface PlaybackIntent {
 -------------------------------------------------- */
 const EMBED_THEME = {
   autoplay: 1,
-  captions: 0,
-  primaryColor: "2dd4bf",
-  secondaryColor: "0f766e",
+  muted: 1,
+  cc: 1,
+  nextbutton: 1,
+  player: "jw",
 };
 
 /* -------------------------------------------------
