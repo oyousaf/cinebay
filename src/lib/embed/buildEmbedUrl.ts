@@ -86,6 +86,6 @@ export function buildEmbedCacheKey(intent: PlaybackIntent) {
     intent.mediaType === "tv"
       ? `s${intent.season ?? 1}e${intent.episode ?? 1}`
       : "movie",
-    `theme:${EMBED_THEME.primaryColor}`,
+    `theme:${JSON.stringify(EMBED_THEME)}`,
   ].join(":");
 }
