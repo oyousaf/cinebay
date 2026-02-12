@@ -24,7 +24,6 @@ interface PlayerModalProps {
 
 const RESUME_SECONDS = 30;
 const LOADER_MIN_MS = 900;
-const COUNTDOWN_SECONDS = 8;
 const FALLBACK_RUNTIME = 42 * 60;
 const TRIGGER_BEFORE_END = 180;
 
@@ -36,19 +35,16 @@ export default function PlayerModal({
   const [showLoader, setShowLoader] = useState(true);
   const [error, setError] = useState(false);
   const [nextOffer, setNextOffer] = useState<NextEpisodeResult | null>(null);
-  const [countdown, setCountdown] = useState<number | null>(null);
 
   const intentRef = useRef(intent);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
 
   const offeredRef = useRef(false);
-  const cancelledByUserRef = useRef(false);
   const resumeWrittenRef = useRef(false);
 
   const loaderTimerRef = useRef<number | null>(null);
   const resumeTimerRef = useRef<number | null>(null);
   const fallbackTimerRef = useRef<number | null>(null);
-  const countdownTimerRef = useRef<number | null>(null);
 
   const { setTVProgress } = useContinueWatching();
 
@@ -61,21 +57,18 @@ export default function PlayerModal({
     intentRef.current = intent;
   }, [intent]);
 
+  /* Reset on video change */
   useEffect(() => {
     setError(false);
     setNextOffer(null);
-    setCountdown(null);
     setShowLoader(true);
 
     offeredRef.current = false;
-    cancelledByUserRef.current = false;
     resumeWrittenRef.current = false;
 
     loaderTimerRef.current && clearTimeout(loaderTimerRef.current);
     resumeTimerRef.current && clearTimeout(resumeTimerRef.current);
     fallbackTimerRef.current && clearTimeout(fallbackTimerRef.current);
-    countdownTimerRef.current && clearInterval(countdownTimerRef.current);
-    countdownTimerRef.current = null;
 
     loaderTimerRef.current = window.setTimeout(
       () => setShowLoader(false),
@@ -87,6 +80,7 @@ export default function PlayerModal({
     };
   }, [embedUrl]);
 
+  /* Continue Watching */
   useEffect(() => {
     if (intent.mediaType !== "tv" || resumeWrittenRef.current) return;
 
@@ -103,40 +97,7 @@ export default function PlayerModal({
     };
   }, [embedUrl, setTVProgress]);
 
-  const startCountdown = (nextIntent: PlaybackIntent) => {
-    if (countdownTimerRef.current) return;
-
-    setCountdown(COUNTDOWN_SECONDS);
-
-    countdownTimerRef.current = window.setInterval(() => {
-      setCountdown((prev) => {
-        if (!prev || prev <= 1) {
-          clearInterval(countdownTimerRef.current!);
-          countdownTimerRef.current = null;
-          onPlayNext(nextIntent);
-          return null;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-  };
-
-  const cancelCountdown = () => {
-    cancelledByUserRef.current = true;
-
-    if (countdownTimerRef.current) {
-      clearInterval(countdownTimerRef.current);
-      countdownTimerRef.current = null;
-    }
-
-    if (fallbackTimerRef.current) {
-      clearTimeout(fallbackTimerRef.current);
-    }
-
-    setCountdown(null);
-    setNextOffer(null);
-  };
-
+  /* Next episode detection */
   useEffect(() => {
     if (intent.mediaType !== "tv") return;
 
@@ -145,7 +106,6 @@ export default function PlayerModal({
     const triggerOffer = async () => {
       if (destroyed) return;
       if (offeredRef.current) return;
-      if (cancelledByUserRef.current) return;
       if (document.visibilityState !== "visible") return;
 
       offeredRef.current = true;
@@ -154,9 +114,9 @@ export default function PlayerModal({
       if (!result || result.kind === "END") return;
 
       setNextOffer(result);
-      startCountdown(result.intent);
     };
 
+    /* Vidlink events */
     const handleMessage = (event: MessageEvent) => {
       if (!iframeRef.current) return;
       if (event.source !== iframeRef.current.contentWindow) return;
@@ -187,6 +147,7 @@ export default function PlayerModal({
 
     window.addEventListener("message", handleMessage);
 
+    /* Runtime fallback */
     const startFallback = async () => {
       let runtime = FALLBACK_RUNTIME;
 
@@ -200,9 +161,7 @@ export default function PlayerModal({
 
       const delay = Math.max(runtime - TRIGGER_BEFORE_END, 60);
 
-      fallbackTimerRef.current = window.setTimeout(() => {
-        if (!cancelledByUserRef.current) triggerOffer();
-      }, delay * 1000);
+      fallbackTimerRef.current = window.setTimeout(triggerOffer, delay * 1000);
     };
 
     startFallback();
@@ -215,10 +174,11 @@ export default function PlayerModal({
   }, [embedUrl]);
 
   const handlePlayNext = (next: PlaybackIntent) => {
-    cancelCountdown();
+    setNextOffer(null);
     onPlayNext(next);
   };
 
+  /* UI */
   return (
     <AnimatePresence>
       <motion.div
@@ -227,13 +187,12 @@ export default function PlayerModal({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="fixed inset-0 z-50 flex items-center justify-center bg-[hsl(var(--foreground)/0.35)]
-        backdrop-blur-md px-3 sm:px-6 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
+        backdrop-blur-md px-3 sm:px-6"
       >
         <motion.div
           initial={{ scale: 0.97, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.98, opacity: 0 }}
-          transition={{ duration: 0.25, ease: "easeOut" }}
           className="relative w-full max-w-6xl aspect-video rounded-2xl overflow-hidden bg-[hsl(var(--background))]
           ring-2 ring-[hsl(var(--foreground))] shadow-[0_40px_120px_rgba(0,0,0,0.9)]"
         >
@@ -260,13 +219,14 @@ export default function PlayerModal({
             onError={() => setError(true)}
           />
 
+          {/* Single overlay */}
           <AnimatePresence>
             {nextOffer && nextOffer.kind !== "END" && (
               <motion.div
                 initial={{ opacity: 0, y: 24, scale: 0.96 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 20, scale: 0.96 }}
-                className="absolute right-6 bottom-24 mb-24 z-30
+                className="absolute right-6 bottom-24 z-30
                   rounded-xl px-5 py-4
                   bg-[hsl(var(--background))]
                   ring-2 ring-[hsl(var(--foreground))]
@@ -278,40 +238,22 @@ export default function PlayerModal({
                     : "Next episode ready"}
                 </span>
 
-                {countdown !== null && (
-                  <span className="text-xs text-[hsl(var(--foreground)/0.6)]">
-                    Playing in {countdown}s
-                  </span>
-                )}
-
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handlePlayNext(nextOffer.intent)}
-                    className="flex-1 text-sm font-semibold px-3 py-1.5 rounded-md
-                      bg-[hsl(var(--foreground))]
-                      text-[hsl(var(--background))]
-                      hover:scale-105 transition"
-                  >
-                    Play now
-                  </button>
-
-                  <button
-                    onClick={cancelCountdown}
-                    className="text-sm px-3 py-1.5 rounded-md
-                      ring-1 ring-[hsl(var(--foreground)/0.4)]
-                      hover:bg-[hsl(var(--foreground)/0.08)]"
-                  >
-                    Cancel
-                  </button>
-                </div>
+                <button
+                  onClick={() => handlePlayNext(nextOffer.intent)}
+                  className="text-sm font-semibold px-3 py-1.5 rounded-md
+                    bg-[hsl(var(--foreground))]
+                    text-[hsl(var(--background))]
+                    hover:scale-105 transition"
+                >
+                  Play next
+                </button>
               </motion.div>
             )}
           </AnimatePresence>
 
           <button
             onClick={onClose}
-            aria-label="Close player"
-            className="absolute top-3 right-3 sm:top-4 sm:right-4 z-20 rounded-full bg-[hsl(var(--background))]
+            className="absolute top-3 right-3 z-20 rounded-full bg-[hsl(var(--background))]
               ring-2 ring-[hsl(var(--foreground))] hover:scale-105 transition"
           >
             <X size={22} className="m-2 text-[hsl(var(--foreground))]" />
