@@ -43,10 +43,12 @@ export default function PlayerModal({
   const resumeWrittenRef = useRef(false);
   const lastTimeRef = useRef(0);
   const triggerWindowRef = useRef(120);
+  const readyRef = useRef(false);
 
   const loaderTimerRef = useRef<number | null>(null);
   const resumeTimerRef = useRef<number | null>(null);
   const fallbackTimerRef = useRef<number | null>(null);
+  const readyTimerRef = useRef<number | null>(null);
 
   const { setTVProgress } = useContinueWatching();
 
@@ -69,15 +71,22 @@ export default function PlayerModal({
     resumeWrittenRef.current = false;
     lastTimeRef.current = 0;
     triggerWindowRef.current = 120;
+    readyRef.current = false;
 
     loaderTimerRef.current && clearTimeout(loaderTimerRef.current);
     resumeTimerRef.current && clearTimeout(resumeTimerRef.current);
     fallbackTimerRef.current && clearTimeout(fallbackTimerRef.current);
+    readyTimerRef.current && clearTimeout(readyTimerRef.current);
 
     loaderTimerRef.current = window.setTimeout(
       () => setShowLoader(false),
       LOADER_MIN_MS,
     );
+
+    // Allow player to stabilise before accepting progress events
+    readyTimerRef.current = window.setTimeout(() => {
+      readyRef.current = true;
+    }, 2000);
 
     return () => {
       loaderTimerRef.current && clearTimeout(loaderTimerRef.current);
@@ -110,7 +119,6 @@ export default function PlayerModal({
     const triggerOffer = async () => {
       if (destroyed) return;
       if (offeredRef.current) return;
-      if (document.visibilityState !== "visible") return;
 
       offeredRef.current = true;
 
@@ -123,6 +131,7 @@ export default function PlayerModal({
     const handleMessage = (event: MessageEvent) => {
       const iframeWindow = iframeRef.current?.contentWindow;
       if (!iframeWindow || event.source !== iframeWindow) return;
+      if (!readyRef.current) return;
 
       const message = event.data;
       if (!message || typeof message !== "object") return;
@@ -142,12 +151,15 @@ export default function PlayerModal({
       const jumpedForward = current - lastTimeRef.current > 20;
       lastTimeRef.current = current;
 
-      if (
-        eventName === "timeupdate" &&
-        (remaining <= triggerWindowRef.current ||
-          (jumpedForward && remaining <= triggerWindowRef.current))
-      ) {
-        triggerOffer();
+      if (eventName === "timeupdate") {
+        if (remaining <= triggerWindowRef.current) {
+          triggerOffer();
+        }
+
+        // If user scrubs near the end, trigger immediately
+        if (jumpedForward && remaining <= triggerWindowRef.current + 10) {
+          triggerOffer();
+        }
       }
 
       if (eventName === "ended") {
@@ -188,9 +200,9 @@ export default function PlayerModal({
 
   /* Play next */
   const handlePlayNext = (next: PlaybackIntent) => {
-    // reset gates immediately
     offeredRef.current = false;
     lastTimeRef.current = 0;
+    readyRef.current = false;
 
     setNextOffer(null);
     onPlayNext(next);
@@ -237,7 +249,6 @@ export default function PlayerModal({
             onError={() => setError(true)}
           />
 
-          {/* Next episode overlay */}
           <AnimatePresence>
             {nextOffer && nextOffer.kind !== "END" && (
               <motion.div
