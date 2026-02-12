@@ -13,6 +13,7 @@ import {
   resolveNextEpisode,
   type NextEpisodeResult,
 } from "@/lib/tv/resolveNextEpisode";
+import { fetchEpisodeRuntime } from "@/lib/tv/fetchEpisodeRuntime";
 import { useContinueWatching } from "@/hooks/useContinueWatching";
 
 interface PlayerModalProps {
@@ -23,7 +24,9 @@ interface PlayerModalProps {
 
 const RESUME_SECONDS = 30;
 const LOADER_MIN_MS = 900;
-const FALLBACK_OFFER_MS = 35 * 60 * 1000;
+const COUNTDOWN_SECONDS = 8;
+const FALLBACK_RUNTIME = 42 * 60;
+const TRIGGER_BEFORE_END = 180;
 
 export default function PlayerModal({
   intent,
@@ -33,16 +36,19 @@ export default function PlayerModal({
   const [showLoader, setShowLoader] = useState(true);
   const [error, setError] = useState(false);
   const [nextOffer, setNextOffer] = useState<NextEpisodeResult | null>(null);
+  const [countdown, setCountdown] = useState<number | null>(null);
 
   const intentRef = useRef(intent);
-  const offeredRef = useRef(false);
-  const resumeWrittenRef = useRef(false);
-  const activatedRef = useRef(false);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
+
+  const offeredRef = useRef(false);
+  const cancelledByUserRef = useRef(false);
+  const resumeWrittenRef = useRef(false);
 
   const loaderTimerRef = useRef<number | null>(null);
   const resumeTimerRef = useRef<number | null>(null);
   const fallbackTimerRef = useRef<number | null>(null);
+  const countdownTimerRef = useRef<number | null>(null);
 
   const { setTVProgress } = useContinueWatching();
 
@@ -55,19 +61,21 @@ export default function PlayerModal({
     intentRef.current = intent;
   }, [intent]);
 
-  /* Reset state when video changes */
   useEffect(() => {
     setError(false);
     setNextOffer(null);
+    setCountdown(null);
     setShowLoader(true);
 
     offeredRef.current = false;
+    cancelledByUserRef.current = false;
     resumeWrittenRef.current = false;
-    activatedRef.current = false;
 
     loaderTimerRef.current && clearTimeout(loaderTimerRef.current);
     resumeTimerRef.current && clearTimeout(resumeTimerRef.current);
     fallbackTimerRef.current && clearTimeout(fallbackTimerRef.current);
+    countdownTimerRef.current && clearInterval(countdownTimerRef.current);
+    countdownTimerRef.current = null;
 
     loaderTimerRef.current = window.setTimeout(
       () => setShowLoader(false),
@@ -79,7 +87,6 @@ export default function PlayerModal({
     };
   }, [embedUrl]);
 
-  /* Save minimal progress for Continue Watching */
   useEffect(() => {
     if (intent.mediaType !== "tv" || resumeWrittenRef.current) return;
 
@@ -96,97 +103,119 @@ export default function PlayerModal({
     };
   }, [embedUrl, setTVProgress]);
 
-  /* First user interaction: force playback and enable sound */
-  useEffect(() => {
-    const activatePlayback = () => {
-      if (activatedRef.current) return;
-      if (!iframeRef.current) return;
+  const startCountdown = (nextIntent: PlaybackIntent) => {
+    if (countdownTimerRef.current) return;
 
-      const win = iframeRef.current.contentWindow;
+    setCountdown(COUNTDOWN_SECONDS);
 
-      try {
-        // Force play (some sources ignore autoplay)
-        win?.postMessage(
-          {
-            type: "PLAYER_COMMAND",
-            command: "play",
-          },
-          "*",
-        );
+    countdownTimerRef.current = window.setInterval(() => {
+      setCountdown((prev) => {
+        if (!prev || prev <= 1) {
+          clearInterval(countdownTimerRef.current!);
+          countdownTimerRef.current = null;
+          onPlayNext(nextIntent);
+          return null;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
 
-        // Ensure audio enabled
-        win?.postMessage(
-          {
-            type: "PLAYER_COMMAND",
-            command: "unmute",
-          },
-          "*",
-        );
-      } catch {}
+  const cancelCountdown = () => {
+    cancelledByUserRef.current = true;
 
-      activatedRef.current = true;
-    };
+    if (countdownTimerRef.current) {
+      clearInterval(countdownTimerRef.current);
+      countdownTimerRef.current = null;
+    }
 
-    window.addEventListener("pointerdown", activatePlayback, { once: true });
-    window.addEventListener("keydown", activatePlayback, { once: true });
+    if (fallbackTimerRef.current) {
+      clearTimeout(fallbackTimerRef.current);
+    }
 
-    return () => {
-      window.removeEventListener("pointerdown", activatePlayback);
-      window.removeEventListener("keydown", activatePlayback);
-    };
-  }, [embedUrl]);
+    setCountdown(null);
+    setNextOffer(null);
+  };
 
-  /* Next episode detection */
   useEffect(() => {
     if (intent.mediaType !== "tv") return;
 
-    let cancelled = false;
+    let destroyed = false;
 
-    const maybeOffer = async () => {
-      if (cancelled || offeredRef.current) return;
+    const triggerOffer = async () => {
+      if (destroyed) return;
+      if (offeredRef.current) return;
+      if (cancelledByUserRef.current) return;
       if (document.visibilityState !== "visible") return;
 
       offeredRef.current = true;
 
       const result = await resolveNextEpisode(intentRef.current);
-      if (result) setNextOffer(result);
+      if (!result || result.kind === "END") return;
+
+      setNextOffer(result);
+      startCountdown(result.intent);
     };
 
     const handleMessage = (event: MessageEvent) => {
-      const data = event.data;
-      if (!data || typeof data !== "object") return;
-      if (data.type !== "PLAYER_EVENT") return;
+      if (!iframeRef.current) return;
+      if (event.source !== iframeRef.current.contentWindow) return;
 
-      const playerEvent = data.event;
-      const payload = data.data;
+      const message = event.data;
+      if (!message || typeof message !== "object") return;
+      if (message.type !== "PLAYER_EVENT") return;
 
-      if (playerEvent === "timeupdate") {
-        const current = payload?.currentTime;
-        const duration = payload?.duration;
-        if (!current || !duration) return;
+      const payload = message.data;
+      if (!payload) return;
 
-        if (current / duration >= 0.9) {
-          maybeOffer();
-        }
+      const current = payload.currentTime;
+      const duration = payload.duration;
+      const eventName = payload.event;
+
+      if (!current || !duration) return;
+
+      const remaining = duration - current;
+
+      if (eventName === "timeupdate" && remaining <= TRIGGER_BEFORE_END) {
+        triggerOffer();
       }
 
-      if (playerEvent === "ended") {
-        maybeOffer();
+      if (eventName === "ended") {
+        triggerOffer();
       }
     };
 
     window.addEventListener("message", handleMessage);
-    fallbackTimerRef.current = window.setTimeout(maybeOffer, FALLBACK_OFFER_MS);
+
+    const startFallback = async () => {
+      let runtime = FALLBACK_RUNTIME;
+
+      try {
+        const i = intentRef.current;
+        if (i.season && i.episode) {
+          const r = await fetchEpisodeRuntime(i.tmdbId, i.season, i.episode);
+          if (r && r > 600 && r < 10800) runtime = r;
+        }
+      } catch {}
+
+      const delay = Math.max(runtime - TRIGGER_BEFORE_END, 60);
+
+      fallbackTimerRef.current = window.setTimeout(() => {
+        if (!cancelledByUserRef.current) triggerOffer();
+      }, delay * 1000);
+    };
+
+    startFallback();
 
     return () => {
-      cancelled = true;
+      destroyed = true;
       window.removeEventListener("message", handleMessage);
       fallbackTimerRef.current && clearTimeout(fallbackTimerRef.current);
     };
   }, [embedUrl]);
 
   const handlePlayNext = (next: PlaybackIntent) => {
-    setNextOffer(null);
+    cancelCountdown();
     onPlayNext(next);
   };
 
@@ -198,7 +227,7 @@ export default function PlayerModal({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="fixed inset-0 z-50 flex items-center justify-center bg-[hsl(var(--foreground)/0.35)]
-          backdrop-blur-md px-3 sm:px-6 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
+        backdrop-blur-md px-3 sm:px-6 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
       >
         <motion.div
           initial={{ scale: 0.97, opacity: 0 }}
@@ -206,9 +235,8 @@ export default function PlayerModal({
           exit={{ scale: 0.98, opacity: 0 }}
           transition={{ duration: 0.25, ease: "easeOut" }}
           className="relative w-full max-w-6xl aspect-video rounded-2xl overflow-hidden bg-[hsl(var(--background))]
-            ring-2 ring-[hsl(var(--foreground))] shadow-[0_40px_120px_rgba(0,0,0,0.9)]"
+          ring-2 ring-[hsl(var(--foreground))] shadow-[0_40px_120px_rgba(0,0,0,0.9)]"
         >
-          {/* Loader */}
           <AnimatePresence>
             {showLoader && !error && (
               <motion.div
@@ -221,7 +249,6 @@ export default function PlayerModal({
             )}
           </AnimatePresence>
 
-          {/* Player */}
           <iframe
             ref={iframeRef}
             key={embedUrl}
@@ -233,35 +260,54 @@ export default function PlayerModal({
             onError={() => setError(true)}
           />
 
-          {/* Next episode prompt */}
           <AnimatePresence>
             {nextOffer && nextOffer.kind !== "END" && (
               <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 12 }}
-                className="absolute right-4 bottom-4 sm:right-6 sm:bottom-6 z-30 flex items-center gap-4
-                  rounded-xl px-4 py-3 bg-[hsl(var(--background))] ring-2 ring-[hsl(var(--foreground))]
-                  shadow-xl"
+                initial={{ opacity: 0, y: 24, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 20, scale: 0.96 }}
+                className="absolute right-6 bottom-24 mb-24 z-30
+                  rounded-xl px-5 py-4
+                  bg-[hsl(var(--background))]
+                  ring-2 ring-[hsl(var(--foreground))]
+                  shadow-2xl flex flex-col gap-3 min-w-55"
               >
-                <span className="text-sm text-[hsl(var(--foreground)/0.8)]">
+                <span className="text-sm font-medium text-[hsl(var(--foreground)/0.85)]">
                   {nextOffer.kind === "NEXT_SEASON"
-                    ? "Start next season?"
+                    ? "Next season ready"
                     : "Next episode ready"}
                 </span>
 
-                <button
-                  onClick={() => handlePlayNext(nextOffer.intent)}
-                  className="text-sm font-semibold px-3 py-1.5 rounded-md bg-[hsl(var(--foreground))] text-[hsl(var(--background))]
-                    hover:scale-105 transition"
-                >
-                  Play
-                </button>
+                {countdown !== null && (
+                  <span className="text-xs text-[hsl(var(--foreground)/0.6)]">
+                    Playing in {countdown}s
+                  </span>
+                )}
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handlePlayNext(nextOffer.intent)}
+                    className="flex-1 text-sm font-semibold px-3 py-1.5 rounded-md
+                      bg-[hsl(var(--foreground))]
+                      text-[hsl(var(--background))]
+                      hover:scale-105 transition"
+                  >
+                    Play now
+                  </button>
+
+                  <button
+                    onClick={cancelCountdown}
+                    className="text-sm px-3 py-1.5 rounded-md
+                      ring-1 ring-[hsl(var(--foreground)/0.4)]
+                      hover:bg-[hsl(var(--foreground)/0.08)]"
+                  >
+                    Cancel
+                  </button>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
 
-          {/* Close */}
           <button
             onClick={onClose}
             aria-label="Close player"
