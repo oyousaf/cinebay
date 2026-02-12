@@ -26,6 +26,7 @@ interface PlayerModalProps {
 const RESUME_SECONDS = 30;
 const LOADER_MIN_MS = 900;
 const FALLBACK_RUNTIME = 42 * 60;
+const DEFAULT_TRIGGER_WINDOW = 120;
 
 export default function PlayerModal({
   intent,
@@ -35,6 +36,7 @@ export default function PlayerModal({
   const [showLoader, setShowLoader] = useState(true);
   const [error, setError] = useState(false);
   const [nextOffer, setNextOffer] = useState<NextEpisodeResult | null>(null);
+  const [frameKey, setFrameKey] = useState(0);
 
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const intentRef = useRef(intent);
@@ -42,13 +44,15 @@ export default function PlayerModal({
   const offeredRef = useRef(false);
   const resumeWrittenRef = useRef(false);
   const lastTimeRef = useRef(0);
-  const triggerWindowRef = useRef(120);
-  const readyRef = useRef(false);
+  const triggerWindowRef = useRef(DEFAULT_TRIGGER_WINDOW);
+
+  const cooldownRef = useRef(false);
+  const inFlightRef = useRef(false);
 
   const loaderTimerRef = useRef<number | null>(null);
   const resumeTimerRef = useRef<number | null>(null);
   const fallbackTimerRef = useRef<number | null>(null);
-  const readyTimerRef = useRef<number | null>(null);
+  const cooldownTimerRef = useRef<number | null>(null);
 
   const { setTVProgress } = useContinueWatching();
 
@@ -61,6 +65,25 @@ export default function PlayerModal({
     intentRef.current = intent;
   }, [intent]);
 
+  const clearTimers = () => {
+    if (loaderTimerRef.current) {
+      clearTimeout(loaderTimerRef.current);
+      loaderTimerRef.current = null;
+    }
+    if (resumeTimerRef.current) {
+      clearTimeout(resumeTimerRef.current);
+      resumeTimerRef.current = null;
+    }
+    if (fallbackTimerRef.current) {
+      clearTimeout(fallbackTimerRef.current);
+      fallbackTimerRef.current = null;
+    }
+    if (cooldownTimerRef.current) {
+      clearTimeout(cooldownTimerRef.current);
+      cooldownTimerRef.current = null;
+    }
+  };
+
   /* Reset when episode changes */
   useEffect(() => {
     setError(false);
@@ -70,27 +93,20 @@ export default function PlayerModal({
     offeredRef.current = false;
     resumeWrittenRef.current = false;
     lastTimeRef.current = 0;
-    triggerWindowRef.current = 120;
-    readyRef.current = false;
 
-    loaderTimerRef.current && clearTimeout(loaderTimerRef.current);
-    resumeTimerRef.current && clearTimeout(resumeTimerRef.current);
-    fallbackTimerRef.current && clearTimeout(fallbackTimerRef.current);
-    readyTimerRef.current && clearTimeout(readyTimerRef.current);
+    triggerWindowRef.current = DEFAULT_TRIGGER_WINDOW;
+
+    cooldownRef.current = false;
+    inFlightRef.current = false;
+
+    clearTimers();
 
     loaderTimerRef.current = window.setTimeout(
       () => setShowLoader(false),
       LOADER_MIN_MS,
     );
 
-    // Allow player to stabilise before accepting progress events
-    readyTimerRef.current = window.setTimeout(() => {
-      readyRef.current = true;
-    }, 2000);
-
-    return () => {
-      loaderTimerRef.current && clearTimeout(loaderTimerRef.current);
-    };
+    return clearTimers;
   }, [embedUrl]);
 
   /* Continue Watching */
@@ -106,7 +122,10 @@ export default function PlayerModal({
     }, RESUME_SECONDS * 1000);
 
     return () => {
-      resumeTimerRef.current && clearTimeout(resumeTimerRef.current);
+      if (resumeTimerRef.current) {
+        clearTimeout(resumeTimerRef.current);
+        resumeTimerRef.current = null;
+      }
     };
   }, [embedUrl, setTVProgress]);
 
@@ -114,37 +133,68 @@ export default function PlayerModal({
   useEffect(() => {
     if (intent.mediaType !== "tv") return;
 
-    let destroyed = false;
+    const armCooldown = () => {
+      cooldownRef.current = true;
+      if (cooldownTimerRef.current) clearTimeout(cooldownTimerRef.current);
+      cooldownTimerRef.current = window.setTimeout(() => {
+        cooldownRef.current = false;
+        cooldownTimerRef.current = null;
+      }, 800);
+    };
 
     const triggerOffer = async () => {
-      if (destroyed) return;
-      if (offeredRef.current) return;
+      if (offeredRef.current || cooldownRef.current || inFlightRef.current)
+        return;
 
-      offeredRef.current = true;
+      const startSeason = intentRef.current.season;
+      const startEpisode = intentRef.current.episode;
 
-      const result = await resolveNextEpisode(intentRef.current);
-      if (!result || result.kind === "END") return;
+      if (typeof startSeason !== "number" || typeof startEpisode !== "number")
+        return;
 
-      setNextOffer(result);
+      armCooldown();
+      inFlightRef.current = true;
+
+      try {
+        const result = await resolveNextEpisode(intentRef.current);
+
+        if (
+          intentRef.current.season !== startSeason ||
+          intentRef.current.episode !== startEpisode
+        ) {
+          return;
+        }
+
+        if (!result || result.kind === "END") return;
+
+        offeredRef.current = true;
+        setNextOffer(result);
+      } finally {
+        inFlightRef.current = false;
+      }
     };
 
     const handleMessage = (event: MessageEvent) => {
       const iframeWindow = iframeRef.current?.contentWindow;
       if (!iframeWindow || event.source !== iframeWindow) return;
-      if (!readyRef.current) return;
 
       const message = event.data;
       if (!message || typeof message !== "object") return;
-      if (message.type !== "PLAYER_EVENT") return;
+      if ((message as any).type !== "PLAYER_EVENT") return;
 
-      const payload = message.data;
+      const payload = (message as any).data;
       if (!payload) return;
 
       const current = payload.currentTime;
       const duration = payload.duration;
       const eventName = payload.event;
 
-      if (!current || !duration) return;
+      if (
+        typeof current !== "number" ||
+        typeof duration !== "number" ||
+        duration <= 0
+      )
+        return;
 
       const remaining = duration - current;
 
@@ -152,30 +202,25 @@ export default function PlayerModal({
       lastTimeRef.current = current;
 
       if (eventName === "timeupdate") {
-        if (remaining <= triggerWindowRef.current) {
+        if (remaining <= triggerWindowRef.current) triggerOffer();
+        if (jumpedForward && remaining <= triggerWindowRef.current + 15)
           triggerOffer();
-        }
-
-        // If user scrubs near the end, trigger immediately
-        if (jumpedForward && remaining <= triggerWindowRef.current + 10) {
-          triggerOffer();
-        }
       }
 
-      if (eventName === "ended") {
+      if (eventName === "ended" || remaining <= 1) {
         triggerOffer();
       }
     };
 
     window.addEventListener("message", handleMessage);
 
-    /* Adaptive runtime window */
+    /* Runtime fallback */
     const startFallback = async () => {
       let runtime = FALLBACK_RUNTIME;
 
       try {
         const i = intentRef.current;
-        if (i.season && i.episode) {
+        if (typeof i.season === "number" && typeof i.episode === "number") {
           const r = await fetchEpisodeRuntime(i.tmdbId, i.season, i.episode);
           if (r && r > 600 && r < 10800) runtime = r;
         }
@@ -186,25 +231,39 @@ export default function PlayerModal({
       else triggerWindowRef.current = 180;
 
       const delay = Math.max(runtime - triggerWindowRef.current, 60);
-      fallbackTimerRef.current = window.setTimeout(triggerOffer, delay * 1000);
+
+      if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current);
+      fallbackTimerRef.current = window.setTimeout(() => {
+        triggerOffer();
+      }, delay * 1000);
     };
 
     startFallback();
 
     return () => {
-      destroyed = true;
       window.removeEventListener("message", handleMessage);
-      fallbackTimerRef.current && clearTimeout(fallbackTimerRef.current);
+      if (fallbackTimerRef.current) {
+        clearTimeout(fallbackTimerRef.current);
+        fallbackTimerRef.current = null;
+      }
+      if (cooldownTimerRef.current) {
+        clearTimeout(cooldownTimerRef.current);
+        cooldownTimerRef.current = null;
+      }
     };
-  }, [embedUrl]);
+  }, [embedUrl, intent.mediaType]);
 
   /* Play next */
   const handlePlayNext = (next: PlaybackIntent) => {
     offeredRef.current = false;
+    inFlightRef.current = false;
     lastTimeRef.current = 0;
-    readyRef.current = false;
+    cooldownRef.current = false;
+
+    clearTimers();
 
     setNextOffer(null);
+    setFrameKey((k) => k + 1);
     onPlayNext(next);
   };
 
@@ -240,11 +299,10 @@ export default function PlayerModal({
 
           <iframe
             ref={iframeRef}
-            key={embedUrl}
+            key={`${embedUrl}-${frameKey}`}
             src={embedUrl}
             className="w-full h-full border-none"
-            allow="autoplay *; fullscreen *; encrypted-media *; picture-in-picture *"
-            allowFullScreen
+            allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
             referrerPolicy="no-referrer"
             onError={() => setError(true)}
           />
@@ -265,22 +323,25 @@ export default function PlayerModal({
                       : "Next episode ready"}
                   </span>
 
-                  {typeof nextOffer.intent.season === "number" &&
-                    typeof nextOffer.intent.episode === "number" && (
+                  {typeof (nextOffer as any).intent?.season === "number" &&
+                    typeof (nextOffer as any).intent?.episode === "number" && (
                       <span className="text-xs text-[hsl(var(--foreground)/0.6)]">
-                        S{nextOffer.intent.season} · E{nextOffer.intent.episode}
+                        S{(nextOffer as any).intent.season} · E
+                        {(nextOffer as any).intent.episode}
                       </span>
                     )}
                 </div>
 
-                <button
-                  onClick={() => handlePlayNext(nextOffer.intent)}
-                  className="flex items-center justify-center h-10 w-10 rounded-full
-                    bg-[hsl(var(--foreground))] text-[hsl(var(--background))]
-                    hover:scale-105 transition"
-                >
-                  <FaPlay size={18} />
-                </button>
+                {"intent" in nextOffer && (
+                  <button
+                    onClick={() => handlePlayNext(nextOffer.intent)}
+                    className="flex items-center justify-center h-10 w-10 rounded-full
+                      bg-[hsl(var(--foreground))] text-[hsl(var(--background))]
+                      hover:scale-105 transition"
+                  >
+                    <FaPlay size={18} />
+                  </button>
+                )}
               </motion.div>
             )}
           </AnimatePresence>
