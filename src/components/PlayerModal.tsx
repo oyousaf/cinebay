@@ -13,7 +13,6 @@ import {
   resolveNextEpisode,
   type NextEpisodeResult,
 } from "@/lib/tv/resolveNextEpisode";
-import { fetchEpisodeRuntime } from "@/lib/tv/fetchEpisodeRuntime";
 import { useContinueWatching } from "@/hooks/useContinueWatching";
 
 interface PlayerModalProps {
@@ -22,9 +21,11 @@ interface PlayerModalProps {
   onPlayNext: (intent: PlaybackIntent) => void;
 }
 
-const FALLBACK_DURATION_SECONDS = 42 * 60;
 const RESUME_SECONDS = 30;
 const LOADER_MIN_MS = 900;
+
+// Safety fallback if provider doesn't emit events
+const FALLBACK_OFFER_MS = 35 * 60 * 1000;
 
 export default function PlayerModal({
   intent,
@@ -41,8 +42,7 @@ export default function PlayerModal({
 
   const loaderTimerRef = useRef<number | null>(null);
   const resumeTimerRef = useRef<number | null>(null);
-  const offerTimerRef = useRef<number | null>(null);
-  const cancelTimerRef = useRef<number | null>(null);
+  const fallbackTimerRef = useRef<number | null>(null);
 
   const { setTVProgress } = useContinueWatching();
 
@@ -66,8 +66,7 @@ export default function PlayerModal({
 
     loaderTimerRef.current && clearTimeout(loaderTimerRef.current);
     resumeTimerRef.current && clearTimeout(resumeTimerRef.current);
-    offerTimerRef.current && clearTimeout(offerTimerRef.current);
-    cancelTimerRef.current && clearTimeout(cancelTimerRef.current);
+    fallbackTimerRef.current && clearTimeout(fallbackTimerRef.current);
 
     loaderTimerRef.current = window.setTimeout(
       () => setShowLoader(false),
@@ -79,7 +78,7 @@ export default function PlayerModal({
     };
   }, [embedUrl]);
 
-  /* RESUME WRITE */
+  /* CONTINUE WATCHING WRITE */
   useEffect(() => {
     if (intent.mediaType !== "tv" || resumeWrittenRef.current) return;
 
@@ -99,6 +98,7 @@ export default function PlayerModal({
   /* NEXT EPISODE OFFER */
   useEffect(() => {
     if (intent.mediaType !== "tv") return;
+
     let cancelled = false;
 
     const maybeOffer = async () => {
@@ -106,40 +106,46 @@ export default function PlayerModal({
       if (document.visibilityState !== "visible") return;
 
       offeredRef.current = true;
+
       const result = await resolveNextEpisode(intentRef.current);
       if (result) setNextOffer(result);
     };
 
-    const start = async () => {
-      let runtime = FALLBACK_DURATION_SECONDS;
+    const handleMessage = (event: MessageEvent) => {
+      const data = event.data;
+      if (!data || typeof data !== "object") return;
 
-      try {
-        const i = intentRef.current;
-        if (typeof i.season === "number" && typeof i.episode === "number") {
-          const r = await fetchEpisodeRuntime(i.tmdbId, i.season, i.episode);
-          if (r && r > 600 && r < 10800) runtime = r;
+      if (data.type !== "PLAYER_EVENT") return;
+
+      const playerEvent = data.event;
+      const payload = data.data;
+
+      if (playerEvent === "timeupdate") {
+        const current = payload?.currentTime;
+        const duration = payload?.duration;
+        if (!current || !duration) return;
+
+        const progress = current / duration;
+
+        if (progress >= 0.9) {
+          maybeOffer();
         }
-      } catch {}
+      }
 
-      offerTimerRef.current = window.setTimeout(
-        maybeOffer,
-        runtime * 0.9 * 1000,
-      );
-
-      cancelTimerRef.current = window.setTimeout(
-        () => (cancelled = true),
-        runtime * 0.98 * 1000,
-      );
+      if (playerEvent === "ended") {
+        maybeOffer();
+      }
     };
 
-    document.addEventListener("visibilitychange", maybeOffer);
-    start();
+    window.addEventListener("message", handleMessage);
+
+    // Fallback safety (for providers without events)
+    fallbackTimerRef.current = window.setTimeout(maybeOffer, FALLBACK_OFFER_MS);
 
     return () => {
       cancelled = true;
-      document.removeEventListener("visibilitychange", maybeOffer);
-      offerTimerRef.current && clearTimeout(offerTimerRef.current);
-      cancelTimerRef.current && clearTimeout(cancelTimerRef.current);
+      window.removeEventListener("message", handleMessage);
+      fallbackTimerRef.current && clearTimeout(fallbackTimerRef.current);
     };
   }, [embedUrl]);
 
