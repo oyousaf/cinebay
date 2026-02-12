@@ -83,6 +83,16 @@ export function useVideoEmbed(intent?: PlaybackIntent): string | null {
         return;
       }
 
+      const provider = EMBED_PROVIDERS[index];
+      const src = buildEmbedUrl(provider, intent);
+
+      if (provider.name === "vidlink") {
+        resolve(src);
+        return;
+      }
+
+      /* ---------- Fallback providers probing ---------- */
+
       if (!iframeRef.current) {
         iframeRef.current = document.createElement("iframe");
         iframeRef.current.style.display = "none";
@@ -90,14 +100,6 @@ export function useVideoEmbed(intent?: PlaybackIntent): string | null {
 
         iframeRef.current.onload = () => {
           if (!iframeRef.current || resolved) return;
-
-          const provider = EMBED_PROVIDERS[index];
-
-          // trusted provider → accept immediately
-          if (provider.name === "vidlink") {
-            resolve(iframeRef.current.src);
-            return;
-          }
 
           try {
             const text =
@@ -123,12 +125,12 @@ export function useVideoEmbed(intent?: PlaybackIntent): string | null {
         };
       }
 
-      iframeRef.current.src = buildEmbedUrl(EMBED_PROVIDERS[index], intent);
+      iframeRef.current.src = src;
 
       timeoutRef.current = window.setTimeout(() => {
         index++;
         tryNext();
-      }, 3000);
+      }, 2500);
     };
 
     tryNext();
