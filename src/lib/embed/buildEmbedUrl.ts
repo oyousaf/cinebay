@@ -12,7 +12,7 @@ export interface PlaybackIntent {
 }
 
 /* -------------------------------------------------
-   THEME
+   THEME 
 -------------------------------------------------- */
 const EMBED_THEME = {
   autoplay: 1,
@@ -21,20 +21,20 @@ const EMBED_THEME = {
   nextbutton: 1,
   player: "jw",
   color: "2dd4bf",
-};
+} as const;
 
 /* -------------------------------------------------
    PROVIDERS
 -------------------------------------------------- */
 export const EMBED_PROVIDERS = [
   { name: "vidlink", domain: "vidlink.pro", supportsEpisodes: true },
-  { name: "vidsrc", domain: "vidsrc.to", supportsEpisodes: false },
-  { name: "vidsrc", domain: "vidsrc.me", supportsEpisodes: false },
-  { name: "vidsrc", domain: "vidsrc.cc", supportsEpisodes: false },
-  { name: "vidsrc", domain: "vidsrc-embed.ru", supportsEpisodes: false },
-  { name: "vidsrc", domain: "vidsrc-embed.su", supportsEpisodes: false },
-  { name: "vidsrc", domain: "vidsrcme.su", supportsEpisodes: false },
-  { name: "vidsrc", domain: "vsrc.su", supportsEpisodes: false },
+  { name: "vidsrc", domain: "vidsrc.to", supportsEpisodes: true },
+  { name: "vidsrc", domain: "vidsrc.me", supportsEpisodes: true },
+  { name: "vidsrc", domain: "vidsrc.cc", supportsEpisodes: true },
+  { name: "vidsrc", domain: "vidsrc-embed.ru", supportsEpisodes: true },
+  { name: "vidsrc", domain: "vidsrc-embed.su", supportsEpisodes: true },
+  { name: "vidsrc", domain: "vidsrcme.su", supportsEpisodes: true },
+  { name: "vidsrc", domain: "vsrc.su", supportsEpisodes: true },
 ];
 
 /* -------------------------------------------------
@@ -46,6 +46,12 @@ function buildQuery(params: Record<string, string | number>) {
   ).toString();
 }
 
+/* Deterministic theme key */
+const THEME_KEY = Object.entries(EMBED_THEME)
+  .sort(([a], [b]) => a.localeCompare(b))
+  .map(([k, v]) => `${k}:${v}`)
+  .join("|");
+
 /* -------------------------------------------------
    PUBLIC API
 -------------------------------------------------- */
@@ -55,7 +61,7 @@ export function buildEmbedUrl(
 ): string {
   const { mediaType, tmdbId } = intent;
 
-  /* ---------- VIDLINK (EPISODE SAFE) ---------- */
+  /* ---------- VIDLINK ---------- */
   if (provider.name === "vidlink") {
     if (mediaType === "tv") {
       const season = intent.season ?? 1;
@@ -69,9 +75,12 @@ export function buildEmbedUrl(
     return `https://vidlink.pro/movie/${tmdbId}?${buildQuery(EMBED_THEME)}`;
   }
 
-  /* ---------- VIDSRC (SHOW-LEVEL ONLY) ---------- */
+  /* ---------- VIDSRC ---------- */
   if (mediaType === "tv") {
-    return `https://${provider.domain}/embed/tv/${tmdbId}`;
+    const season = intent.season ?? 1;
+    const episode = intent.episode ?? 1;
+
+    return `https://${provider.domain}/embed/tv/${tmdbId}/${season}/${episode}`;
   }
 
   return `https://${provider.domain}/embed/movie/${tmdbId}`;
@@ -87,6 +96,6 @@ export function buildEmbedCacheKey(intent: PlaybackIntent) {
     intent.mediaType === "tv"
       ? `s${intent.season ?? 1}e${intent.episode ?? 1}`
       : "movie",
-    `theme:${JSON.stringify(EMBED_THEME)}`,
+    `theme:${THEME_KEY}`,
   ].join(":");
 }
