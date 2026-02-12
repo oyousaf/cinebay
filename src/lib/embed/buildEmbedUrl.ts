@@ -20,6 +20,7 @@ const EMBED_THEME = {
   cc: 1,
   nextbutton: 1,
   player: "jw",
+  color: "2dd4bf",
 };
 
 /* -------------------------------------------------
