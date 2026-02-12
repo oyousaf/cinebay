@@ -23,8 +23,6 @@ interface PlayerModalProps {
 
 const RESUME_SECONDS = 30;
 const LOADER_MIN_MS = 900;
-
-// Safety fallback if provider doesn't emit events
 const FALLBACK_OFFER_MS = 35 * 60 * 1000;
 
 export default function PlayerModal({
@@ -39,6 +37,8 @@ export default function PlayerModal({
   const intentRef = useRef(intent);
   const offeredRef = useRef(false);
   const resumeWrittenRef = useRef(false);
+  const activatedRef = useRef(false);
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
 
   const loaderTimerRef = useRef<number | null>(null);
   const resumeTimerRef = useRef<number | null>(null);
@@ -55,7 +55,7 @@ export default function PlayerModal({
     intentRef.current = intent;
   }, [intent]);
 
-  /* RESET ON ROUTE CHANGE */
+  /* Reset state when video changes */
   useEffect(() => {
     setError(false);
     setNextOffer(null);
@@ -63,6 +63,7 @@ export default function PlayerModal({
 
     offeredRef.current = false;
     resumeWrittenRef.current = false;
+    activatedRef.current = false;
 
     loaderTimerRef.current && clearTimeout(loaderTimerRef.current);
     resumeTimerRef.current && clearTimeout(resumeTimerRef.current);
@@ -78,7 +79,7 @@ export default function PlayerModal({
     };
   }, [embedUrl]);
 
-  /* CONTINUE WATCHING WRITE */
+  /* Save minimal progress for Continue Watching */
   useEffect(() => {
     if (intent.mediaType !== "tv" || resumeWrittenRef.current) return;
 
@@ -95,7 +96,47 @@ export default function PlayerModal({
     };
   }, [embedUrl, setTVProgress]);
 
-  /* NEXT EPISODE OFFER */
+  /* First user interaction: force playback and enable sound */
+  useEffect(() => {
+    const activatePlayback = () => {
+      if (activatedRef.current) return;
+      if (!iframeRef.current) return;
+
+      const win = iframeRef.current.contentWindow;
+
+      try {
+        // Force play (some sources ignore autoplay)
+        win?.postMessage(
+          {
+            type: "PLAYER_COMMAND",
+            command: "play",
+          },
+          "*",
+        );
+
+        // Ensure audio enabled
+        win?.postMessage(
+          {
+            type: "PLAYER_COMMAND",
+            command: "unmute",
+          },
+          "*",
+        );
+      } catch {}
+
+      activatedRef.current = true;
+    };
+
+    window.addEventListener("pointerdown", activatePlayback, { once: true });
+    window.addEventListener("keydown", activatePlayback, { once: true });
+
+    return () => {
+      window.removeEventListener("pointerdown", activatePlayback);
+      window.removeEventListener("keydown", activatePlayback);
+    };
+  }, [embedUrl]);
+
+  /* Next episode detection */
   useEffect(() => {
     if (intent.mediaType !== "tv") return;
 
@@ -114,7 +155,6 @@ export default function PlayerModal({
     const handleMessage = (event: MessageEvent) => {
       const data = event.data;
       if (!data || typeof data !== "object") return;
-
       if (data.type !== "PLAYER_EVENT") return;
 
       const playerEvent = data.event;
@@ -125,9 +165,7 @@ export default function PlayerModal({
         const duration = payload?.duration;
         if (!current || !duration) return;
 
-        const progress = current / duration;
-
-        if (progress >= 0.9) {
+        if (current / duration >= 0.9) {
           maybeOffer();
         }
       }
@@ -138,8 +176,6 @@ export default function PlayerModal({
     };
 
     window.addEventListener("message", handleMessage);
-
-    // Fallback safety (for providers without events)
     fallbackTimerRef.current = window.setTimeout(maybeOffer, FALLBACK_OFFER_MS);
 
     return () => {
@@ -172,7 +208,7 @@ export default function PlayerModal({
           className="relative w-full max-w-6xl aspect-video rounded-2xl overflow-hidden bg-[hsl(var(--background))]
             ring-2 ring-[hsl(var(--foreground))] shadow-[0_40px_120px_rgba(0,0,0,0.9)]"
         >
-          {/* LOADER */}
+          {/* Loader */}
           <AnimatePresence>
             {showLoader && !error && (
               <motion.div
@@ -180,25 +216,24 @@ export default function PlayerModal({
                 exit={{ opacity: 0 }}
                 className="absolute inset-0 z-10 flex items-center justify-center bg-[hsl(var(--background))]"
               >
-                <div
-                  className="h-8 w-8 rounded-full border-2 border-[hsl(var(--foreground)/0.4)] border-t-[hsl(var(--foreground))]
-                    animate-spin"
-                />
+                <div className="h-8 w-8 rounded-full border-2 border-[hsl(var(--foreground)/0.4)] border-t-[hsl(var(--foreground))] animate-spin" />
               </motion.div>
             )}
           </AnimatePresence>
 
-          {/* IFRAME */}
+          {/* Player */}
           <iframe
+            ref={iframeRef}
             key={embedUrl}
             src={embedUrl}
             className="w-full h-full border-none"
-            allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+            allow="autoplay *; fullscreen *; encrypted-media *; picture-in-picture *"
+            allowFullScreen
             referrerPolicy="no-referrer"
             onError={() => setError(true)}
           />
 
-          {/* NEXT EPISODE */}
+          {/* Next episode prompt */}
           <AnimatePresence>
             {nextOffer && nextOffer.kind !== "END" && (
               <motion.div
@@ -226,7 +261,7 @@ export default function PlayerModal({
             )}
           </AnimatePresence>
 
-          {/* CLOSE */}
+          {/* Close */}
           <button
             onClick={onClose}
             aria-label="Close player"
