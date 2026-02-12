@@ -19,7 +19,6 @@ const EMBED_THEME = {
   muted: 1,
   cc: 1,
   nextbutton: 1,
-  player: "jw",
   color: "2dd4bf",
 } as const;
 
