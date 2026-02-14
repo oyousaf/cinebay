@@ -22,9 +22,7 @@ export default function ModalBody({
     <div className="space-y-4 2xl:space-y-8">
       {/* OVERVIEW */}
       {!isPerson && movie.overview && (
-        <p
-          className="max-w-prose leading-relaxed text-[hsl(var(--surface-foreground)/0.85)] text-base 2xl:text-xl"
-        >
+        <p className="max-w-prose leading-relaxed text-[hsl(var(--surface-foreground)/0.85)] text-base 2xl:text-xl">
           {movie.overview}
         </p>
       )}
@@ -39,9 +37,8 @@ export default function ModalBody({
               whileHover={{ scale: 1.04 }}
               whileTap={{ scale: 0.96 }}
               aria-expanded={showBio}
-              className="relative flex items-center justify-center gap-3 px-6 py-3 text-base
-                2xl:px-16 2xl:py-8 2xl:text-3xl rounded-full font-semibold bg-[hsl(var(--foreground))]
-                text-[hsl(var(--background))] shadow-sm"
+              className="relative flex items-center justify-center gap-3 px-6 py-3 text-base 2xl:px-10 2xl:py-5 2xl:text-2xl 
+              rounded-full font-semibold bg-[hsl(var(--foreground))] text-[hsl(var(--background))] shadow-sm"
             >
               <AnimatePresence mode="wait" initial={false}>
                 {showBio ? (
@@ -53,7 +50,7 @@ export default function ModalBody({
                     transition={{ duration: 0.2 }}
                     className="flex"
                   >
-                    <ArrowUp className="w-5 h-5 2xl:w-12 2xl:h-12" />
+                    <ArrowUp className="w-5 h-5 2xl:w-8 2xl:h-8" />
                   </motion.span>
                 ) : (
                   <motion.span
@@ -96,8 +93,8 @@ export default function ModalBody({
                   ease: [0.22, 1, 0.36, 1],
                 }}
                 className="mt-6 rounded-xl p-4 text-base 2xl:p-10 2xl:text-xl max-h-80 2xl:max-h-144 overflow-y-auto
-                  bg-[hsl(var(--surface-foreground)/0.06)] backdrop-blur-sm text-[hsl(var(--surface-foreground)/0.85)]
-                  shadow-[0_12px_40px_rgba(0,0,0,0.12)]"
+            bg-[hsl(var(--surface-foreground)/0.06)] backdrop-blur-sm text-[hsl(var(--surface-foreground)/0.85)]
+            shadow-[0_12px_40px_rgba(0,0,0,0.12)]"
               >
                 <div className="max-w-prose mx-auto leading-relaxed">
                   {movie.biography}
