@@ -22,13 +22,13 @@ const RecommendationList = ({ items, onSelect, label }: ListProps) => {
   if (!filtered.length) return null;
 
   return (
-    <section className="pt-6 space-y-3">
-      <h3 className="text-base font-semibold tracking-tight text-[hsl(var(--surface-foreground))]">
+    <section className="pt-6 2xl:pt-8 space-y-3 2xl:space-y-4">
+      <h3 className="text-base 2xl:text-lg font-semibold tracking-tight text-[hsl(var(--surface-foreground))]">
         {label}
       </h3>
 
       <div
-        className="flex gap-3 overflow-x-auto pb-2 no-scrollbar"
+        className="flex gap-3 2xl:gap-5 overflow-x-auto pb-2 no-scrollbar"
         aria-label={label}
       >
         {filtered.map((item) => {
@@ -42,7 +42,7 @@ const RecommendationList = ({ items, onSelect, label }: ListProps) => {
               key={item.id}
               type="button"
               onClick={() => onSelect?.(item)}
-              className="w-28 shrink-0 text-center space-y-1 rounded-lg focus-visible:outline-none focus-visible:ring-2
+              className="w-28 2xl:w-40 shrink-0 text-center space-y-1 rounded-lg focus-visible:outline-none focus-visible:ring-2
                 focus-visible:ring-[hsl(var(--foreground))]"
             >
               <img
@@ -50,11 +50,11 @@ const RecommendationList = ({ items, onSelect, label }: ListProps) => {
                 alt={title}
                 loading="lazy"
                 draggable={false}
-                className="w-28 h-40 rounded-lg object-cover shadow-md transition-transform duration-200
-                  hover:scale-[1.03]"
+                className="w-28 h-40 2xl:w-40 2xl:h-60 rounded-lg object-cover shadow-md transition-transform duration-200
+                  hover:scale-[1.05]"
               />
 
-              <div className="text-xs font-medium truncate text-[hsl(var(--surface-foreground))]">
+              <div className="text-xs 2xl:text-sm font-medium truncate text-[hsl(var(--surface-foreground))]">
                 {title}
               </div>
             </button>

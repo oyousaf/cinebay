@@ -19,10 +19,10 @@ export default function ModalBody({
   const cast = movie.credits?.cast?.slice(0, 5) ?? [];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 2xl:space-y-6">
       {/* OVERVIEW */}
       {!isPerson && movie.overview && (
-        <p className="text-[hsl(var(--surface-foreground)/0.85)] leading-relaxed">
+        <p className="max-w-prose text-[hsl(var(--surface-foreground)/0.85)] leading-relaxed text-base 2xl:text-lg">
           {movie.overview}
         </p>
       )}
@@ -30,15 +30,13 @@ export default function ModalBody({
       {/* PERSON BIO */}
       {isPerson && movie.biography && (
         <>
-          <div className="flex justify-center">
+          <div className="flex justify-center sm:justify-start">
             <motion.button
               onClick={() => setShowBio((v) => !v)}
               whileHover={{ scale: 1.04 }}
               whileTap={{ scale: 0.96 }}
-              className="relative flex items-center justify-center px-6 py-3 rounded-full
-               font-semibold bg-[hsl(var(--foreground))]
-               text-[hsl(var(--background))]
-               shadow-sm"
+              className="relative flex items-center justify-center gap-2  px-6 py-3 2xl:px-8 2xl:py-4
+                rounded-full font-semibold bg-[hsl(var(--foreground))] text-[hsl(var(--background))] shadow-sm"
               aria-expanded={showBio}
             >
               <AnimatePresence mode="wait" initial={false}>
@@ -51,7 +49,7 @@ export default function ModalBody({
                     transition={{ duration: 0.2 }}
                     className="flex"
                   >
-                    <ArrowUp size={18} />
+                    <ArrowUp className="w-5 h-5 2xl:w-6 2xl:h-6" />
                   </motion.span>
                 ) : (
                   <motion.span
@@ -91,11 +89,11 @@ export default function ModalBody({
                   duration: 0.45,
                   ease: [0.22, 1, 0.36, 1],
                 }}
-                className="mt-3 rounded-xl p-4 max-h-80 overflow-y-auto bg-[hsl(var(--surface-foreground)/0.06)]
-                     backdrop-blur-sm text-sm sm:text-base text-[hsl(var(--surface-foreground)/0.85)]
-                     shadow-[0_8px_30px_rgba(0,0,0,0.08)]"
+                className="mt-3 rounded-xl p-4 2xl:p-6 max-h-80 2xl:max-h-128 overflow-y-auto
+                  bg-[hsl(var(--surface-foreground)/0.06)] backdrop-blur-sm text-base 2xl:text-lg
+                  text-[hsl(var(--surface-foreground)/0.85)] shadow-[0_8px_30px_rgba(0,0,0,0.08)]"
               >
-                {movie.biography}
+                <div className="max-w-prose">{movie.biography}</div>
               </motion.div>
             )}
           </AnimatePresence>
@@ -104,7 +102,7 @@ export default function ModalBody({
 
       {/* CAST */}
       {!isPerson && cast.length > 0 && (
-        <div className="pt-3 text-sm text-[hsl(var(--surface-foreground)/0.75)]">
+        <div className="pt-3 text-base 2xl:text-lg text-[hsl(var(--surface-foreground)/0.75)] max-w-prose">
           <span className="font-semibold text-[hsl(var(--surface-foreground))]">
             Starring:
           </span>{" "}
