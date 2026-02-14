@@ -17,10 +17,7 @@ export default function App() {
         />
 
         {/* MOVIE */}
-        <Route
-          path="/watch/movie/:tmdbId"
-          element={<WatchPage />}
-        />
+        <Route path="/watch/movie/:tmdbId" element={<WatchPage />} />
       </Routes>
     </BrowserRouter>
   );
