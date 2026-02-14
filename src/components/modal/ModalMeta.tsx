@@ -57,7 +57,7 @@ const titleCase = (s: string) =>
 /* ---------- UI Helpers ---------- */
 
 const Pill = ({ children }: { children: React.ReactNode }) => (
-  <span className="px-3 py-1 rounded-full bg-[hsl(var(--background))] ring-1 ring-[hsl(var(--foreground)/0.25)] text-[hsl(var(--foreground)/0.9)]">
+  <span className="px-3 py-0.5 text-sm rounded-full bg-[hsl(var(--background))] ring-1 ring-[hsl(var(--foreground)/0.25)] text-[hsl(var(--foreground)/0.9)] whitespace-nowrap">
     {children}
   </span>
 );
@@ -162,6 +162,7 @@ export default function ModalMeta({
 
   return (
     <div className="space-y-3">
+      {/* Rating */}
       {rating && (
         <div
           className="text-2xl px-3 py-1 rounded-full bg-[hsl(var(--foreground))] text-[hsl(var(--background))] font-semibold w-fit mx-auto sm:mx-0"
@@ -172,26 +173,23 @@ export default function ModalMeta({
       )}
 
       {/* Meta pills */}
-      <div className="flex flex-wrap gap-2 text-xs justify-center sm:justify-start">
+      <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
         {creators && <Pill>📺 {creators}</Pill>}
-
         {director && <Pill>🎬 {director}</Pill>}
-
         {releaseYear && <Pill>📅 {releaseYear}</Pill>}
-
         {!rating && <Pill>⭐ Not rated yet</Pill>}
       </div>
 
-      {/* Full date */}
+      {/* Full release date (secondary) */}
       {releaseDate && (
-        <div className="text-xs text-[hsl(var(--surface-foreground)/0.6)] text-center sm:text-left">
+        <div className="text-sm text-[hsl(var(--surface-foreground)/0.65)] text-center sm:text-left">
           Released: {releaseDate}
         </div>
       )}
 
       {/* Genres */}
       {genres && (
-        <div className="text-xs text-[hsl(var(--surface-foreground)/0.7)] text-center sm:text-left">
+        <div className="text-sm text-[hsl(var(--surface-foreground)/0.7)] text-center sm:text-left">
           {genres}
         </div>
       )}
