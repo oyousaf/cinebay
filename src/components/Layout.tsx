@@ -13,7 +13,7 @@ interface LayoutProps {
 }
 
 const FADE_EASE = [0.22, 1, 0.36, 1] as const;
-const LOAD_DURATION = 350;
+const LOAD_DURATION = 500;
 
 const Layout: React.FC<LayoutProps> = ({
   children,
@@ -36,29 +36,27 @@ const Layout: React.FC<LayoutProps> = ({
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   /* ---------------------------------------
-     SHELL LOADING LOGIC
+     SHELL LOADER + NAVIGATION CONTROL
   --------------------------------------- */
   useEffect(() => {
     let shouldShow = false;
 
-    // First mount (app open OR returning from player route)
+    // First mount
     if (!hasMountedRef.current) {
       hasMountedRef.current = true;
       shouldShow = true;
+      prevTabRef.current = activeTab;
     }
-    // Tab change
+    // Real tab change
     else if (prevTabRef.current !== activeTab) {
       shouldShow = true;
       resetNavigation();
+      prevTabRef.current = activeTab;
     }
-
-    prevTabRef.current = activeTab;
 
     if (!shouldShow) return;
 
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-    }
+    if (timerRef.current) clearTimeout(timerRef.current);
 
     setIsLoadingTab(true);
 
@@ -73,20 +71,26 @@ const Layout: React.FC<LayoutProps> = ({
   --------------------------------------- */
   return (
     <div className="w-full flex flex-col min-h-(--vh) overflow-hidden">
-      {/* Progress indicator */}
+      {/* Progress Loader */}
       <AnimatePresence>
         {isLoadingTab && (
           <motion.div
-            className="fixed top-0 left-0 h-0.5 w-full bg-[hsl(var(--foreground))] z-50"
-            initial={{ scaleX: 0 }}
-            animate={{ scaleX: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{
-              duration: LOAD_DURATION / 1000,
-              ease: "easeOut",
-            }}
-            style={{ transformOrigin: "left" }}
-          />
+            className="fixed top-0 left-0 w-full h-0.5 z-50 overflow-hidden"
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0, transition: { duration: 0.2 } }}
+          >
+            <motion.div
+              className="h-full w-full bg-linear-to-r from-transparent via-[hsl(var(--foreground))]
+                to-transparent shadow-[0_0_6px_hsl(var(--foreground)/0.6)]"
+              initial={{ scaleX: 0, x: "-30%" }}
+              animate={{ scaleX: 1, x: "30%" }}
+              transition={{
+                duration: LOAD_DURATION / 1000,
+                ease: "easeOut",
+              }}
+              style={{ transformOrigin: "left" }}
+            />
+          </motion.div>
         )}
       </AnimatePresence>
 
