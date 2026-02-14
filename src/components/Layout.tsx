@@ -13,6 +13,7 @@ interface LayoutProps {
 }
 
 const FADE_EASE = [0.22, 1, 0.36, 1] as const;
+const LOAD_DURATION = 350;
 
 const Layout: React.FC<LayoutProps> = ({
   children,
@@ -21,27 +22,58 @@ const Layout: React.FC<LayoutProps> = ({
   isModalOpen,
 }) => {
   const { resetNavigation } = useNavigation();
-  const prevTabRef = useRef<Tab | null>(null);
+
+  /* ---------------------------------------
+     STATE
+  --------------------------------------- */
   const [isLoadingTab, setIsLoadingTab] = useState(false);
 
-  /* Reset navigation + native progress feel */
+  /* ---------------------------------------
+     REFS
+  --------------------------------------- */
+  const hasMountedRef = useRef(false);
+  const prevTabRef = useRef<Tab | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /* ---------------------------------------
+     SHELL LOADING LOGIC
+  --------------------------------------- */
   useEffect(() => {
-    if (prevTabRef.current !== activeTab) {
-      setIsLoadingTab(true);
-      resetNavigation();
+    let shouldShow = false;
 
-      const t = setTimeout(() => {
-        setIsLoadingTab(false);
-      }, 400);
-
-      prevTabRef.current = activeTab;
-      return () => clearTimeout(t);
+    // First mount (app open OR returning from player route)
+    if (!hasMountedRef.current) {
+      hasMountedRef.current = true;
+      shouldShow = true;
     }
+    // Tab change
+    else if (prevTabRef.current !== activeTab) {
+      shouldShow = true;
+      resetNavigation();
+    }
+
+    prevTabRef.current = activeTab;
+
+    if (!shouldShow) return;
+
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+    }
+
+    setIsLoadingTab(true);
+
+    timerRef.current = setTimeout(() => {
+      setIsLoadingTab(false);
+      timerRef.current = null;
+    }, LOAD_DURATION);
   }, [activeTab, resetNavigation]);
 
+  /* ---------------------------------------
+     UI
+  --------------------------------------- */
   return (
     <div className="w-full flex flex-col min-h-(--vh) overflow-hidden">
-      {/* Progress bar */}
+      {/* Progress indicator */}
       <AnimatePresence>
         {isLoadingTab && (
           <motion.div
@@ -49,7 +81,10 @@ const Layout: React.FC<LayoutProps> = ({
             initial={{ scaleX: 0 }}
             animate={{ scaleX: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.4, ease: "easeOut" }}
+            transition={{
+              duration: LOAD_DURATION / 1000,
+              ease: "easeOut",
+            }}
             style={{ transformOrigin: "left" }}
           />
         )}
