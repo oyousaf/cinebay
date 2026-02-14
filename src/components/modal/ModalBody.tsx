@@ -19,10 +19,12 @@ export default function ModalBody({
   const cast = movie.credits?.cast?.slice(0, 5) ?? [];
 
   return (
-    <div className="space-y-4 2xl:space-y-6">
+    <div className="space-y-4 2xl:space-y-8">
       {/* OVERVIEW */}
       {!isPerson && movie.overview && (
-        <p className="max-w-prose text-[hsl(var(--surface-foreground)/0.85)] leading-relaxed text-base 2xl:text-lg">
+        <p
+          className="max-w-prose leading-relaxed text-[hsl(var(--surface-foreground)/0.85)] text-base 2xl:text-xl"
+        >
           {movie.overview}
         </p>
       )}
@@ -37,30 +39,30 @@ export default function ModalBody({
               whileHover={{ scale: 1.04 }}
               whileTap={{ scale: 0.96 }}
               aria-expanded={showBio}
-              className="relative flex items-center justify-center gap-2 px-6 py-3 text-base
-          2xl:px-12 2xl:py-6 2xl:text-xl rounded-full font-semibold bg-[hsl(var(--foreground))]
-          text-[hsl(var(--background))] shadow-sm"
+              className="relative flex items-center justify-center gap-3 px-6 py-3 text-base
+                2xl:px-16 2xl:py-8 2xl:text-3xl rounded-full font-semibold bg-[hsl(var(--foreground))]
+                text-[hsl(var(--background))] shadow-sm"
             >
               <AnimatePresence mode="wait" initial={false}>
                 {showBio ? (
                   <motion.span
                     key="arrow"
-                    initial={{ opacity: 0, y: 8 }}
+                    initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -8 }}
+                    exit={{ opacity: 0, y: -10 }}
                     transition={{ duration: 0.2 }}
                     className="flex"
                   >
-                    <ArrowUp className="w-5 h-5 2xl:w-10 2xl:h-10" />
+                    <ArrowUp className="w-5 h-5 2xl:w-12 2xl:h-12" />
                   </motion.span>
                 ) : (
                   <motion.span
                     key="label"
-                    initial={{ opacity: 0, y: -8 }}
+                    initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 8 }}
+                    exit={{ opacity: 0, y: 10 }}
                     transition={{ duration: 0.2 }}
-                    className="tracking-wide"
+                    className="tracking-wider"
                   >
                     BIO
                   </motion.span>
@@ -76,26 +78,26 @@ export default function ModalBody({
                 key="bio"
                 initial={{
                   opacity: 0,
-                  y: -16,
-                  clipPath: "inset(0 0 100% 0 round 20px)",
+                  y: -20,
+                  clipPath: "inset(0 0 100% 0 round 24px)",
                 }}
                 animate={{
                   opacity: 1,
                   y: 0,
-                  clipPath: "inset(0 0 0% 0 round 20px)",
+                  clipPath: "inset(0 0 0% 0 round 24px)",
                 }}
                 exit={{
                   opacity: 0,
-                  y: -12,
-                  clipPath: "inset(0 0 100% 0 round 20px)",
+                  y: -16,
+                  clipPath: "inset(0 0 100% 0 round 24px)",
                 }}
                 transition={{
                   duration: 0.45,
                   ease: [0.22, 1, 0.36, 1],
                 }}
-                className="mt-4 rounded-xl p-4 text-base 2xl:p-8 2xl:text-xl max-h-80 2xl:max-h-128
-            overflow-y-auto bg-[hsl(var(--surface-foreground)/0.06)] backdrop-blur-sm
-            text-[hsl(var(--surface-foreground)/0.85)] shadow-[0_8px_30px_rgba(0,0,0,0.08)]"
+                className="mt-6 rounded-xl p-4 text-base 2xl:p-10 2xl:text-xl max-h-80 2xl:max-h-144 overflow-y-auto
+                  bg-[hsl(var(--surface-foreground)/0.06)] backdrop-blur-sm text-[hsl(var(--surface-foreground)/0.85)]
+                  shadow-[0_12px_40px_rgba(0,0,0,0.12)]"
               >
                 <div className="max-w-prose mx-auto leading-relaxed">
                   {movie.biography}
@@ -108,7 +110,7 @@ export default function ModalBody({
 
       {/* CAST */}
       {!isPerson && cast.length > 0 && (
-        <div className="pt-3 text-base 2xl:text-lg text-[hsl(var(--surface-foreground)/0.75)] max-w-prose">
+        <div className="pt-4 max-w-prose text-[hsl(var(--surface-foreground)/0.75)] text-base 2xl:text-xl">
           <span className="font-semibold text-[hsl(var(--surface-foreground))]">
             Starring:
           </span>{" "}
@@ -122,8 +124,7 @@ export default function ModalBody({
                   )
                 }
                 className="underline underline-offset-2 hover:text-[hsl(var(--surface-foreground))]
-                           transition focus-visible:outline-none focus-visible:ring-1
-                           focus-visible:ring-[hsl(var(--surface-foreground))]"
+                  transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--surface-foreground))]"
               >
                 {actor.name}
               </button>
