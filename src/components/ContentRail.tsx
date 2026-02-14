@@ -8,22 +8,14 @@ import type { Movie } from "@/types/movie";
 import Banner from "./Banner";
 import { useNavigation } from "@/hooks/useNavigation";
 
-/* -------------------------------------------------
-   MOTION PRESET
--------------------------------------------------- */
 const EASE_OUT = [0.22, 1, 0.36, 1] as const;
 
-/* -------------------------------------------------
-   TYPES
--------------------------------------------------- */
 interface ContentRailProps {
   items: Movie[];
   onSelect: (movie: Movie) => void;
 }
 
-/* -------------------------------------------------
-   TILE
--------------------------------------------------- */
+/* TILE */
 const Tile = React.memo(function Tile({
   movie,
   isFocused,
@@ -40,17 +32,19 @@ const Tile = React.memo(function Tile({
   return (
     <motion.button
       ref={refSetter}
-      aria-label={movie.title || movie.name}
+      tabIndex={isFocused ? 0 : -1}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") onFocus();
+      }}
       aria-selected={isFocused}
       role="listitem"
       onClick={onFocus}
       className={`relative shrink-0 rounded-lg snap-center focus:outline-none
-        ${isFocused ? "ring-4 ring-[#80ffcc] shadow-pulse z-40" : "z-10"}`}
+        ${isFocused ? "ring-4 2xl:ring-[6px] ring-[#80ffcc] shadow-pulse z-60" : "z-40"}`}
       animate={
         isFocused ? { scale: 1.1, opacity: 1 } : { scale: 1, opacity: 0.7 }
       }
-      whileHover={!isFocused ? { scale: 1.03, opacity: 0.9 } : undefined}
-      transition={{ type: "spring", stiffness: 300, damping: 22, mass: 0.9 }}
+      transition={{ type: "spring", stiffness: 300, damping: 22 }}
     >
       <img
         src={
@@ -61,16 +55,15 @@ const Tile = React.memo(function Tile({
         alt={movie.title || movie.name}
         loading="lazy"
         draggable={false}
-        className="h-44 w-32 lg:h-56 lg:w-40 object-cover rounded-lg shadow-md"
+        className="h-44 w-32 lg:h-56 lg:w-40 2xl:h-72 2xl:w-52 object-cover rounded-lg shadow-md"
       />
 
       {showStatus && (
         <div
           className="absolute top-2 left-2 rounded-full px-2 py-0.5
           text-[10px] md:text-xs font-bold uppercase
-          bg-[hsl(var(--foreground))]
-          text-[hsl(var(--background))]
-          shadow-md shadow-pulse"
+          bg-[hsl(var(--foreground))] text-[hsl(var(--background))]
+          shadow-md"
         >
           {movie.status!.toUpperCase()}
         </div>
@@ -79,27 +72,27 @@ const Tile = React.memo(function Tile({
   );
 });
 
-/* -------------------------------------------------
-   CONTENT RAIL
--------------------------------------------------- */
+/* CONTENT RAIL */
 export default function ContentRail({ items, onSelect }: ContentRailProps) {
   const railRef = useRef<HTMLDivElement | null>(null);
   const tileRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const lastFocusRef = useRef(0);
 
   const { focus, setFocus, registerRail, updateRailLength } = useNavigation();
   const [railIndex, setRailIndex] = useState<number | null>(null);
   const [activeItem, setActiveItem] = useState<Movie | null>(null);
 
-  /* ---------- Register rail ---------- */
+  /* Register rail */
   useEffect(() => {
     if (railIndex === null && items.length > 0) {
       setRailIndex(registerRail(items.length));
     }
   }, [railIndex, registerRail, items.length]);
 
-  /* ---------- Focus handler ---------- */
+  /* Focus handler */
   const handleFocus = useCallback(
     (movie: Movie, idx: number) => {
+      lastFocusRef.current = idx;
       setActiveItem(movie);
       if (railIndex !== null) {
         setFocus({ section: railIndex, index: idx });
@@ -108,17 +101,12 @@ export default function ContentRail({ items, onSelect }: ContentRailProps) {
     [railIndex, setFocus],
   );
 
-  /* ---------- Sync focus + scroll ---------- */
+  /* Sync focus + scroll */
   useEffect(() => {
     if (railIndex === null) return;
 
     updateRailLength(railIndex, items.length);
     if (focus.section !== railIndex) return;
-
-    const focused = items[focus.index];
-    if (focused && focused.id !== activeItem?.id) {
-      setActiveItem(focused);
-    }
 
     const el = tileRefs.current[focus.index];
     const container = railRef.current;
@@ -132,21 +120,19 @@ export default function ContentRail({ items, onSelect }: ContentRailProps) {
         behavior: "smooth",
       });
     }
-  }, [focus, items, railIndex, updateRailLength, activeItem]);
+  }, [focus, items, railIndex, updateRailLength]);
 
-  /* ---------- Default focus ---------- */
+  /* Restore last focus */
   useEffect(() => {
-    if (!activeItem && items.length > 0 && railIndex !== null) {
-      setActiveItem(items[0]);
-      setFocus({ section: railIndex, index: 0 });
+    if (items.length > 0 && railIndex !== null) {
+      const index = Math.min(lastFocusRef.current, items.length - 1);
+      setActiveItem(items[index]);
+      setFocus({ section: railIndex, index });
     }
-  }, [items, activeItem, railIndex, setFocus]);
+  }, [items, railIndex, setFocus]);
 
   if (items.length === 0) return null;
 
-  /* -------------------------------------------------
-     UI
-  -------------------------------------------------- */
   return (
     <section className="relative w-full min-h-[90vh] sm:h-screen snap-start flex flex-col">
       {/* Banner */}
@@ -167,13 +153,13 @@ export default function ContentRail({ items, onSelect }: ContentRailProps) {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35, delay: 0.2, ease: EASE_OUT }}
-          className="relative z-20 px-4 pb-[calc(0.5rem+env(safe-area-inset-bottom))]"
+          className="relative z-50 px-4 pb-[calc(0.5rem+env(safe-area-inset-bottom))]"
         >
           <div
             ref={railRef}
             role="list"
-            className="flex gap-3 overflow-x-auto overflow-y-hidden snap-x snap-proximity no-scrollbar
-              pl-2 md:pl-4 pr-2 md:pr-4 py-4"
+            className="flex gap-3 2xl:gap-6 overflow-x-auto overflow-y-hidden snap-x snap-proximity no-scrollbar
+              pl-2 md:pl-4 pr-2 md:pr-4 py-4 scroll-smooth"
           >
             {items.map((movie, idx) => (
               <Tile
