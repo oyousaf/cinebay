@@ -25,8 +25,8 @@ const LazyKnownForSlider = lazy(() => import("./KnownFor"));
 const BACKDROP =
   "bg-[radial-gradient(ellipse_at_center,hsl(var(--background)/0.25),hsl(var(--background)/0.55)_60%,hsl(var(--background)/0.75))]";
 
-const SURFACE =
-  "relative w-[95vw] max-w-4xl rounded-2xl overflow-hidden " +
+/* TV-aware surface */
+const SURFACE ="relative w-[95vw] max-w-4xl 2xl:max-w-6xl rounded-2xl overflow-hidden " +
   "bg-[hsl(var(--background))] ring-2 ring-[hsl(var(--foreground))] " +
   "shadow-[0_40px_120px_rgba(0,0,0,0.9)] " +
   "max-h-[calc(var(--vh)-2rem)] flex flex-col";
@@ -117,9 +117,9 @@ export default function ModalClient({
       >
         <motion.div
           ref={modalRef}
-          initial={{ scale: 0.96, opacity: 0 }}
+          initial={{ scale: 0.98, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.96, opacity: 0 }}
+          exit={{ scale: 0.98, opacity: 0 }}
           transition={{ duration: 0.25, ease: EASE_OUT }}
           className={SURFACE}
           onPointerDown={(e) => e.stopPropagation()}
@@ -127,13 +127,13 @@ export default function ModalClient({
         >
           <ModalHeader onClose={onClose} onBack={onBack} />
 
-          <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-8 sm:py-8 space-y-8">
+          <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-8 sm:py-8 2xl:px-12 2xl:py-10 space-y-8 2xl:space-y-10">
             {/* HERO */}
-            <div className="flex flex-col sm:flex-row gap-6 items-center sm:items-start">
+            <div className="flex flex-col sm:flex-row gap-6 2xl:gap-10 items-center sm:items-start">
               <img
                 src={poster}
                 alt={movie.title || movie.name}
-                className="w-40 sm:w-44 h-66 rounded-lg shadow-lg object-cover"
+                className="w-40 sm:w-44 2xl:w-64 h-60 sm:h-66 2xl:h-96 rounded-lg shadow-lg object-cover"
                 loading="eager"
               />
 
