@@ -30,12 +30,12 @@ export default function ModalBody({
       {/* PERSON BIO */}
       {isPerson && movie.biography && (
         <>
-          <div className="flex justify-center sm:justify-start">
+          <div className="flex justify-center">
             <motion.button
               onClick={() => setShowBio((v) => !v)}
               whileHover={{ scale: 1.04 }}
               whileTap={{ scale: 0.96 }}
-              className="relative flex items-center justify-center gap-2  px-6 py-3 2xl:px-8 2xl:py-4
+              className="relative flex items-center justify-center gap-2 px-6 py-3 2xl:px-8 2xl:py-4
                 rounded-full font-semibold bg-[hsl(var(--foreground))] text-[hsl(var(--background))] shadow-sm"
               aria-expanded={showBio}
             >
