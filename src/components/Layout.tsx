@@ -41,7 +41,7 @@ const Layout: React.FC<LayoutProps> = ({
   useEffect(() => {
     let shouldShow = false;
 
-    // First mount
+    // First mount (app open / return from player)
     if (!hasMountedRef.current) {
       hasMountedRef.current = true;
       shouldShow = true;
@@ -67,10 +67,20 @@ const Layout: React.FC<LayoutProps> = ({
   }, [activeTab, resetNavigation]);
 
   /* ---------------------------------------
+     BODY SCROLL LOCK (modal)
+  --------------------------------------- */
+  useEffect(() => {
+    document.body.style.overflow = isModalOpen ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isModalOpen]);
+
+  /* ---------------------------------------
      UI
   --------------------------------------- */
   return (
-    <div className="w-full flex flex-col min-h-(--vh) overflow-hidden">
+    <div className="w-full h-dvh flex flex-col overflow-hidden">
       {/* Progress Loader */}
       <AnimatePresence>
         {isLoadingTab && (
@@ -100,7 +110,10 @@ const Layout: React.FC<LayoutProps> = ({
         isModalOpen={isModalOpen}
       />
 
-      <main className="flex-1 min-h-0 overflow-y-auto md:pl-20 pb-16 md:pb-0">
+      {/* Scroll container */}
+      <main
+        className="flex-1 min-h-0 overflow-y-auto md:pl-20 pb-[env(safe-area-inset-bottom)] md:pb-0"
+      >
         <AnimatePresence initial={false} mode="wait">
           <motion.div
             key={activeTab}
