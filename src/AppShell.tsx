@@ -17,7 +17,7 @@ import { useModalManager } from "@/context/ModalContext";
 import { useNavigation } from "@/context/NavigationContext";
 
 export default function AppShell() {
-  const { activeTab, setActiveTab } = useNavigation();
+  const { activeTab } = useNavigation();
 
   const { activeModal, selectedItem, openContent, close, goBackContent } =
     useModalManager();
@@ -56,11 +56,7 @@ export default function AppShell() {
   };
 
   return (
-    <Layout
-      activeTab={activeTab}
-      onTabChange={setActiveTab}
-      isModalOpen={Boolean(activeModal)}
-    >
+    <Layout isModalOpen={Boolean(activeModal)}>
       <Toaster richColors position="bottom-center" theme="dark" />
 
       <AnimatePresence mode="wait">
