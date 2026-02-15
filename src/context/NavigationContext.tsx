@@ -10,21 +10,19 @@ import {
   ReactNode,
 } from "react";
 
-type FocusTarget = { section: number; index: number };
+type FocusTarget = { section: number; index: number; id?: number };
 type TabDirection = "up" | "down" | "escape";
 type Tab = "movies" | "tvshows" | "search" | "devspick" | "watchlist";
 
 interface NavigationContextType {
   focus: FocusTarget;
   setFocus: (f: FocusTarget) => void;
+  setFocusById: (section: number, index: number, id: number) => void;
 
   registerRail: (length: number) => number;
   updateRailLength: (index: number, length: number) => void;
 
-  /** Reset when user actually switches tab */
   resetForTabChange: (tab: Tab) => void;
-
-  /** Restore focus when tab becomes active */
   restoreFocusForTab: (tab: Tab) => void;
 
   isModalOpen: boolean;
@@ -38,9 +36,15 @@ interface NavigationContextType {
 
 const NavigationContext = createContext<NavigationContextType | null>(null);
 
+const STORAGE_KEY = "nav-focus";
+
 export function NavigationProvider({ children }: { children: ReactNode }) {
   const [rails, setRails] = useState<number[]>([]);
-  const [focus, setFocus] = useState<FocusTarget>({ section: 0, index: 0 });
+  const [focus, setFocus] = useState<FocusTarget>({
+    section: 0,
+    index: 0,
+  });
+
   const [isModalOpen, setModalOpen] = useState(false);
 
   const railCount = useRef(0);
@@ -48,6 +52,26 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
 
   const selectRef = useRef<(() => void) | null>(null);
   const playRef = useRef<(() => void) | null>(null);
+
+  /* -------------------------------------------------
+     RESTORE FROM SESSION
+  -------------------------------------------------- */
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        setFocus(parsed);
+      }
+    } catch {}
+  }, []);
+
+  /* Save on change */
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(focus));
+    } catch {}
+  }, [focus]);
 
   /* -------------------------------------------------
      FOCUS MEMORY PER TAB
@@ -59,6 +83,13 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     devspick: { section: 0, index: 0 },
     watchlist: { section: 0, index: 0 },
   });
+
+  const setFocusById = useCallback(
+    (section: number, index: number, id: number) => {
+      setFocus({ section, index, id });
+    },
+    [],
+  );
 
   /* -------------------------------------------------
      RAIL REGISTRATION
@@ -82,33 +113,22 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   }, []);
 
   /* -------------------------------------------------
-     TAB CHANGE HANDLING
+     TAB CHANGE
   -------------------------------------------------- */
   const resetForTabChange = useCallback(
     (tab: Tab) => {
-      // Save current focus for previous tab
       focusMemory.current[tab] = focus;
-
-      // Reset rails for new tab
       railCount.current = 0;
       setRails([]);
-      setFocus({ section: 0, index: 0 });
     },
     [focus],
   );
 
   const restoreFocusForTab = useCallback((tab: Tab) => {
     const saved = focusMemory.current[tab];
-    if (saved) {
-      setFocus(saved);
-    } else {
-      setFocus({ section: 0, index: 0 });
-    }
+    setFocus(saved ?? { section: 0, index: 0 });
   }, []);
 
-  /* -------------------------------------------------
-     TAB NAVIGATOR REGISTRATION
-  -------------------------------------------------- */
   const setTabNavigator = useCallback((fn: (dir: TabDirection) => void) => {
     tabNavigatorRef.current = fn;
   }, []);
@@ -141,48 +161,22 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
         }));
 
       if (e.key === "ArrowLeft")
-        setFocus((f) => ({ ...f, index: Math.max(0, f.index - 1) }));
+        setFocus((f) => ({
+          ...f,
+          index: Math.max(0, f.index - 1),
+        }));
     };
 
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
   }, [rails, isModalOpen]);
 
-  /* -------------------------------------------------
-     GAMEPAD
-  -------------------------------------------------- */
-  useEffect(() => {
-    let raf: number;
-    let a = false;
-    let b = false;
-
-    const loop = () => {
-      const gp = navigator.getGamepads?.()[0];
-      if (gp && !isModalOpen) {
-        if (gp.buttons[0]?.pressed && !a) {
-          a = true;
-          playRef.current?.();
-        }
-        if (!gp.buttons[0]?.pressed) a = false;
-
-        if (gp.buttons[1]?.pressed && !b) {
-          b = true;
-          selectRef.current?.();
-        }
-        if (!gp.buttons[1]?.pressed) b = false;
-      }
-      raf = requestAnimationFrame(loop);
-    };
-
-    raf = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(raf);
-  }, [isModalOpen]);
-
   return (
     <NavigationContext.Provider
       value={{
         focus,
         setFocus,
+        setFocusById,
         registerRail,
         updateRailLength,
         resetForTabChange,
