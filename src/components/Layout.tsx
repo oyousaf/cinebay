@@ -1,7 +1,7 @@
 import React, { ReactNode, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Navbar from "./Navbar";
-import { useNavigation } from "@/hooks/useNavigation";
+import { useNavigation } from "@/context/NavigationContext";
 
 type Tab = "movies" | "tvshows" | "search" | "devspick" | "watchlist";
 
@@ -21,7 +21,7 @@ const Layout: React.FC<LayoutProps> = ({
   onTabChange,
   isModalOpen,
 }) => {
-  const { resetNavigation } = useNavigation();
+  const { resetForTabChange, restoreFocusForTab } = useNavigation();
 
   /* ---------------------------------------
      STATE
@@ -36,22 +36,34 @@ const Layout: React.FC<LayoutProps> = ({
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   /* ---------------------------------------
-     SHELL LOADER + NAVIGATION CONTROL
+     TAB TRANSITION + FOCUS PERSISTENCE
   --------------------------------------- */
   useEffect(() => {
     let shouldShow = false;
 
-    // First mount (app open / return from player)
+    // First mount (app load OR return from /watch)
     if (!hasMountedRef.current) {
       hasMountedRef.current = true;
       shouldShow = true;
+
       prevTabRef.current = activeTab;
+
+      // Restore focus for initial tab
+      restoreFocusForTab(activeTab);
     }
-    // Real tab change
+    // User actually switched tabs
     else if (prevTabRef.current !== activeTab) {
       shouldShow = true;
-      resetNavigation();
+
+      const previousTab = prevTabRef.current!;
+
+      // Save focus of previous tab + reset rails
+      resetForTabChange(previousTab);
+
       prevTabRef.current = activeTab;
+
+      // Restore focus for new tab
+      restoreFocusForTab(activeTab);
     }
 
     if (!shouldShow) return;
@@ -64,7 +76,7 @@ const Layout: React.FC<LayoutProps> = ({
       setIsLoadingTab(false);
       timerRef.current = null;
     }, LOAD_DURATION);
-  }, [activeTab, resetNavigation]);
+  }, [activeTab, resetForTabChange, restoreFocusForTab]);
 
   /* ---------------------------------------
      BODY SCROLL LOCK (modal)
@@ -110,7 +122,6 @@ const Layout: React.FC<LayoutProps> = ({
         isModalOpen={isModalOpen}
       />
 
-      {/* Scroll container */}
       <main className="flex-1 min-h-0 overflow-y-auto md:pl-20 pb-[env(safe-area-inset-bottom)] md:pb-0">
         <AnimatePresence initial={false} mode="wait">
           <motion.div

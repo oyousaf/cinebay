@@ -6,7 +6,7 @@ import { FaFilm, FaTv, FaSearch, FaStar, FaBookmark } from "react-icons/fa";
 
 import { DarkModeToggle } from "../DarkModeToggle";
 import { useTooltip } from "@/context/TooltipContext";
-import { useNavigation } from "@/hooks/useNavigation";
+import { useNavigation } from "@/context/NavigationContext";
 
 import logo from "/logo.png";
 

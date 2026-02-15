@@ -15,7 +15,7 @@ import React from "react";
 import type { Movie } from "@/types/movie";
 import { TMDB_IMAGE } from "@/lib/tmdb";
 import { useWatchlist } from "@/context/WatchlistContext";
-import { useNavigation } from "@/hooks/useNavigation";
+import { useNavigation } from "@/context/NavigationContext";
 
 /* ---------- Filters ---------- */
 type SortKey = "rating-desc" | "newest" | "title-asc" | "title-desc";

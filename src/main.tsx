@@ -4,7 +4,7 @@ import "./index.css";
 
 import App from "./App";
 import { WatchlistProvider } from "@/context/WatchlistContext";
-import { NavigationProvider } from "@/hooks/useNavigation";
+import { NavigationProvider } from "@/context/NavigationContext";
 import { TooltipProvider } from "./context/TooltipContext";
 import { ModalManagerProvider } from "@/context/ModalContext";
 
@@ -19,5 +19,5 @@ createRoot(document.getElementById("root")!).render(
         </NavigationProvider>
       </TooltipProvider>
     </WatchlistProvider>
-  </StrictMode>
+  </StrictMode>,
 );

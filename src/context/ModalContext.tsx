@@ -8,7 +8,7 @@ import {
   ReactNode,
 } from "react";
 import type { Movie } from "@/types/movie";
-import { useNavigation } from "@/hooks/useNavigation";
+import { useNavigation } from "@/context/NavigationContext";
 
 type ModalType = "content" | "exit" | null;
 

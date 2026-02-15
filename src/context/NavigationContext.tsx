@@ -12,6 +12,7 @@ import {
 
 type FocusTarget = { section: number; index: number };
 type TabDirection = "up" | "down" | "escape";
+type Tab = "movies" | "tvshows" | "search" | "devspick" | "watchlist";
 
 interface NavigationContextType {
   focus: FocusTarget;
@@ -19,14 +20,18 @@ interface NavigationContextType {
 
   registerRail: (length: number) => number;
   updateRailLength: (index: number, length: number) => void;
-  resetNavigation: () => void;
+
+  /** Reset when user actually switches tab */
+  resetForTabChange: (tab: Tab) => void;
+
+  /** Restore focus when tab becomes active */
+  restoreFocusForTab: (tab: Tab) => void;
 
   isModalOpen: boolean;
   setModalOpen: (open: boolean) => void;
 
   setTabNavigator: (fn: (dir: TabDirection) => void) => void;
 
-  /** Action dispatch */
   triggerSelect?: () => void;
   triggerPlay?: () => void;
 }
@@ -44,7 +49,20 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   const selectRef = useRef<(() => void) | null>(null);
   const playRef = useRef<(() => void) | null>(null);
 
-  /* ---------- Registration ---------- */
+  /* -------------------------------------------------
+     FOCUS MEMORY PER TAB
+  -------------------------------------------------- */
+  const focusMemory = useRef<Record<Tab, FocusTarget>>({
+    movies: { section: 0, index: 0 },
+    tvshows: { section: 0, index: 0 },
+    search: { section: 0, index: 0 },
+    devspick: { section: 0, index: 0 },
+    watchlist: { section: 0, index: 0 },
+  });
+
+  /* -------------------------------------------------
+     RAIL REGISTRATION
+  -------------------------------------------------- */
   const registerRail = useCallback((length: number) => {
     const idx = railCount.current++;
     setRails((r) => {
@@ -63,12 +81,34 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const resetNavigation = useCallback(() => {
-    railCount.current = 0;
-    setRails([]);
-    setFocus({ section: 0, index: 0 });
+  /* -------------------------------------------------
+     TAB CHANGE HANDLING
+  -------------------------------------------------- */
+  const resetForTabChange = useCallback(
+    (tab: Tab) => {
+      // Save current focus for previous tab
+      focusMemory.current[tab] = focus;
+
+      // Reset rails for new tab
+      railCount.current = 0;
+      setRails([]);
+      setFocus({ section: 0, index: 0 });
+    },
+    [focus],
+  );
+
+  const restoreFocusForTab = useCallback((tab: Tab) => {
+    const saved = focusMemory.current[tab];
+    if (saved) {
+      setFocus(saved);
+    } else {
+      setFocus({ section: 0, index: 0 });
+    }
   }, []);
 
+  /* -------------------------------------------------
+     TAB NAVIGATOR REGISTRATION
+  -------------------------------------------------- */
   const setTabNavigator = useCallback((fn: (dir: TabDirection) => void) => {
     tabNavigatorRef.current = fn;
   }, []);
@@ -145,7 +185,8 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
         setFocus,
         registerRail,
         updateRailLength,
-        resetNavigation,
+        resetForTabChange,
+        restoreFocusForTab,
         isModalOpen,
         setModalOpen,
         setTabNavigator,

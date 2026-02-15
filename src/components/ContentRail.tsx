@@ -6,7 +6,7 @@ import React from "react";
 
 import type { Movie } from "@/types/movie";
 import Banner from "./Banner";
-import { useNavigation } from "@/hooks/useNavigation";
+import { useNavigation } from "@/context/NavigationContext";
 
 const EASE_OUT = [0.22, 1, 0.36, 1] as const;
 
