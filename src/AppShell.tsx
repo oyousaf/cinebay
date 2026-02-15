@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Toaster, toast } from "sonner";
 
@@ -14,32 +14,14 @@ import Modal from "@/components/modal/ModalClient";
 import ExitConfirmModal from "@/components/ExitConfirmModal";
 
 import { useModalManager } from "@/context/ModalContext";
-
-type Tab = "movies" | "tvshows" | "search" | "devspick" | "watchlist";
+import { useNavigation } from "@/context/NavigationContext";
 
 export default function AppShell() {
-  /* -------------------------------------------------
-     ACTIVE TAB (PERSISTED)
-  -------------------------------------------------- */
-  const [activeTab, setActiveTab] = useState<Tab>(() => {
-    const stored = localStorage.getItem("activeTab");
-    return (stored as Tab) ?? "movies";
-  });
+  const { activeTab, setActiveTab } = useNavigation();
 
-  const persistTab = (tab: Tab) => {
-    setActiveTab(tab);
-    localStorage.setItem("activeTab", tab);
-  };
-
-  /* -------------------------------------------------
-     MODAL STATE
-  -------------------------------------------------- */
   const { activeModal, selectedItem, openContent, close, goBackContent } =
     useModalManager();
 
-  /* -------------------------------------------------
-     STANDALONE DETECTION
-  -------------------------------------------------- */
   const isStandalone = useMemo(() => {
     return (
       window.matchMedia("(display-mode: standalone)").matches ||
@@ -47,23 +29,16 @@ export default function AppShell() {
     );
   }, []);
 
-  /* -------------------------------------------------
-     TAB CONTENT
-  -------------------------------------------------- */
   const renderContent = () => {
     switch (activeTab) {
       case "movies":
         return <Movies onSelect={openContent} />;
-
       case "tvshows":
         return <Shows onSelect={openContent} />;
-
       case "devspick":
         return <DevsPick onSelect={openContent} />;
-
       case "watchlist":
         return <Watchlist onSelect={openContent} />;
-
       case "search":
         return (
           <div className="flex items-center justify-center px-4 min-h-screen">
@@ -75,7 +50,6 @@ export default function AppShell() {
             </div>
           </div>
         );
-
       default:
         return null;
     }
@@ -84,7 +58,7 @@ export default function AppShell() {
   return (
     <Layout
       activeTab={activeTab}
-      onTabChange={persistTab}
+      onTabChange={setActiveTab}
       isModalOpen={Boolean(activeModal)}
     >
       <Toaster richColors position="bottom-center" theme="dark" />
@@ -102,9 +76,6 @@ export default function AppShell() {
         </motion.div>
       </AnimatePresence>
 
-      {/* -------------------------------------------------
-         MODALS
-      -------------------------------------------------- */}
       {activeModal === "content" && selectedItem && (
         <Modal
           movie={selectedItem}
