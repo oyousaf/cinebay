@@ -76,9 +76,10 @@ const Tile = React.memo(function Tile({
 export default function ContentRail({ items, onSelect }: ContentRailProps) {
   const railRef = useRef<HTMLDivElement | null>(null);
   const tileRefs = useRef<(HTMLButtonElement | null)[]>([]);
-  const lastFocusRef = useRef(0);
 
-  const { focus, setFocus, registerRail, updateRailLength } = useNavigation();
+  const { focus, setFocusById, registerRail, updateRailLength } =
+    useNavigation();
+
   const [railIndex, setRailIndex] = useState<number | null>(null);
   const [activeItem, setActiveItem] = useState<Movie | null>(null);
 
@@ -89,26 +90,69 @@ export default function ContentRail({ items, onSelect }: ContentRailProps) {
     }
   }, [railIndex, registerRail, items.length]);
 
-  /* Focus handler */
-  const handleFocus = useCallback(
-    (movie: Movie, idx: number) => {
-      lastFocusRef.current = idx;
-      setActiveItem(movie);
-      if (railIndex !== null) {
-        setFocus({ section: railIndex, index: idx });
-      }
-    },
-    [railIndex, setFocus],
-  );
-
-  /* Sync focus + scroll */
+  /* -------------------------------------------------
+     DEFAULT FOCUS (first load / no storage)
+  -------------------------------------------------- */
   useEffect(() => {
     if (railIndex === null) return;
+    if (!items.length) return;
+
+    // No saved focus → first rail claims first item
+    if (focus.id === undefined && focus.section === 0 && railIndex === 0) {
+      const first = items[0];
+      setActiveItem(first);
+      setFocusById(0, 0, first.id);
+    }
+  }, [railIndex, items, focus.id, focus.section, setFocusById]);
+
+  /* -------------------------------------------------
+     CLAIM FOCUS BY ID (rebuild recovery)
+  -------------------------------------------------- */
+  useEffect(() => {
+    if (railIndex === null) return;
+    if (!items.length) return;
+    if (focus.id === undefined) return;
+
+    if (focus.section === railIndex) return;
+
+    const found = items.findIndex((m) => m.id === focus.id);
+    if (found !== -1) {
+      setFocusById(railIndex, found, focus.id);
+    }
+  }, [railIndex, items, focus.id, focus.section, setFocusById]);
+
+  /* User interaction */
+  const handleFocus = useCallback(
+    (movie: Movie, idx: number) => {
+      setActiveItem(movie);
+      if (railIndex !== null) {
+        setFocusById(railIndex, idx, movie.id);
+      }
+    },
+    [railIndex, setFocusById],
+  );
+
+  /* Sync context → scroll + banner */
+  useEffect(() => {
+    if (railIndex === null) return;
+    if (focus.section !== railIndex) return;
+    if (!items.length) return;
 
     updateRailLength(railIndex, items.length);
-    if (focus.section !== railIndex) return;
 
-    const el = tileRefs.current[focus.index];
+    let index = focus.index;
+
+    if (focus.id !== undefined) {
+      const found = items.findIndex((m) => m.id === focus.id);
+      if (found !== -1) index = found;
+    }
+
+    index = Math.min(index, items.length - 1);
+
+    const movie = items[index];
+    setActiveItem(movie);
+
+    const el = tileRefs.current[index];
     const container = railRef.current;
 
     if (el && container) {
@@ -122,14 +166,21 @@ export default function ContentRail({ items, onSelect }: ContentRailProps) {
     }
   }, [focus, items, railIndex, updateRailLength]);
 
-  /* Restore last focus */
+  /* Real DOM focus */
   useEffect(() => {
-    if (items.length > 0 && railIndex !== null) {
-      const index = Math.min(lastFocusRef.current, items.length - 1);
-      setActiveItem(items[index]);
-      setFocus({ section: railIndex, index });
+    if (railIndex === null) return;
+    if (focus.section !== railIndex) return;
+    if (!items.length) return;
+
+    const index = Math.min(focus.index, items.length - 1);
+    const el = tileRefs.current[index];
+
+    if (el && document.activeElement !== el) {
+      requestAnimationFrame(() => {
+        el.focus({ preventScroll: true });
+      });
     }
-  }, [items, railIndex, setFocus]);
+  }, [focus.section, focus.index, railIndex, items.length]);
 
   if (items.length === 0) return null;
 

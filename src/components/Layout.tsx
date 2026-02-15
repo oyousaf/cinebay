@@ -1,27 +1,21 @@
+"use client";
+
 import React, { ReactNode, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Navbar from "./Navbar";
-import { useNavigation } from "@/context/NavigationContext";
-
-type Tab = "movies" | "tvshows" | "search" | "devspick" | "watchlist";
+import { useNavigation, Tab } from "@/context/NavigationContext";
 
 interface LayoutProps {
   children: ReactNode;
-  activeTab: Tab;
-  onTabChange: (tab: Tab) => void;
   isModalOpen?: boolean;
 }
 
 const FADE_EASE = [0.22, 1, 0.36, 1] as const;
 const LOAD_DURATION = 500;
 
-const Layout: React.FC<LayoutProps> = ({
-  children,
-  activeTab,
-  onTabChange,
-  isModalOpen,
-}) => {
-  const { resetForTabChange, restoreFocusForTab } = useNavigation();
+const Layout: React.FC<LayoutProps> = ({ children, isModalOpen }) => {
+  const { activeTab, setActiveTab, resetForTabChange, restoreFocusForTab } =
+    useNavigation();
 
   /* ---------------------------------------
      STATE
@@ -36,33 +30,31 @@ const Layout: React.FC<LayoutProps> = ({
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   /* ---------------------------------------
-     TAB TRANSITION + FOCUS PERSISTENCE
+     TAB TRANSITION + FOCUS
   --------------------------------------- */
   useEffect(() => {
     let shouldShow = false;
 
-    // First mount (app load OR return from /watch)
+    // First mount (app load / return from /watch)
     if (!hasMountedRef.current) {
       hasMountedRef.current = true;
       shouldShow = true;
 
+      // Just record current tab — no restore here
       prevTabRef.current = activeTab;
-
-      // Restore focus for initial tab
-      restoreFocusForTab(activeTab);
     }
-    // User actually switched tabs
+    // User switched tabs
     else if (prevTabRef.current !== activeTab) {
       shouldShow = true;
 
       const previousTab = prevTabRef.current!;
 
-      // Save focus of previous tab + reset rails
+      // Save focus of previous tab
       resetForTabChange(previousTab);
 
       prevTabRef.current = activeTab;
 
-      // Restore focus for new tab
+      // Restore focus for the new tab
       restoreFocusForTab(activeTab);
     }
 
@@ -93,7 +85,7 @@ const Layout: React.FC<LayoutProps> = ({
   --------------------------------------- */
   return (
     <div className="w-full h-dvh flex flex-col overflow-hidden">
-      {/* Progress Loader */}
+      {/* Loader */}
       <AnimatePresence>
         {isLoadingTab && (
           <motion.div
@@ -118,7 +110,7 @@ const Layout: React.FC<LayoutProps> = ({
 
       <Navbar
         activeTab={activeTab}
-        onTabChange={onTabChange}
+        onTabChange={setActiveTab}
         isModalOpen={isModalOpen}
       />
 
