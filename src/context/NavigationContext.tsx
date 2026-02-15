@@ -40,9 +40,16 @@ const STORAGE_KEY = "nav-focus";
 
 export function NavigationProvider({ children }: { children: ReactNode }) {
   const [rails, setRails] = useState<number[]>([]);
-  const [focus, setFocus] = useState<FocusTarget>({
-    section: 0,
-    index: 0,
+
+  /* -------------------------------------------------
+     RESTORE IMMEDIATELY
+  -------------------------------------------------- */
+  const [focus, setFocus] = useState<FocusTarget>(() => {
+    try {
+      const saved = sessionStorage.getItem(STORAGE_KEY);
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return { section: 0, index: 0 };
   });
 
   const [isModalOpen, setModalOpen] = useState(false);
@@ -54,19 +61,8 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   const playRef = useRef<(() => void) | null>(null);
 
   /* -------------------------------------------------
-     RESTORE FROM SESSION
+     SAVE FOCUS
   -------------------------------------------------- */
-  useEffect(() => {
-    try {
-      const saved = sessionStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        setFocus(parsed);
-      }
-    } catch {}
-  }, []);
-
-  /* Save on change */
   useEffect(() => {
     try {
       sessionStorage.setItem(STORAGE_KEY, JSON.stringify(focus));
@@ -134,7 +130,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   }, []);
 
   /* -------------------------------------------------
-     KEYBOARD
+     KEYBOARD (TV controls)
   -------------------------------------------------- */
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -143,28 +139,37 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       const t = e.target as HTMLElement | null;
       if (t && ["INPUT", "TEXTAREA", "SELECT"].includes(t.tagName)) return;
 
+      /* Vertical navigation */
       if (tabNavigatorRef.current) {
         if (["ArrowUp", "w", "W"].includes(e.key))
           return tabNavigatorRef.current("up");
+
         if (["ArrowDown", "s", "S"].includes(e.key))
           return tabNavigatorRef.current("down");
+
         if (e.key === "Escape") return tabNavigatorRef.current("escape");
       }
 
-      if (["Enter", "p"].includes(e.key)) playRef.current?.();
-      if (["i"].includes(e.key)) selectRef.current?.();
+      /* Actions */
+      if (["Enter", "p", "P"].includes(e.key)) playRef.current?.();
+      if (["i", "I"].includes(e.key)) selectRef.current?.();
 
-      if (e.key === "ArrowRight")
+      /* Horizontal navigation */
+      if (["ArrowRight", "d", "D"].includes(e.key)) {
+        e.preventDefault();
         setFocus((f) => ({
           ...f,
           index: Math.min(f.index + 1, (rails[f.section] ?? 1) - 1),
         }));
+      }
 
-      if (e.key === "ArrowLeft")
+      if (["ArrowLeft", "a", "A"].includes(e.key)) {
+        e.preventDefault();
         setFocus((f) => ({
           ...f,
           index: Math.max(0, f.index - 1),
         }));
+      }
     };
 
     window.addEventListener("keydown", handleKey);
