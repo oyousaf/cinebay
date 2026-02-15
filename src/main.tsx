@@ -1,4 +1,3 @@
-import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
 
@@ -9,15 +8,13 @@ import { TooltipProvider } from "./context/TooltipContext";
 import { ModalManagerProvider } from "@/context/ModalContext";
 
 createRoot(document.getElementById("root")!).render(
-  <StrictMode>
-    <WatchlistProvider>
-      <TooltipProvider>
-        <NavigationProvider>
-          <ModalManagerProvider>
-            <App />
-          </ModalManagerProvider>
-        </NavigationProvider>
-      </TooltipProvider>
-    </WatchlistProvider>
-  </StrictMode>,
+  <WatchlistProvider>
+    <TooltipProvider>
+      <NavigationProvider>
+        <ModalManagerProvider>
+          <App />
+        </ModalManagerProvider>
+      </NavigationProvider>
+    </TooltipProvider>
+  </WatchlistProvider>,
 );
