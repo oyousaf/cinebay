@@ -253,48 +253,58 @@ export default function Watchlist({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      className="min-h-screen w-full"
+      className="min-h-full w-full"
     >
-      <div className="pt-10 pb-6 text-center">
-        <h1 className="text-4xl font-bold">Watchlist</h1>
-      </div>
+      {/* ===============================
+        Sticky Header
+    =============================== */}
+      <div className="sticky top-0 z-20 backdrop-blur-xl bg-black/40 border-b border-white/10">
+        {/* Title */}
+        <div className="pt-10 pb-4 text-center">
+          <h1 className="text-4xl font-bold">Watchlist</h1>
+        </div>
 
-      <div className="sticky top-0 z-20 backdrop-blur-xl bg-black/40 border-b border-white/10 px-4 py-4">
-        <div className="max-w-7xl xl:max-w-400 2xl:max-w-450 mx-auto flex flex-wrap gap-3 justify-center">
-          {SORTS.map((s) => (
-            <FilterPill
-              key={s.key}
-              active={filters.sortBy === s.key}
-              layoutId="sort-pill"
-              onClick={() => setFilters((f) => ({ ...f, sortBy: s.key }))}
+        {/* Filters */}
+        <div className="px-4 pb-4">
+          <div className="max-w-7xl xl:max-w-400 2xl:max-w-450 mx-auto flex flex-wrap gap-3 justify-center">
+            {SORTS.map((s) => (
+              <FilterPill
+                key={s.key}
+                active={filters.sortBy === s.key}
+                layoutId="sort-pill"
+                onClick={() => setFilters((f) => ({ ...f, sortBy: s.key }))}
+              >
+                {s.label}
+              </FilterPill>
+            ))}
+
+            <span className="w-px bg-white/10 mx-2" />
+
+            {TYPES.map((t) => (
+              <FilterPill
+                key={t.key}
+                active={filters.type === t.key}
+                layoutId="type-pill"
+                onClick={() => setFilters((f) => ({ ...f, type: t.key }))}
+              >
+                {t.label}
+              </FilterPill>
+            ))}
+
+            <button
+              onClick={() => setFilters(defaultFilters)}
+              className="ml-2 px-3 py-2 rounded-full hover:bg-white/10"
+              aria-label="Reset filters"
             >
-              {s.label}
-            </FilterPill>
-          ))}
-
-          <span className="w-px bg-white/10 mx-2" />
-
-          {TYPES.map((t) => (
-            <FilterPill
-              key={t.key}
-              active={filters.type === t.key}
-              layoutId="type-pill"
-              onClick={() => setFilters((f) => ({ ...f, type: t.key }))}
-            >
-              {t.label}
-            </FilterPill>
-          ))}
-
-          <button
-            onClick={() => setFilters(defaultFilters)}
-            className="ml-2 px-3 py-2 rounded-full hover:bg-white/10"
-            aria-label="Reset filters"
-          >
-            <RefreshCw size={18} />
-          </button>
+              <RefreshCw size={18} />
+            </button>
+          </div>
         </div>
       </div>
 
+      {/* ===============================
+        Content
+    =============================== */}
       <div className="max-w-7xl xl:max-w-400 2xl:max-w-450 mx-auto px-4 py-10">
         {filteredList.length === 0 ? (
           <p className="text-center text-foreground md:text-xl text-md">
