@@ -258,7 +258,7 @@ export default function Watchlist({
       {/* ===============================
         Sticky Header
     =============================== */}
-      <div className="sticky top-0 z-20 backdrop-blur-xl bg-black/40 border-b border-white/10">
+      <div className="sticky top-0 z-40 backdrop-blur-xl bg-black/40 border-b border-white/10">
         {/* Title */}
         <div className="pt-10 pb-4 text-center">
           <h1 className="text-4xl font-bold">Watchlist</h1>
