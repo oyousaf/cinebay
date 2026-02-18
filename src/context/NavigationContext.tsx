@@ -5,8 +5,8 @@ import {
   useCallback,
   useContext,
   useEffect,
-  useRef,
   useState,
+  useRef,
   ReactNode,
 } from "react";
 
@@ -15,28 +15,25 @@ export type Tab = "movies" | "tvshows" | "search" | "devspick" | "watchlist";
 type FocusTarget = { section: number; index: number; id?: number };
 type TabDirection = "up" | "down" | "escape";
 
+/* Allow object OR functional update */
+type SetFocus = (f: FocusTarget | ((prev: FocusTarget) => FocusTarget)) => void;
+
 interface NavigationContextType {
-  /* TAB */
   activeTab: Tab;
   setActiveTab: (tab: Tab) => void;
 
-  /* FOCUS */
   focus: FocusTarget;
-  setFocus: (f: FocusTarget) => void;
+  setFocus: SetFocus;
   setFocusById: (section: number, index: number, id: number) => void;
 
   registerRail: (length: number) => number;
   updateRailLength: (index: number, length: number) => void;
 
-  /* TAB memory */
-  resetForTabChange: (tab: Tab) => void;
   restoreFocusForTab: (tab: Tab) => void;
 
-  /* MODAL */
   isModalOpen: boolean;
   setModalOpen: (open: boolean) => void;
 
-  /* TV navigation */
   setTabNavigator: (fn: (dir: TabDirection) => void) => void;
 
   triggerSelect?: () => void;
@@ -45,19 +42,26 @@ interface NavigationContextType {
 
 const NavigationContext = createContext<NavigationContextType | null>(null);
 
-/* Storage keys */
 const TAB_KEY = "tv-active-tab";
-const FOCUS_KEY = "tv-focus";
+const FOCUS_KEY = "tv-focus-by-tab";
+
+const defaultFocus: FocusTarget = { section: 0, index: 0 };
+
+const defaultFocusByTab: Record<Tab, FocusTarget> = {
+  movies: defaultFocus,
+  tvshows: defaultFocus,
+  search: defaultFocus,
+  devspick: defaultFocus,
+  watchlist: defaultFocus,
+};
 
 export function NavigationProvider({ children }: { children: ReactNode }) {
-  const [rails, setRails] = useState<number[]>([]);
-
   /* -------------------------------------------------
-     TAB (persisted)
+     TAB
   -------------------------------------------------- */
   const [activeTab, setActiveTabState] = useState<Tab>(() => {
-    const saved = localStorage.getItem(TAB_KEY);
-    return (saved as Tab) ?? "movies";
+    if (typeof window === "undefined") return "movies";
+    return (localStorage.getItem(TAB_KEY) as Tab) ?? "movies";
   });
 
   const setActiveTab = useCallback((tab: Tab) => {
@@ -66,63 +70,52 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   }, []);
 
   /* -------------------------------------------------
-     FOCUS (persisted)
+     FOCUS (single source of truth)
   -------------------------------------------------- */
-  const [focus, setFocus] = useState<FocusTarget>(() => {
+  const [focusByTab, setFocusByTab] = useState<Record<Tab, FocusTarget>>(() => {
+    if (typeof window === "undefined") return defaultFocusByTab;
     try {
       const saved = localStorage.getItem(FOCUS_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        return {
-          section: 0,
-          index: parsed.index ?? 0,
-          id: parsed.id,
-        };
-      }
+      if (saved) return { ...defaultFocusByTab, ...JSON.parse(saved) };
     } catch {}
-
-    return { section: 0, index: 0 };
+    return defaultFocusByTab;
   });
 
-  useEffect(() => {
-    localStorage.setItem(
-      FOCUS_KEY,
-      JSON.stringify({
-        index: focus.index,
-        id: focus.id,
-      }),
-    );
-  }, [focus.index, focus.id]);
+  const focus = focusByTab[activeTab] ?? defaultFocus;
 
-  const [isModalOpen, setModalOpen] = useState(false);
+  const setFocus: SetFocus = useCallback(
+    (f) => {
+      setFocusByTab((prev) => {
+        const current = prev[activeTab] ?? defaultFocus;
+        const next = typeof f === "function" ? f(current) : f;
 
-  const railCount = useRef(0);
-  const tabNavigatorRef = useRef<((dir: TabDirection) => void) | null>(null);
-
-  const selectRef = useRef<(() => void) | null>(null);
-  const playRef = useRef<(() => void) | null>(null);
-
-  /* -------------------------------------------------
-     TAB FOCUS MEMORY
-  -------------------------------------------------- */
-  const focusMemory = useRef<Record<Tab, FocusTarget>>({
-    movies: { section: 0, index: 0 },
-    tvshows: { section: 0, index: 0 },
-    search: { section: 0, index: 0 },
-    devspick: { section: 0, index: 0 },
-    watchlist: { section: 0, index: 0 },
-  });
+        return {
+          ...prev,
+          [activeTab]: next,
+        };
+      });
+    },
+    [activeTab],
+  );
 
   const setFocusById = useCallback(
     (section: number, index: number, id: number) => {
       setFocus({ section, index, id });
     },
-    [],
+    [setFocus],
   );
+
+  /* Persist all tabs */
+  useEffect(() => {
+    localStorage.setItem(FOCUS_KEY, JSON.stringify(focusByTab));
+  }, [focusByTab]);
 
   /* -------------------------------------------------
      RAILS
   -------------------------------------------------- */
+  const [rails, setRails] = useState<number[]>([]);
+  const railCount = useRef(0);
+
   const registerRail = useCallback((length: number) => {
     const idx = railCount.current++;
     setRails((r) => {
@@ -141,41 +134,31 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  /* -------------------------------------------------
-     TAB CHANGE
-  -------------------------------------------------- */
-  const resetForTabChange = useCallback(
+  /* Reset rails when tab changes */
+  const restoreFocusForTab = useCallback(
     (tab: Tab) => {
-      focusMemory.current[tab] = focus;
-
       railCount.current = 0;
       setRails([]);
-
-      setFocus((f) => ({
-        section: 0,
-        index: f.index,
-        id: f.id,
-      }));
+      setActiveTab(tab);
     },
-    [focus],
+    [setActiveTab],
   );
 
-  const restoreFocusForTab = useCallback((tab: Tab) => {
-    const saved = focusMemory.current[tab];
+  /* -------------------------------------------------
+     MODAL + NAV
+  -------------------------------------------------- */
+  const [isModalOpen, setModalOpen] = useState(false);
+  const tabNavigatorRef = useRef<((dir: TabDirection) => void) | null>(null);
 
-    setFocus({
-      section: 0,
-      index: saved?.index ?? 0,
-      id: saved?.id,
-    });
-  }, []);
+  const selectRef = useRef<(() => void) | null>(null);
+  const playRef = useRef<(() => void) | null>(null);
 
   const setTabNavigator = useCallback((fn: (dir: TabDirection) => void) => {
     tabNavigatorRef.current = fn;
   }, []);
 
   /* -------------------------------------------------
-     KEYBOARD (TV controls)
+     KEYBOARD
   -------------------------------------------------- */
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -216,7 +199,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
 
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [rails, isModalOpen]);
+  }, [rails, isModalOpen, setFocus]);
 
   return (
     <NavigationContext.Provider
@@ -228,7 +211,6 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
         setFocusById,
         registerRail,
         updateRailLength,
-        resetForTabChange,
         restoreFocusForTab,
         isModalOpen,
         setModalOpen,
