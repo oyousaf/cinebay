@@ -296,7 +296,7 @@ function SearchBar({ onSelectMovie, onSelectPerson }: Props) {
     <div className="relative w-full flex justify-center">
       <div className="relative w-full max-w-xl">
         {showRecent && (
-          <div className="absolute -top-14 left-0 right-0 flex flex-col items-center gap-2">
+          <div className="absolute top-full mt-2 left-0 right-0 z-50">
             <div className="flex flex-wrap gap-2 justify-center">
               {recent.current.map((term) => (
                 <div
