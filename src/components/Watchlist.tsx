@@ -84,7 +84,6 @@ const WatchlistTile = React.memo(function WatchlistTile({
         onError={(e) => ((e.target as HTMLImageElement).src = "/fallback.jpg")}
       />
 
-      {/* --- Close / Remove --- */}
       <button
         type="button"
         aria-label="Remove from watchlist"
@@ -100,13 +99,8 @@ const WatchlistTile = React.memo(function WatchlistTile({
           "bg-[hsl(var(--background))]",
           "ring-1 ring-[hsl(var(--foreground)/0.25)]",
           "text-[hsl(var(--foreground))]",
-
-          "transition",
-          "hover:scale-105 active:scale-95",
-          "focus-visible:outline-none focus-visible:ring-2",
-          "focus-visible:ring-[#80ffcc]",
-
-          // visibility model
+          "transition hover:scale-105 active:scale-95",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#80ffcc]",
           "opacity-100 lg:opacity-0",
           "group-hover:opacity-100 group-focus-within:opacity-100",
         ].join(" ")}
@@ -153,9 +147,10 @@ export default function Watchlist({
   onSelect: (movie: Movie) => void;
 }) {
   const { watchlist, toggleWatchlist } = useWatchlist();
-  const { focus, setFocus, registerRail, updateRailLength } = useNavigation();
+  const { focus, setFocus, registerRail, updateRailLength, activeTab } =
+    useNavigation();
 
-  /* ---------- Undo buffer ---------- */
+  /* ---------- Undo ---------- */
   const undoRef = useRef<{ movie: Movie; ts: number } | null>(null);
 
   useEffect(() => {
@@ -190,39 +185,45 @@ export default function Watchlist({
     localStorage.setItem("watchlistFilters", JSON.stringify(filters));
   }, [filters]);
 
-  /* ---------- Filter + sort ---------- */
+  /* ---------- Filter + Sort (no cloning) ---------- */
   const filteredList = useMemo(() => {
-    const list = watchlist
-      .filter(
-        (m) =>
-          deferredFilters.type === "all" ||
-          m.media_type === deferredFilters.type,
-      )
-      .map((m) => ({
-        ...m,
-        _title: m.title || m.name || "",
-        _date: m.release_date ? Date.parse(m.release_date) : 0,
-      }));
+    const list = watchlist.filter(
+      (m) =>
+        deferredFilters.type === "all" || m.media_type === deferredFilters.type,
+    );
+
+    const getTitle = (m: Movie) => m.title || m.name || "";
+    const getDate = (m: Movie) =>
+      m.release_date ? Date.parse(m.release_date) : 0;
 
     switch (deferredFilters.sortBy) {
       case "title-asc":
-        return list.sort((a, b) => a._title.localeCompare(b._title));
+        return [...list].sort((a, b) => getTitle(a).localeCompare(getTitle(b)));
       case "title-desc":
-        return list.sort((a, b) => b._title.localeCompare(a._title));
+        return [...list].sort((a, b) => getTitle(b).localeCompare(getTitle(a)));
       case "newest":
-        return list.sort((a, b) => b._date - a._date);
+        return [...list].sort((a, b) => getDate(b) - getDate(a));
       default:
-        return list.sort(
+        return [...list].sort(
           (a, b) => (b.vote_average ?? 0) - (a.vote_average ?? 0),
         );
     }
   }, [watchlist, deferredFilters]);
 
-  /* ---------- Navigation rail ---------- */
+  /* ---------- Navigation Rail ---------- */
   const railIndexRef = useRef<number | null>(null);
 
+  // Reset rail when tab changes
   useEffect(() => {
-    if (filteredList.length === 0) return;
+    railIndexRef.current = null;
+  }, [activeTab]);
+
+  // Register / update rail
+  useEffect(() => {
+    if (filteredList.length === 0) {
+      railIndexRef.current = null;
+      return;
+    }
 
     if (railIndexRef.current === null) {
       railIndexRef.current = registerRail(filteredList.length);
@@ -233,21 +234,18 @@ export default function Watchlist({
 
   const railIndex = railIndexRef.current;
 
-  /* ---------- Focus clamp ---------- */
+  /* ---------- Focus Clamp ---------- */
   useEffect(() => {
-    if (filteredList.length === 0) return;
-    if (railIndex === null) return;
+    if (!filteredList.length || railIndex === null) return;
     if (focus.section !== railIndex) return;
 
-    if (focus.index >= filteredList.length) {
-      setFocus({
-        section: railIndex,
-        index: filteredList.length - 1,
-      });
-    }
-  }, [filteredList.length, railIndex, focus, setFocus]);
+    setFocus((f) => {
+      if (f.index < filteredList.length) return f;
+      return { ...f, index: filteredList.length - 1 };
+    });
+  }, [filteredList.length, railIndex, focus.section, setFocus]);
 
-  /* ---------- Remove handler ---------- */
+  /* ---------- Remove ---------- */
   const handleRemove = useCallback(
     (movie: Movie) => {
       undoRef.current = { movie, ts: Date.now() };
