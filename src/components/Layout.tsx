@@ -82,7 +82,7 @@ const Layout: React.FC<LayoutProps> = ({ children, isModalOpen }) => {
      UI
   --------------------------------------- */
   return (
-    <div className="w-full h-full flex flex-col overflow-hidden safe-area">
+    <div className="w-full h-full flex flex-col overflow-hidden">
       {/* Loader */}
       <AnimatePresence>
         {isLoadingTab && (
