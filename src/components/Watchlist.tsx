@@ -67,7 +67,7 @@ const WatchlistTile = React.memo(function WatchlistTile({
         if (e.key === "Delete") onRemove();
       }}
       className={[
-        "group relative rounded-xl overflow-hidden bg-black",
+        "group relative aspect-[2/2.8] rounded-xl overflow-hidden bg-black",
         "focus-visible:ring-4 ring-[#80ffcc]",
         isFocused ? "z-30" : "z-10",
       ].join(" ")}
@@ -92,8 +92,7 @@ const WatchlistTile = React.memo(function WatchlistTile({
           onRemove();
         }}
         className={[
-          "pointer-events-auto",
-          "absolute top-2 right-2",
+          "pointer-events-auto absolute top-2 right-2",
           "inline-flex items-center justify-center",
           "h-9 w-9 rounded-full",
           "bg-[hsl(var(--background))]",
@@ -150,7 +149,6 @@ export default function Watchlist({
   const { focus, setFocus, registerRail, updateRailLength, activeTab } =
     useNavigation();
 
-  /* ---------- Undo ---------- */
   const undoRef = useRef<{ movie: Movie; ts: number } | null>(null);
 
   useEffect(() => {
@@ -169,7 +167,6 @@ export default function Watchlist({
     return () => window.removeEventListener("keydown", handler);
   }, [toggleWatchlist]);
 
-  /* ---------- Filters ---------- */
   const [filters, setFilters] = useState<Filters>(() => {
     try {
       const stored = localStorage.getItem("watchlistFilters");
@@ -185,7 +182,6 @@ export default function Watchlist({
     localStorage.setItem("watchlistFilters", JSON.stringify(filters));
   }, [filters]);
 
-  /* ---------- Filter + Sort (no cloning) ---------- */
   const filteredList = useMemo(() => {
     const list = watchlist.filter(
       (m) =>
@@ -210,15 +206,12 @@ export default function Watchlist({
     }
   }, [watchlist, deferredFilters]);
 
-  /* ---------- Navigation Rail ---------- */
   const railIndexRef = useRef<number | null>(null);
 
-  // Reset rail when tab changes
   useEffect(() => {
     railIndexRef.current = null;
   }, [activeTab]);
 
-  // Register / update rail
   useEffect(() => {
     if (filteredList.length === 0) {
       railIndexRef.current = null;
@@ -234,7 +227,6 @@ export default function Watchlist({
 
   const railIndex = railIndexRef.current;
 
-  /* ---------- Focus Clamp ---------- */
   useEffect(() => {
     if (!filteredList.length || railIndex === null) return;
     if (focus.section !== railIndex) return;
@@ -245,7 +237,6 @@ export default function Watchlist({
     });
   }, [filteredList.length, railIndex, focus.section, setFocus]);
 
-  /* ---------- Remove ---------- */
   const handleRemove = useCallback(
     (movie: Movie) => {
       undoRef.current = { movie, ts: Date.now() };
@@ -254,7 +245,6 @@ export default function Watchlist({
     [toggleWatchlist],
   );
 
-  /* ---------- UI ---------- */
   return (
     <motion.main
       initial={{ opacity: 0, y: 20 }}
@@ -267,7 +257,7 @@ export default function Watchlist({
       </div>
 
       <div className="sticky top-0 z-20 backdrop-blur-xl bg-black/40 border-b border-white/10 px-4 py-4">
-        <div className="max-w-6xl mx-auto flex flex-wrap gap-3 justify-center">
+        <div className="max-w-7xl xl:max-w-400 2xl:max-w-450 mx-auto flex flex-wrap gap-3 justify-center">
           {SORTS.map((s) => (
             <FilterPill
               key={s.key}
@@ -302,7 +292,7 @@ export default function Watchlist({
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 py-10">
+      <div className="max-w-7xl xl:max-w-400 2xl:max-w-450 mx-auto px-4 py-10">
         {filteredList.length === 0 ? (
           <p className="text-center text-foreground md:text-xl text-md">
             Nothing queued. That’s a dangerous amount of free time.
@@ -310,7 +300,7 @@ export default function Watchlist({
         ) : (
           <motion.div
             layout
-            className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-7 gap-4"
+            className="grid gap-5 grid-cols-3 md:grid-cols-5 xl:grid-cols-7"
           >
             <AnimatePresence mode="popLayout">
               {filteredList.map((movie, idx) => (
