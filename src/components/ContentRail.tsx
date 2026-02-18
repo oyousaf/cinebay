@@ -15,7 +15,7 @@ interface ContentRailProps {
   onSelect: (movie: Movie) => void;
 }
 
-/* TILE */
+/* ---------- TILE ---------- */
 const Tile = React.memo(function Tile({
   movie,
   isFocused,
@@ -62,8 +62,7 @@ const Tile = React.memo(function Tile({
         <div
           className="absolute top-2 left-2 rounded-full px-2 py-0.5
           text-[10px] md:text-xs font-bold uppercase
-          bg-[hsl(var(--foreground))] text-[hsl(var(--background))]
-          shadow-md"
+          bg-[hsl(var(--foreground))] text-[hsl(var(--background))] shadow-md"
         >
           {movie.status!.toUpperCase()}
         </div>
@@ -72,52 +71,58 @@ const Tile = React.memo(function Tile({
   );
 });
 
-/* CONTENT RAIL */
+/* ---------- CONTENT RAIL ---------- */
 export default function ContentRail({ items, onSelect }: ContentRailProps) {
   const railRef = useRef<HTMLDivElement | null>(null);
   const tileRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const railIndexRef = useRef<number | null>(null);
 
-  const { focus, setFocusById, registerRail, updateRailLength } =
+  const { focus, setFocusById, registerRail, updateRailLength, activeTab } =
     useNavigation();
 
-  const [railIndex, setRailIndex] = useState<number | null>(null);
   const [activeItem, setActiveItem] = useState<Movie | null>(null);
+
+  /* Reset rail when tab changes */
+  useEffect(() => {
+    railIndexRef.current = null;
+  }, [activeTab]);
 
   /* Register rail */
   useEffect(() => {
-    if (railIndex === null && items.length > 0) {
-      setRailIndex(registerRail(items.length));
+    if (!items.length) {
+      railIndexRef.current = null;
+      return;
     }
-  }, [railIndex, registerRail, items.length]);
 
-  /* -------------------------------------------------
-     DEFAULT FOCUS (first load / no storage)
-  -------------------------------------------------- */
+    if (railIndexRef.current === null) {
+      railIndexRef.current = registerRail(items.length);
+    } else {
+      updateRailLength(railIndexRef.current, items.length);
+    }
+  }, [items.length, registerRail, updateRailLength]);
+
+  const railIndex = railIndexRef.current;
+
+  /* Default focus (first load only) */
   useEffect(() => {
-    if (railIndex === null) return;
-    if (!items.length) return;
+    if (railIndex === null || !items.length) return;
 
-    // No saved focus → first rail claims first item
-    if (focus.id === undefined && focus.section === 0 && railIndex === 0) {
+    if (focus.id === undefined && railIndex === 0) {
       const first = items[0];
       setActiveItem(first);
-      setFocusById(0, 0, first.id);
+      setFocusById(railIndex, 0, first.id);
     }
-  }, [railIndex, items, focus.id, focus.section, setFocusById]);
+  }, [railIndex, items, focus.id, setFocusById]);
 
-  /* -------------------------------------------------
-     CLAIM FOCUS BY ID (rebuild recovery)
-  -------------------------------------------------- */
+  /* Recover focus by ID */
   useEffect(() => {
-    if (railIndex === null) return;
-    if (!items.length) return;
+    if (railIndex === null || !items.length) return;
     if (focus.id === undefined) return;
-
     if (focus.section === railIndex) return;
 
-    const found = items.findIndex((m) => m.id === focus.id);
-    if (found !== -1) {
-      setFocusById(railIndex, found, focus.id);
+    const idx = items.findIndex((m) => m.id === focus.id);
+    if (idx !== -1) {
+      setFocusById(railIndex, idx, focus.id);
     }
   }, [railIndex, items, focus.id, focus.section, setFocusById]);
 
@@ -132,13 +137,10 @@ export default function ContentRail({ items, onSelect }: ContentRailProps) {
     [railIndex, setFocusById],
   );
 
-  /* Sync context → scroll + banner */
+  /* Sync focus → scroll + banner */
   useEffect(() => {
-    if (railIndex === null) return;
-    if (focus.section !== railIndex) return;
-    if (!items.length) return;
-
-    updateRailLength(railIndex, items.length);
+    if (railIndex === null || focus.section !== railIndex || !items.length)
+      return;
 
     let index = focus.index;
 
@@ -164,28 +166,22 @@ export default function ContentRail({ items, onSelect }: ContentRailProps) {
         behavior: "smooth",
       });
     }
-  }, [focus, items, railIndex, updateRailLength]);
+  }, [focus, items, railIndex]);
 
-  /* Real DOM focus */
+  /* DOM focus */
   useEffect(() => {
-    if (railIndex === null) return;
-    if (focus.section !== railIndex) return;
-    if (!items.length) return;
+    if (railIndex === null || focus.section !== railIndex) return;
 
-    const index = Math.min(focus.index, items.length - 1);
-    const el = tileRefs.current[index];
-
+    const el = tileRefs.current[focus.index];
     if (el && document.activeElement !== el) {
-      requestAnimationFrame(() => {
-        el.focus({ preventScroll: true });
-      });
+      requestAnimationFrame(() => el.focus({ preventScroll: true }));
     }
-  }, [focus.section, focus.index, railIndex, items.length]);
+  }, [focus.section, focus.index, railIndex]);
 
-  if (items.length === 0) return null;
+  if (!items.length) return null;
 
   return (
-    <section className="relative w-full min-h-[90vh] sm:h-screen snap-start flex flex-col">
+    <section className="relative w-full min-h-[90vh] sm:h-screen flex flex-col">
       {/* Banner */}
       <div className="flex-1">
         <motion.div
@@ -209,7 +205,7 @@ export default function ContentRail({ items, onSelect }: ContentRailProps) {
           <div
             ref={railRef}
             role="list"
-            className="flex gap-3 2xl:gap-6 overflow-x-auto overflow-y-hidden snap-x snap-proximity no-scrollbar
+            className="flex gap-3 2xl:gap-6 overflow-x-auto snap-x no-scrollbar
               pl-2 md:pl-4 pr-2 md:pr-4 py-4 scroll-smooth"
           >
             {items.map((movie, idx) => (
