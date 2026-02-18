@@ -41,7 +41,7 @@ export default function AppShell() {
         return <Watchlist onSelect={openContent} />;
       case "search":
         return (
-          <div className="flex items-center justify-center px-4 min-h-screen">
+          <div className="flex items-center justify-center px-4 h-full">
             <div className="w-full max-w-md">
               <SearchBar
                 onSelectMovie={openContent}
