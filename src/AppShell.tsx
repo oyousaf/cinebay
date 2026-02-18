@@ -66,7 +66,7 @@ export default function AppShell() {
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: 40 }}
           transition={{ duration: 0.25, ease: "easeOut" }}
-          className="flex-1 min-h-0 overflow-y-auto"
+          className="flex-1 min-h-0"
         >
           {renderContent()}
         </motion.div>
