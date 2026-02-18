@@ -39,10 +39,10 @@ const scoreResult = (item: Movie, q: string) => {
     title === query
       ? 100
       : title.startsWith(query)
-      ? 60
-      : title.includes(query)
-      ? 30
-      : 0;
+        ? 60
+        : title.includes(query)
+          ? 30
+          : 0;
 
   if (item.media_type === "movie") score += 20;
   if (item.media_type === "tv") score += 15;
@@ -104,7 +104,7 @@ function SearchBar({
 
     try {
       const data = await fetchFromProxy(
-        `/search/multi?query=${encodeURIComponent(q)}`
+        `/search/multi?query=${encodeURIComponent(q)}`,
       );
 
       if (id !== requestId.current) return;
@@ -140,13 +140,13 @@ function SearchBar({
 
       const updated = [term, ...recent.filter((s) => s !== term)].slice(
         0,
-        RECENT_LIMIT
+        RECENT_LIMIT,
       );
 
       setRecent(updated);
       writeRecent(updated);
     },
-    [recent]
+    [recent],
   );
 
   const removeRecent = useCallback(
@@ -155,7 +155,7 @@ function SearchBar({
       setRecent(updated);
       writeRecent(updated);
     },
-    [recent]
+    [recent],
   );
 
   const clearRecent = useCallback(() => {
@@ -177,7 +177,7 @@ function SearchBar({
       setQuery("");
       setResults([]);
     },
-    [onSelectMovie, onSelectPerson, query, saveRecent]
+    [onSelectMovie, onSelectPerson, query, saveRecent],
   );
 
   /* ---------- VOICE ---------- */
@@ -321,7 +321,7 @@ function SearchBar({
                   }
                   className="w-10 h-14 2xl:w-12 2xl:h-16 object-cover"
                   loading="lazy"
-                  alt=""
+                  alt={item.title || item.name || "Poster"}
                 />
                 <div>
                   <div className="text-sm 2xl:text-base font-medium">
