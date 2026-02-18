@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useCallback, useEffect, useRef, useState } from "react";
-import { motion, useAnimation, type Variants } from "framer-motion";
+import { motion, type Variants } from "framer-motion";
 import { Search, Loader2, X, Mic, MicOff } from "lucide-react";
 import Snd from "snd-lib";
 
@@ -39,10 +39,10 @@ const scoreResult = (item: Movie, q: string) => {
     title === query
       ? 100
       : title.startsWith(query)
-        ? 60
-        : title.includes(query)
-          ? 30
-          : 0;
+      ? 60
+      : title.includes(query)
+      ? 30
+      : 0;
 
   if (item.media_type === "movie") score += 20;
   if (item.media_type === "tv") score += 15;
@@ -70,7 +70,7 @@ function SearchBar({
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
 
-  /* ---------- Sound (lazy + non-blocking) ---------- */
+  /* ---------- Sound ---------- */
   const sndRef = useRef<Snd | null>(null);
 
   const playSound = useCallback((sound: string) => {
@@ -82,7 +82,6 @@ function SearchBar({
       });
       sndRef.current.load(Snd.KITS.SND01).catch(() => {});
     }
-
     sndRef.current?.play(sound, { volume: 0.5 });
   }, []);
 
@@ -105,7 +104,7 @@ function SearchBar({
 
     try {
       const data = await fetchFromProxy(
-        `/search/multi?query=${encodeURIComponent(q)}`,
+        `/search/multi?query=${encodeURIComponent(q)}`
       );
 
       if (id !== requestId.current) return;
@@ -123,18 +122,14 @@ function SearchBar({
 
   /* Native debounce */
   useEffect(() => {
-    if (debounceTimer.current) {
-      clearTimeout(debounceTimer.current);
-    }
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
 
     debounceTimer.current = setTimeout(() => {
       runSearch(query);
     }, SEARCH_DELAY);
 
     return () => {
-      if (debounceTimer.current) {
-        clearTimeout(debounceTimer.current);
-      }
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
     };
   }, [query, runSearch]);
 
@@ -145,13 +140,13 @@ function SearchBar({
 
       const updated = [term, ...recent.filter((s) => s !== term)].slice(
         0,
-        RECENT_LIMIT,
+        RECENT_LIMIT
       );
 
       setRecent(updated);
       writeRecent(updated);
     },
-    [recent],
+    [recent]
   );
 
   const removeRecent = useCallback(
@@ -160,7 +155,7 @@ function SearchBar({
       setRecent(updated);
       writeRecent(updated);
     },
-    [recent],
+    [recent]
   );
 
   const clearRecent = useCallback(() => {
@@ -182,7 +177,7 @@ function SearchBar({
       setQuery("");
       setResults([]);
     },
-    [onSelectMovie, onSelectPerson, query, saveRecent],
+    [onSelectMovie, onSelectPerson, query, saveRecent]
   );
 
   /* ---------- VOICE ---------- */
@@ -198,16 +193,11 @@ function SearchBar({
     if (!recognitionRef.current) {
       const rec = new Recognition();
       rec.lang = "en-US";
-
       rec.onresult = (e: SpeechRecognitionEvent) => {
         const text = e.results[0][0].transcript.trim();
         setQuery(text);
       };
-
-      rec.onend = () => {
-        setListening(false);
-      };
-
+      rec.onend = () => setListening(false);
       recognitionRef.current = rec;
     }
 
@@ -226,7 +216,7 @@ function SearchBar({
 
   return (
     <div className="relative w-full flex justify-center">
-      <div className="relative w-full max-w-xl">
+      <div className="relative w-full max-w-xl 2xl:max-w-5xl">
         {showRecent && (
           <div className="absolute top-full mt-2 left-0 right-0 z-50 flex flex-col items-center gap-2">
             <div className="flex flex-wrap gap-2 justify-center">
@@ -239,7 +229,7 @@ function SearchBar({
                     type="button"
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={() => setQuery(term)}
-                    className="px-3 py-1 text-sm"
+                    className="px-3 py-1 text-sm 2xl:text-base"
                   >
                     {term}
                   </button>
@@ -248,7 +238,7 @@ function SearchBar({
                     onClick={() => removeRecent(term)}
                     className="px-2 opacity-60"
                   >
-                    <X className="w-4 h-4" />
+                    <X className="w-4 h-4 2xl:w-5 2xl:h-5" />
                   </button>
                 </div>
               ))}
@@ -258,7 +248,7 @@ function SearchBar({
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={clearRecent}
-              className="text-xs opacity-60"
+              className="text-xs 2xl:text-sm opacity-60"
             >
               Clear recent
             </button>
@@ -271,8 +261,8 @@ function SearchBar({
             e.preventDefault();
             runSearch(query);
           }}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[hsl(var(--background))]
-                     border border-[hsl(var(--foreground)/0.25)] shadow-md"
+          className="flex items-center gap-3 px-4 py-2 2xl:px-8 2xl:py-2.5 rounded-xl 2xl:rounded-2xl
+                     bg-[hsl(var(--background))] border border-[hsl(var(--foreground)/0.25)] shadow-md"
         >
           <input
             ref={inputRef}
@@ -280,22 +270,30 @@ function SearchBar({
             onChange={(e) => setQuery(e.target.value)}
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
-            className="flex-1 bg-transparent outline-none text-xl h-12"
+            className="flex-1 bg-transparent outline-none text-xl 2xl:text-2xl h-12"
             placeholder="Search movies, shows, people…"
           />
 
           {query && (
             <button type="button" onClick={() => setQuery("")}>
-              <X />
+              <X className="2xl:w-6 2xl:h-6" />
             </button>
           )}
 
           <button type="button" onClick={startVoiceSearch}>
-            {listening ? <MicOff /> : <Mic />}
+            {listening ? (
+              <MicOff className="2xl:w-6 2xl:h-6" />
+            ) : (
+              <Mic className="2xl:w-6 2xl:h-6" />
+            )}
           </button>
 
           <button type="submit">
-            {loading ? <Loader2 className="animate-spin" /> : <Search />}
+            {loading ? (
+              <Loader2 className="animate-spin 2xl:w-6 2xl:h-6" />
+            ) : (
+              <Search className="2xl:w-6 2xl:h-6" />
+            )}
           </button>
         </form>
 
@@ -305,14 +303,15 @@ function SearchBar({
             variants={listVariants}
             initial="hidden"
             animate="show"
-            className="absolute top-full mt-2 w-full max-h-80 overflow-y-auto rounded-lg shadow-lg z-50
-                       bg-[hsl(var(--background))]"
+            className="absolute top-full mt-2 w-full max-h-80 2xl:max-h-128 overflow-y-auto
+                       rounded-lg shadow-lg z-50 bg-[hsl(var(--background))]"
           >
             {results.map((item) => (
               <div
                 key={`${item.media_type}:${item.id}`}
                 onClick={() => handleSelect(item)}
-                className="flex items-center gap-3 px-4 py-2 cursor-pointer hover:bg-[hsl(var(--foreground)/0.08)]"
+                className="flex items-center gap-3 px-4 py-2 2xl:px-5 2xl:py-3 cursor-pointer
+                           hover:bg-[hsl(var(--foreground)/0.08)]"
               >
                 <img
                   src={
@@ -320,15 +319,17 @@ function SearchBar({
                       ? `https://image.tmdb.org/t/p/w92${item.poster_path}`
                       : "/fallback.jpg"
                   }
-                  className="w-10 h-14 object-cover"
+                  className="w-10 h-14 2xl:w-12 2xl:h-16 object-cover"
                   loading="lazy"
                   alt=""
                 />
                 <div>
-                  <div className="text-sm font-medium">
+                  <div className="text-sm 2xl:text-base font-medium">
                     {item.title || item.name}
                   </div>
-                  <div className="text-xs opacity-60">{item.media_type}</div>
+                  <div className="text-xs 2xl:text-sm opacity-60">
+                    {item.media_type}
+                  </div>
                 </div>
               </div>
             ))}
