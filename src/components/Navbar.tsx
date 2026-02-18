@@ -103,7 +103,7 @@ export default function Navbar({
   return (
     <>
       {/* Desktop Sidebar */}
-      <aside className="hidden md:flex fixed left-0 top-0 h-dvh w-20 flex-col items-center justify-between bg-[hsl(var(--background))] border-r border-border z-40">
+      <aside className="hidden md:flex fixed left-0 top-0 bottom-0 w-20 flex-col items-center justify-between bg-[hsl(var(--background))] border-r border-border z-40">
         <div className="pt-4">
           <motion.img
             src={logo}
