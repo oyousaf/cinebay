@@ -1,6 +1,6 @@
 "use client";
 
-import React, { ReactNode, useEffect, useRef, useState } from "react";
+import React, { ReactNode, useEffect, useRef, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Navbar from "./Navbar";
 import { useNavigation, Tab } from "@/context/NavigationContext";
@@ -14,8 +14,7 @@ const FADE_EASE = [0.22, 1, 0.36, 1] as const;
 const LOAD_DURATION = 500;
 
 const Layout: React.FC<LayoutProps> = ({ children, isModalOpen }) => {
-  const { activeTab, setActiveTab, resetForTabChange, restoreFocusForTab } =
-    useNavigation();
+  const { activeTab, restoreFocusForTab } = useNavigation();
 
   /* ---------------------------------------
      STATE
@@ -26,49 +25,42 @@ const Layout: React.FC<LayoutProps> = ({ children, isModalOpen }) => {
      REFS
   --------------------------------------- */
   const hasMountedRef = useRef(false);
-  const prevTabRef = useRef<Tab | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   /* ---------------------------------------
-     TAB TRANSITION + FOCUS
+     TAB CHANGE HANDLER (single source)
+  --------------------------------------- */
+  const handleTabChange = useCallback(
+    (tab: Tab) => {
+      if (tab === activeTab) return;
+
+      // Show loader
+      if (timerRef.current) clearTimeout(timerRef.current);
+      setIsLoadingTab(true);
+
+      restoreFocusForTab(tab);
+
+      timerRef.current = setTimeout(() => {
+        setIsLoadingTab(false);
+        timerRef.current = null;
+      }, LOAD_DURATION);
+    },
+    [activeTab, restoreFocusForTab],
+  );
+
+  /* ---------------------------------------
+     INITIAL LOAD LOADER
   --------------------------------------- */
   useEffect(() => {
-    let shouldShow = false;
-
-    // First mount (app load / return from /watch)
-    if (!hasMountedRef.current) {
-      hasMountedRef.current = true;
-      shouldShow = true;
-
-      // Just record current tab — no restore here
-      prevTabRef.current = activeTab;
-    }
-    // User switched tabs
-    else if (prevTabRef.current !== activeTab) {
-      shouldShow = true;
-
-      const previousTab = prevTabRef.current!;
-
-      // Save focus of previous tab
-      resetForTabChange(previousTab);
-
-      prevTabRef.current = activeTab;
-
-      // Restore focus for the new tab
-      restoreFocusForTab(activeTab);
-    }
-
-    if (!shouldShow) return;
-
-    if (timerRef.current) clearTimeout(timerRef.current);
+    if (hasMountedRef.current) return;
+    hasMountedRef.current = true;
 
     setIsLoadingTab(true);
-
     timerRef.current = setTimeout(() => {
       setIsLoadingTab(false);
       timerRef.current = null;
     }, LOAD_DURATION);
-  }, [activeTab, resetForTabChange, restoreFocusForTab]);
+  }, []);
 
   /* ---------------------------------------
      BODY SCROLL LOCK (modal)
@@ -110,7 +102,7 @@ const Layout: React.FC<LayoutProps> = ({ children, isModalOpen }) => {
 
       <Navbar
         activeTab={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={handleTabChange}
         isModalOpen={isModalOpen}
       />
 
