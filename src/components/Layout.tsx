@@ -1,6 +1,12 @@
 "use client";
 
-import React, { ReactNode, useEffect, useRef, useState, useCallback } from "react";
+import React, {
+  ReactNode,
+  useEffect,
+  useRef,
+  useState,
+  useCallback,
+} from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Navbar from "./Navbar";
 import { useNavigation, Tab } from "@/context/NavigationContext";
@@ -76,7 +82,7 @@ const Layout: React.FC<LayoutProps> = ({ children, isModalOpen }) => {
      UI
   --------------------------------------- */
   return (
-    <div className="w-full h-full flex flex-col overflow-hidden">
+    <div className="w-full h-full flex flex-col overflow-hidden safe-area">
       {/* Loader */}
       <AnimatePresence>
         {isLoadingTab && (
@@ -106,7 +112,7 @@ const Layout: React.FC<LayoutProps> = ({ children, isModalOpen }) => {
         isModalOpen={isModalOpen}
       />
 
-      <main className="flex-1 min-h-0 overflow-y-auto md:pl-20 pb-[env(safe-area-inset-bottom)] md:pb-0">
+      <main className="flex-1 min-h-0 overflow-y-auto md:pl-20">
         <AnimatePresence initial={false} mode="wait">
           <motion.div
             key={activeTab}
