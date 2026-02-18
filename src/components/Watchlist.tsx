@@ -125,16 +125,19 @@ function FilterPill({
   return (
     <button
       onClick={onClick}
-      className="relative px-4 py-2 text-sm rounded-full"
+      className="relative rounded-full px-4 py-2 text-sm xl:px-6 xl:py-3 xl:text-base transition-colors duration-150
+        hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#80ffcc]"
     >
       {active && (
         <motion.span
           layoutId={layoutId}
-          className="absolute inset-0 rounded-full bg-white/10 ring-1 ring-white/20"
+          className="absolute inset-0 rounded-full bg-white/10 xl:bg-white/15 ring-1 ring-white/20
+            will-change-transform"
           transition={{ type: "spring", stiffness: 500, damping: 35 }}
         />
       )}
-      <span className="relative z-10">{children}</span>
+
+      <span className="relative z-10 whitespace-nowrap">{children}</span>
     </button>
   );
 }
