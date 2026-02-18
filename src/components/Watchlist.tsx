@@ -303,7 +303,7 @@ export default function Watchlist({
         ) : (
           <motion.div
             layout
-            className="grid gap-5 grid-cols-3 md:grid-cols-5 xl:grid-cols-7"
+            className="grid gap-3 xl:gap-5 grid-cols-3 md:grid-cols-5 lg:grid-cols-7"
           >
             <AnimatePresence mode="popLayout">
               {filteredList.map((movie, idx) => (
