@@ -138,12 +138,8 @@ function SearchBar({
   useEffect(() => {
     if (!focused) return;
 
-    let timeoutId: NodeJS.Timeout;
-    let rafId: number;
-
     const update = () => {
       if (!containerRef.current) return;
-
       const r = containerRef.current.getBoundingClientRect();
 
       setPos({
@@ -153,34 +149,13 @@ function SearchBar({
       });
     };
 
-    // Keep the original delay behaviour
-    timeoutId = setTimeout(() => {
-      // Measure after layout/animation settles
-      rafId = requestAnimationFrame(update);
-    }, 260);
-
-    const handleVisibility = () => {
-      if (document.visibilityState === "visible") {
-        requestAnimationFrame(update);
-      }
-    };
-
-    const handleFocus = () => {
-      requestAnimationFrame(update);
-    };
-
+    update();
     window.addEventListener("resize", update);
     window.addEventListener("scroll", update, true);
-    window.addEventListener("focus", handleFocus);
-    document.addEventListener("visibilitychange", handleVisibility);
 
     return () => {
-      clearTimeout(timeoutId);
-      cancelAnimationFrame(rafId);
       window.removeEventListener("resize", update);
       window.removeEventListener("scroll", update, true);
-      window.removeEventListener("focus", handleFocus);
-      document.removeEventListener("visibilitychange", handleVisibility);
     };
   }, [focused]);
 
@@ -215,29 +190,16 @@ function SearchBar({
   }, []);
 
   useEffect(() => {
-    if (!focused) return;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
 
-    const update = () => {
-      if (!containerRef.current) return;
-      const r = containerRef.current.getBoundingClientRect();
-
-      setPos({
-        left: r.left + window.scrollX,
-        top: r.bottom + window.scrollY + 8,
-        width: r.width,
-      });
-    };
-
-    update();
-
-    window.addEventListener("resize", update);
-    window.addEventListener("scroll", update, true);
+    debounceRef.current = setTimeout(() => runSearch(query), SEARCH_DELAY);
 
     return () => {
-      window.removeEventListener("resize", update);
-      window.removeEventListener("scroll", update, true);
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
     };
-  }, [focused]);
+  }, [query, runSearch]);
 
   /* ---------- RECENT ---------- */
   const saveRecent = useCallback((term: string) => {
@@ -313,49 +275,20 @@ function SearchBar({
     <>
       <div className="flex justify-between items-center px-4 py-2 text-xs opacity-60">
         <span>Recent</span>
-        <button
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={clearRecent}
-          className="p-1 rounded opacity-60 hover:opacity-100 hover:bg-[hsl(var(--foreground)/0.08)]"
-        >
+        <button onMouseDown={(e) => e.preventDefault()} onClick={clearRecent}>
           Clear
         </button>
       </div>
 
       <AnimatePresence initial={false}>
         {recent.map((term) => (
-          <motion.div
-            key={term}
-            layout
-            initial={{ opacity: 0, y: -4, height: 0 }}
-            animate={{ opacity: 1, y: 0, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden"
-          >
-            <div className="flex items-center justify-between px-4 py-2 hover:bg-[hsl(var(--foreground)/0.08)]">
-              {/* Select */}
-              <button
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => setQuery(term)}
-                className="flex-1 text-left"
-              >
-                {term}
-              </button>
-
-              {/* Remove single */}
-              <button
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => {
-                  setRecent((prev) => {
-                    const updated = prev.filter((s) => s !== term);
-                    writeRecent(updated);
-                    return updated;
-                  });
-                }}
-                className="ml-3 p-1 opacity-60 hover:opacity-100"
-              >
-                <FaTimes size={12} />
-              </button>
+          <motion.div key={term} layout className="overflow-hidden">
+            <div
+              className="px-4 py-2 hover:bg-[hsl(var(--foreground)/0.08)] cursor-pointer"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => setQuery(term)}
+            >
+              {term}
             </div>
           </motion.div>
         ))}
