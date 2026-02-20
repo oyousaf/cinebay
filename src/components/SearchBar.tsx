@@ -104,7 +104,7 @@ function SearchBar({
     setRecent(readRecent().slice(0, RECENT_LIMIT));
   }, []);
 
-  /* ---------- POSITION (stable for animated layout) ---------- */
+  /* ---------- POSITION ---------- */
   useEffect(() => {
     if (!focused) return;
 
@@ -119,7 +119,7 @@ function SearchBar({
       });
     };
 
-    const t = setTimeout(update, 260); // wait for page animation
+    const t = setTimeout(update, 260);
 
     window.addEventListener("resize", update);
     window.addEventListener("scroll", update, true);
@@ -267,7 +267,7 @@ function SearchBar({
               left: pos.left,
               top: pos.top,
               width: pos.width,
-              zIndex: 9999,
+              zIndex: 40,
             }}
             className="max-h-80 overflow-y-auto rounded-lg shadow-lg bg-[hsl(var(--background))]
             border border-[hsl(var(--foreground)/0.15)]"
