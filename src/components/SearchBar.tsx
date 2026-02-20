@@ -271,7 +271,7 @@ function SearchBar({
       <div className="flex justify-between items-center px-4 py-2 text-xs opacity-60">
         <span>Recent</span>
         <button
-          className="opacity-50 hover:opacity-100 transition-opacity"
+          className="opacity-50 hover:opacity-100 transition-opacity cursor-pointer"
           onMouseDown={(e) => e.preventDefault()}
           onClick={clearRecent}
         >
@@ -295,7 +295,7 @@ function SearchBar({
               </div>
 
               <button
-                className="ml-3 opacity-50 hover:opacity-100"
+                className="ml-3 opacity-50 hover:opacity-100 cursor-pointer"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => removeRecent(term)}
                 aria-label={`Remove ${term}`}
