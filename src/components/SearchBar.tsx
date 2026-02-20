@@ -91,6 +91,8 @@ function SearchBar({
     width: number;
   } | null>(null);
 
+  const [hasSearched, setHasSearched] = useState(false);
+
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
@@ -150,13 +152,16 @@ function SearchBar({
   /* ---------- SEARCH ---------- */
   const runSearch = useCallback(async (term: string) => {
     const q = term.trim();
+
     if (q.length < MIN_QUERY) {
       setResults([]);
+      setHasSearched(false);
       return;
     }
 
     const id = ++requestId.current;
     setLoading(true);
+    setHasSearched(true);
 
     try {
       const data = await fetchFromProxy(
@@ -217,6 +222,7 @@ function SearchBar({
       setQuery("");
       setFocused(false);
       setResults([]);
+      setHasSearched(false);
     },
     [onSelectMovie, onSelectPerson, query, saveRecent],
   );
@@ -388,11 +394,11 @@ function SearchBar({
                     </div>
                   </div>
                 ))
-              ) : (
+              ) : hasSearched && !loading ? (
                 <div className="px-4 py-6 text-center opacity-60">
                   No matches found
                 </div>
-              ))}
+              ) : null)}
           </motion.div>,
           portalRoot,
         )
