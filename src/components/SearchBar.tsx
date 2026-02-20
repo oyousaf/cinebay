@@ -2,7 +2,7 @@
 
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { motion, type Variants } from "framer-motion";
+import { motion, AnimatePresence, type Variants } from "framer-motion";
 import { Search, Loader2, Mic, MicOff } from "lucide-react";
 import { FaTimes } from "react-icons/fa";
 import Snd from "snd-lib";
@@ -104,13 +104,12 @@ function SearchBar({
     setRecent(readRecent().slice(0, RECENT_LIMIT));
   }, []);
 
-  /* ---------- POSITION TRACKING ---------- */
+  /* ---------- POSITION (stable for animated layout) ---------- */
   useEffect(() => {
     if (!focused) return;
 
     const update = () => {
       if (!containerRef.current) return;
-
       const r = containerRef.current.getBoundingClientRect();
 
       setPos({
@@ -120,7 +119,7 @@ function SearchBar({
       });
     };
 
-    const t = setTimeout(update, 260);
+    const t = setTimeout(update, 260); // wait for page animation
 
     window.addEventListener("resize", update);
     window.addEventListener("scroll", update, true);
@@ -134,13 +133,9 @@ function SearchBar({
 
   /* ---------- TRENDING ---------- */
   useEffect(() => {
-    const loadTrending = async () => {
-      try {
-        const data = await fetchFromProxy("/trending/all/day");
-        setTrending((data?.results ?? []).slice(0, 8));
-      } catch {}
-    };
-    loadTrending();
+    fetchFromProxy("/trending/all/day")
+      .then((d) => setTrending((d?.results ?? []).slice(0, 8)))
+      .catch(() => {});
   }, []);
 
   /* ---------- SOUND ---------- */
@@ -259,7 +254,7 @@ function SearchBar({
     show: { opacity: 1, y: 0, transition: { duration: 0.18 } },
   };
 
-  /* ---------- PORTAL CONTENT ---------- */
+  /* ---------- PORTAL ---------- */
   const dropdown =
     portalRoot && pos && focused
       ? createPortal(
@@ -274,32 +269,74 @@ function SearchBar({
               width: pos.width,
               zIndex: 9999,
             }}
-            className="max-h-80 overflow-y-auto rounded-lg shadow-lg
-            bg-[hsl(var(--background))]
+            className="max-h-80 overflow-y-auto rounded-lg shadow-lg bg-[hsl(var(--background))]
             border border-[hsl(var(--foreground)/0.15)]"
           >
             {/* RECENT */}
             {showRecent && (
               <>
-                <div className="flex justify-between px-4 py-2 text-xs opacity-60">
+                <div className="flex justify-between items-center px-4 py-2 text-xs opacity-60">
                   <span>Recent</span>
+
                   <button
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={clearRecent}
+                    className="p-1 rounded opacity-60 hover:opacity-100 hover:bg-[hsl(var(--foreground)/0.08)]
+                     transition-colors cursor-pointer"
                   >
                     Clear
                   </button>
                 </div>
-                {recent.map((term) => (
-                  <div
-                    key={term}
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => setQuery(term)}
-                    className="px-4 py-2 cursor-pointer hover:bg-[hsl(var(--foreground)/0.08)]"
-                  >
-                    {term}
-                  </div>
-                ))}
+
+                <AnimatePresence initial={false}>
+                  {recent.map((term) => (
+                    <motion.div
+                      key={term}
+                      layout
+                      initial={{ opacity: 0, y: -4, height: 0 }}
+                      animate={{ opacity: 1, y: 0, height: "auto" }}
+                      exit={{
+                        opacity: 0,
+                        y: -6,
+                        scale: 0.96,
+                        height: 0,
+                        transition: { duration: 0.18, ease: "easeOut" },
+                      }}
+                      transition={{ duration: 0.2 }}
+                      className="overflow-hidden"
+                    >
+                      <div
+                        className="flex items-center justify-between px-4 py-2 hover:bg-[hsl(var(--foreground)/0.08)]
+                        cursor-pointer"
+                      >
+                        {/* Select term */}
+                        <button
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => setQuery(term)}
+                          className="flex-1 text-left cursor-pointer"
+                        >
+                          {term}
+                        </button>
+
+                        {/* Remove single */}
+                        <button
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => {
+                            setRecent((prev) => {
+                              const updated = prev.filter((s) => s !== term);
+                              writeRecent(updated);
+                              return updated;
+                            });
+                          }}
+                          className="ml-3 p-1 rounded opacity-60 hover:opacity-100 hover:bg-[hsl(var(--foreground)/0.08)]
+                          transition-colors cursor-pointer"
+                        >
+                          <FaTimes size={12} />
+                        </button>
+                      </div>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
               </>
             )}
 
@@ -370,9 +407,8 @@ function SearchBar({
               e.preventDefault();
               runSearch(query);
             }}
-            className="flex items-center gap-3 px-4 py-2 rounded-xl
-            bg-[hsl(var(--background))]
-            border border-[hsl(var(--foreground)/0.25)] shadow-md"
+            className="flex items-center gap-3 px-4 py-2 rounded-xl bg-[hsl(var(--background))]
+             border border-[hsl(var(--foreground)/0.25)] shadow-md"
           >
             <input
               ref={inputRef}
