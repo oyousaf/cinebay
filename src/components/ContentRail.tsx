@@ -181,7 +181,7 @@ export default function ContentRail({ items, onSelect }: ContentRailProps) {
   if (!items.length) return null;
 
   return (
-    <section className="relative w-full h-dvh flex flex-col">
+    <section className="relative w-full h-dvh flex flex-col pb-16 md:pb-0">
       {/* Banner */}
       <div className="flex-7">
         <motion.div
