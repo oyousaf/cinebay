@@ -60,6 +60,7 @@ function SearchBar({
 }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Movie[]>([]);
+  const [trending, setTrending] = useState<Movie[]>([]);
   const [recent, setRecent] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [focused, setFocused] = useState(false);
@@ -72,8 +73,8 @@ function SearchBar({
 
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const requestId = useRef(0);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const requestId = useRef(0);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const sndRef = useRef<Snd | null>(null);
 
@@ -83,7 +84,7 @@ function SearchBar({
     setRecent(readRecent().slice(0, RECENT_LIMIT));
   }, []);
 
-  /* ---------- POSITION ---------- */
+  /* ---------- POSITION (escape overflow) ---------- */
   useEffect(() => {
     const update = () => {
       if (!containerRef.current) return;
@@ -99,6 +100,17 @@ function SearchBar({
       window.removeEventListener("resize", update);
       window.removeEventListener("scroll", update, true);
     };
+  }, []);
+
+  /* ---------- TRENDING ---------- */
+  useEffect(() => {
+    const loadTrending = async () => {
+      try {
+        const data = await fetchFromProxy("/trending/all/day");
+        setTrending((data?.results ?? []).slice(0, 8));
+      } catch {}
+    };
+    loadTrending();
   }, []);
 
   /* ---------- SOUND ---------- */
@@ -139,20 +151,15 @@ function SearchBar({
     }
   }, []);
 
-  /* ---------- DEBOUNCE ---------- */
   useEffect(() => {
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current);
-    }
+    if (debounceRef.current) clearTimeout(debounceRef.current);
 
     debounceRef.current = setTimeout(() => {
       runSearch(query);
     }, SEARCH_DELAY);
 
     return () => {
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current);
-      }
+      if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, [query, runSearch]);
 
@@ -178,6 +185,11 @@ function SearchBar({
     },
     [recent],
   );
+
+  const clearRecent = useCallback(() => {
+    setRecent([]);
+    writeRecent([]);
+  }, []);
 
   /* ---------- SELECT ---------- */
   const handleSelect = useCallback(
@@ -210,9 +222,8 @@ function SearchBar({
     if (!recognitionRef.current) {
       const rec = new Recognition();
       rec.lang = "en-US";
-      rec.onresult = (e: SpeechRecognitionEvent) => {
+      rec.onresult = (e: SpeechRecognitionEvent) =>
         setQuery(e.results[0][0].transcript.trim());
-      };
       rec.onend = () => setListening(false);
       recognitionRef.current = rec;
     }
@@ -223,6 +234,7 @@ function SearchBar({
 
   /* ---------- FLAGS ---------- */
   const showRecent = focused && !query && recent.length > 0;
+  const showTrending = focused && !query && recent.length === 0;
   const showResults = focused && query.length >= MIN_QUERY;
 
   const variants: Variants = {
@@ -270,7 +282,7 @@ function SearchBar({
       </div>
 
       {/* DROPDOWN */}
-      {pos && (showRecent || showResults) && (
+      {pos && focused && (
         <motion.div
           variants={variants}
           initial="hidden"
@@ -286,65 +298,94 @@ function SearchBar({
           bg-[hsl(var(--background))] border border-[hsl(var(--foreground)/0.15)]"
         >
           {/* RECENT */}
-          {showRecent &&
-            recent.map((term) => (
-              <div
-                key={term}
-                className="flex items-center justify-between px-4 py-2
-                hover:bg-[hsl(var(--foreground)/0.08)]"
-              >
+          {showRecent && (
+            <>
+              <div className="flex justify-between px-4 py-2 text-xs opacity-60">
+                <span>Recent</span>
                 <button
                   onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => setQuery(term)}
-                  className="text-left flex-1"
+                  onClick={clearRecent}
                 >
-                  {term}
-                </button>
-
-                <button
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => removeRecent(term)}
-                  className="opacity-60 hover:opacity-100"
-                >
-                  <FaTimes size={12} />
+                  Clear
                 </button>
               </div>
-            ))}
+
+              {recent.map((term) => (
+                <div
+                  key={term}
+                  className="flex items-center justify-between px-4 py-2 hover:bg-[hsl(var(--foreground)/0.08)]"
+                >
+                  <button
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => setQuery(term)}
+                    className="text-left flex-1"
+                  >
+                    {term}
+                  </button>
+
+                  <button
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => removeRecent(term)}
+                    className="opacity-60 hover:opacity-100"
+                  >
+                    <FaTimes size={12} />
+                  </button>
+                </div>
+              ))}
+            </>
+          )}
+
+          {/* TRENDING */}
+          {showTrending && (
+            <>
+              <div className="px-4 py-2 text-xs opacity-60">Trending</div>
+              {trending.map((item) => (
+                <div
+                  key={item.id}
+                  onClick={() => handleSelect(item)}
+                  className="px-4 py-2 cursor-pointer hover:bg-[hsl(var(--foreground)/0.08)]"
+                >
+                  {item.title || item.name}
+                </div>
+              ))}
+            </>
+          )}
 
           {/* RESULTS */}
           {showResults &&
-            (results.length > 0
-              ? results.map((item) => (
-                  <div
-                    key={`${item.media_type}:${item.id}`}
-                    onClick={() => handleSelect(item)}
-                    className="flex items-center gap-3 px-4 py-2 cursor-pointer
-                  hover:bg-[hsl(var(--foreground)/0.08)]"
-                  >
-                    <img
-                      src={
-                        item.poster_path
-                          ? `https://image.tmdb.org/t/p/w92${item.poster_path}`
-                          : "/fallback.jpg"
-                      }
-                      className="w-10 h-14 object-cover"
-                      alt=""
-                    />
-                    <div>
-                      <div className="text-sm font-medium">
-                        {item.title || item.name}
-                      </div>
-                      <div className="text-xs opacity-60">
-                        {item.media_type}
-                      </div>
+            (loading ? (
+              <div className="flex justify-center py-6">
+                <Loader2 className="animate-spin opacity-60" />
+              </div>
+            ) : results.length > 0 ? (
+              results.map((item) => (
+                <div
+                  key={`${item.media_type}:${item.id}`}
+                  onClick={() => handleSelect(item)}
+                  className="flex items-center gap-3 px-4 py-2 cursor-pointer hover:bg-[hsl(var(--foreground)/0.08)]"
+                >
+                  <img
+                    src={
+                      item.poster_path
+                        ? `https://image.tmdb.org/t/p/w92${item.poster_path}`
+                        : "/fallback.jpg"
+                    }
+                    className="w-10 h-14 object-cover"
+                    alt=""
+                  />
+                  <div>
+                    <div className="text-sm font-medium">
+                      {item.title || item.name}
                     </div>
+                    <div className="text-xs opacity-60">{item.media_type}</div>
                   </div>
-                ))
-              : !loading && (
-                  <div className="px-4 py-6 text-center opacity-60">
-                    No results for “{query}”
-                  </div>
-                ))}
+                </div>
+              ))
+            ) : (
+              <div className="px-4 py-6 text-center opacity-60">
+                No matches found
+              </div>
+            ))}
         </motion.div>
       )}
     </div>
