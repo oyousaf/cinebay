@@ -161,7 +161,7 @@ function SearchBar({
 
     const id = ++requestId.current;
     setLoading(true);
-    setResults([]); // prevents stale flash
+    setResults([]);
 
     try {
       const data = await fetchFromProxy(
@@ -205,6 +205,14 @@ function SearchBar({
     });
   }, []);
 
+  const removeRecent = useCallback((term: string) => {
+    setRecent((prev) => {
+      const updated = prev.filter((t) => t !== term);
+      writeRecent(updated);
+      return updated;
+    });
+  }, []);
+
   const clearRecent = () => {
     setRecent([]);
     writeRecent([]);
@@ -228,7 +236,7 @@ function SearchBar({
     [onSelectMovie, onSelectPerson, saveRecent],
   );
 
-  /* ---------- VOICE ---------- */
+  /* ---------- VOICE (unchanged) ---------- */
   const startVoice = useCallback(() => {
     const Recognition =
       window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -257,13 +265,16 @@ function SearchBar({
     show: { opacity: 1, y: 0, transition: { duration: 0.18 } },
   };
 
-  /* ---------- RENDER HELPERS ---------- */
-
+  /* ---------- RECENTS RENDER ---------- */
   const renderRecents = () => (
     <>
       <div className="flex justify-between items-center px-4 py-2 text-xs opacity-60">
         <span>Recent</span>
-        <button onMouseDown={(e) => e.preventDefault()} onClick={clearRecent}>
+        <button
+          className="opacity-50 hover:opacity-100 transition-opacity"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={clearRecent}
+        >
           Clear
         </button>
       </div>
@@ -271,15 +282,26 @@ function SearchBar({
       <AnimatePresence initial={false}>
         {recent.map((term) => (
           <motion.div key={term} layout>
-            <div
-              className="px-4 py-2 hover:bg-[hsl(var(--foreground)/0.08)] cursor-pointer"
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => {
-                setQuery(term);
-                inputRef.current?.focus();
-              }}
-            >
-              {term}
+            <div className="flex items-center justify-between px-4 py-2 hover:bg-[hsl(var(--foreground)/0.08)]">
+              <div
+                className="flex-1 cursor-pointer"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => {
+                  setQuery(term);
+                  inputRef.current?.focus();
+                }}
+              >
+                {term}
+              </div>
+
+              <button
+                className="ml-3 opacity-50 hover:opacity-100"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => removeRecent(term)}
+                aria-label={`Remove ${term}`}
+              >
+                <FaTimes />
+              </button>
             </div>
           </motion.div>
         ))}
