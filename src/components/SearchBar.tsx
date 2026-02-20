@@ -5,7 +5,6 @@ import { createPortal } from "react-dom";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
 import { Search, Loader2, Mic, MicOff } from "lucide-react";
 import { FaTimes } from "react-icons/fa";
-import Snd from "snd-lib";
 
 import { fetchDetails, fetchFromProxy } from "@/lib/tmdb";
 import type { Movie } from "@/types/movie";
@@ -33,11 +32,8 @@ const writeRecent = (v: string[]) => {
 
 /* ---------- HELPERS ---------- */
 
-const getMediaLabel = (type: Movie["media_type"]) => {
-  if (type === "movie") return "Movie";
-  if (type === "tv") return "TV Show";
-  return "Person";
-};
+const getMediaLabel = (type: Movie["media_type"]) =>
+  type === "movie" ? "Movie" : type === "tv" ? "TV Show" : "Person";
 
 const getYear = (item: Movie) => {
   const date =
@@ -57,23 +53,22 @@ const getImage = (item: Movie) => {
   return path ? `https://image.tmdb.org/t/p/w92${path}` : "/fallback.jpg";
 };
 
-/* ---------- SMART RELEVANCE ---------- */
+/* ---------- RELEVANCE ---------- */
 const scoreResult = (item: Movie, q: string) => {
   const title = (item.title || item.name || "").toLowerCase();
   const query = q.toLowerCase();
 
   let score =
     title === query
-      ? 120
+      ? 100
       : title.startsWith(query)
-        ? 80
+        ? 60
         : title.includes(query)
-          ? 40
+          ? 30
           : 0;
 
-  // slight preference order: movie > tv > person
-  if (item.media_type === "movie") score += 15;
-  if (item.media_type === "tv") score += 10;
+  if (item.media_type === "movie") score += 20;
+  if (item.media_type === "tv") score += 15;
 
   return score + (item.vote_average ?? 0) * 2;
 };
@@ -123,36 +118,6 @@ function SearchBar({
   const requestId = useRef(0);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
 
-  /* ---------- SOUND ---------- */
-  const sndRef = useRef<Snd | null>(null);
-  const sndLoadedRef = useRef(false);
-
-  useEffect(() => {
-    const snd = new Snd({
-      easySetup: false,
-      preloadSoundKit: null,
-      muteOnWindowBlur: true,
-    });
-
-    sndRef.current = snd;
-
-    snd
-      .load(Snd.KITS.SND01)
-      .then(() => (sndLoadedRef.current = true))
-      .catch(() => (sndLoadedRef.current = false));
-
-    return () => {
-      sndRef.current = null;
-    };
-  }, []);
-
-  const playSound = useCallback((sound: string, volume = 0.4) => {
-    if (!sndRef.current || !sndLoadedRef.current) return;
-    try {
-      sndRef.current.play(sound, { volume });
-    } catch {}
-  }, []);
-
   /* ---------- INIT ---------- */
   useEffect(() => {
     inputRef.current?.focus();
@@ -190,11 +155,13 @@ function SearchBar({
 
     if (q.length < MIN_QUERY) {
       setResults([]);
+      setLoading(false);
       return;
     }
 
     const id = ++requestId.current;
     setLoading(true);
+    setResults([]); // prevents stale flash
 
     try {
       const data = await fetchFromProxy(
@@ -207,7 +174,7 @@ function SearchBar({
         (data?.results ?? [])
           .filter((r: Movie) => r?.id && r?.media_type)
           .sort((a: Movie, b: Movie) => scoreResult(b, q) - scoreResult(a, q))
-          .slice(0, 10),
+          .slice(0, 20),
       );
     } finally {
       if (id === requestId.current) setLoading(false);
@@ -216,6 +183,7 @@ function SearchBar({
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
+
     debounceRef.current = setTimeout(() => runSearch(query), SEARCH_DELAY);
 
     return () => {
@@ -237,13 +205,9 @@ function SearchBar({
     });
   }, []);
 
-  const removeRecent = (term: string) => {
-    setRecent((prev) => {
-      const updated = prev.filter((s) => s !== term);
-      writeRecent(updated);
-      return updated;
-    });
-    playSound("ui-close", 0.35);
+  const clearRecent = () => {
+    setRecent([]);
+    writeRecent([]);
   };
 
   /* ---------- SELECT ---------- */
@@ -251,8 +215,6 @@ function SearchBar({
     async (item: Movie) => {
       const full = await fetchDetails(item.id, item.media_type);
       if (!full) return;
-
-      playSound("ui-success", 0.45);
 
       item.media_type === "person"
         ? onSelectPerson?.(full)
@@ -263,7 +225,7 @@ function SearchBar({
       setFocused(false);
       setResults([]);
     },
-    [onSelectMovie, onSelectPerson, saveRecent, playSound],
+    [onSelectMovie, onSelectPerson, saveRecent],
   );
 
   /* ---------- VOICE ---------- */
@@ -283,38 +245,41 @@ function SearchBar({
     }
 
     setListening(true);
-    playSound("ui-mic", 0.45);
     recognitionRef.current.start();
-  }, [playSound]);
+  }, []);
 
-  /* ---------- RENDER ---------- */
+  /* ---------- UI MODES ---------- */
+  const showRecent = focused && !query && recent.length > 0;
+  const showResults = focused && query.length >= MIN_QUERY;
+
+  const variants: Variants = {
+    hidden: { opacity: 0, y: -6 },
+    show: { opacity: 1, y: 0, transition: { duration: 0.18 } },
+  };
+
+  /* ---------- RENDER HELPERS ---------- */
 
   const renderRecents = () => (
     <>
-      <div className="px-4 py-2 text-xs opacity-60">Recent</div>
+      <div className="flex justify-between items-center px-4 py-2 text-xs opacity-60">
+        <span>Recent</span>
+        <button onMouseDown={(e) => e.preventDefault()} onClick={clearRecent}>
+          Clear
+        </button>
+      </div>
 
       <AnimatePresence initial={false}>
         {recent.map((term) => (
-          <motion.div key={term} layout className="overflow-hidden">
-            <div className="flex justify-between items-center px-4 py-2 hover:bg-[hsl(var(--foreground)/0.08)]">
-              <span
-                className="cursor-pointer"
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => {
-                  setQuery(term);
-                  playSound("ui-click", 0.3);
-                }}
-              >
-                {term}
-              </span>
-
-              <button
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => removeRecent(term)}
-                className="opacity-60 hover:opacity-100"
-              >
-                <FaTimes size={12} />
-              </button>
+          <motion.div key={term} layout>
+            <div
+              className="px-4 py-2 hover:bg-[hsl(var(--foreground)/0.08)] cursor-pointer"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
+                setQuery(term);
+                inputRef.current?.focus();
+              }}
+            >
+              {term}
             </div>
           </motion.div>
         ))}
@@ -322,42 +287,47 @@ function SearchBar({
     </>
   );
 
-  const renderResults = () =>
-    results.map((item) => (
-      <div
-        key={`${item.media_type}:${item.id}`}
-        onClick={() => handleSelect(item)}
-        className="flex items-center gap-3 px-4 py-2 cursor-pointer hover:bg-[hsl(var(--foreground)/0.08)]"
-      >
-        <img
-          src={getImage(item)}
-          className={
-            item.media_type === "person"
-              ? "w-10 h-10 rounded-full object-cover"
-              : "w-10 h-14 rounded object-cover"
-          }
-          alt=""
-        />
+  const renderResults = () => (
+    <>
+      {results.map((item) => (
+        <div
+          key={`${item.media_type}:${item.id}`}
+          onClick={() => handleSelect(item)}
+          className="flex items-center gap-3 px-4 py-2 cursor-pointer hover:bg-[hsl(var(--foreground)/0.08)]"
+        >
+          <img
+            src={getImage(item)}
+            className={
+              item.media_type === "person"
+                ? "w-10 h-10 rounded-full object-cover"
+                : "w-10 h-14 rounded object-cover"
+            }
+            alt=""
+          />
 
-        <div className="min-w-0">
-          <div className="text-sm font-medium truncate">
-            {item.title || item.name}
-          </div>
+          <div className="min-w-0">
+            <div className="text-sm font-medium truncate">
+              {item.title || item.name}
+            </div>
 
-          <div className="text-xs opacity-60">
-            {getMediaLabel(item.media_type)}
-            {getYear(item) ? ` • ${getYear(item)}` : ""}
+            <div className="text-xs opacity-60">
+              {getMediaLabel(item.media_type)}
+              {getYear(item) ? ` • ${getYear(item)}` : ""}
+            </div>
           </div>
         </div>
-      </div>
-    ));
+      ))}
+    </>
+  );
 
+  /* ---------- DROPDOWN ---------- */
   const dropdown =
     portalRoot && pos && focused
       ? createPortal(
           <motion.div
-            initial={{ opacity: 0, y: -6 }}
-            animate={{ opacity: 1, y: 0 }}
+            variants={variants}
+            initial="hidden"
+            animate="show"
             style={{
               position: "absolute",
               left: pos.left,
@@ -367,14 +337,16 @@ function SearchBar({
             }}
             className="max-h-96 overflow-y-auto rounded-lg shadow-lg bg-[hsl(var(--background))] border border-[hsl(var(--foreground)/0.15)]"
           >
-            {loading ? (
-              <div className="flex justify-center py-6">
-                <Loader2 className="animate-spin opacity-60" />
-              </div>
-            ) : query.length >= MIN_QUERY ? (
-              renderResults()
-            ) : recent.length ? (
+            {showRecent ? (
               renderRecents()
+            ) : showResults ? (
+              loading || results.length === 0 ? (
+                <div className="flex justify-center py-6">
+                  <Loader2 className="animate-spin opacity-60" />
+                </div>
+              ) : (
+                renderResults()
+              )
             ) : null}
           </motion.div>,
           portalRoot,
@@ -396,23 +368,14 @@ function SearchBar({
               ref={inputRef}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              onFocus={() => {
-                setFocused(true);
-                playSound("ui-click", 0.3);
-              }}
+              onFocus={() => setFocused(true)}
               onBlur={() => setTimeout(() => setFocused(false), 150)}
               placeholder="Search movies, shows, people…"
               className="flex-1 bg-transparent outline-none text-xl h-12"
             />
 
             {query && (
-              <button
-                type="button"
-                onClick={() => {
-                  setQuery("");
-                  playSound("ui-close", 0.35);
-                }}
-              >
+              <button type="button" onClick={() => setQuery("")}>
                 <FaTimes />
               </button>
             )}
