@@ -244,7 +244,7 @@ function SearchBar({
 
   return (
     <div className="w-full flex justify-center">
-      <div ref={containerRef} className="w-full max-w-xl 2xl:max-w-5xl">
+      <div ref={containerRef} className="w-full max-w-3xl mx-auto">
         {/* INPUT */}
         <form
           onSubmit={(e) => {
