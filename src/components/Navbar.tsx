@@ -161,8 +161,9 @@ export default function Navbar({
 
       {/* Mobile Bottom Nav */}
       <nav
-        className="md:hidden fixed bottom-0 left-0 w-full h-16 box-border bg-[hsl(var(--background))]
-  border-t border-border flex justify-around items-center z-30 safe-area"
+        className="md:hidden fixed bottom-0 left-0 w-full z-30 bg-[hsl(var(--background))] border-t border-border
+        flex justify-around items-center h-[calc(var(--bottom-nav-height)+env(safe-area-inset-bottom))]
+        pb-[env(safe-area-inset-bottom)]"
         aria-label="Primary"
       >
         {navItems.map((item) => {
