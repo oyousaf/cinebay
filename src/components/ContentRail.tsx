@@ -181,9 +181,9 @@ export default function ContentRail({ items, onSelect }: ContentRailProps) {
   if (!items.length) return null;
 
   return (
-    <section className="relative w-full min-h-[90vh] sm:h-screen flex flex-col">
+    <section className="relative w-full h-dvh flex flex-col">
       {/* Banner */}
-      <div className="flex-1">
+      <div className="flex-7">
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
