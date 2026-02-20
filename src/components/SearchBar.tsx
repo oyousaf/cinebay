@@ -106,6 +106,8 @@ function SearchBar({
 
   /* ---------- POSITION TRACKING ---------- */
   useEffect(() => {
+    if (!focused) return;
+
     const update = () => {
       if (!containerRef.current) return;
 
@@ -118,21 +120,17 @@ function SearchBar({
       });
     };
 
-    // initial
-    update();
-
-    // layout settles after motion/tab animation
-    requestAnimationFrame(update);
-    requestAnimationFrame(update);
+    const t = setTimeout(update, 260);
 
     window.addEventListener("resize", update);
     window.addEventListener("scroll", update, true);
 
     return () => {
+      clearTimeout(t);
       window.removeEventListener("resize", update);
       window.removeEventListener("scroll", update, true);
     };
-  }, []);
+  }, [focused]);
 
   /* ---------- TRENDING ---------- */
   useEffect(() => {
