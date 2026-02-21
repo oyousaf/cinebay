@@ -302,6 +302,7 @@ function SearchBar({
 
     setListening(true);
     playSound(Snd.SOUNDS.TRANSITION_UP);
+
     setTimeout(() => {
       recognitionRef.current?.start();
     }, 50);
