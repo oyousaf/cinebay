@@ -320,13 +320,14 @@ function SearchBar({
   };
 
   const micPulse: Variants = {
-    idle: { scale: 1 },
+    idle: { opacity: 1 },
     listening: {
-      scale: [1, 1.15, 1],
+      opacity: 0.85,
       transition: {
-        duration: 1,
-        repeat: Infinity,
+        duration: 0.9,
         ease: "easeInOut",
+        repeat: Infinity,
+        repeatType: "reverse",
       },
     },
   };
@@ -445,9 +446,31 @@ function SearchBar({
               onClick={startVoice}
               variants={micPulse}
               animate={listening ? "listening" : "idle"}
-              className="relative"
+              className={`relative flex items-center justify-center transition-colors ${
+                listening ? "text-red-500" : ""
+              }`}
             >
-              {listening ? <MicOff /> : <Mic />}
+              {/* Expanding outer ring */}
+              {listening && (
+                <motion.span
+                  className="absolute inset-0 rounded-full bg-red-500/20"
+                  initial={{ scale: 0.8, opacity: 0.4 }}
+                  animate={{
+                    scale: 1.6,
+                    opacity: 0,
+                  }}
+                  transition={{
+                    duration: 1.4,
+                    ease: "easeOut",
+                    repeat: Infinity,
+                  }}
+                />
+              )}
+
+              {/* Icon */}
+              <span className="relative z-10">
+                {listening ? <MicOff /> : <Mic />}
+              </span>
             </motion.button>
 
             <button type="submit">
