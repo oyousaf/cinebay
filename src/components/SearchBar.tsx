@@ -47,7 +47,7 @@ function SearchBar({
               width: sb.pos.width,
               zIndex: 40,
             }}
-            className="min-h-30 max-h-96 overflow-y-auto rounded-lg shadow-lg bg-[hsl(var(--background))] border border-[hsl(var(--foreground)/0.15)]"
+            className="max-h-96 overflow-y-auto rounded-lg shadow-lg bg-[hsl(var(--background))] border border-[hsl(var(--foreground)/0.15)]"
             onMouseDown={(e) => {
               e.preventDefault();
             }}
