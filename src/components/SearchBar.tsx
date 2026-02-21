@@ -252,6 +252,10 @@ function SearchBar({
             <motion.button
               type="button"
               onClick={sb.startVoice}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                sb.startVoice();
+              }}
               variants={micVariants}
               animate={sb.listening ? "listening" : "idle"}
               className="relative flex items-center justify-center"
