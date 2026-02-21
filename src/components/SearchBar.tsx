@@ -96,7 +96,7 @@ function SearchBar({
             )}
 
             {/* ---------- RECENT ITEMS ---------- */}
-            <AnimatePresence mode="popLayout" initial={false}>
+            <AnimatePresence initial={false}>
               {sb.showRecent &&
                 sb.recent.map((term) => (
                   <motion.div
@@ -155,27 +155,60 @@ function SearchBar({
               ))}
 
             {/* ---------- RESULTS ---------- */}
-            {sb.showResults &&
-              (sb.loading ? (
-                <div className="flex justify-center py-6">
-                  <Loader2 className="animate-spin opacity-60" />
-                </div>
-              ) : (
-                sb.results.map((item) => (
-                  <div
-                    key={`${item.media_type}:${item.id}`}
-                    onClick={() => sb.handleSelect(item)}
-                    className="w-full flex items-center gap-3 px-4 py-2 text-left cursor-pointer hover:bg-[hsl(var(--foreground)/0.08)]"
+            {sb.showResults && (
+              <AnimatePresence mode="wait">
+                {sb.loading ? (
+                  <motion.div
+                    key="loader"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.18 }}
+                    className="flex justify-center py-6"
                   >
-                    <img
-                      src={getSearchItemImage(item)}
-                      className="w-10 h-14 object-cover rounded-sm"
-                      alt=""
-                    />
-                    <div className="text-sm">{item.title || item.name}</div>
-                  </div>
-                ))
-              ))}
+                    <Loader2 className="animate-spin opacity-60" />
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="results"
+                    initial="hidden"
+                    animate="visible"
+                    exit="hidden"
+                    variants={{
+                      hidden: {},
+                      visible: {
+                        transition: {
+                          staggerChildren: 0.035,
+                        },
+                      },
+                    }}
+                  >
+                    {sb.results.map((item) => (
+                      <motion.div
+                        key={`${item.media_type}:${item.id}`}
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0 }}
+                        transition={{
+                          duration: 0.22,
+                          ease: "easeOut",
+                        }}
+                        onClick={() => sb.handleSelect(item)}
+                        className="w-full flex items-center gap-3 px-4 py-2 text-left cursor-pointer
+              hover:bg-[hsl(var(--foreground)/0.08)]"
+                      >
+                        <img
+                          src={getSearchItemImage(item)}
+                          className="w-10 h-14 object-cover rounded-sm"
+                          alt=""
+                        />
+                        <div className="text-sm">{item.title || item.name}</div>
+                      </motion.div>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            )}
           </motion.div>,
           sb.portalRoot,
         )
