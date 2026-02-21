@@ -1,7 +1,14 @@
 // useSearchBar.ts
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import Snd from "snd-lib";
 
 import { fetchDetails, fetchFromProxy } from "@/lib/tmdb";
@@ -12,6 +19,11 @@ const RECENT_KEY = "tmdb_recent_searches_v1";
 const RECENT_LIMIT = 5;
 const SEARCH_DELAY = 300;
 const MIN_QUERY = 3;
+
+// Match your AppShell framer transition (duration 0.25s)
+// Give it a hair extra so focus/measure happens after transform settles.
+const TAB_ANIM_MS = 280;
+const SETTLE_MS = 360;
 
 /* ---------- STORAGE ---------- */
 const readRecent = (): string[] => {
@@ -76,14 +88,21 @@ export function useSearchBar({
   const [pos, setPos] = useState<Pos | null>(null);
   const [portalRoot, setPortalRoot] = useState<HTMLElement | null>(null);
 
+  // anchors
   const containerRef = useRef<HTMLDivElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // timers/requests
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const requestIdRef = useRef(0);
 
+  // speech
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const listeningRef = useRef(false);
+
+  // settle loop
+  const settleRafRef = useRef<number | null>(null);
 
   /* ---------- SOUND ---------- */
   const sndRef = useRef<Snd | null>(null);
@@ -104,7 +123,7 @@ export function useSearchBar({
 
     return () => {
       try {
-        // @ts-expect-error - depends on snd-lib version
+        // @ts-expect-error depends on snd-lib version
         sndRef.current?.stop?.();
       } catch {}
     };
@@ -129,33 +148,86 @@ export function useSearchBar({
   /* ---------- INIT ---------- */
   useEffect(() => {
     setMounted(true);
-    inputRef.current?.focus();
     setRecent(readRecent().slice(0, RECENT_LIMIT));
+
+    const t = setTimeout(() => {
+      inputRef.current?.focus();
+    }, TAB_ANIM_MS);
+
+    return () => clearTimeout(t);
   }, []);
 
   /* ---------- POSITION ---------- */
+  const computePos = useCallback(() => {
+    const anchor = formRef.current ?? containerRef.current;
+    if (!anchor) return;
+
+    const r = anchor.getBoundingClientRect();
+    setPos({ left: r.left, top: r.bottom + 8, width: r.width });
+  }, []);
+
+  const settleMeasure = useCallback(
+    (ms = SETTLE_MS) => {
+      const start = performance.now();
+
+      const tick = () => {
+        computePos();
+        if (performance.now() - start < ms) {
+          settleRafRef.current = requestAnimationFrame(tick);
+        }
+      };
+
+      if (settleRafRef.current) cancelAnimationFrame(settleRafRef.current);
+      settleRafRef.current = requestAnimationFrame(tick);
+    },
+    [computePos],
+  );
+
   useEffect(() => {
+    return () => {
+      if (settleRafRef.current) cancelAnimationFrame(settleRafRef.current);
+    };
+  }, []);
+
+  useLayoutEffect(() => {
     if (!focused) return;
 
-    const update = () => {
-      if (!containerRef.current) return;
-      const r = containerRef.current.getBoundingClientRect();
-      setPos({
-        left: r.left + window.scrollX,
-        top: r.bottom + window.scrollY + 8,
-        width: r.width,
-      });
+    computePos();
+    settleMeasure();
+
+    const onResize = () => settleMeasure();
+    const onScroll = () => computePos();
+
+    const onVisibility = () => {
+      if (!document.hidden) {
+        computePos();
+        settleMeasure();
+      }
     };
 
-    update();
-    window.addEventListener("resize", update);
-    window.addEventListener("scroll", update, true);
+    window.addEventListener("resize", onResize);
+    window.addEventListener("scroll", onScroll, true);
+    document.addEventListener("visibilitychange", onVisibility);
+
+    const vv = window.visualViewport;
+    vv?.addEventListener("resize", onResize);
+    vv?.addEventListener("scroll", onScroll);
+
+    const ro = new ResizeObserver(() => settleMeasure());
+    const anchor = formRef.current ?? containerRef.current;
+    if (anchor) ro.observe(anchor);
 
     return () => {
-      window.removeEventListener("resize", update);
-      window.removeEventListener("scroll", update, true);
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("scroll", onScroll, true);
+      document.removeEventListener("visibilitychange", onVisibility);
+
+      vv?.removeEventListener("resize", onResize);
+      vv?.removeEventListener("scroll", onScroll);
+
+      ro.disconnect();
     };
-  }, [focused, mounted, recent.length, trending.length]);
+  }, [focused, computePos, settleMeasure]);
 
   /* ---------- SEARCH ---------- */
   const runSearch = useCallback(async (term: string) => {
@@ -257,7 +329,6 @@ export function useSearchBar({
   const stopVoice = useCallback(() => {
     listeningRef.current = false;
     setListening(false);
-
     try {
       recognitionRef.current?.stop();
     } catch {}
@@ -308,7 +379,6 @@ export function useSearchBar({
       recognitionRef.current = rec;
     }
 
-    // Enter voice mode
     listeningRef.current = true;
     setListening(true);
 
@@ -318,7 +388,6 @@ export function useSearchBar({
 
     playSound(Snd.SOUNDS.TRANSITION_UP);
 
-    // start() can throw if called too quickly or without user gesture
     setTimeout(() => {
       try {
         recognitionRef.current?.start();
@@ -373,17 +442,21 @@ export function useSearchBar({
     setTimeout(() => setFocused(false), 150);
   }, []);
 
-  const onFocus = useCallback(() => setFocused(true), []);
+  const onFocus = useCallback(() => {
+    setFocused(true);
+    computePos();
+    settleMeasure();
+  }, [computePos, settleMeasure]);
 
   return {
-    // refs / mounting / portal
     mounted,
     portalRoot,
     pos,
+
     containerRef,
+    formRef,
     inputRef,
 
-    // state
     query,
     setQuery,
     results,
@@ -393,12 +466,10 @@ export function useSearchBar({
     focused,
     listening,
 
-    // flags
     showRecent,
     showTrending,
     showResults,
 
-    // actions
     setFocused,
     submit,
     onFocus,

@@ -41,13 +41,16 @@ function SearchBar({
             initial={{ opacity: 0, y: -6 }}
             animate={{ opacity: 1, y: 0 }}
             style={{
-              position: "absolute",
+              position: "fixed",
               left: sb.pos.left,
               top: sb.pos.top,
               width: sb.pos.width,
               zIndex: 40,
             }}
             className="min-h-30 max-h-96 overflow-y-auto rounded-lg shadow-lg bg-[hsl(var(--background))] border border-[hsl(var(--foreground)/0.15)]"
+            onMouseDown={(e) => {
+              e.preventDefault();
+            }}
           >
             {sb.showRecent && (
               <>
@@ -55,8 +58,8 @@ function SearchBar({
                   <span>Recent</span>
                   <button
                     className="opacity-50 hover:opacity-100 cursor-pointer"
-                    onMouseDown={(e) => e.preventDefault()}
                     onClick={sb.clearRecent}
+                    type="button"
                   >
                     Clear
                   </button>
@@ -67,17 +70,17 @@ function SearchBar({
                     key={term}
                     className="flex justify-between px-4 py-2 hover:bg-[hsl(var(--foreground)/0.08)]"
                   >
-                    <div
-                      className="flex-1 cursor-pointer"
-                      onMouseDown={(e) => e.preventDefault()}
+                    <button
+                      type="button"
+                      className="flex-1 text-left cursor-pointer"
                       onClick={() => sb.setQuery(term)}
                     >
                       {term}
-                    </div>
+                    </button>
 
                     <button
+                      type="button"
                       className="opacity-50 hover:opacity-100 cursor-pointer"
-                      onMouseDown={(e) => e.preventDefault()}
                       onClick={() => sb.removeRecent(term)}
                       aria-label={`Remove ${term} from recent searches`}
                       title="Remove"
@@ -91,10 +94,11 @@ function SearchBar({
 
             {sb.showTrending &&
               sb.trending.map((item) => (
-                <div
+                <button
+                  type="button"
                   key={item.id}
                   onClick={() => sb.handleSelect(item)}
-                  className="flex items-center gap-3 px-4 py-2 cursor-pointer hover:bg-[hsl(var(--foreground)/0.08)]"
+                  className="w-full flex items-center gap-3 px-4 py-2 text-left cursor-pointer hover:bg-[hsl(var(--foreground)/0.08)]"
                 >
                   <img
                     src={getSearchItemImage(item)}
@@ -102,7 +106,7 @@ function SearchBar({
                     alt=""
                   />
                   <div className="text-sm">{item.title || item.name}</div>
-                </div>
+                </button>
               ))}
 
             {sb.showResults &&
@@ -112,10 +116,11 @@ function SearchBar({
                 </div>
               ) : (
                 sb.results.map((item) => (
-                  <div
+                  <button
+                    type="button"
                     key={`${item.media_type}:${item.id}`}
                     onClick={() => sb.handleSelect(item)}
-                    className="flex items-center gap-3 px-4 py-2 cursor-pointer hover:bg-[hsl(var(--foreground)/0.08)]"
+                    className="w-full flex items-center gap-3 px-4 py-2 text-left cursor-pointer hover:bg-[hsl(var(--foreground)/0.08)]"
                   >
                     <img
                       src={getSearchItemImage(item)}
@@ -123,7 +128,7 @@ function SearchBar({
                       alt=""
                     />
                     <div className="text-sm">{item.title || item.name}</div>
-                  </div>
+                  </button>
                 ))
               ))}
           </motion.div>,
@@ -136,6 +141,7 @@ function SearchBar({
       <div className="w-full flex justify-center">
         <div ref={sb.containerRef} className="w-full max-w-3xl mx-auto">
           <form
+            ref={sb.formRef}
             onSubmit={sb.submit}
             className="flex items-center gap-3 px-4 py-2 rounded-xl bg-[hsl(var(--background))] border border-[hsl(var(--foreground)/0.25)] shadow-md"
           >
@@ -149,7 +155,8 @@ function SearchBar({
                 sb.listening ? "Listening…" : "Search movies, shows, people…"
               }
               className="flex-1 bg-transparent outline-none text-xl h-12 text-[hsl(var(--foreground))]
-               placeholder:text-[hsl(var(--foreground)/0.55)] dark:placeholder:text-[hsl(var(--foreground)/0.65)]"
+                placeholder:text-[hsl(var(--foreground)/0.55)] dark:placeholder:text-[hsl(var(--foreground)/0.65)]
+              "
             />
 
             {sb.query && (
