@@ -148,7 +148,8 @@ function SearchBar({
               placeholder={
                 sb.listening ? "Listening…" : "Search movies, shows, people…"
               }
-              className="flex-1 bg-transparent outline-none text-xl h-12"
+              className="flex-1 bg-transparent outline-none text-xl h-12 text-[hsl(var(--foreground))]
+               placeholder:text-[hsl(var(--foreground)/0.55)] dark:placeholder:text-[hsl(var(--foreground)/0.65)]"
             />
 
             {sb.query && (
