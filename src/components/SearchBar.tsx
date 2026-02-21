@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
 import { Search, Loader2, Mic, MicOff } from "lucide-react";
 import { FaTimes } from "react-icons/fa";
+import Snd from "snd-lib";
 
 import { fetchDetails, fetchFromProxy } from "@/lib/tmdb";
 import type { Movie } from "@/types/movie";
@@ -32,28 +33,6 @@ const writeRecent = (v: string[]) => {
 
 /* ---------- HELPERS ---------- */
 
-const getMediaLabel = (type: Movie["media_type"]) =>
-  type === "movie" ? "Movie" : type === "tv" ? "TV Show" : "Person";
-
-const getYear = (item: Movie) => {
-  const date =
-    item.media_type === "movie"
-      ? item.release_date
-      : item.media_type === "tv"
-        ? item.first_air_date
-        : undefined;
-
-  return date ? date.slice(0, 4) : null;
-};
-
-const getImage = (item: Movie) => {
-  const path =
-    item.media_type === "person" ? item.profile_path : item.poster_path;
-
-  return path ? `https://image.tmdb.org/t/p/w92${path}` : "/fallback.jpg";
-};
-
-/* ---------- RELEVANCE ---------- */
 const scoreResult = (item: Movie, q: string) => {
   const title = (item.title || item.name || "").toLowerCase();
   const query = q.toLowerCase();
@@ -62,10 +41,10 @@ const scoreResult = (item: Movie, q: string) => {
     title === query
       ? 100
       : title.startsWith(query)
-        ? 60
-        : title.includes(query)
-          ? 30
-          : 0;
+      ? 60
+      : title.includes(query)
+      ? 30
+      : 0;
 
   if (item.media_type === "movie") score += 20;
   if (item.media_type === "tv") score += 15;
@@ -73,7 +52,13 @@ const scoreResult = (item: Movie, q: string) => {
   return score + (item.vote_average ?? 0) * 2;
 };
 
-/* ---------- PORTAL ROOT ---------- */
+const getImage = (item: Movie) => {
+  const path =
+    item.media_type === "person" ? item.profile_path : item.poster_path;
+  return path ? `https://image.tmdb.org/t/p/w92${path}` : "/fallback.jpg";
+};
+
+/* ---------- PORTAL ---------- */
 function usePortalRoot() {
   const [root, setRoot] = useState<HTMLElement | null>(null);
 
@@ -103,9 +88,11 @@ function SearchBar({
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Movie[]>([]);
   const [recent, setRecent] = useState<string[]>([]);
+  const [trending, setTrending] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(false);
   const [focused, setFocused] = useState(false);
   const [listening, setListening] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const [pos, setPos] = useState<{
     left: number;
     top: number;
@@ -118,8 +105,24 @@ function SearchBar({
   const requestId = useRef(0);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
 
+  /* ---------- SOUND (lazy, single instance) ---------- */
+  const sndRef = useRef<Snd | null>(null);
+
+  const playSound = useCallback((sound: string) => {
+    if (!sndRef.current) {
+      sndRef.current = new Snd({
+        easySetup: false,
+        preloadSoundKit: null,
+        muteOnWindowBlur: true,
+      });
+      sndRef.current.load(Snd.KITS.SND01).catch(() => {});
+    }
+    sndRef.current?.play(sound, { volume: 0.5 });
+  }, []);
+
   /* ---------- INIT ---------- */
   useEffect(() => {
+    setMounted(true);
     inputRef.current?.focus();
     setRecent(readRecent().slice(0, RECENT_LIMIT));
   }, []);
@@ -147,7 +150,7 @@ function SearchBar({
       window.removeEventListener("resize", update);
       window.removeEventListener("scroll", update, true);
     };
-  }, [focused]);
+  }, [focused, mounted, recent.length]);
 
   /* ---------- SEARCH ---------- */
   const runSearch = useCallback(async (term: string) => {
@@ -161,11 +164,10 @@ function SearchBar({
 
     const id = ++requestId.current;
     setLoading(true);
-    setResults([]);
 
     try {
       const data = await fetchFromProxy(
-        `/search/multi?query=${encodeURIComponent(q)}`,
+        `/search/multi?query=${encodeURIComponent(q)}`
       );
 
       if (id !== requestId.current) return;
@@ -174,7 +176,7 @@ function SearchBar({
         (data?.results ?? [])
           .filter((r: Movie) => r?.id && r?.media_type)
           .sort((a: Movie, b: Movie) => scoreResult(b, q) - scoreResult(a, q))
-          .slice(0, 20),
+          .slice(0, 20)
       );
     } finally {
       if (id === requestId.current) setLoading(false);
@@ -182,14 +184,26 @@ function SearchBar({
   }, []);
 
   useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (!mounted) return;
 
+    if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => runSearch(query), SEARCH_DELAY);
 
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [query, runSearch]);
+  }, [query, runSearch, mounted]);
+
+  /* ---------- TRENDING (reliable fallback) ---------- */
+  useEffect(() => {
+    if (!mounted) return;
+
+    if (recent.length === 0) {
+      fetchFromProxy("/trending/all/day").then((data) => {
+        setTrending((data?.results ?? []).slice(0, 10));
+      });
+    }
+  }, [recent.length, mounted]);
 
   /* ---------- RECENT ---------- */
   const saveRecent = useCallback((term: string) => {
@@ -198,7 +212,7 @@ function SearchBar({
     setRecent((prev) => {
       const updated = [term, ...prev.filter((s) => s !== term)].slice(
         0,
-        RECENT_LIMIT,
+        RECENT_LIMIT
       );
       writeRecent(updated);
       return updated;
@@ -233,114 +247,62 @@ function SearchBar({
       setFocused(false);
       setResults([]);
     },
-    [onSelectMovie, onSelectPerson, saveRecent],
+    [onSelectMovie, onSelectPerson, saveRecent]
   );
 
-  /* ---------- VOICE (unchanged) ---------- */
+  /* ---------- VOICE ---------- */
   const startVoice = useCallback(() => {
     const Recognition =
       window.SpeechRecognition || window.webkitSpeechRecognition;
 
-    if (!Recognition) return;
+    if (!Recognition) {
+      playSound(Snd.SOUNDS.CAUTION);
+      return;
+    }
+
+    // Toggle
+    if (listening) {
+      recognitionRef.current?.stop();
+      setListening(false);
+      playSound(Snd.SOUNDS.TRANSITION_DOWN);
+      return;
+    }
 
     if (!recognitionRef.current) {
       const rec = new Recognition();
       rec.lang = "en-US";
-      rec.onresult = (e: SpeechRecognitionEvent) =>
-        setQuery(e.results[0][0].transcript.trim());
-      rec.onend = () => setListening(false);
+      rec.interimResults = false;
+
+      rec.onresult = (e: SpeechRecognitionEvent) => {
+        const text = e.results[0][0].transcript.trim();
+
+        setQuery(text);
+        runSearch(text);
+        inputRef.current?.focus();
+      };
+
+      rec.onend = () => {
+        setListening(false);
+        playSound(Snd.SOUNDS.TRANSITION_DOWN);
+      };
+
       recognitionRef.current = rec;
     }
 
     setListening(true);
+    playSound(Snd.SOUNDS.TRANSITION_UP);
     recognitionRef.current.start();
-  }, []);
+  }, [listening, playSound, runSearch]);
 
   /* ---------- UI MODES ---------- */
   const showRecent = focused && !query && recent.length > 0;
+  const showTrending = focused && !query && recent.length === 0 && trending.length > 0;
   const showResults = focused && query.length >= MIN_QUERY;
 
   const variants: Variants = {
     hidden: { opacity: 0, y: -6 },
     show: { opacity: 1, y: 0, transition: { duration: 0.18 } },
   };
-
-  /* ---------- RECENTS RENDER ---------- */
-  const renderRecents = () => (
-    <>
-      <div className="flex justify-between items-center px-4 py-2 text-xs opacity-60">
-        <span>Recent</span>
-        <button
-          className="opacity-50 hover:opacity-100 transition-opacity cursor-pointer"
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={clearRecent}
-        >
-          Clear
-        </button>
-      </div>
-
-      <AnimatePresence initial={false}>
-        {recent.map((term) => (
-          <motion.div key={term} layout>
-            <div className="flex items-center justify-between px-4 py-2 hover:bg-[hsl(var(--foreground)/0.08)]">
-              <div
-                className="flex-1 cursor-pointer"
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => {
-                  setQuery(term);
-                  inputRef.current?.focus();
-                }}
-              >
-                {term}
-              </div>
-
-              <button
-                className="ml-3 opacity-50 hover:opacity-100 cursor-pointer"
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => removeRecent(term)}
-                aria-label={`Remove ${term}`}
-              >
-                <FaTimes />
-              </button>
-            </div>
-          </motion.div>
-        ))}
-      </AnimatePresence>
-    </>
-  );
-
-  const renderResults = () => (
-    <>
-      {results.map((item) => (
-        <div
-          key={`${item.media_type}:${item.id}`}
-          onClick={() => handleSelect(item)}
-          className="flex items-center gap-3 px-4 py-2 cursor-pointer hover:bg-[hsl(var(--foreground)/0.08)]"
-        >
-          <img
-            src={getImage(item)}
-            className={
-              item.media_type === "person"
-                ? "w-10 h-10 rounded-full object-cover"
-                : "w-10 h-14 rounded object-cover"
-            }
-            alt=""
-          />
-
-          <div className="min-w-0">
-            <div className="text-sm font-medium truncate">
-              {item.title || item.name}
-            </div>
-
-            <div className="text-xs opacity-60">
-              {getMediaLabel(item.media_type)}
-              {getYear(item) ? ` • ${getYear(item)}` : ""}
-            </div>
-          </div>
-        </div>
-      ))}
-    </>
-  );
 
   /* ---------- DROPDOWN ---------- */
   const dropdown =
@@ -359,19 +321,68 @@ function SearchBar({
             }}
             className="max-h-96 overflow-y-auto rounded-lg shadow-lg bg-[hsl(var(--background))] border border-[hsl(var(--foreground)/0.15)]"
           >
-            {showRecent ? (
-              renderRecents()
-            ) : showResults ? (
-              loading || results.length === 0 ? (
+            {showRecent &&
+              recent.map((term) => (
+                <div
+                  key={term}
+                  className="flex justify-between px-4 py-2 hover:bg-[hsl(var(--foreground)/0.08)]"
+                >
+                  <div
+                    className="flex-1 cursor-pointer"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => setQuery(term)}
+                  >
+                    {term}
+                  </div>
+                  <button
+                    className="opacity-50 hover:opacity-100 cursor-pointer"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => removeRecent(term)}
+                  >
+                    <FaTimes />
+                  </button>
+                </div>
+              ))}
+
+            {showTrending &&
+              trending.map((item) => (
+                <div
+                  key={item.id}
+                  onClick={() => handleSelect(item)}
+                  className="flex items-center gap-3 px-4 py-2 cursor-pointer hover:bg-[hsl(var(--foreground)/0.08)]"
+                >
+                  <img
+                    src={getImage(item)}
+                    className="w-10 h-14 object-cover"
+                  />
+                  <div className="text-sm">{item.title || item.name}</div>
+                </div>
+              ))}
+
+            {showResults &&
+              (loading ? (
                 <div className="flex justify-center py-6">
                   <Loader2 className="animate-spin opacity-60" />
                 </div>
               ) : (
-                renderResults()
-              )
-            ) : null}
+                results.map((item) => (
+                  <div
+                    key={`${item.media_type}:${item.id}`}
+                    onClick={() => handleSelect(item)}
+                    className="flex items-center gap-3 px-4 py-2 cursor-pointer hover:bg-[hsl(var(--foreground)/0.08)]"
+                  >
+                    <img
+                      src={getImage(item)}
+                      className="w-10 h-14 object-cover"
+                    />
+                    <div className="text-sm">
+                      {item.title || item.name}
+                    </div>
+                  </div>
+                ))
+              ))}
           </motion.div>,
-          portalRoot,
+          portalRoot
         )
       : null;
 
@@ -392,7 +403,11 @@ function SearchBar({
               onChange={(e) => setQuery(e.target.value)}
               onFocus={() => setFocused(true)}
               onBlur={() => setTimeout(() => setFocused(false), 150)}
-              placeholder="Search movies, shows, people…"
+              placeholder={
+                listening
+                  ? "Listening…"
+                  : "Search movies, shows, people…"
+              }
               className="flex-1 bg-transparent outline-none text-xl h-12"
             />
 
