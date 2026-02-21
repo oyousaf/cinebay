@@ -199,7 +199,7 @@ function SearchBar({
     };
   }, [query, runSearch, mounted]);
 
-  /* ---------- TRENDING (stable, no flicker) ---------- */
+  /* ---------- TRENDING  ---------- */
   useEffect(() => {
     if (!mounted) return;
     if (recent.length === 0 && trending.length === 0) {
