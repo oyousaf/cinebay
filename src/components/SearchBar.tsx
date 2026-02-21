@@ -269,18 +269,22 @@ function SearchBar({
       return;
     }
 
+    // Toggle: stop if already listening
     if (listening) {
       recognitionRef.current?.stop();
       return;
     }
 
+    // Create instance once
     if (!recognitionRef.current) {
       const rec = new Recognition();
       rec.lang = "en-US";
       rec.interimResults = false;
+      rec.maxAlternatives = 1;
 
       rec.onresult = (e: SpeechRecognitionEvent) => {
         const text = e.results[0][0].transcript.trim();
+
         gotSpeechRef.current = true;
 
         setQuery(text);
@@ -288,12 +292,16 @@ function SearchBar({
         inputRef.current?.focus();
       };
 
+      rec.onerror = () => {
+        setListening(false);
+        gotSpeechRef.current = false;
+      };
+
       rec.onend = () => {
         setListening(false);
 
-        if (gotSpeechRef.current) {
-          playSound(Snd.SOUNDS.TRANSITION_DOWN);
-        }
+        // Play end sound only if session actually started
+        playSound(Snd.SOUNDS.TRANSITION_DOWN);
 
         gotSpeechRef.current = false;
       };
@@ -301,9 +309,11 @@ function SearchBar({
       recognitionRef.current = rec;
     }
 
+    // Start listening
     setListening(true);
     playSound(Snd.SOUNDS.TRANSITION_UP);
 
+    // Small delay helps some browsers initialise audio + mic cleanly
     setTimeout(() => {
       recognitionRef.current?.start();
     }, 50);
