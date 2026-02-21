@@ -2,11 +2,7 @@
 
 import { memo } from "react";
 import { createPortal } from "react-dom";
-import {
-  motion,
-  type Variants,
-  AnimatePresence,
-} from "framer-motion";
+import { motion, type Variants, AnimatePresence } from "framer-motion";
 import { Search, Loader2, Mic, MicOff } from "lucide-react";
 import { FaTimes } from "react-icons/fa";
 
@@ -75,8 +71,7 @@ function SearchBar({
 
   /* ---------- DROPDOWN ---------- */
 
-  const hasContent =
-    sb.showRecent || sb.showTrending || sb.showResults;
+  const hasContent = sb.showRecent || sb.showTrending || sb.showResults;
 
   const dropdown =
     sb.mounted &&
@@ -100,8 +95,7 @@ function SearchBar({
                 width: sb.pos.width,
                 zIndex: 40,
               }}
-              className="max-h-96 overflow-y-auto rounded-lg shadow-lg
-                bg-[hsl(var(--background))]
+              className="max-h-96 overflow-y-auto rounded-lg shadow-lg bg-[hsl(var(--background))]
                 border border-[hsl(var(--foreground)/0.15)]"
               onMouseDown={(e) => e.preventDefault()}
               layout
@@ -173,9 +167,7 @@ function SearchBar({
                       className="w-10 h-14 object-cover rounded-sm"
                       alt=""
                     />
-                    <div className="text-sm">
-                      {item.title || item.name}
-                    </div>
+                    <div className="text-sm">{item.title || item.name}</div>
                   </motion.button>
                 ))}
 
@@ -204,9 +196,7 @@ function SearchBar({
                           className="w-10 h-14 object-cover rounded-sm"
                           alt=""
                         />
-                        <div className="text-sm">
-                          {item.title || item.name}
-                        </div>
+                        <div className="text-sm">{item.title || item.name}</div>
                       </motion.button>
                     ))}
                   </AnimatePresence>
@@ -224,10 +214,8 @@ function SearchBar({
           <form
             ref={sb.formRef}
             onSubmit={sb.submit}
-            className="flex items-center gap-3 px-4 py-2 rounded-xl
-              bg-[hsl(var(--background))]
-              border border-[hsl(var(--foreground)/0.25)]
-              shadow-md transition-shadow duration-200
+            className="flex items-center gap-3 px-4 py-2 rounded-xl bg-[hsl(var(--background))]
+             border border-[hsl(var(--foreground)/0.25)] shadow-md transition-shadow duration-200
               focus-within:shadow-lg"
           >
             <input
@@ -237,12 +225,9 @@ function SearchBar({
               onFocus={sb.onFocus}
               onBlur={sb.onBlur}
               placeholder={
-                sb.listening
-                  ? "Listening…"
-                  : "Search movies, shows, people…"
+                sb.listening ? "Listening…" : "Search movies, shows, people…"
               }
-              className="flex-1 bg-transparent outline-none text-xl h-12
-                text-[hsl(var(--foreground))]
+              className="flex-1 bg-transparent outline-none text-xl h-12 text-[hsl(var(--foreground))]
                 placeholder:text-[hsl(var(--foreground)/0.55)]"
             />
 
@@ -268,9 +253,7 @@ function SearchBar({
                 sb.listening ? "text-red-500" : ""
               }`}
               aria-label={
-                sb.listening
-                  ? "Stop voice search"
-                  : "Start voice search"
+                sb.listening ? "Stop voice search" : "Start voice search"
               }
             >
               {sb.listening && (
@@ -295,11 +278,7 @@ function SearchBar({
               aria-label="Search"
               whileTap={{ scale: 0.9 }}
             >
-              {sb.loading ? (
-                <Loader2 className="animate-spin" />
-              ) : (
-                <Search />
-              )}
+              {sb.loading ? <Loader2 className="animate-spin" /> : <Search />}
             </motion.button>
           </form>
         </div>
