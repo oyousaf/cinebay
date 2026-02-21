@@ -316,6 +316,18 @@ function SearchBar({
     show: { opacity: 1, y: 0, transition: { duration: 0.18 } },
   };
 
+  const micPulse: Variants = {
+    idle: { scale: 1 },
+    listening: {
+      scale: [1, 1.15, 1],
+      transition: {
+        duration: 1,
+        repeat: Infinity,
+        ease: "easeInOut",
+      },
+    },
+  };
+
   /* ---------- DROPDOWN ---------- */
   const dropdown =
     portalRoot && pos && focused
@@ -425,9 +437,15 @@ function SearchBar({
               </button>
             )}
 
-            <button type="button" onClick={startVoice}>
+            <motion.button
+              type="button"
+              onClick={startVoice}
+              variants={micPulse}
+              animate={listening ? "listening" : "idle"}
+              className="relative"
+            >
               {listening ? <MicOff /> : <Mic />}
-            </button>
+            </motion.button>
 
             <button type="submit">
               {loading ? <Loader2 className="animate-spin" /> : <Search />}
