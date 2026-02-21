@@ -41,10 +41,10 @@ const scoreResult = (item: Movie, q: string) => {
     title === query
       ? 100
       : title.startsWith(query)
-      ? 60
-      : title.includes(query)
-      ? 30
-      : 0;
+        ? 60
+        : title.includes(query)
+          ? 30
+          : 0;
 
   if (item.media_type === "movie") score += 20;
   if (item.media_type === "tv") score += 15;
@@ -105,18 +105,29 @@ function SearchBar({
   const requestId = useRef(0);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
 
-  /* ---------- SOUND (lazy, single instance) ---------- */
+  /* ---------- SOUND ---------- */
   const sndRef = useRef<Snd | null>(null);
+  const sndReady = useRef(false);
+
+  useEffect(() => {
+    const snd = new Snd({
+      easySetup: false,
+      preloadSoundKit: null,
+      muteOnWindowBlur: true,
+    });
+
+    snd
+      .load(Snd.KITS.SND01)
+      .then(() => {
+        sndReady.current = true;
+      })
+      .catch(() => {});
+
+    sndRef.current = snd;
+  }, []);
 
   const playSound = useCallback((sound: string) => {
-    if (!sndRef.current) {
-      sndRef.current = new Snd({
-        easySetup: false,
-        preloadSoundKit: null,
-        muteOnWindowBlur: true,
-      });
-      sndRef.current.load(Snd.KITS.SND01).catch(() => {});
-    }
+    if (!sndReady.current) return;
     sndRef.current?.play(sound, { volume: 0.5 });
   }, []);
 
@@ -167,7 +178,7 @@ function SearchBar({
 
     try {
       const data = await fetchFromProxy(
-        `/search/multi?query=${encodeURIComponent(q)}`
+        `/search/multi?query=${encodeURIComponent(q)}`,
       );
 
       if (id !== requestId.current) return;
@@ -176,7 +187,7 @@ function SearchBar({
         (data?.results ?? [])
           .filter((r: Movie) => r?.id && r?.media_type)
           .sort((a: Movie, b: Movie) => scoreResult(b, q) - scoreResult(a, q))
-          .slice(0, 20)
+          .slice(0, 20),
       );
     } finally {
       if (id === requestId.current) setLoading(false);
@@ -194,7 +205,7 @@ function SearchBar({
     };
   }, [query, runSearch, mounted]);
 
-  /* ---------- TRENDING (reliable fallback) ---------- */
+  /* ---------- TRENDING ---------- */
   useEffect(() => {
     if (!mounted) return;
 
@@ -212,7 +223,7 @@ function SearchBar({
     setRecent((prev) => {
       const updated = [term, ...prev.filter((s) => s !== term)].slice(
         0,
-        RECENT_LIMIT
+        RECENT_LIMIT,
       );
       writeRecent(updated);
       return updated;
@@ -247,7 +258,7 @@ function SearchBar({
       setFocused(false);
       setResults([]);
     },
-    [onSelectMovie, onSelectPerson, saveRecent]
+    [onSelectMovie, onSelectPerson, saveRecent],
   );
 
   /* ---------- VOICE ---------- */
@@ -296,7 +307,8 @@ function SearchBar({
 
   /* ---------- UI MODES ---------- */
   const showRecent = focused && !query && recent.length > 0;
-  const showTrending = focused && !query && recent.length === 0 && trending.length > 0;
+  const showTrending =
+    focused && !query && recent.length === 0 && trending.length > 0;
   const showResults = focused && query.length >= MIN_QUERY;
 
   const variants: Variants = {
@@ -375,14 +387,12 @@ function SearchBar({
                       src={getImage(item)}
                       className="w-10 h-14 object-cover"
                     />
-                    <div className="text-sm">
-                      {item.title || item.name}
-                    </div>
+                    <div className="text-sm">{item.title || item.name}</div>
                   </div>
                 ))
               ))}
           </motion.div>,
-          portalRoot
+          portalRoot,
         )
       : null;
 
@@ -404,9 +414,7 @@ function SearchBar({
               onFocus={() => setFocused(true)}
               onBlur={() => setTimeout(() => setFocused(false), 150)}
               placeholder={
-                listening
-                  ? "Listening…"
-                  : "Search movies, shows, people…"
+                listening ? "Listening…" : "Search movies, shows, people…"
               }
               className="flex-1 bg-transparent outline-none text-xl h-12"
             />
