@@ -18,60 +18,43 @@ function SearchBar({
 }) {
   const sb = useSearchBar({ onSelectMovie, onSelectPerson });
 
-  /* ---------- ANIMATION ---------- */
-
-  const micPulse: Variants = {
-    idle: { opacity: 1 },
-    listening: {
-      opacity: 0.85,
-      transition: {
-        duration: 0.9,
-        ease: "easeInOut",
-        repeat: Infinity,
-        repeatType: "reverse",
-      },
-    },
-  };
+  /* ---------------------------
+     Micro-interactions
+  ----------------------------*/
 
   const dropdownMotion: Variants = {
-    hidden: { opacity: 0, y: -8, scale: 0.995 },
+    hidden: { opacity: 0, y: -6 },
     visible: {
       opacity: 1,
       y: 0,
-      scale: 1,
       transition: { duration: 0.18, ease: "easeOut" },
     },
     exit: {
       opacity: 0,
-      y: -6,
+      y: -4,
       transition: { duration: 0.12 },
     },
   };
 
-  const listItemMotion: Variants = {
-    initial: { opacity: 0, y: -6, height: 0 },
-    animate: {
-      opacity: 1,
-      y: 0,
-      height: "auto",
-      transition: { duration: 0.22, ease: "easeOut" },
-    },
-    exit: {
-      opacity: 0,
-      y: -4,
-      height: 0,
-      transition: { duration: 0.18, ease: "easeInOut" },
+  const micVariants: Variants = {
+    idle: { scale: 1, opacity: 1 },
+    listening: {
+      scale: 1.05,
+      opacity: 0.95,
+      transition: {
+        duration: 0.6,
+        repeat: Infinity,
+        repeatType: "reverse",
+        ease: "easeInOut",
+      },
     },
   };
-
-  const rowInteraction = {
-    whileHover: { backgroundColor: "rgba(255,255,255,0.04)" },
-    whileTap: { scale: 0.995 },
-  };
-
-  /* ---------- DROPDOWN ---------- */
 
   const hasContent = sb.showRecent || sb.showTrending || sb.showResults;
+
+  /* ---------------------------
+     Dropdown
+  ----------------------------*/
 
   const dropdown =
     sb.mounted &&
@@ -81,86 +64,109 @@ function SearchBar({
     !sb.listening &&
     hasContent
       ? createPortal(
-          <AnimatePresence>
-            <motion.div
-              key="dropdown"
-              variants={dropdownMotion}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
-              style={{
-                position: "fixed",
-                left: sb.pos.left,
-                top: sb.pos.top,
-                width: sb.pos.width,
-                zIndex: 40,
-              }}
-              className="max-h-96 overflow-y-auto rounded-lg shadow-lg bg-[hsl(var(--background))]
-                border border-[hsl(var(--foreground)/0.15)]"
-              onMouseDown={(e) => e.preventDefault()}
-              layout
-            >
-              {/* ---------- RECENT ---------- */}
-              {sb.showRecent && (
-                <>
-                  <div className="flex justify-between items-center px-4 py-2 text-xs opacity-60">
-                    <span>Recent</span>
-                    <button
-                      className="opacity-50 hover:opacity-100 cursor-pointer transition-opacity"
-                      onClick={sb.clearRecent}
-                      type="button"
-                    >
-                      Clear
-                    </button>
-                  </div>
+          <motion.div
+            variants={dropdownMotion}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            style={{
+              position: "fixed",
+              left: sb.pos.left,
+              top: sb.pos.top,
+              width: sb.pos.width,
+              zIndex: 40,
+              scrollbarGutter: "stable",
+            }}
+            className="max-h-96 overflow-y-auto rounded-lg shadow-lg
+              bg-[hsl(var(--background))]
+              border border-[hsl(var(--foreground)/0.15)]"
+            onMouseDown={(e) => e.preventDefault()}
+          >
+            {/* ---------- RECENT HEADER ---------- */}
+            {sb.showRecent && (
+              <div className="flex justify-between items-center px-4 py-2 text-xs opacity-60">
+                <span>Recent</span>
+                <button
+                  className="opacity-50 hover:opacity-100 transition-opacity"
+                  onClick={sb.clearRecent}
+                  type="button"
+                >
+                  Clear
+                </button>
+              </div>
+            )}
 
-                  <AnimatePresence initial={false}>
-                    {sb.recent.map((term) => (
-                      <motion.div
-                        key={term}
-                        variants={listItemMotion}
-                        initial="initial"
-                        animate="animate"
-                        exit="exit"
-                        layout
-                        className="overflow-hidden"
-                      >
-                        <motion.div
-                          {...rowInteraction}
-                          className="flex justify-between px-4 py-2 cursor-pointer"
-                        >
-                          <button
-                            type="button"
-                            className="flex-1 text-left"
-                            onClick={() => sb.setQuery(term)}
-                          >
-                            {term}
-                          </button>
-
-                          <button
-                            type="button"
-                            className="opacity-50 hover:opacity-100 transition-opacity"
-                            onClick={() => sb.removeRecent(term)}
-                            aria-label={`Remove ${term} from recent searches`}
-                          >
-                            <FaTimes />
-                          </button>
-                        </motion.div>
-                      </motion.div>
-                    ))}
-                  </AnimatePresence>
-                </>
-              )}
-
-              {/* ---------- TRENDING ---------- */}
-              {sb.showTrending &&
-                sb.trending.map((item) => (
-                  <motion.button
+            {/* ---------- RECENT ITEMS ---------- */}
+            <AnimatePresence mode="popLayout" initial={false}>
+              {sb.showRecent &&
+                sb.recent.map((term) => (
+                  <motion.div
+                    key={term}
                     layout
-                    key={item.id}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{
+                      opacity: 0,
+                      scale: 0.9,
+                      transition: {
+                        duration: 0.22,
+                        ease: "easeOut",
+                      },
+                    }}
+                    transition={{ duration: 0.18 }}
+                    style={{ transformOrigin: "right center" }}
+                  >
+                    <div className="flex justify-between px-4 py-2 hover:bg-[hsl(var(--foreground)/0.08)]">
+                      <button
+                        type="button"
+                        className="flex-1 text-left"
+                        onClick={() => sb.setQuery(term)}
+                      >
+                        {term}
+                      </button>
+
+                      <button
+                        type="button"
+                        className="opacity-50 hover:opacity-100 transition-opacity"
+                        onClick={() => sb.removeRecent(term)}
+                        aria-label={`Remove ${term}`}
+                      >
+                        <FaTimes />
+                      </button>
+                    </div>
+                  </motion.div>
+                ))}
+            </AnimatePresence>
+
+            {/* ---------- TRENDING ---------- */}
+            {sb.showTrending &&
+              sb.trending.map((item) => (
+                <div
+                  key={item.id}
+                  onClick={() => sb.handleSelect(item)}
+                  className="w-full flex items-center gap-3 px-4 py-2 text-left cursor-pointer hover:bg-[hsl(var(--foreground)/0.08)]"
+                >
+                  <img
+                    src={getSearchItemImage(item)}
+                    className="w-10 h-14 object-cover rounded-sm"
+                    alt=""
+                  />
+                  <div className="text-sm">{item.title || item.name}</div>
+                </div>
+              ))}
+
+            {/* ---------- RESULTS ---------- */}
+            {sb.showResults &&
+              (sb.loading ? (
+                <div className="flex justify-center py-6">
+                  <Loader2 className="animate-spin opacity-60" />
+                </div>
+              ) : (
+                sb.results.map((item) => (
+                  <div
+                    key={`${item.media_type}:${item.id}`}
                     onClick={() => sb.handleSelect(item)}
-                    className="w-full flex items-center gap-3 px-4 py-2 text-left"
-                    {...rowInteraction}
+                    className="w-full flex items-center gap-3 px-4 py-2 text-left cursor-pointer hover:bg-[hsl(var(--foreground)/0.08)]"
                   >
                     <img
                       src={getSearchItemImage(item)}
@@ -168,44 +174,17 @@ function SearchBar({
                       alt=""
                     />
                     <div className="text-sm">{item.title || item.name}</div>
-                  </motion.button>
-                ))}
-
-              {/* ---------- RESULTS ---------- */}
-              {sb.showResults &&
-                (sb.loading ? (
-                  <div className="flex justify-center py-6">
-                    <Loader2 className="animate-spin opacity-60" />
                   </div>
-                ) : (
-                  <AnimatePresence initial={false}>
-                    {sb.results.map((item) => (
-                      <motion.button
-                        key={`${item.media_type}:${item.id}`}
-                        layout
-                        initial={{ opacity: 0, y: -4 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.18 }}
-                        onClick={() => sb.handleSelect(item)}
-                        className="w-full flex items-center gap-3 px-4 py-2 text-left"
-                        {...rowInteraction}
-                      >
-                        <img
-                          src={getSearchItemImage(item)}
-                          className="w-10 h-14 object-cover rounded-sm"
-                          alt=""
-                        />
-                        <div className="text-sm">{item.title || item.name}</div>
-                      </motion.button>
-                    ))}
-                  </AnimatePresence>
-                ))}
-            </motion.div>
-          </AnimatePresence>,
+                ))
+              ))}
+          </motion.div>,
           sb.portalRoot,
         )
       : null;
+
+  /* ---------------------------
+     Component
+  ----------------------------*/
 
   return (
     <>
@@ -214,9 +193,10 @@ function SearchBar({
           <form
             ref={sb.formRef}
             onSubmit={sb.submit}
-            className="flex items-center gap-3 px-4 py-2 rounded-xl bg-[hsl(var(--background))]
-             border border-[hsl(var(--foreground)/0.25)] shadow-md transition-shadow duration-200
-              focus-within:shadow-lg"
+            className="flex items-center gap-3 px-4 py-2 rounded-xl
+              bg-[hsl(var(--background))]
+              border border-[hsl(var(--foreground)/0.25)]
+              shadow-md"
           >
             <input
               ref={sb.inputRef}
@@ -227,59 +207,56 @@ function SearchBar({
               placeholder={
                 sb.listening ? "Listening…" : "Search movies, shows, people…"
               }
-              className="flex-1 bg-transparent outline-none text-xl h-12 text-[hsl(var(--foreground))]
-                placeholder:text-[hsl(var(--foreground)/0.55)]"
+              className="flex-1 bg-transparent outline-none text-xl h-12"
             />
 
             {sb.query && (
-              <motion.button
+              <button
                 type="button"
                 onClick={sb.clearQuery}
-                aria-label="Clear search"
-                whileTap={{ scale: 0.9 }}
                 className="opacity-60 hover:opacity-100 transition-opacity"
               >
                 <FaTimes />
-              </motion.button>
+              </button>
             )}
 
+            {/* ---------- MIC WITH FLASHING RED EFFECT ---------- */}
             <motion.button
               type="button"
               onClick={sb.startVoice}
-              variants={micPulse}
+              variants={micVariants}
               animate={sb.listening ? "listening" : "idle"}
-              whileTap={{ scale: 0.9 }}
-              className={`relative flex items-center justify-center ${
-                sb.listening ? "text-red-500" : ""
-              }`}
-              aria-label={
-                sb.listening ? "Stop voice search" : "Start voice search"
-              }
+              className="relative flex items-center justify-center"
             >
-              {sb.listening && (
-                <motion.span
-                  className="absolute inset-0 rounded-full bg-red-500/20"
-                  initial={{ scale: 0.8, opacity: 0.4 }}
-                  animate={{ scale: 1.6, opacity: 0 }}
-                  transition={{
-                    duration: 1.4,
-                    ease: "easeOut",
-                    repeat: Infinity,
-                  }}
-                />
-              )}
-              <span className="relative z-10">
+              {/* Flash pulse */}
+              <AnimatePresence>
+                {sb.listening && (
+                  <motion.span
+                    className="absolute inset-0 rounded-full bg-red-500/30"
+                    initial={{ scale: 0.6, opacity: 0.5 }}
+                    animate={{ scale: 1.6, opacity: 0 }}
+                    exit={{ opacity: 0 }}
+                    transition={{
+                      duration: 1.2,
+                      repeat: Infinity,
+                      ease: "easeOut",
+                    }}
+                  />
+                )}
+              </AnimatePresence>
+
+              <span
+                className={`relative z-10 ${
+                  sb.listening ? "text-red-500" : ""
+                }`}
+              >
                 {sb.listening ? <MicOff /> : <Mic />}
               </span>
             </motion.button>
 
-            <motion.button
-              type="submit"
-              aria-label="Search"
-              whileTap={{ scale: 0.9 }}
-            >
+            <button type="submit">
               {sb.loading ? <Loader2 className="animate-spin" /> : <Search />}
-            </motion.button>
+            </button>
           </form>
         </div>
       </div>
