@@ -102,18 +102,18 @@ function SearchBar({
                   <motion.div
                     key={term}
                     layout
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
                     exit={{
                       opacity: 0,
-                      scale: 0.9,
+                      height: 0,
                       transition: {
-                        duration: 0.22,
-                        ease: "easeOut",
+                        duration: 0.25,
+                        ease: "easeInOut",
                       },
                     }}
-                    transition={{ duration: 0.18 }}
-                    style={{ transformOrigin: "right center" }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden"
                   >
                     <div className="flex justify-between px-4 py-2 hover:bg-[hsl(var(--foreground)/0.08)]">
                       <button
