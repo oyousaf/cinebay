@@ -45,10 +45,6 @@ const extractGenresRaw = (detail: any): Genre[] =>
         .filter((g: Genre) => Number.isFinite(g.id) && g.name.length > 0)
     : [];
 
-/** Logic genres. Lower-case names for filtering. */
-const extractGenres = (detail: any): string[] =>
-  extractGenresRaw(detail).map((g) => g.name.toLowerCase());
-
 const isAllowedContent = (genres: string[]) =>
   !genres.some((g) => EXCLUDED_GENRES.has(g));
 
@@ -98,7 +94,7 @@ function toMovieSummary(item: any, forcedType?: "movie" | "tv"): Movie {
       typeof item?.vote_average === "number" ? item.vote_average : 0,
     vote_count: typeof item?.vote_count === "number" ? item.vote_count : 0,
 
-    genres: [], // summaries do not carry full genres
+    genres: [],
     genres_raw: [],
 
     runtime: null,
@@ -110,7 +106,7 @@ function toMovieSummary(item: any, forcedType?: "movie" | "tv"): Movie {
 }
 
 /* =========================================================
-   PERSON: KNOWN FOR (AUTHORITATIVE)
+   PERSON: KNOWN FOR
 ========================================================= */
 
 const buildKnownForFromCredits = (detail: any): Movie[] => {
@@ -387,4 +383,36 @@ export async function fetchDevsPick(): Promise<Movie[]> {
     DEVS_PICK_LIST.map((id) => fetchDetails(id, "movie"))
   );
   return (out.filter(Boolean) as Movie[]).sort(sortByRating);
+}
+
+/* =========================================================
+   TRENDING
+========================================================= */
+
+export async function fetchTrendingClean(): Promise<Movie[]> {
+  const data = await fetchFromProxy("/trending/all/day");
+
+  if (!data?.results?.length) return [];
+
+  return (data.results as any[])
+    .filter((item) => {
+      if (!item?.id) return false;
+
+      // only movies + tv
+      if (item.media_type !== "movie" && item.media_type !== "tv")
+        return false;
+
+      // rating gate
+      if ((item.vote_average ?? 0) < MIN_RATING) return false;
+      if ((item.vote_count ?? 0) < 150) return false;
+
+      return true;
+    })
+    .sort(
+      (a, b) =>
+        (b.vote_average ?? 0) - (a.vote_average ?? 0) ||
+        (b.vote_count ?? 0) - (a.vote_count ?? 0)
+    )
+    .slice(0, 10)
+    .map((item) => toMovieSummary(item));
 }

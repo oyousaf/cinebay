@@ -14,14 +14,14 @@ import Snd from "snd-lib";
 import { fetchDetails, fetchFromProxy } from "@/lib/tmdb";
 import type { Movie } from "@/types/movie";
 
+import { fetchTrendingClean } from "@/lib/tmdb";
+
 /* ---------- CONFIG ---------- */
 const RECENT_KEY = "tmdb_recent_searches_v1";
 const RECENT_LIMIT = 5;
 const SEARCH_DELAY = 300;
 const MIN_QUERY = 3;
 
-// Match your AppShell framer transition (duration 0.25s)
-// Give it a hair extra so focus/measure happens after transform settles.
 const TAB_ANIM_MS = 280;
 const SETTLE_MS = 360;
 
@@ -273,10 +273,9 @@ export function useSearchBar({
   /* ---------- TRENDING ---------- */
   useEffect(() => {
     if (!mounted) return;
+
     if (recent.length === 0 && trending.length === 0) {
-      fetchFromProxy("/trending/all/day").then((data) => {
-        setTrending((data?.results ?? []).slice(0, 10));
-      });
+      fetchTrendingClean().then(setTrending);
     }
   }, [recent.length, mounted, trending.length]);
 
