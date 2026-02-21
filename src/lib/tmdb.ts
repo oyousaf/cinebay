@@ -117,12 +117,12 @@ const buildKnownForFromCredits = (detail: any): Movie[] => {
       (c: any) =>
         c?.poster_path &&
         c?.vote_average >= MIN_RATING &&
-        c?.original_language === "en"
+        c?.original_language === "en",
     )
     .sort((a: any, b: any) => (b.popularity ?? 0) - (a.popularity ?? 0))
     .slice(0, 10)
     .map((c: any) =>
-      toMovieSummary({ ...c, media_type: c?.media_type }, undefined)
+      toMovieSummary({ ...c, media_type: c?.media_type }, undefined),
     );
 };
 
@@ -142,7 +142,7 @@ function toMovie(detail: any, type: "movie" | "tv" | "person"): Movie {
           (r: any) =>
             r?.poster_path &&
             r?.vote_average >= MIN_RATING &&
-            r?.original_language === "en"
+            r?.original_language === "en",
         )
         .slice(0, 10)
         .map((r: any) => toMovieSummary(r, type === "tv" ? "tv" : "movie"))
@@ -154,7 +154,7 @@ function toMovie(detail: any, type: "movie" | "tv" | "person"): Movie {
           (r: any) =>
             r?.poster_path &&
             r?.vote_average >= MIN_RATING &&
-            r?.original_language === "en"
+            r?.original_language === "en",
         )
         .slice(0, 10)
         .map((r: any) => toMovieSummary(r, type === "tv" ? "tv" : "movie"))
@@ -199,8 +199,8 @@ function toMovie(detail: any, type: "movie" | "tv" | "person"): Movie {
       type === "person"
         ? buildKnownForFromCredits(detail)
         : Array.isArray(detail?.known_for)
-        ? detail.known_for.map((x: any) => toMovieSummary(x))
-        : [],
+          ? detail.known_for.map((x: any) => toMovieSummary(x))
+          : [],
 
     similar,
     recommendations,
@@ -246,13 +246,13 @@ async function fetchAllPages(endpoint: string, max = 3) {
 
 export async function fetchDetails(
   id: number,
-  type: "movie" | "tv" | "person"
+  type: "movie" | "tv" | "person",
 ) {
   const append =
     type === "person" ? "combined_credits" : "credits,similar,recommendations";
 
   const d = await fetchFromProxy(
-    `/${type}/${id}?language=en-GB&append_to_response=${append}`
+    `/${type}/${id}?language=en-GB&append_to_response=${append}`,
   );
 
   return d ? toMovie(d, type) : null;
@@ -288,7 +288,7 @@ const empty = (t: "movie" | "tv"): Movie => ({
 export async function fetchMovies(): Promise<Movie[]> {
   const base = await fetchAllPages(
     `/discover/movie?language=en&include_adult=false&vote_average.gte=${MIN_RATING}`,
-    3
+    3,
   );
 
   if (!base.length) return [empty("movie")];
@@ -299,13 +299,13 @@ export async function fetchMovies(): Promise<Movie[]> {
         (m: any) =>
           m?.original_language === "en" &&
           m?.vote_average >= MIN_RATING &&
-          isWithin3Months(m?.release_date)
+          isWithin3Months(m?.release_date),
       )
-      .map((m: any) => fetchDetails(m.id, "movie"))
+      .map((m: any) => fetchDetails(m.id, "movie")),
   );
 
   const final = (detailed.filter(Boolean) as Movie[]).filter((m) =>
-    isAllowedContent(m.genres ?? [])
+    isAllowedContent(m.genres ?? []),
   );
 
   final.forEach((m) => {
@@ -325,7 +325,7 @@ export async function fetchMovies(): Promise<Movie[]> {
 export async function fetchShows(): Promise<Movie[]> {
   const base = await fetchAllPages(
     `/discover/tv?language=en&include_adult=false&vote_average.gte=${MIN_RATING}`,
-    3
+    3,
   );
 
   if (!base.length) return [empty("tv")];
@@ -333,11 +333,11 @@ export async function fetchShows(): Promise<Movie[]> {
   const detailed = await Promise.all(
     base
       .filter((s: any) => s?.original_language === "en")
-      .map((s: any) => fetchDetails(s.id, "tv"))
+      .map((s: any) => fetchDetails(s.id, "tv")),
   );
 
   const filtered = (detailed.filter(Boolean) as Movie[]).filter((s) =>
-    isAllowedContent(s.genres ?? [])
+    isAllowedContent(s.genres ?? []),
   );
 
   filtered.forEach((s) => {
@@ -366,7 +366,7 @@ export async function fetchShows(): Promise<Movie[]> {
 
 export async function fetchSeasonEpisodes(
   tvId: number,
-  season: number
+  season: number,
 ): Promise<any[] | null> {
   const d = await fetchFromProxy(`/tv/${tvId}/season/${season}?language=en-GB`);
 
@@ -380,7 +380,7 @@ export async function fetchSeasonEpisodes(
 
 export async function fetchDevsPick(): Promise<Movie[]> {
   const out = await Promise.all(
-    DEVS_PICK_LIST.map((id) => fetchDetails(id, "movie"))
+    DEVS_PICK_LIST.map((id) => fetchDetails(id, "movie")),
   );
   return (out.filter(Boolean) as Movie[]).sort(sortByRating);
 }
@@ -398,20 +398,18 @@ export async function fetchTrendingClean(): Promise<Movie[]> {
     .filter((item) => {
       if (!item?.id) return false;
 
-      // only movies + tv
-      if (item.media_type !== "movie" && item.media_type !== "tv")
-        return false;
+      if (item.media_type !== "movie" && item.media_type !== "tv") return false;
 
-      // rating gate
       if ((item.vote_average ?? 0) < MIN_RATING) return false;
       if ((item.vote_count ?? 0) < 150) return false;
+      if (item.original_language === "ja") return false;
 
       return true;
     })
     .sort(
       (a, b) =>
         (b.vote_average ?? 0) - (a.vote_average ?? 0) ||
-        (b.vote_count ?? 0) - (a.vote_count ?? 0)
+        (b.vote_count ?? 0) - (a.vote_count ?? 0),
     )
     .slice(0, 10)
     .map((item) => toMovieSummary(item));
