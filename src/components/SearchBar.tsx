@@ -103,9 +103,8 @@ function SearchBar({
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const requestId = useRef(0);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
-  const gotSpeechRef = useRef(false);
 
-  /* ---------- SOUND (preloaded) ---------- */
+  /* ---------- SOUND ---------- */
   const sndRef = useRef<Snd | null>(null);
   const sndReady = useRef(false);
 
@@ -116,12 +115,9 @@ function SearchBar({
       muteOnWindowBlur: true,
     });
 
-    snd
-      .load(Snd.KITS.SND01)
-      .then(() => {
-        sndReady.current = true;
-      })
-      .catch(() => {});
+    snd.load(Snd.KITS.SND01).then(() => {
+      sndReady.current = true;
+    });
 
     sndRef.current = snd;
   }, []);
@@ -160,7 +156,7 @@ function SearchBar({
       window.removeEventListener("resize", update);
       window.removeEventListener("scroll", update, true);
     };
-  }, [focused, mounted, recent.length]);
+  }, [focused, mounted, recent.length, trending.length]);
 
   /* ---------- SEARCH ---------- */
   const runSearch = useCallback(async (term: string) => {
@@ -199,21 +195,19 @@ function SearchBar({
     debounceRef.current = setTimeout(() => runSearch(query), SEARCH_DELAY);
 
     return () => {
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current);
-      }
+      if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, [query, runSearch, mounted]);
 
-  /* ---------- TRENDING ---------- */
+  /* ---------- TRENDING (stable, no flicker) ---------- */
   useEffect(() => {
     if (!mounted) return;
-    if (recent.length === 0) {
+    if (recent.length === 0 && trending.length === 0) {
       fetchFromProxy("/trending/all/day").then((data) => {
         setTrending((data?.results ?? []).slice(0, 10));
       });
     }
-  }, [recent.length, mounted]);
+  }, [recent.length, mounted, trending.length]);
 
   /* ---------- RECENT ---------- */
   const saveRecent = useCallback((term: string) => {
@@ -247,14 +241,16 @@ function SearchBar({
       const full = await fetchDetails(item.id, item.media_type);
       if (!full) return;
 
-      item.media_type === "person"
-        ? onSelectPerson?.(full)
-        : onSelectMovie(full);
+      if (item.media_type === "person") {
+        onSelectPerson?.(full);
+      } else {
+        onSelectMovie(full);
+      }
 
       saveRecent(item.title || item.name || "");
       setQuery("");
-      setFocused(false);
       setResults([]);
+      setFocused(false);
     },
     [onSelectMovie, onSelectPerson, saveRecent],
   );
@@ -269,13 +265,11 @@ function SearchBar({
       return;
     }
 
-    // Toggle: stop if already listening
     if (listening) {
       recognitionRef.current?.stop();
       return;
     }
 
-    // Create instance once
     if (!recognitionRef.current) {
       const rec = new Recognition();
       rec.lang = "en-US";
@@ -284,36 +278,28 @@ function SearchBar({
 
       rec.onresult = (e: SpeechRecognitionEvent) => {
         const text = e.results[0][0].transcript.trim();
-
-        gotSpeechRef.current = true;
-
         setQuery(text);
         runSearch(text);
         inputRef.current?.focus();
       };
 
-      rec.onerror = () => {
-        setListening(false);
-        gotSpeechRef.current = false;
-      };
-
       rec.onend = () => {
         setListening(false);
-
-        // Play end sound only if session actually started
         playSound(Snd.SOUNDS.TRANSITION_DOWN);
-
-        gotSpeechRef.current = false;
       };
 
       recognitionRef.current = rec;
     }
 
-    // Start listening
     setListening(true);
+
+    // Enter voice mode
+    setQuery("");
+    setResults([]);
+    inputRef.current?.focus();
+
     playSound(Snd.SOUNDS.TRANSITION_UP);
 
-    // Small delay helps some browsers initialise audio + mic cleanly
     setTimeout(() => {
       recognitionRef.current?.start();
     }, 50);
@@ -333,14 +319,20 @@ function SearchBar({
     },
   };
 
-  const showRecent = focused && !query && recent.length > 0;
+  const showRecent = focused && !query && recent.length > 0 && !listening;
+
   const showTrending =
-    focused && !query && recent.length === 0 && trending.length > 0;
-  const showResults = focused && query.length >= MIN_QUERY;
+    focused &&
+    !query &&
+    recent.length === 0 &&
+    trending.length > 0 &&
+    !listening;
+
+  const showResults = focused && query.length >= MIN_QUERY && !listening;
 
   /* ---------- DROPDOWN ---------- */
   const dropdown =
-    portalRoot && pos && focused
+    mounted && portalRoot && pos && focused && !listening
       ? createPortal(
           <motion.div
             initial={{ opacity: 0, y: -6 }}
@@ -352,7 +344,7 @@ function SearchBar({
               width: pos.width,
               zIndex: 40,
             }}
-            className="max-h-96 overflow-y-auto rounded-lg shadow-lg bg-[hsl(var(--background))] border border-[hsl(var(--foreground)/0.15)]"
+            className="min-h-30 max-h-96 overflow-y-auto rounded-lg shadow-lg bg-[hsl(var(--background))] border border-[hsl(var(--foreground)/0.15)]"
           >
             {showRecent && (
               <>
@@ -401,6 +393,7 @@ function SearchBar({
                   <img
                     src={getImage(item)}
                     className="w-10 h-14 object-cover"
+                    alt=""
                   />
                   <div className="text-sm">{item.title || item.name}</div>
                 </div>
@@ -421,6 +414,7 @@ function SearchBar({
                     <img
                       src={getImage(item)}
                       className="w-10 h-14 object-cover"
+                      alt=""
                     />
                     <div className="text-sm">{item.title || item.name}</div>
                   </div>
@@ -465,7 +459,9 @@ function SearchBar({
               onClick={startVoice}
               variants={micPulse}
               animate={listening ? "listening" : "idle"}
-              className={`relative flex items-center justify-center ${listening ? "text-red-500" : ""}`}
+              className={`relative flex items-center justify-center ${
+                listening ? "text-red-500" : ""
+              }`}
             >
               {listening && (
                 <motion.span
