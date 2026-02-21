@@ -2,7 +2,7 @@
 
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { motion, AnimatePresence, type Variants } from "framer-motion";
+import { motion, type Variants } from "framer-motion";
 import { Search, Loader2, Mic, MicOff } from "lucide-react";
 import { FaTimes } from "react-icons/fa";
 import Snd from "snd-lib";
@@ -32,7 +32,6 @@ const writeRecent = (v: string[]) => {
 };
 
 /* ---------- HELPERS ---------- */
-
 const scoreResult = (item: Movie, q: string) => {
   const title = (item.title || item.name || "").toLowerCase();
   const query = q.toLowerCase();
@@ -104,8 +103,9 @@ function SearchBar({
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const requestId = useRef(0);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const gotSpeechRef = useRef(false);
 
-  /* ---------- SOUND ---------- */
+  /* ---------- SOUND (preloaded) ---------- */
   const sndRef = useRef<Snd | null>(null);
   const sndReady = useRef(false);
 
@@ -145,7 +145,6 @@ function SearchBar({
     const update = () => {
       if (!containerRef.current) return;
       const r = containerRef.current.getBoundingClientRect();
-
       setPos({
         left: r.left + window.scrollX,
         top: r.bottom + window.scrollY + 8,
@@ -166,7 +165,6 @@ function SearchBar({
   /* ---------- SEARCH ---------- */
   const runSearch = useCallback(async (term: string) => {
     const q = term.trim();
-
     if (q.length < MIN_QUERY) {
       setResults([]);
       setLoading(false);
@@ -201,14 +199,15 @@ function SearchBar({
     debounceRef.current = setTimeout(() => runSearch(query), SEARCH_DELAY);
 
     return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
     };
   }, [query, runSearch, mounted]);
 
   /* ---------- TRENDING ---------- */
   useEffect(() => {
     if (!mounted) return;
-
     if (recent.length === 0) {
       fetchFromProxy("/trending/all/day").then((data) => {
         setTrending((data?.results ?? []).slice(0, 10));
@@ -219,7 +218,6 @@ function SearchBar({
   /* ---------- RECENT ---------- */
   const saveRecent = useCallback((term: string) => {
     if (!term) return;
-
     setRecent((prev) => {
       const updated = [term, ...prev.filter((s) => s !== term)].slice(
         0,
@@ -238,10 +236,10 @@ function SearchBar({
     });
   }, []);
 
-  const clearRecent = () => {
+  const clearRecent = useCallback(() => {
     setRecent([]);
     writeRecent([]);
-  };
+  }, []);
 
   /* ---------- SELECT ---------- */
   const handleSelect = useCallback(
@@ -271,11 +269,8 @@ function SearchBar({
       return;
     }
 
-    // Toggle
     if (listening) {
       recognitionRef.current?.stop();
-      setListening(false);
-      playSound(Snd.SOUNDS.TRANSITION_DOWN);
       return;
     }
 
@@ -286,6 +281,7 @@ function SearchBar({
 
       rec.onresult = (e: SpeechRecognitionEvent) => {
         const text = e.results[0][0].transcript.trim();
+        gotSpeechRef.current = true;
 
         setQuery(text);
         runSearch(text);
@@ -294,7 +290,12 @@ function SearchBar({
 
       rec.onend = () => {
         setListening(false);
-        playSound(Snd.SOUNDS.TRANSITION_DOWN);
+
+        if (gotSpeechRef.current) {
+          playSound(Snd.SOUNDS.TRANSITION_DOWN);
+        }
+
+        gotSpeechRef.current = false;
       };
 
       recognitionRef.current = rec;
@@ -308,17 +309,7 @@ function SearchBar({
     }, 50);
   }, [listening, playSound, runSearch]);
 
-  /* ---------- UI MODES ---------- */
-  const showRecent = focused && !query && recent.length > 0;
-  const showTrending =
-    focused && !query && recent.length === 0 && trending.length > 0;
-  const showResults = focused && query.length >= MIN_QUERY;
-
-  const variants: Variants = {
-    hidden: { opacity: 0, y: -6 },
-    show: { opacity: 1, y: 0, transition: { duration: 0.18 } },
-  };
-
+  /* ---------- ANIMATION ---------- */
   const micPulse: Variants = {
     idle: { opacity: 1 },
     listening: {
@@ -332,14 +323,18 @@ function SearchBar({
     },
   };
 
+  const showRecent = focused && !query && recent.length > 0;
+  const showTrending =
+    focused && !query && recent.length === 0 && trending.length > 0;
+  const showResults = focused && query.length >= MIN_QUERY;
+
   /* ---------- DROPDOWN ---------- */
   const dropdown =
     portalRoot && pos && focused
       ? createPortal(
           <motion.div
-            variants={variants}
-            initial="hidden"
-            animate="show"
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
             style={{
               position: "absolute",
               left: pos.left,
@@ -349,28 +344,42 @@ function SearchBar({
             }}
             className="max-h-96 overflow-y-auto rounded-lg shadow-lg bg-[hsl(var(--background))] border border-[hsl(var(--foreground)/0.15)]"
           >
-            {showRecent &&
-              recent.map((term) => (
-                <div
-                  key={term}
-                  className="flex justify-between px-4 py-2 hover:bg-[hsl(var(--foreground)/0.08)]"
-                >
-                  <div
-                    className="flex-1 cursor-pointer"
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => setQuery(term)}
-                  >
-                    {term}
-                  </div>
+            {showRecent && (
+              <>
+                <div className="flex justify-between items-center px-4 py-2 text-xs opacity-60">
+                  <span>Recent</span>
                   <button
                     className="opacity-50 hover:opacity-100 cursor-pointer"
                     onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => removeRecent(term)}
+                    onClick={clearRecent}
                   >
-                    <FaTimes />
+                    Clear
                   </button>
                 </div>
-              ))}
+
+                {recent.map((term) => (
+                  <div
+                    key={term}
+                    className="flex justify-between px-4 py-2 hover:bg-[hsl(var(--foreground)/0.08)]"
+                  >
+                    <div
+                      className="flex-1 cursor-pointer"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => setQuery(term)}
+                    >
+                      {term}
+                    </div>
+                    <button
+                      className="opacity-50 hover:opacity-100 cursor-pointer"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => removeRecent(term)}
+                    >
+                      <FaTimes />
+                    </button>
+                  </div>
+                ))}
+              </>
+            )}
 
             {showTrending &&
               trending.map((item) => (
@@ -446,19 +455,13 @@ function SearchBar({
               onClick={startVoice}
               variants={micPulse}
               animate={listening ? "listening" : "idle"}
-              className={`relative flex items-center justify-center transition-colors ${
-                listening ? "text-red-500" : ""
-              }`}
+              className={`relative flex items-center justify-center ${listening ? "text-red-500" : ""}`}
             >
-              {/* Expanding outer ring */}
               {listening && (
                 <motion.span
                   className="absolute inset-0 rounded-full bg-red-500/20"
                   initial={{ scale: 0.8, opacity: 0.4 }}
-                  animate={{
-                    scale: 1.6,
-                    opacity: 0,
-                  }}
+                  animate={{ scale: 1.6, opacity: 0 }}
                   transition={{
                     duration: 1.4,
                     ease: "easeOut",
@@ -466,8 +469,6 @@ function SearchBar({
                   }}
                 />
               )}
-
-              {/* Icon */}
               <span className="relative z-10">
                 {listening ? <MicOff /> : <Mic />}
               </span>
