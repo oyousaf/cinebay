@@ -351,11 +351,11 @@ export function useSearchBar({
       saveRecent(item.title || item.name || "");
       setFocused(false);
 
-      const full = await fetchDetails(item.id, item.media_type);
-      if (!full) return;
+      const handler =
+        item.media_type === "person" ? onSelectPerson : onSelectMovie;
 
-      if (item.media_type === "person") onSelectPerson?.(full);
-      else onSelectMovie(full);
+      const full = await fetchDetails(item.id, item.media_type);
+      if (full) handler?.(full);
     },
     [onSelectMovie, onSelectPerson, saveRecent],
   );
