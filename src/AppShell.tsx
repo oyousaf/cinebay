@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Toaster, toast } from "sonner";
 
@@ -18,45 +18,58 @@ import { useNavigation } from "@/context/NavigationContext";
 
 export default function AppShell() {
   const { activeTab } = useNavigation();
-
   const { activeModal, selectedItem, openContent, close, goBackContent } =
     useModalManager();
 
-  const isStandalone = useMemo(() => {
-    if (typeof window === "undefined") return false;
-    return (
+  /* ---------- Modal flag ---------- */
+  const isModalOpen = Boolean(activeModal);
+
+  /* ---------- Standalone detection ---------- */
+  const [isStandalone, setIsStandalone] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const standalone =
       window.matchMedia("(display-mode: standalone)").matches ||
-      (window.navigator as any).standalone === true
-    );
+      (window.navigator as any).standalone === true;
+
+    setIsStandalone(standalone);
   }, []);
 
-  const renderContent = () => {
+  /* ---------- Memoised tab content ---------- */
+  const content = useMemo(() => {
     switch (activeTab) {
       case "movies":
         return <Movies onSelect={openContent} />;
+
       case "tvshows":
         return <Shows onSelect={openContent} />;
+
       case "devspick":
         return <DevsPick onSelect={openContent} />;
+
       case "watchlist":
         return <Watchlist onSelect={openContent} />;
+
       case "search":
         return (
           <div className="px-4 pt-24 flex justify-center">
             <SearchBar
               onSelectMovie={openContent}
               onSelectPerson={openContent}
-              isModalOpen={Boolean(activeModal)}
+              isModalOpen={isModalOpen}
             />
           </div>
         );
+
       default:
         return null;
     }
-  };
+  }, [activeTab, openContent, isModalOpen]);
 
   return (
-    <Layout isModalOpen={Boolean(activeModal)}>
+    <Layout isModalOpen={isModalOpen}>
       <Toaster richColors position="bottom-center" theme="dark" />
 
       <AnimatePresence mode="wait">
@@ -68,10 +81,11 @@ export default function AppShell() {
           transition={{ duration: 0.25, ease: "easeOut" }}
           className="flex-1 min-h-0"
         >
-          {renderContent()}
+          {content}
         </motion.div>
       </AnimatePresence>
 
+      {/* ---------- Content Modal ---------- */}
       {activeModal === "content" && selectedItem && (
         <Modal
           movie={selectedItem}
@@ -81,6 +95,7 @@ export default function AppShell() {
         />
       )}
 
+      {/* ---------- Exit Modal ---------- */}
       {activeModal === "exit" && (
         <ExitConfirmModal
           open
