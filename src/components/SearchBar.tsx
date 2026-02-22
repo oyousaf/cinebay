@@ -241,7 +241,10 @@ function SearchBar({
             {sb.query && (
               <button
                 type="button"
-                onClick={sb.clearQuery}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  sb.clearQuery();
+                }}
                 className="opacity-60 hover:opacity-100 transition-opacity"
               >
                 <FaTimes />
@@ -250,7 +253,6 @@ function SearchBar({
 
             <motion.button
               type="button"
-              onClick={sb.startVoice}
               onMouseDown={(e) => {
                 e.preventDefault();
                 sb.startVoice();
