@@ -348,14 +348,16 @@ export function useSearchBar({
   /* ---------- SELECT ---------- */
   const handleSelect = useCallback(
     async (item: Movie) => {
-      saveRecent(item.title || item.name || "");
       setFocused(false);
+      saveRecent(item.title || item.name || "");
+
+      const full = await fetchDetails(item.id, item.media_type);
+      if (!full) return;
 
       const handler =
         item.media_type === "person" ? onSelectPerson : onSelectMovie;
 
-      const full = await fetchDetails(item.id, item.media_type);
-      if (full) handler?.(full);
+      handler?.(full);
     },
     [onSelectMovie, onSelectPerson, saveRecent],
   );
