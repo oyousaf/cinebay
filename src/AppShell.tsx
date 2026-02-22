@@ -77,14 +77,29 @@ export default function AppShell() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const handlePopState = () => {
+    const handlePopState = (e: PopStateEvent) => {
       const { activeTab, isModalOpen } = stateRef.current;
+      const state = e.state as { tab?: string; modal?: string } | null;
 
-      if (isModalOpen) {
+      /* Exit modal open → just close it */
+      if (isModalOpen && state?.modal !== "exit") {
         close();
         return;
       }
 
+      /* Restore modal from history */
+      if (state?.modal === "exit") {
+        openExit();
+        return;
+      }
+
+      /* Restore tab from history */
+      if (state?.tab && state.tab !== activeTab) {
+        setActiveTab(state.tab as any);
+        return;
+      }
+
+      /* No history left → behave like native app */
       if (activeTab !== "movies") {
         setActiveTab("movies");
         return;
