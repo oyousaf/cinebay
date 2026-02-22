@@ -44,7 +44,7 @@ export default function ModalActions({ movie }: { movie: Movie }) {
             }
             whileTap={{ scale: 0.96 }}
             className="px-6 py-3 rounded-full font-semibold flex items-center gap-2
-              bg-[hsl(var(--foreground))] text-[hsl(var(--background))]"
+            bg-[hsl(var(--foreground))] text-[hsl(var(--background))]"
           >
             <FaPlay size={20} />
           </motion.button>
@@ -54,9 +54,7 @@ export default function ModalActions({ movie }: { movie: Movie }) {
           onClick={() => toggleWatchlist(movie)}
           aria-pressed={isSaved}
           whileTap={{ scale: 0.96 }}
-          className="p-3 rounded-full
-            bg-[hsl(var(--foreground))]
-            text-[hsl(var(--background))]"
+          className="p-3 rounded-full bg-[hsl(var(--foreground))] text-[hsl(var(--background))]"
         >
           <Bookmark
             size={22}
