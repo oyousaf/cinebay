@@ -12,16 +12,17 @@ import { getSearchItemImage, useSearchBar } from "@/hooks/useSearchBar";
 function SearchBar({
   onSelectMovie,
   onSelectPerson,
+  isModalOpen,
 }: {
   onSelectMovie: (movie: Movie) => void;
   onSelectPerson?: (person: Movie) => void;
+  isModalOpen: boolean;
 }) {
-  const sb = useSearchBar({ onSelectMovie, onSelectPerson });
+  const sb = useSearchBar({ onSelectMovie, onSelectPerson, isModalOpen });
 
   /* ---------------------------
      Micro-interactions
   ----------------------------*/
-
   const dropdownMotion: Variants = {
     hidden: { opacity: 0, y: -6 },
     visible: {
@@ -55,7 +56,6 @@ function SearchBar({
   /* ---------------------------
      Dropdown
   ----------------------------*/
-
   const dropdown =
     sb.mounted &&
     sb.portalRoot &&
@@ -216,7 +216,6 @@ function SearchBar({
   /* ---------------------------
      Component
   ----------------------------*/
-
   return (
     <>
       <div className="w-full flex justify-center">

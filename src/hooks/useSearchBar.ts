@@ -1,4 +1,3 @@
-// useSearchBar.ts
 "use client";
 
 import {
@@ -11,10 +10,8 @@ import {
 } from "react";
 import Snd from "snd-lib";
 
-import { fetchDetails, fetchFromProxy } from "@/lib/tmdb";
+import { fetchDetails, fetchFromProxy, fetchTrendingClean } from "@/lib/tmdb";
 import type { Movie } from "@/types/movie";
-
-import { fetchTrendingClean } from "@/lib/tmdb";
 
 /* ---------- CONFIG ---------- */
 const RECENT_KEY = "tmdb_recent_searches_v1";
@@ -27,6 +24,7 @@ const SETTLE_MS = 360;
 
 /* ---------- STORAGE ---------- */
 const readRecent = (): string[] => {
+  if (typeof window === "undefined") return [];
   try {
     return JSON.parse(localStorage.getItem(RECENT_KEY) || "[]");
   } catch {
@@ -35,6 +33,7 @@ const readRecent = (): string[] => {
 };
 
 const writeRecent = (v: string[]) => {
+  if (typeof window === "undefined") return;
   try {
     localStorage.setItem(RECENT_KEY, JSON.stringify(v));
   } catch {}
@@ -71,12 +70,15 @@ type Pos = { left: number; top: number; width: number };
 type UseSearchBarParams = {
   onSelectMovie: (movie: Movie) => void;
   onSelectPerson?: (person: Movie) => void;
+  isModalOpen?: boolean;
 };
 
 export function useSearchBar({
   onSelectMovie,
   onSelectPerson,
+  isModalOpen = false,
 }: UseSearchBarParams) {
+  /* ---------- STATE ---------- */
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Movie[]>([]);
   const [recent, setRecent] = useState<string[]>([]);
@@ -88,26 +90,24 @@ export function useSearchBar({
   const [pos, setPos] = useState<Pos | null>(null);
   const [portalRoot, setPortalRoot] = useState<HTMLElement | null>(null);
 
-  // anchors
+  /* ---------- REFS ---------- */
   const containerRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // timers/requests
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const requestIdRef = useRef(0);
+  const settleRafRef = useRef<number | null>(null);
 
-  // speech
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const listeningRef = useRef(false);
 
-  // settle loop
-  const settleRafRef = useRef<number | null>(null);
-
-  /* ---------- SOUND ---------- */
   const sndRef = useRef<Snd | null>(null);
   const sndReadyRef = useRef(false);
 
+  const prevModalOpenRef = useRef(isModalOpen);
+
+  /* ---------- SOUND ---------- */
   useEffect(() => {
     const snd = new Snd({
       easySetup: false,
@@ -123,19 +123,22 @@ export function useSearchBar({
 
     return () => {
       try {
-        // @ts-expect-error depends on snd-lib version
-        sndRef.current?.stop?.();
+        // @ts-ignore
+        snd.stop?.();
       } catch {}
     };
   }, []);
 
   const playSound = useCallback((sound: string) => {
-    if (!sndReadyRef.current) return;
-    sndRef.current?.play(sound, { volume: 0.5 });
+    if (sndReadyRef.current) {
+      sndRef.current?.play(sound, { volume: 0.5 });
+    }
   }, []);
 
   /* ---------- PORTAL ROOT ---------- */
   useEffect(() => {
+    if (typeof document === "undefined") return;
+
     let el = document.getElementById("search-portal-root");
     if (!el) {
       el = document.createElement("div");
@@ -144,6 +147,40 @@ export function useSearchBar({
     }
     setPortalRoot(el);
   }, []);
+
+  /* ---------- MODAL SYNC ---------- */
+  useEffect(() => {
+    const wasOpen = prevModalOpenRef.current;
+    prevModalOpenRef.current = isModalOpen;
+
+    // Modal opened → close dropdown + stop voice
+    if (isModalOpen) {
+      setFocused(false);
+      setListening(false);
+      listeningRef.current = false;
+
+      try {
+        recognitionRef.current?.stop();
+      } catch {}
+
+      requestIdRef.current++;
+
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+      return;
+    }
+
+    // Modal just closed → restore focus + dropdown
+    if (wasOpen && !isModalOpen) {
+      requestAnimationFrame(() => {
+        inputRef.current?.focus();
+        setFocused(true);
+        computePos();
+        settleMeasure();
+      });
+    }
+  }, [isModalOpen]);
 
   /* ---------- INIT ---------- */
   useEffect(() => {
@@ -163,7 +200,16 @@ export function useSearchBar({
     if (!anchor) return;
 
     const r = anchor.getBoundingClientRect();
-    setPos({ left: r.left, top: r.bottom + 8, width: r.width });
+    setPos((prev) => {
+      if (
+        prev &&
+        prev.left === r.left &&
+        prev.top === r.bottom + 8 &&
+        prev.width === r.width
+      )
+        return prev;
+      return { left: r.left, top: r.bottom + 8, width: r.width };
+    });
   }, []);
 
   const settleMeasure = useCallback(
@@ -190,7 +236,7 @@ export function useSearchBar({
   }, []);
 
   useLayoutEffect(() => {
-    if (!focused) return;
+    if (!focused || isModalOpen) return;
 
     computePos();
     settleMeasure();
@@ -198,16 +244,8 @@ export function useSearchBar({
     const onResize = () => settleMeasure();
     const onScroll = () => computePos();
 
-    const onVisibility = () => {
-      if (!document.hidden) {
-        computePos();
-        settleMeasure();
-      }
-    };
-
     window.addEventListener("resize", onResize);
     window.addEventListener("scroll", onScroll, true);
-    document.addEventListener("visibilitychange", onVisibility);
 
     const vv = window.visualViewport;
     vv?.addEventListener("resize", onResize);
@@ -220,14 +258,11 @@ export function useSearchBar({
     return () => {
       window.removeEventListener("resize", onResize);
       window.removeEventListener("scroll", onScroll, true);
-      document.removeEventListener("visibilitychange", onVisibility);
-
       vv?.removeEventListener("resize", onResize);
       vv?.removeEventListener("scroll", onScroll);
-
       ro.disconnect();
     };
-  }, [focused, computePos, settleMeasure]);
+  }, [focused, isModalOpen, computePos, settleMeasure]);
 
   /* ---------- SEARCH ---------- */
   const runSearch = useCallback(async (term: string) => {
@@ -248,12 +283,13 @@ export function useSearchBar({
 
       if (id !== requestIdRef.current) return;
 
-      setResults(
-        (data?.results ?? [])
-          .filter((r: Movie) => r?.id && r?.media_type)
+      const cleaned =
+        data?.results
+          ?.filter((r: Movie) => r?.id && r?.media_type)
           .sort((a: Movie, b: Movie) => scoreResult(b, q) - scoreResult(a, q))
-          .slice(0, 20),
-      );
+          .slice(0, 20) ?? [];
+
+      setResults(cleaned);
     } finally {
       if (id === requestIdRef.current) setLoading(false);
     }
@@ -263,7 +299,10 @@ export function useSearchBar({
     if (!mounted) return;
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => runSearch(query), SEARCH_DELAY);
+
+    debounceRef.current = setTimeout(() => {
+      runSearch(query);
+    }, SEARCH_DELAY);
 
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -273,11 +312,10 @@ export function useSearchBar({
   /* ---------- TRENDING ---------- */
   useEffect(() => {
     if (!mounted) return;
-
     if (recent.length === 0 && trending.length === 0) {
       fetchTrendingClean().then(setTrending);
     }
-  }, [recent.length, mounted, trending.length]);
+  }, [recent.length, trending.length, mounted]);
 
   /* ---------- RECENT ---------- */
   const saveRecent = useCallback((term: string) => {
@@ -310,16 +348,14 @@ export function useSearchBar({
   /* ---------- SELECT ---------- */
   const handleSelect = useCallback(
     async (item: Movie) => {
+      saveRecent(item.title || item.name || "");
+      setFocused(false);
+
       const full = await fetchDetails(item.id, item.media_type);
       if (!full) return;
 
       if (item.media_type === "person") onSelectPerson?.(full);
       else onSelectMovie(full);
-
-      saveRecent(item.title || item.name || "");
-      setQuery("");
-      setResults([]);
-      setFocused(false);
     },
     [onSelectMovie, onSelectPerson, saveRecent],
   );
@@ -335,7 +371,8 @@ export function useSearchBar({
 
   const startVoice = useCallback(() => {
     const RecognitionCtor =
-      window.SpeechRecognition || window.webkitSpeechRecognition;
+      (window as any).SpeechRecognition ||
+      (window as any).webkitSpeechRecognition;
 
     if (!RecognitionCtor) {
       playSound(Snd.SOUNDS.CAUTION);
@@ -354,7 +391,7 @@ export function useSearchBar({
       rec.interimResults = false;
       rec.maxAlternatives = 1;
 
-      rec.onresult = (e) => {
+      rec.onresult = (e: SpeechRecognitionEvent) => {
         const text = e.results?.[0]?.[0]?.transcript?.trim?.() ?? "";
         if (!text) return;
 
@@ -405,7 +442,7 @@ export function useSearchBar({
     };
   }, []);
 
-  /* ---------- UI FLAGS ---------- */
+  /* ---------- FLAGS ---------- */
   const showRecent = useMemo(
     () => focused && !query && recent.length > 0 && !listening,
     [focused, query, recent.length, listening],
@@ -438,8 +475,9 @@ export function useSearchBar({
   );
 
   const onBlur = useCallback(() => {
+    if (isModalOpen) return;
     setTimeout(() => setFocused(false), 150);
-  }, []);
+  }, [isModalOpen]);
 
   const onFocus = useCallback(() => {
     setFocused(true);

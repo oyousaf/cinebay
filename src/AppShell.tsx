@@ -23,6 +23,7 @@ export default function AppShell() {
     useModalManager();
 
   const isStandalone = useMemo(() => {
+    if (typeof window === "undefined") return false;
     return (
       window.matchMedia("(display-mode: standalone)").matches ||
       (window.navigator as any).standalone === true
@@ -42,10 +43,11 @@ export default function AppShell() {
       case "search":
         return (
           <div className="px-4 pt-24 flex justify-center">
-              <SearchBar
-                onSelectMovie={openContent}
-                onSelectPerson={openContent}
-              />
+            <SearchBar
+              onSelectMovie={openContent}
+              onSelectPerson={openContent}
+              isModalOpen={Boolean(activeModal)}
+            />
           </div>
         );
       default:
