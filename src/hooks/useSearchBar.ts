@@ -348,8 +348,8 @@ export function useSearchBar({
   /* ---------- SELECT ---------- */
   const handleSelect = useCallback(
     async (item: Movie) => {
-      setFocused(false);
       saveRecent(item.title || item.name || "");
+      setFocused(false);
 
       const full = await fetchDetails(item.id, item.media_type);
       if (!full) return;
@@ -398,7 +398,6 @@ export function useSearchBar({
         if (!text) return;
 
         setQuery(text);
-        runSearch(text);
         inputRef.current?.focus();
       };
 
@@ -477,8 +476,7 @@ export function useSearchBar({
   );
 
   const onBlur = useCallback(() => {
-    if (isModalOpen) return;
-    setTimeout(() => setFocused(false), 150);
+    if (!isModalOpen) setFocused(false);
   }, [isModalOpen]);
 
   const onFocus = useCallback(() => {
