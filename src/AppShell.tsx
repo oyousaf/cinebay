@@ -45,49 +45,48 @@ export default function AppShell() {
      History Sync
   ---------------------------------- */
   const historyReadyRef = useRef(false);
+  const lastStateRef = useRef<{ tab: string; modal: any } | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
 
+    const nextState = { tab: activeTab, modal: activeModal };
+
     if (!historyReadyRef.current) {
-      window.history.replaceState({ tab: activeTab, modal: activeModal }, "");
+      window.history.replaceState(nextState, "");
       historyReadyRef.current = true;
+      lastStateRef.current = nextState;
       return;
     }
 
-    // Push new state whenever navigation changes
-    window.history.pushState({ tab: activeTab, modal: activeModal }, "");
+    // Prevent duplicate pushes
+    if (
+      lastStateRef.current?.tab === nextState.tab &&
+      lastStateRef.current?.modal === nextState.modal
+    ) {
+      return;
+    }
+
+    window.history.pushState(nextState, "");
+    lastStateRef.current = nextState;
   }, [activeTab, activeModal]);
 
   /* ----------------------------------
      Back Manager
   ---------------------------------- */
-  const stateRef = useRef({
-    activeTab,
-    isModalOpen,
-  });
-
-  useEffect(() => {
-    stateRef.current = {
-      activeTab,
-      isModalOpen,
-    };
-  }, [activeTab, isModalOpen]);
-
   useEffect(() => {
     if (typeof window === "undefined") return;
 
     const handlePopState = (e: PopStateEvent) => {
-      const { activeTab, isModalOpen } = stateRef.current;
       const state = e.state as { tab?: string; modal?: string } | null;
 
-      /* Exit modal open → just close it */
-      if (isModalOpen && state?.modal !== "exit") {
+      /* Close modal first */
+      if (isModalOpen && state?.modal !== activeModal) {
         close();
         return;
       }
 
-      /* Restore modal from history */
+      /* Restore exit modal */
       if (state?.modal === "exit") {
         openExit();
         return;
@@ -99,7 +98,7 @@ export default function AppShell() {
         return;
       }
 
-      /* No history left → behave like native app */
+      /* No more history → native app behaviour */
       if (activeTab !== "movies") {
         setActiveTab("movies");
         return;
@@ -110,7 +109,7 @@ export default function AppShell() {
 
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
-  }, [setActiveTab, openExit, close]);
+  }, [activeTab, activeModal, isModalOpen, setActiveTab, openExit, close]);
 
   /* ----------------------------------
      Escape key (desktop behaviour)
@@ -123,10 +122,9 @@ export default function AppShell() {
 
       if (activeTab !== "movies") {
         setActiveTab("movies");
-        return;
+      } else {
+        openExit();
       }
-
-      openExit();
     };
 
     window.addEventListener("keydown", handleKey);
