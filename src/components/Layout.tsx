@@ -34,16 +34,19 @@ const Layout: React.FC<LayoutProps> = ({ children, isModalOpen }) => {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   /* ---------------------------------------
-     TAB CHANGE HANDLER (single source)
+     TAB CHANGE HANDLER
   --------------------------------------- */
   const handleTabChange = useCallback(
     (tab: Tab) => {
       if (tab === activeTab) return;
 
-      // Show loader
-      if (timerRef.current) clearTimeout(timerRef.current);
-      setIsLoadingTab(true);
+      // Clear any existing timer (prevents stacking)
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
 
+      setIsLoadingTab(true);
       restoreFocusForTab(tab);
 
       timerRef.current = setTimeout(() => {
@@ -62,17 +65,30 @@ const Layout: React.FC<LayoutProps> = ({ children, isModalOpen }) => {
     hasMountedRef.current = true;
 
     setIsLoadingTab(true);
+
     timerRef.current = setTimeout(() => {
       setIsLoadingTab(false);
       timerRef.current = null;
     }, LOAD_DURATION);
+
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+    };
   }, []);
 
   /* ---------------------------------------
-     BODY SCROLL LOCK (modal)
+     BODY SCROLL LOCK
   --------------------------------------- */
   useEffect(() => {
-    document.body.style.overflow = isModalOpen ? "hidden" : "";
+    if (isModalOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+
     return () => {
       document.body.style.overflow = "";
     };
@@ -83,7 +99,7 @@ const Layout: React.FC<LayoutProps> = ({ children, isModalOpen }) => {
   --------------------------------------- */
   return (
     <div className="w-full h-full flex flex-col overflow-hidden">
-      {/* Loader */}
+      {/* Top loader */}
       <AnimatePresence>
         {isLoadingTab && (
           <motion.div
