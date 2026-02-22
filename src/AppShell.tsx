@@ -66,7 +66,7 @@ export default function AppShell() {
       default:
         return null;
     }
-  }, [activeTab, openContent, isModalOpen]);
+  }, [activeTab, openContent]);
 
   return (
     <Layout isModalOpen={isModalOpen}>
