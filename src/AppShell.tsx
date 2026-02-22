@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Toaster, toast } from "sonner";
 
@@ -17,27 +17,110 @@ import { useModalManager } from "@/context/ModalContext";
 import { useNavigation } from "@/context/NavigationContext";
 
 export default function AppShell() {
-  const { activeTab } = useNavigation();
-  const { activeModal, selectedItem, openContent, close, goBackContent } =
-    useModalManager();
+  const { activeTab, setActiveTab } = useNavigation();
 
-  /* ---------- Modal flag ---------- */
+  const {
+    activeModal,
+    selectedItem,
+    openContent,
+    openExit,
+    close,
+    goBackContent,
+  } = useModalManager();
+
   const isModalOpen = Boolean(activeModal);
 
-  /* ---------- Standalone detection ---------- */
-  const [isStandalone, setIsStandalone] = useState(false);
+  /* ----------------------------------
+     Standalone detection (stable)
+  ---------------------------------- */
+  const [isStandalone] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return (
+      window.matchMedia("(display-mode: standalone)").matches ||
+      (window.navigator as any).standalone === true
+    );
+  });
+
+  /* ----------------------------------
+     History Sync
+  ---------------------------------- */
+  const historyReadyRef = useRef(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const standalone =
-      window.matchMedia("(display-mode: standalone)").matches ||
-      (window.navigator as any).standalone === true;
+    if (!historyReadyRef.current) {
+      window.history.replaceState({ tab: activeTab, modal: activeModal }, "");
+      historyReadyRef.current = true;
+      return;
+    }
 
-    setIsStandalone(standalone);
-  }, []);
+    // Push new state whenever navigation changes
+    window.history.pushState({ tab: activeTab, modal: activeModal }, "");
+  }, [activeTab, activeModal]);
 
-  /* ---------- Memoised tab content ---------- */
+  /* ----------------------------------
+     Back Manager
+  ---------------------------------- */
+  const stateRef = useRef({
+    activeTab,
+    isModalOpen,
+  });
+
+  useEffect(() => {
+    stateRef.current = {
+      activeTab,
+      isModalOpen,
+    };
+  }, [activeTab, isModalOpen]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handlePopState = () => {
+      const { activeTab, isModalOpen } = stateRef.current;
+
+      if (isModalOpen) {
+        close();
+        return;
+      }
+
+      if (activeTab !== "movies") {
+        setActiveTab("movies");
+        return;
+      }
+
+      openExit();
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [setActiveTab, openExit, close]);
+
+  /* ----------------------------------
+     Escape key (desktop behaviour)
+  ---------------------------------- */
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+
+      if (isModalOpen) return;
+
+      if (activeTab !== "movies") {
+        setActiveTab("movies");
+        return;
+      }
+
+      openExit();
+    };
+
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [activeTab, isModalOpen, setActiveTab, openExit]);
+
+  /* ----------------------------------
+     Memoised tab content
+  ---------------------------------- */
   const content = useMemo(() => {
     switch (activeTab) {
       case "movies":
@@ -66,8 +149,11 @@ export default function AppShell() {
       default:
         return null;
     }
-  }, [activeTab, openContent]);
+  }, [activeTab, openContent, isModalOpen]);
 
+  /* ----------------------------------
+     Render
+  ---------------------------------- */
   return (
     <Layout isModalOpen={isModalOpen}>
       <Toaster richColors position="bottom-center" theme="dark" />
@@ -85,7 +171,7 @@ export default function AppShell() {
         </motion.div>
       </AnimatePresence>
 
-      {/* ---------- Content Modal ---------- */}
+      {/* Content Modal */}
       {activeModal === "content" && selectedItem && (
         <Modal
           movie={selectedItem}
@@ -95,7 +181,7 @@ export default function AppShell() {
         />
       )}
 
-      {/* ---------- Exit Modal ---------- */}
+      {/* Exit Modal */}
       {activeModal === "exit" && (
         <ExitConfirmModal
           open
