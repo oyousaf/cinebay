@@ -4,11 +4,7 @@ import dotenv from "dotenv";
 import cors from "cors";
 
 /*
-  Load environment files properly.
-
-  Priority:
-  1. .env.local (dev override)
-  2. .env (production default)
+  Environment variables
 */
 dotenv.config({ path: ".env.local" });
 dotenv.config();
