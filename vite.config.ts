@@ -14,6 +14,7 @@ export default defineConfig(() => {
       tailwindcss(),
       react(),
       VitePWA({
+        disable: isAndroid,
         registerType: "autoUpdate",
 
         includeAssets: [
@@ -43,11 +44,13 @@ export default defineConfig(() => {
           ],
         },
 
-        workbox: {
-          skipWaiting: true,
-          clientsClaim: true,
-          navigateFallback: "/index.html",
-        },
+        workbox: isAndroid
+          ? undefined
+          : {
+              skipWaiting: true,
+              clientsClaim: true,
+              navigateFallback: "/index.html",
+            },
       }),
     ],
 
