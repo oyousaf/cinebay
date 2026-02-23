@@ -5,9 +5,13 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import AppShell from "@/AppShell";
 import WatchPage from "@/routes/WatchPage";
 
+const isAndroidWrapper =
+  typeof window !== "undefined" &&
+  window.location.hostname === "appassets.androidplatform.net";
+
 export default function App() {
   return (
-    <BrowserRouter basename="/assets/">
+    <BrowserRouter basename={isAndroidWrapper ? "/assets/" : "/"}>
       <Routes>
         <Route path="/" element={<AppShell />} />
 
