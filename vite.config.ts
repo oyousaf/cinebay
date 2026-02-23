@@ -28,7 +28,7 @@ export default defineConfig({
           "CineBay — your personal vault for great films, fresh shows, and cult classics.",
         theme_color: "#80FFCC",
         background_color: "#80FFCC",
-        start_url: "/",
+        start_url: "index.html",
         display: "fullscreen",
         orientation: "any",
         lang: "en-GB",
@@ -44,7 +44,7 @@ export default defineConfig({
       workbox: {
         skipWaiting: true,
         clientsClaim: true,
-        navigateFallback: "/",
+        navigateFallback: "index.html",
 
         /* ⛔ Excluded from precache */
         globIgnores: [

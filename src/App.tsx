@@ -7,7 +7,7 @@ import WatchPage from "@/routes/WatchPage";
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/assets/">
       <Routes>
         <Route path="/" element={<AppShell />} />
 
