@@ -1,16 +1,18 @@
-"use client";
-
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import PlayerModal from "@/components/PlayerModal";
 import type { PlaybackIntent } from "@/lib/embed/buildEmbedUrl";
+
+/* ---------------------------------- HELPERS ---------------------------------- */
 
 function getIntentKey(i: PlaybackIntent) {
   return i.mediaType === "tv"
     ? `${i.tmdbId}-s${i.season ?? 1}-e${i.episode ?? 1}`
     : `${i.tmdbId}-movie`;
 }
+
+/* ---------------------------------- COMPONENT ---------------------------------- */
 
 export default function WatchPage() {
   const navigate = useNavigate();
@@ -19,15 +21,16 @@ export default function WatchPage() {
 
   const [visible, setVisible] = useState(true);
 
-  /* Lock body */
+  /* ---------------------------------- BODY LOCK ---------------------------------- */
   useEffect(() => {
+    const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
-      document.body.style.overflow = "";
+      document.body.style.overflow = prev;
     };
   }, []);
 
-  /* Build intent */
+  /* ---------------------------------- INTENT BUILD ---------------------------------- */
   const intent = useMemo<PlaybackIntent | null>(() => {
     const tmdbId = Number(params.tmdbId);
     if (!Number.isFinite(tmdbId) || tmdbId <= 0) return null;
@@ -47,33 +50,49 @@ export default function WatchPage() {
     return { mediaType: "movie", tmdbId };
   }, [params.tmdbId, params.season, params.episode]);
 
+  /* If params invalid, return home safely */
+  useEffect(() => {
+    if (intent === null) {
+      navigate("/", { replace: true });
+    }
+  }, [intent, navigate]);
+
   if (!intent) return null;
 
   const key = getIntentKey(intent);
 
-  /* ---------- CLOSE STRATEGY ---------- */
+  /* ---------------------------------- CLOSE STRATEGY ---------------------------------- */
 
-  const handleClose = () => {
-    // Start exit animation
+  const handleClose = useCallback(() => {
+    // Trigger exit animation
     setVisible(false);
 
-    // Wait for AnimatePresence exit
     setTimeout(() => {
       const state = location.state as { from?: string } | null;
 
+      // 1) Best case: explicit origin
       if (state?.from) {
         navigate(state.from, { replace: true });
         return;
       }
 
-      if (window.history.length > 1) {
+      // 2) React Router history index
+      const historyState = window.history.state as { idx?: number } | null;
+      if (
+        historyState &&
+        typeof historyState.idx === "number" &&
+        historyState.idx > 0
+      ) {
         navigate(-1);
         return;
       }
 
+      // 3) Fallback
       navigate("/", { replace: true });
     }, 220);
-  };
+  }, [navigate, location.state]);
+
+  /* ---------------------------------- RENDER ---------------------------------- */
 
   return (
     <AnimatePresence mode="wait">
