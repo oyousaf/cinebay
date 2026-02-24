@@ -27,11 +27,11 @@ const EMBED_THEME = {
 -------------------------------------------------- */
 export const EMBED_PROVIDERS = [
   { name: "vidlink", domain: "vidlink.pro", supportsEpisodes: true },
-  { name: "vidsrc", domain: "vidsrc.to", supportsEpisodes: true },
   { name: "vidsrc", domain: "vsembed.ru", supportsEpisodes: true },
   { name: "vidsrc", domain: "vsembed.su", supportsEpisodes: true },
   { name: "vidsrc", domain: "vidsrcme.ru", supportsEpisodes: true },
   { name: "vidsrc", domain: "vidsrcme.su", supportsEpisodes: true },
+  { name: "vidsrc", domain: "vidsrc.to", supportsEpisodes: true },
   { name: "vidsrc", domain: "vidsrc.cc", supportsEpisodes: true },
 ];
 
