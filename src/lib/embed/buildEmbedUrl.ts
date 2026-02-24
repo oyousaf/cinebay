@@ -13,8 +13,14 @@ export interface PlaybackIntent {
 /* -------------------------------------------------
    PROVIDERS
 -------------------------------------------------- */
-export const EMBED_PROVIDERS = [
-  { name: "vidlink", domain: "vidlink.pro", supportsEpisodes: true },
+export const VIDLINK_PROVIDER = {
+  name: "vidlink",
+  domain: "vidlink.pro",
+  supportsEpisodes: true,
+} as const;
+
+/* Priority order = fallback order */
+export const VIDSRC_PROVIDERS = [
   { name: "vidsrc", domain: "vsembed.ru", supportsEpisodes: true },
   { name: "vidsrc", domain: "vsembed.su", supportsEpisodes: true },
   { name: "vidsrc", domain: "vidsrcme.ru", supportsEpisodes: true },
@@ -23,7 +29,10 @@ export const EMBED_PROVIDERS = [
   { name: "vidsrc", domain: "vidsrc.cc", supportsEpisodes: true },
 ] as const;
 
-type Provider = (typeof EMBED_PROVIDERS)[number];
+type VidSrcProvider = (typeof VIDSRC_PROVIDERS)[number];
+
+/* First provider = priority fallback */
+const PRIMARY_VIDSRC = VIDSRC_PROVIDERS[0];
 
 /* -------------------------------------------------
    THEME
@@ -53,22 +62,13 @@ function buildQuery(params: Record<string, QueryValue>) {
 }
 
 function tvDefaults(intent: PlaybackIntent) {
-  const season = intent.season ?? 1;
-  const episode = intent.episode ?? 1;
-  return { season, episode };
+  return {
+    season: intent.season ?? 1,
+    episode: intent.episode ?? 1,
+  };
 }
 
-/** Choose a stable fallback VidSrc provider */
-function pickFallbackVidSrcProvider(): Provider | null {
-  const preferred = EMBED_PROVIDERS.find(
-    (p) => p.name === "vidsrc" && p.domain === "vidsrc.to",
-  );
-  if (preferred) return preferred;
-
-  return EMBED_PROVIDERS.find((p) => p.name === "vidsrc") ?? null;
-}
-
-function buildVidSrcUrl(provider: Provider, intent: PlaybackIntent): string {
+function buildVidSrcUrl(provider: VidSrcProvider, intent: PlaybackIntent) {
   const { mediaType, tmdbId } = intent;
 
   if (mediaType === "tv") {
@@ -88,29 +88,24 @@ const THEME_KEY = Object.entries(VIDLINK_THEME)
 /* -------------------------------------------------
    PUBLIC API
 -------------------------------------------------- */
-export function buildEmbedUrl(provider: Provider, intent: PlaybackIntent): string {
+export function buildEmbedUrl(intent: PlaybackIntent): string {
   const { mediaType, tmdbId } = intent;
 
+  /* ---------- Build fallback first ---------- */
+  const fallbackUrl = buildVidSrcUrl(PRIMARY_VIDSRC, intent);
+
+  const query = buildQuery({
+    ...VIDLINK_THEME,
+    fallback_url: fallbackUrl,
+  });
+
   /* ---------- VIDLINK ---------- */
-  if (provider.name === "vidlink") {
-    const fallbackProvider = pickFallbackVidSrcProvider();
-    const fallbackUrl = fallbackProvider ? buildVidSrcUrl(fallbackProvider, intent) : undefined;
-
-    const query = buildQuery({
-      ...VIDLINK_THEME,
-      fallback_url: fallbackUrl,
-    });
-
-    if (mediaType === "tv") {
-      const { season, episode } = tvDefaults(intent);
-      return `https://vidlink.pro/tv/${tmdbId}/${season}/${episode}?${query}`;
-    }
-
-    return `https://vidlink.pro/movie/${tmdbId}?${query}`;
+  if (mediaType === "tv") {
+    const { season, episode } = tvDefaults(intent);
+    return `https://${VIDLINK_PROVIDER.domain}/tv/${tmdbId}/${season}/${episode}?${query}`;
   }
 
-  /* ---------- VIDSRC ---------- */
-  return buildVidSrcUrl(provider, intent);
+  return `https://${VIDLINK_PROVIDER.domain}/movie/${tmdbId}?${query}`;
 }
 
 /* -------------------------------------------------
@@ -122,10 +117,12 @@ export function buildEmbedCacheKey(intent: PlaybackIntent) {
       ? `s${intent.season ?? 1}e${intent.episode ?? 1}`
       : "movie";
 
-  const fallbackProvider = pickFallbackVidSrcProvider();
-  const fallbackKey = fallbackProvider ? `fallback:${fallbackProvider.domain}` : "fallback:none";
-
-  return ["embed", intent.tmdbId, intent.mediaType, epKey, `theme:${THEME_KEY}`, fallbackKey].join(
-    ":",
-  );
+  return [
+    "embed",
+    intent.tmdbId,
+    intent.mediaType,
+    epKey,
+    `theme:${THEME_KEY}`,
+    `fallback:${PRIMARY_VIDSRC.domain}`,
+  ].join(":");
 }
