@@ -6,6 +6,8 @@ import { AnimatePresence } from "framer-motion";
 import PlayerModal from "@/components/PlayerModal";
 import type { PlaybackIntent } from "@/lib/embed/buildEmbedUrl";
 
+/* ---------------------------------- HELPERS ---------------------------------- */
+
 function getIntentKey(i: PlaybackIntent) {
   return i.mediaType === "tv"
     ? `${i.tmdbId}-s${i.season ?? 1}-e${i.episode ?? 1}`
@@ -17,44 +19,90 @@ export default function WatchPage() {
   const params = useParams();
   const location = useLocation();
 
-  /* Lock body */
+  /* ---------------------------------- BODY LOCK ---------------------------------- */
+
   useEffect(() => {
-    document.body.classList.add("player-open");
-    return () => document.body.classList.remove("player-open");
+    const body = document.body;
+    body.classList.add("player-open");
+    body.style.overflow = "hidden";
+
+    return () => {
+      body.classList.remove("player-open");
+      body.style.overflow = "";
+    };
   }, []);
 
-  /* Build intent */
+  /* ---------------------------------- BUILD INTENT ---------------------------------- */
+
   const intent = useMemo<PlaybackIntent | null>(() => {
     const tmdbId = Number(params.tmdbId);
-    if (!Number.isFinite(tmdbId)) return null;
+    if (!Number.isFinite(tmdbId) || tmdbId <= 0) return null;
 
-    const season = params.season ? Number(params.season) : undefined;
-    const episode = params.episode ? Number(params.episode) : undefined;
+    const seasonParam = params.season;
+    const episodeParam = params.episode;
 
-    if (Number.isFinite(season) && Number.isFinite(episode)) {
-      return { mediaType: "tv", tmdbId, season, episode };
+    const season = seasonParam ? Number(seasonParam) : undefined;
+    const episode = episodeParam ? Number(episodeParam) : undefined;
+
+    if (
+      season !== undefined &&
+      episode !== undefined &&
+      Number.isFinite(season) &&
+      Number.isFinite(episode) &&
+      season > 0 &&
+      episode > 0
+    ) {
+      return {
+        mediaType: "tv",
+        tmdbId,
+        season,
+        episode,
+      };
     }
 
-    return { mediaType: "movie", tmdbId };
+    return {
+      mediaType: "movie",
+      tmdbId,
+    };
   }, [params.tmdbId, params.season, params.episode]);
+
+  /* Invalid route → go home */
+  useEffect(() => {
+    if (!intent) {
+      navigate("/", { replace: true });
+    }
+  }, [intent, navigate]);
 
   if (!intent) return null;
 
   const key = getIntentKey(intent);
 
-  /* ---------- CLOSE STRATEGY ---------- */
+  /* ---------------------------------- CLOSE STRATEGY ---------------------------------- */
+
   const handleClose = () => {
-    const from = (location.state as any)?.from;
-    navigate(from || "/", { replace: true });
+    const state = location.state as { from?: string } | null;
+
+    // If opened from another page
+    if (state?.from) {
+      navigate(state.from, { replace: true });
+      return;
+    }
+
+    // If user opened directly
+    if (window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+
+    // Fallback
+    navigate("/", { replace: true });
   };
 
+  /* ---------------------------------- RENDER ---------------------------------- */
+
   return (
-    <AnimatePresence mode="wait">
-      <PlayerModal
-        key={key}
-        intent={intent}
-        onClose={handleClose}
-      />
+    <AnimatePresence mode="wait" initial={false}>
+      <PlayerModal key={key} intent={intent} onClose={handleClose} />
     </AnimatePresence>
   );
 }
