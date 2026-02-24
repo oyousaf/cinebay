@@ -35,10 +35,7 @@ export interface BuildEmbedOptions {
    PROVIDER ORDER
 -------------------------------------------------- */
 
-export const PROVIDER_ORDER: ProviderType[] = [
-  "vidlink",
-  "superembed",
-];
+export const PROVIDER_ORDER: ProviderType[] = ["vidlink", "superembed"];
 
 const DEFAULT_THEME = "2dd4bf";
 
@@ -98,7 +95,6 @@ function buildVidFastUrl(intent: PlaybackIntent, o: BuildEmbedOptions) {
 /* -------------------------------------------------
    VIDLINK (primary)
 -------------------------------------------------- */
-
 function buildVidLinkUrl(intent: PlaybackIntent, o: BuildEmbedOptions) {
   const { mediaType, tmdbId } = intent;
 
@@ -131,20 +127,31 @@ function buildVidLinkUrl(intent: PlaybackIntent, o: BuildEmbedOptions) {
 }
 
 /* -------------------------------------------------
-   SUPEREMBED
+   SUPEREMBED (fallback)
 -------------------------------------------------- */
 
-function buildSuperEmbedUrl(intent: PlaybackIntent) {
+function buildSuperEmbedUrl(intent: PlaybackIntent, o: BuildEmbedOptions = {}) {
   const { mediaType, tmdbId } = intent;
+
+  const autoplay = o.autoplay === false ? 0 : 1;
+  const theme = o.theme ?? DEFAULT_THEME;
 
   const query = buildQuery({
     tmdb: 1,
-    autoplay: 1,
-    color: DEFAULT_THEME,
+
+    // playback
+    autoplay,
+
+    // resume support (works on some mirrors)
+    t: o.startAt && o.startAt > 0 ? o.startAt : undefined,
+
+    // UI
+    color: theme,
   });
 
   if (mediaType === "tv") {
     const { season, episode } = tvDefaults(intent);
+
     return `https://multiembed.mov/?video_id=${tmdbId}&s=${season}&e=${episode}&${query}`;
   }
 
@@ -154,7 +161,6 @@ function buildSuperEmbedUrl(intent: PlaybackIntent) {
 /* -------------------------------------------------
    PUBLIC API
 -------------------------------------------------- */
-
 export function buildEmbedUrl(
   intent: PlaybackIntent,
   options: BuildEmbedOptions = {},

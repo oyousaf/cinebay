@@ -1,12 +1,10 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import PlayerModal from "@/components/PlayerModal";
 import type { PlaybackIntent } from "@/lib/embed/buildEmbedUrl";
-
-/* ---------------------------------- HELPERS ---------------------------------- */
 
 function getIntentKey(i: PlaybackIntent) {
   return i.mediaType === "tv"
@@ -19,90 +17,69 @@ export default function WatchPage() {
   const params = useParams();
   const location = useLocation();
 
-  /* ---------------------------------- BODY LOCK ---------------------------------- */
+  const [visible, setVisible] = useState(true);
 
+  /* Lock body */
   useEffect(() => {
-    const body = document.body;
-    body.classList.add("player-open");
-    body.style.overflow = "hidden";
-
+    document.body.style.overflow = "hidden";
     return () => {
-      body.classList.remove("player-open");
-      body.style.overflow = "";
+      document.body.style.overflow = "";
     };
   }, []);
 
-  /* ---------------------------------- BUILD INTENT ---------------------------------- */
-
+  /* Build intent */
   const intent = useMemo<PlaybackIntent | null>(() => {
     const tmdbId = Number(params.tmdbId);
     if (!Number.isFinite(tmdbId) || tmdbId <= 0) return null;
 
-    const seasonParam = params.season;
-    const episodeParam = params.episode;
-
-    const season = seasonParam ? Number(seasonParam) : undefined;
-    const episode = episodeParam ? Number(episodeParam) : undefined;
+    const season = params.season ? Number(params.season) : undefined;
+    const episode = params.episode ? Number(params.episode) : undefined;
 
     if (
       season !== undefined &&
       episode !== undefined &&
       Number.isFinite(season) &&
-      Number.isFinite(episode) &&
-      season > 0 &&
-      episode > 0
+      Number.isFinite(episode)
     ) {
-      return {
-        mediaType: "tv",
-        tmdbId,
-        season,
-        episode,
-      };
+      return { mediaType: "tv", tmdbId, season, episode };
     }
 
-    return {
-      mediaType: "movie",
-      tmdbId,
-    };
+    return { mediaType: "movie", tmdbId };
   }, [params.tmdbId, params.season, params.episode]);
-
-  /* Invalid route → go home */
-  useEffect(() => {
-    if (!intent) {
-      navigate("/", { replace: true });
-    }
-  }, [intent, navigate]);
 
   if (!intent) return null;
 
   const key = getIntentKey(intent);
 
-  /* ---------------------------------- CLOSE STRATEGY ---------------------------------- */
+  /* ---------- CLOSE STRATEGY ---------- */
 
   const handleClose = () => {
-    const state = location.state as { from?: string } | null;
+    // Start exit animation
+    setVisible(false);
 
-    // If opened from another page
-    if (state?.from) {
-      navigate(state.from, { replace: true });
-      return;
-    }
+    // Wait for AnimatePresence exit
+    setTimeout(() => {
+      const state = location.state as { from?: string } | null;
 
-    // If user opened directly
-    if (window.history.length > 1) {
-      navigate(-1);
-      return;
-    }
+      if (state?.from) {
+        navigate(state.from, { replace: true });
+        return;
+      }
 
-    // Fallback
-    navigate("/", { replace: true });
+      if (window.history.length > 1) {
+        navigate(-1);
+        return;
+      }
+
+      navigate("/", { replace: true });
+    }, 220);
   };
 
-  /* ---------------------------------- RENDER ---------------------------------- */
-
   return (
-    <AnimatePresence mode="wait" initial={false}>
-      <PlayerModal key={key} intent={intent} onClose={handleClose} />
+    <AnimatePresence mode="wait">
+      {visible && (
+        <PlayerModal key={key} intent={intent} onClose={handleClose} />
+      )}
     </AnimatePresence>
   );
 }
