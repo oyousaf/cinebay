@@ -54,14 +54,6 @@ export default function WatchPage() {
         key={key}
         intent={intent}
         onClose={handleClose}
-        onPlayNext={(next) => {
-          if (next.mediaType === "tv") {
-            navigate(
-              `/watch/tv/${next.tmdbId}/${next.season}/${next.episode}`,
-              { replace: true },
-            );
-          }
-        }}
       />
     </AnimatePresence>
   );

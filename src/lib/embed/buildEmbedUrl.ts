@@ -1,6 +1,3 @@
-/* -------------------------------------------------
-   TYPES
--------------------------------------------------- */
 export type MediaType = "movie" | "tv";
 
 export interface PlaybackIntent {
@@ -10,54 +7,38 @@ export interface PlaybackIntent {
   episode?: number;
 }
 
-/* -------------------------------------------------
-   PROVIDERS
--------------------------------------------------- */
-export const VIDLINK_PROVIDER = {
-  name: "vidlink",
-  domain: "vidlink.pro",
-  supportsEpisodes: true,
-} as const;
+export type ProviderType = "vidlink" | "vidfast" | "superembed";
 
-/* Priority order = fallback order */
-export const VIDSRC_PROVIDERS = [
-  { name: "vidsrc", domain: "vsembed.ru", supportsEpisodes: true },
-  { name: "vidsrc", domain: "vsembed.su", supportsEpisodes: true },
-  { name: "vidsrc", domain: "vidsrcme.ru", supportsEpisodes: true },
-  { name: "vidsrc", domain: "vidsrcme.su", supportsEpisodes: true },
-  { name: "vidsrc", domain: "vidsrc.to", supportsEpisodes: true },
-  { name: "vidsrc", domain: "vidsrc.cc", supportsEpisodes: true },
-] as const;
+export interface BuildEmbedOptions {
+  provider?: ProviderType;
+  startAt?: number;
+  autoplay?: boolean;
+  theme?: string;
+  subtitles?: string;
+  title?: boolean;
+  poster?: boolean;
+  nextButton?: boolean;
+  autoNext?: boolean;
+  server?: string;
+  hideServer?: boolean;
+  fullscreenButton?: boolean;
+  chromecast?: boolean;
+}
 
-type VidSrcProvider = (typeof VIDSRC_PROVIDERS)[number];
+export const PROVIDER_ORDER: ProviderType[] = [
+  "vidlink",
+  "vidfast",
+  "superembed",
+];
 
-/* First provider = priority fallback */
-const PRIMARY_VIDSRC = VIDSRC_PROVIDERS[0];
+const DEFAULT_THEME = "2dd4bf";
 
-/* -------------------------------------------------
-   THEME
--------------------------------------------------- */
-const VIDLINK_THEME = {
-  primaryColor: "2dd4bf",
-  secondaryColor: "f59e0b",
-  iconColor: "ffffff",
-  title: true,
-  poster: true,
-  autoplay: true,
-  nextbutton: true,
-} as const;
-
-/* -------------------------------------------------
-   INTERNAL
--------------------------------------------------- */
 type QueryValue = string | number | boolean | null | undefined;
 
 function buildQuery(params: Record<string, QueryValue>) {
   const entries = Object.entries(params)
     .filter(([, v]) => v !== undefined && v !== null)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([k, v]) => [k, typeof v === "boolean" ? String(v) : String(v)]);
-
+    .map(([k, v]) => [k, String(v)]);
   return new URLSearchParams(entries).toString();
 }
 
@@ -68,61 +49,83 @@ function tvDefaults(intent: PlaybackIntent) {
   };
 }
 
-function buildVidSrcUrl(provider: VidSrcProvider, intent: PlaybackIntent) {
+/* VIDLINK */
+function buildVidLinkUrl(intent: PlaybackIntent, o: BuildEmbedOptions) {
   const { mediaType, tmdbId } = intent;
-
-  if (mediaType === "tv") {
-    const { season, episode } = tvDefaults(intent);
-    return `https://${provider.domain}/embed/tv/${tmdbId}/${season}/${episode}`;
-  }
-
-  return `https://${provider.domain}/embed/movie/${tmdbId}`;
-}
-
-/* Deterministic theme key */
-const THEME_KEY = Object.entries(VIDLINK_THEME)
-  .sort(([a], [b]) => a.localeCompare(b))
-  .map(([k, v]) => `${k}:${String(v)}`)
-  .join("|");
-
-/* -------------------------------------------------
-   PUBLIC API
--------------------------------------------------- */
-export function buildEmbedUrl(intent: PlaybackIntent): string {
-  const { mediaType, tmdbId } = intent;
-
-  /* ---------- Build fallback first ---------- */
-  const fallbackUrl = buildVidSrcUrl(PRIMARY_VIDSRC, intent);
 
   const query = buildQuery({
-    ...VIDLINK_THEME,
-    fallback_url: fallbackUrl,
+    primaryColor: o.theme ?? DEFAULT_THEME,
+    secondaryColor: "f59e0b",
+    iconColor: "ffffff",
+    title: o.title ?? true,
+    poster: o.poster ?? true,
+    autoplay: o.autoplay ?? true,
+    nextbutton: o.nextButton ?? mediaType === "tv",
+    startAt: o.startAt && o.startAt > 0 ? o.startAt : undefined,
   });
 
-  /* ---------- VIDLINK ---------- */
   if (mediaType === "tv") {
     const { season, episode } = tvDefaults(intent);
-    return `https://${VIDLINK_PROVIDER.domain}/tv/${tmdbId}/${season}/${episode}?${query}`;
+    return `https://vidlink.pro/tv/${tmdbId}/${season}/${episode}?${query}`;
   }
 
-  return `https://${VIDLINK_PROVIDER.domain}/movie/${tmdbId}?${query}`;
+  return `https://vidlink.pro/movie/${tmdbId}?${query}`;
 }
 
-/* -------------------------------------------------
-   CACHE KEY
--------------------------------------------------- */
-export function buildEmbedCacheKey(intent: PlaybackIntent) {
-  const epKey =
-    intent.mediaType === "tv"
-      ? `s${intent.season ?? 1}e${intent.episode ?? 1}`
-      : "movie";
+/* VIDFAST */
+function buildVidFastUrl(intent: PlaybackIntent, o: BuildEmbedOptions) {
+  const { mediaType, tmdbId } = intent;
 
-  return [
-    "embed",
-    intent.tmdbId,
-    intent.mediaType,
-    epKey,
-    `theme:${THEME_KEY}`,
-    `fallback:${PRIMARY_VIDSRC.domain}`,
-  ].join(":");
+  const query = buildQuery({
+    autoPlay: o.autoplay ?? true,
+    startAt: o.startAt && o.startAt > 0 ? o.startAt : undefined,
+    theme: o.theme ?? DEFAULT_THEME,
+    title: o.title,
+    poster: o.poster,
+    sub: o.subtitles,
+    nextButton: o.nextButton ?? mediaType === "tv",
+    autoNext: o.autoNext ?? mediaType === "tv",
+    server: o.server,
+    hideServer: o.hideServer,
+    fullscreenButton: o.fullscreenButton,
+    chromecast: o.chromecast,
+  });
+
+  if (mediaType === "tv") {
+    const { season, episode } = tvDefaults(intent);
+    return `https://vidfast.pro/tv/${tmdbId}/${season}/${episode}?${query}`;
+  }
+
+  return `https://vidfast.pro/movie/${tmdbId}?${query}`;
+}
+
+/* SUPEREMBED */
+function buildSuperEmbedUrl(intent: PlaybackIntent) {
+  const { mediaType, tmdbId } = intent;
+
+  const query = buildQuery({
+    tmdb: 1,
+    autoplay: 1,
+    color: DEFAULT_THEME,
+  });
+
+  if (mediaType === "tv") {
+    const { season, episode } = tvDefaults(intent);
+    return `https://multiembed.mov/?video_id=${tmdbId}&s=${season}&e=${episode}&${query}`;
+  }
+
+  return `https://multiembed.mov/?video_id=${tmdbId}&${query}`;
+}
+
+/* PUBLIC */
+export function buildEmbedUrl(
+  intent: PlaybackIntent,
+  options: BuildEmbedOptions = {},
+): string {
+  const provider = options.provider ?? "vidlink";
+
+  if (provider === "vidfast") return buildVidFastUrl(intent, options);
+  if (provider === "superembed") return buildSuperEmbedUrl(intent);
+
+  return buildVidLinkUrl(intent, options);
 }

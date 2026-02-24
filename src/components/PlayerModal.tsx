@@ -1,192 +1,183 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { X } from "lucide-react";
-import { FaPlay } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 
-import { buildEmbedUrl, type PlaybackIntent } from "@/lib/embed/buildEmbedUrl";
 import {
-  resolveNextEpisode,
-  type NextEpisodeResult,
-} from "@/lib/tv/resolveNextEpisode";
+  buildEmbedUrl,
+  PROVIDER_ORDER,
+  type PlaybackIntent,
+  type ProviderType,
+} from "@/lib/embed/buildEmbedUrl";
 import { useContinueWatching } from "@/hooks/useContinueWatching";
 
-interface PlayerModalProps {
-  intent: PlaybackIntent;
-  onClose: () => void;
-  onPlayNext: (intent: PlaybackIntent) => void;
-}
+/* ---------------------------------- CONFIG ---------------------------------- */
 
 const LOADER_MIN_MS = 900;
-const PROGRESS_TRIGGER = 0.95;
+const LOAD_TIMEOUT = 4000;
 const SAVE_INTERVAL = 10;
+const VIDLINK_ORIGIN = "https://vidlink.pro";
+const THEME = "2dd4bf";
 
-/* -------------------------------------------------
-   HELPERS
--------------------------------------------------- */
+/* ---------------------------------- HELPERS ---------------------------------- */
+
 function getIntentKey(i: PlaybackIntent) {
   return i.mediaType === "tv"
     ? `${i.tmdbId}-s${i.season ?? 1}-e${i.episode ?? 1}`
     : `${i.tmdbId}-movie`;
 }
 
-/* -------------------------------------------------
-   COMPONENT
--------------------------------------------------- */
-export default function PlayerModal({
-  intent,
-  onClose,
-  onPlayNext,
-}: PlayerModalProps) {
+interface PlayerModalProps {
+  intent: PlaybackIntent;
+  onClose: () => void;
+}
+
+/* ---------------------------------- COMPONENT ---------------------------------- */
+
+export default function PlayerModal({ intent, onClose }: PlayerModalProps) {
   const [showLoader, setShowLoader] = useState(true);
-  const [error, setError] = useState(false);
-  const [nextOffer, setNextOffer] = useState<NextEpisodeResult | null>(null);
-  const [frameKey, setFrameKey] = useState(0);
+  const [providerIndex, setProviderIndex] = useState(0);
 
-  const iframeRef = useRef<HTMLIFrameElement | null>(null);
-  const intentRef = useRef(intent);
-
-  const offeredRef = useRef(false);
-  const cooldownRef = useRef(false);
-  const inFlightRef = useRef(false);
+  const loadTimerRef = useRef<number | null>(null);
   const lastSavedRef = useRef(0);
 
-  const { setTVProgress, clearTVProgress } = useContinueWatching();
+  const { getTVProgress, setTVProgress, clearTVProgress } =
+    useContinueWatching();
 
-  /* Stable identity for this playback */
+  /* ---------------------------------- IDENTITY ---------------------------------- */
+
   const intentKey = useMemo(
     () => getIntentKey(intent),
     [intent.mediaType, intent.tmdbId, intent.season, intent.episode],
   );
 
-  /* Build URL only when content actually changes */
-  const embedUrl = useMemo(() => buildEmbedUrl(intent), [intentKey]);
+  /* ---------------------------------- RESUME ---------------------------------- */
 
-  useEffect(() => {
-    intentRef.current = intent;
-  }, [intent]);
+  const startAt = useMemo(() => {
+    if (intent.mediaType !== "tv") return 0;
+    if (!intent.season || !intent.episode) return 0;
 
-  /* Reset when episode/movie changes */
+    const progress = getTVProgress(intent.tmdbId);
+    if (!progress) return 0;
+
+    if (
+      progress.season === intent.season &&
+      progress.episode === intent.episode
+    ) {
+      return progress.position;
+    }
+
+    return 0;
+  }, [intentKey, getTVProgress]);
+
+  /* ---------------------------------- PROVIDER ---------------------------------- */
+
+  const provider = PROVIDER_ORDER[providerIndex] as ProviderType;
+
+  const embedUrl = useMemo(
+    () =>
+      buildEmbedUrl(intent, {
+        provider,
+        startAt,
+        autoplay: true,
+        theme: THEME,
+        subtitles: "en",
+        nextButton: intent.mediaType === "tv",
+        autoNext: intent.mediaType === "tv",
+      }),
+    [intentKey, providerIndex, startAt],
+  );
+
+  /* Reset when content changes */
   useEffect(() => {
-    setError(false);
-    setNextOffer(null);
+    setProviderIndex(0);
     setShowLoader(true);
-
-    offeredRef.current = false;
-    cooldownRef.current = false;
-    inFlightRef.current = false;
     lastSavedRef.current = 0;
-
-    const t = window.setTimeout(() => setShowLoader(false), LOADER_MIN_MS);
-    return () => clearTimeout(t);
   }, [intentKey]);
 
-  /* -------------------------------------------------
-     PLAYER EVENT HANDLING
-  -------------------------------------------------- */
+  /* ---------------------------------- FALLBACK ---------------------------------- */
+
+  const handleFallback = useCallback(() => {
+    setShowLoader(true);
+    setProviderIndex((i) => (i < PROVIDER_ORDER.length - 1 ? i + 1 : i));
+  }, []);
+
+  /* Timeout fallback */
+  useEffect(() => {
+    if (loadTimerRef.current) clearTimeout(loadTimerRef.current);
+
+    loadTimerRef.current = window.setTimeout(handleFallback, LOAD_TIMEOUT);
+
+    return () => {
+      if (loadTimerRef.current) clearTimeout(loadTimerRef.current);
+    };
+  }, [embedUrl, handleFallback]);
+
+  /* ---------------------------------- PROGRESS (VidLink only) ---------------------------------- */
+
   useEffect(() => {
     if (intent.mediaType !== "tv") return;
+    if (!intent.season || !intent.episode) return;
 
-    const armCooldown = () => {
-      cooldownRef.current = true;
-      setTimeout(() => {
-        cooldownRef.current = false;
-      }, 800);
-    };
-
-    const triggerOffer = async () => {
-      if (offeredRef.current || cooldownRef.current || inFlightRef.current)
-        return;
-
-      const startSeason = intentRef.current.season;
-      const startEpisode = intentRef.current.episode;
-      if (!startSeason || !startEpisode) return;
-
-      armCooldown();
-      inFlightRef.current = true;
-
-      try {
-        const result = await resolveNextEpisode(intentRef.current);
-
-        if (
-          intentRef.current.season !== startSeason ||
-          intentRef.current.episode !== startEpisode
-        ) {
-          return;
-        }
-
-        if (!result || result.kind === "END") return;
-
-        offeredRef.current = true;
-        setNextOffer(result);
-      } finally {
-        inFlightRef.current = false;
-      }
-    };
+    const season = intent.season;
+    const episode = intent.episode;
+    const tmdbId = intent.tmdbId;
 
     const handleMessage = (event: MessageEvent) => {
+      if (event.origin !== VIDLINK_ORIGIN) return;
+
       const msg = event.data;
       if (!msg || typeof msg !== "object") return;
+
+      if ((msg as any).type === "MEDIA_DATA") {
+        const data = (msg as any).data;
+
+        if (data?.show_progress) {
+          const key = `s${season}e${episode}`;
+          const ep = data.show_progress[key];
+
+          if (ep?.progress?.watched) {
+            setTVProgress(
+              tmdbId,
+              season,
+              episode,
+              Math.floor(ep.progress.watched),
+            );
+          }
+        }
+        return;
+      }
+
       if ((msg as any).type !== "PLAYER_EVENT") return;
 
       const payload = (msg as any).data;
       if (!payload) return;
 
       const current = payload.currentTime;
-      const duration = payload.duration;
       const eventName = payload.event;
 
-      if (!current || !duration) return;
+      if (!current) return;
 
-      const i = intentRef.current;
-
-      /* Resume tracking */
       if (
         eventName === "timeupdate" &&
-        i.mediaType === "tv" &&
-        i.season &&
-        i.episode &&
         current - lastSavedRef.current >= SAVE_INTERVAL
       ) {
         lastSavedRef.current = current;
-        setTVProgress(i.tmdbId, i.season, i.episode, Math.floor(current));
-      }
-
-      /* Next episode detection */
-      const progress = current / duration;
-
-      if (eventName === "timeupdate" && progress >= PROGRESS_TRIGGER) {
-        triggerOffer();
+        setTVProgress(tmdbId, season, episode, Math.floor(current));
       }
 
       if (eventName === "ended") {
-        clearTVProgress(i.tmdbId);
-        triggerOffer();
+        clearTVProgress(tmdbId);
       }
     };
 
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [intent.mediaType, intentKey, setTVProgress, clearTVProgress]);
+  }, [intentKey, setTVProgress, clearTVProgress]);
 
-  /* -------------------------------------------------
-     NEXT EPISODE
-  -------------------------------------------------- */
-  const handlePlayNext = (next: PlaybackIntent) => {
-    offeredRef.current = false;
-    inFlightRef.current = false;
-    cooldownRef.current = false;
-    lastSavedRef.current = 0;
+  /* ---------------------------------- UI ---------------------------------- */
 
-    setNextOffer(null);
-    setFrameKey((k) => k + 1);
-    onPlayNext(next);
-  };
-
-  /* -------------------------------------------------
-     UI
-  -------------------------------------------------- */
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -194,73 +185,31 @@ export default function PlayerModal({
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 flex items-center justify-center bg-[hsl(var(--foreground)/0.35)] backdrop-blur-md px-3 sm:px-6"
     >
-      <motion.div
-        initial={{ scale: 0.97, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.98, opacity: 0 }}
-        className="relative w-full max-w-6xl aspect-video rounded-2xl overflow-hidden bg-[hsl(var(--background))] ring-2 ring-[hsl(var(--foreground))] shadow-[0_40px_120px_rgba(0,0,0,0.9)]"
-      >
-        {/* Loader */}
+      <motion.div className="relative w-full max-w-6xl aspect-video rounded-2xl overflow-hidden bg-[hsl(var(--background))] ring-2 ring-[hsl(var(--foreground))]">
         <AnimatePresence>
-          {showLoader && !error && (
-            <motion.div
-              initial={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 z-10 flex items-center justify-center bg-[hsl(var(--background))]"
-            >
+          {showLoader && (
+            <motion.div className="absolute inset-0 z-10 flex items-center justify-center bg-[hsl(var(--background))]">
               <div className="h-8 w-8 rounded-full border-2 border-[hsl(var(--foreground)/0.4)] border-t-[hsl(var(--foreground))] animate-spin" />
             </motion.div>
           )}
         </AnimatePresence>
 
         <iframe
-          ref={iframeRef}
-          key={`${intentKey}-${frameKey}`}
+          key={`${intentKey}-${providerIndex}`}
           src={embedUrl}
           className="w-full h-full border-none"
           allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
           referrerPolicy="no-referrer"
-          onError={() => setError(true)}
+          onLoad={() => {
+            if (loadTimerRef.current) clearTimeout(loadTimerRef.current);
+            setTimeout(() => setShowLoader(false), LOADER_MIN_MS);
+          }}
+          onError={handleFallback}
         />
-
-        {/* Next episode overlay */}
-        <AnimatePresence>
-          {nextOffer && nextOffer.kind !== "END" && (
-            <motion.div
-              initial={{ opacity: 0, y: 20, scale: 0.96 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 20, scale: 0.96 }}
-              className="absolute right-6 bottom-24 z-30 rounded-xl px-4 py-3 bg-[hsl(var(--background))] ring-2 ring-[hsl(var(--foreground))] shadow-2xl flex items-center gap-3"
-            >
-              <div className="flex flex-col leading-tight">
-                <span className="text-sm font-semibold text-[hsl(var(--foreground)/0.9)]">
-                  {nextOffer.kind === "NEXT_SEASON"
-                    ? "Next season ready"
-                    : "Next episode ready"}
-                </span>
-
-                {"intent" in nextOffer && (
-                  <span className="text-xs text-[hsl(var(--foreground)/0.6)]">
-                    S{nextOffer.intent.season} · E{nextOffer.intent.episode}
-                  </span>
-                )}
-              </div>
-
-              {"intent" in nextOffer && (
-                <button
-                  onClick={() => handlePlayNext(nextOffer.intent)}
-                  className="flex items-center justify-center h-10 w-10 rounded-full bg-[hsl(var(--foreground))] text-[hsl(var(--background))] hover:scale-105 transition"
-                >
-                  <FaPlay size={18} />
-                </button>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         <button
           onClick={onClose}
-          className="absolute top-3 right-3 z-20 rounded-full bg-[hsl(var(--background))] ring-2 ring-[hsl(var(--foreground))] hover:scale-105 transition"
+          className="absolute top-3 right-3 z-20 rounded-full bg-[hsl(var(--background))] ring-2 ring-[hsl(var(--foreground))]"
         >
           <X size={22} className="m-2 text-[hsl(var(--foreground))]" />
         </button>
