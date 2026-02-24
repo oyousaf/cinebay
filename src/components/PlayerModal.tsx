@@ -5,11 +5,7 @@ import { X } from "lucide-react";
 import { FaPlay } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 
-import {
-  buildEmbedUrl,
-  EMBED_PROVIDERS,
-  type PlaybackIntent,
-} from "@/lib/embed/buildEmbedUrl";
+import { buildEmbedUrl, type PlaybackIntent } from "@/lib/embed/buildEmbedUrl";
 import {
   resolveNextEpisode,
   type NextEpisodeResult,

@@ -35,7 +35,7 @@ function KnownFor({ items, onSelect }: Props) {
 
   return (
     <section className="pt-6 2xl:pt-8 space-y-3 2xl:space-y-4">
-      <h3 className="text-base 2xl:text-lg font-semibold tracking-tight text-[hsl(var(--surface-foreground))]">
+      <h3 className="text-base 2xl:text-lg font-semibold tracking-tight text-[hsl(var(--foreground))]">
         Known for
       </h3>
 
@@ -81,12 +81,12 @@ function KnownFor({ items, onSelect }: Props) {
                   hover:scale-[1.05]"
               />
 
-              <div className="text-xs 2xl:text-sm font-medium truncate text-[hsl(var(--surface-foreground))]">
+              <div className="text-xs 2xl:text-sm font-medium truncate">
                 {title}
               </div>
 
               {year && (
-                <div className="text-[11px] 2xl:text-xs text-[hsl(var(--surface-foreground)/0.6)]">
+                <div className="text-[11px] 2xl:text-xs">
                   {year}
                 </div>
               )}

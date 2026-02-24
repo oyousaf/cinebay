@@ -54,7 +54,7 @@ const RecommendationList = ({ items, onSelect, label }: ListProps) => {
                   hover:scale-[1.05]"
               />
 
-              <div className="text-xs 2xl:text-sm font-medium truncate text-[hsl(var(--surface-foreground))]">
+              <div className="text-xs 2xl:text-sm font-medium truncate">
                 {title}
               </div>
             </button>

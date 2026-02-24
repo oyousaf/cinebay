@@ -108,7 +108,7 @@ export default function ModalBody({
       {/* CAST */}
       {!isPerson && cast.length > 0 && (
         <div className="pt-4 max-w-prose text-[hsl(var(--background)/0.75)] dark:text-[hsl(var(--foreground)/0.75)] text-base 2xl:text-xl">
-          <span className="font-semibold text-[hsl(var(--foreground))]">
+          <span className="font-semibold">
             Starring:
           </span>{" "}
           {cast.map((actor, i) => (
