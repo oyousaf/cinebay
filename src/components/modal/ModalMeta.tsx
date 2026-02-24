@@ -94,7 +94,7 @@ export default function ModalMeta({
     return (
       <div className="space-y-3">
         {/* Title */}
-        <h2 className="text-3xl font-semibold tracking-tight text-[hsl(var(--foreground))]">
+        <h2 className="text-3xl font-semibold tracking-tight">
           {movie.name}
         </h2>
 
