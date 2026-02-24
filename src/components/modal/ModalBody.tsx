@@ -69,7 +69,6 @@ export default function ModalBody({
           </div>
 
           {/* Biography Panel */}
-          {/* Biography Panel */}
           <AnimatePresence initial={false}>
             {showBio && (
               <motion.div
