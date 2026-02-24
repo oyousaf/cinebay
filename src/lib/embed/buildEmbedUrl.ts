@@ -53,13 +53,12 @@ function buildQuery(params: Record<string, QueryValue>) {
 }
 
 function tvDefaults(intent: PlaybackIntent) {
-  // Keep your existing defaulting behaviour, but centralised.
   const season = intent.season ?? 1;
   const episode = intent.episode ?? 1;
   return { season, episode };
 }
 
-/** Choose a stable fallback VidSrc provider. Prefer vidsrc.to, else first vidsrc. */
+/** Choose a stable fallback VidSrc provider */
 function pickFallbackVidSrcProvider(): Provider | null {
   const preferred = EMBED_PROVIDERS.find(
     (p) => p.name === "vidsrc" && p.domain === "vidsrc.to",
@@ -80,7 +79,7 @@ function buildVidSrcUrl(provider: Provider, intent: PlaybackIntent): string {
   return `https://${provider.domain}/embed/movie/${tmdbId}`;
 }
 
-/* Deterministic theme key (exclude fallback_url because it varies per title) */
+/* Deterministic theme key */
 const THEME_KEY = Object.entries(VIDLINK_THEME)
   .sort(([a], [b]) => a.localeCompare(b))
   .map(([k, v]) => `${k}:${String(v)}`)
