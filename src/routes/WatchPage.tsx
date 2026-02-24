@@ -9,47 +9,32 @@ export default function WatchPage() {
   const navigate = useNavigate();
   const params = useParams();
 
-  /* -------------------------------------------------
-     BODY STATE (SYNC, NO LAYOUT SHIFT)
-  -------------------------------------------------- */
-  if (typeof document !== "undefined") {
-    document.body.classList.add("player-open");
-  }
-
   useEffect(() => {
-    return () => {
-      document.body.classList.remove("player-open");
-    };
+    document.body.classList.add("player-open");
+    return () => document.body.classList.remove("player-open");
   }, []);
 
-  /* -------------------------------------------------
-     BUILD PLAYBACK INTENT
-  -------------------------------------------------- */
   const intent = useMemo<PlaybackIntent | null>(() => {
-    if (params.tmdbId && params.season && params.episode) {
+    const tmdbId = params.tmdbId ? Number(params.tmdbId) : NaN;
+    if (!Number.isFinite(tmdbId)) return null;
+
+    const season = params.season ? Number(params.season) : undefined;
+    const episode = params.episode ? Number(params.episode) : undefined;
+
+    if (Number.isFinite(season) && Number.isFinite(episode)) {
       return {
         mediaType: "tv",
-        tmdbId: Number(params.tmdbId),
-        season: Number(params.season),
-        episode: Number(params.episode),
+        tmdbId,
+        season: season as number,
+        episode: episode as number,
       };
     }
 
-    if (params.tmdbId) {
-      return {
-        mediaType: "movie",
-        tmdbId: Number(params.tmdbId),
-      };
-    }
-
-    return null;
+    return { mediaType: "movie", tmdbId };
   }, [params.tmdbId, params.season, params.episode]);
 
   if (!intent) return null;
 
-  /* -------------------------------------------------
-     RENDER
-  -------------------------------------------------- */
   return (
     <PlayerModal
       intent={intent}

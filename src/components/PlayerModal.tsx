@@ -5,11 +5,7 @@ import { X } from "lucide-react";
 import { FaPlay } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 
-import {
-  buildEmbedUrl,
-  EMBED_PROVIDERS,
-  type PlaybackIntent,
-} from "@/lib/embed/buildEmbedUrl";
+import { buildEmbedUrl, type PlaybackIntent } from "@/lib/embed/buildEmbedUrl";
 import {
   resolveNextEpisode,
   type NextEpisodeResult,
@@ -23,8 +19,14 @@ interface PlayerModalProps {
 }
 
 const LOADER_MIN_MS = 900;
-const PROGRESS_TRIGGER = 0.95; // 95% for next episode
-const SAVE_INTERVAL = 10; // seconds between resume saves
+const PROGRESS_TRIGGER = 0.95;
+const SAVE_INTERVAL = 10;
+
+function getIntentKey(i: PlaybackIntent) {
+  return i.mediaType === "tv"
+    ? `${i.tmdbId}-s${i.season ?? 1}-e${i.episode ?? 1}`
+    : `${i.tmdbId}-movie`;
+}
 
 export default function PlayerModal({
   intent,
@@ -46,16 +48,18 @@ export default function PlayerModal({
 
   const { setTVProgress, clearTVProgress } = useContinueWatching();
 
-  const embedUrl = useMemo(
-    () => buildEmbedUrl(EMBED_PROVIDERS[0], intent),
-    [intent],
+  const intentKey = useMemo(
+    () => getIntentKey(intent),
+    [intent.mediaType, intent.tmdbId, intent.season, intent.episode],
   );
+
+  const embedUrl = useMemo(() => buildEmbedUrl(intent), [intentKey]);
 
   useEffect(() => {
     intentRef.current = intent;
   }, [intent]);
 
-  /* Reset on episode change */
+  /* Reset on actual content change */
   useEffect(() => {
     setError(false);
     setNextOffer(null);
@@ -68,7 +72,7 @@ export default function PlayerModal({
 
     const t = window.setTimeout(() => setShowLoader(false), LOADER_MIN_MS);
     return () => clearTimeout(t);
-  }, [embedUrl]);
+  }, [intentKey]);
 
   /* Player event handling */
   useEffect(() => {
@@ -87,7 +91,6 @@ export default function PlayerModal({
 
       const startSeason = intentRef.current.season;
       const startEpisode = intentRef.current.episode;
-
       if (typeof startSeason !== "number" || typeof startEpisode !== "number")
         return;
 
@@ -97,7 +100,6 @@ export default function PlayerModal({
       try {
         const result = await resolveNextEpisode(intentRef.current);
 
-        // Ignore if episode changed while waiting
         if (
           intentRef.current.season !== startSeason ||
           intentRef.current.episode !== startEpisode
@@ -135,7 +137,6 @@ export default function PlayerModal({
 
       const i = intentRef.current;
 
-      /* ---------- REAL RESUME TRACKING ---------- */
       if (
         eventName === "timeupdate" &&
         i.mediaType === "tv" &&
@@ -144,11 +145,9 @@ export default function PlayerModal({
         current - lastSavedRef.current >= SAVE_INTERVAL
       ) {
         lastSavedRef.current = current;
-
         setTVProgress(i.tmdbId, i.season, i.episode, Math.floor(current));
       }
 
-      /* ---------- NEXT EPISODE DETECTION ---------- */
       const progress = current / duration;
 
       if (eventName === "timeupdate" && progress >= PROGRESS_TRIGGER) {
@@ -156,7 +155,6 @@ export default function PlayerModal({
       }
 
       if (eventName === "ended") {
-        // Episode finished → clear resume
         clearTVProgress(i.tmdbId);
         triggerOffer();
       }
@@ -164,9 +162,8 @@ export default function PlayerModal({
 
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [embedUrl, intent.mediaType, setTVProgress, clearTVProgress]);
+  }, [intent.mediaType, intentKey, setTVProgress, clearTVProgress]);
 
-  /* Play next */
   const handlePlayNext = (next: PlaybackIntent) => {
     offeredRef.current = false;
     inFlightRef.current = false;
@@ -178,11 +175,10 @@ export default function PlayerModal({
     onPlayNext(next);
   };
 
-  /* UI */
   return (
-    <AnimatePresence>
+    <AnimatePresence mode="wait">
       <motion.div
-        key={embedUrl}
+        key={`${intentKey}-${frameKey}`}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -194,7 +190,6 @@ export default function PlayerModal({
           exit={{ scale: 0.98, opacity: 0 }}
           className="relative w-full max-w-6xl aspect-video rounded-2xl overflow-hidden bg-[hsl(var(--background))] ring-2 ring-[hsl(var(--foreground))] shadow-[0_40px_120px_rgba(0,0,0,0.9)]"
         >
-          {/* Loader */}
           <AnimatePresence>
             {showLoader && !error && (
               <motion.div
@@ -209,7 +204,7 @@ export default function PlayerModal({
 
           <iframe
             ref={iframeRef}
-            key={`${embedUrl}-${frameKey}`}
+            key={`${intentKey}-${frameKey}`}
             src={embedUrl}
             className="w-full h-full border-none"
             allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
@@ -217,7 +212,6 @@ export default function PlayerModal({
             onError={() => setError(true)}
           />
 
-          {/* Next overlay */}
           <AnimatePresence>
             {nextOffer && nextOffer.kind !== "END" && (
               <motion.div
