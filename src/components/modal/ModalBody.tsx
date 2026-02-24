@@ -22,7 +22,7 @@ export default function ModalBody({
     <div className="space-y-4 2xl:space-y-8">
       {/* OVERVIEW */}
       {!isPerson && movie.overview && (
-        <p className="max-w-prose leading-relaxed text-[hsl(var(--surface-foreground)/0.85)] text-base 2xl:text-xl">
+        <p className="max-w-prose leading-relaxed text-base 2xl:text-xl text-[hsl(var(--background)/0.85)] dark:text-[hsl(var(--foreground)/0.85)]">
           {movie.overview}
         </p>
       )}
@@ -69,6 +69,7 @@ export default function ModalBody({
           </div>
 
           {/* Biography Panel */}
+          {/* Biography Panel */}
           <AnimatePresence initial={false}>
             {showBio && (
               <motion.div
@@ -93,8 +94,8 @@ export default function ModalBody({
                   ease: [0.22, 1, 0.36, 1],
                 }}
                 className="mt-6 rounded-xl p-4 text-base 2xl:p-10 2xl:text-xl max-h-80 2xl:max-h-144 overflow-y-auto
-            bg-[hsl(var(--surface-foreground)/0.06)] backdrop-blur-sm text-[hsl(var(--surface-foreground)/0.85)]
-            shadow-[0_12px_40px_rgba(0,0,0,0.12)]"
+                bg-[hsl(var(--foreground)/0.06)] dark:bg-[hsl(var(--background)/0.06)] backdrop-blur-sm
+                text-[hsl(var(--background)/0.85)] dark:text-[hsl(var(--foreground)/0.85)] shadow-[0_12px_40px_rgba(0,0,0,0.12)]"
               >
                 <div className="max-w-prose mx-auto leading-relaxed">
                   {movie.biography}
@@ -107,8 +108,8 @@ export default function ModalBody({
 
       {/* CAST */}
       {!isPerson && cast.length > 0 && (
-        <div className="pt-4 max-w-prose text-[hsl(var(--surface-foreground)/0.75)] text-base 2xl:text-xl">
-          <span className="font-semibold text-[hsl(var(--surface-foreground))]">
+        <div className="pt-4 max-w-prose text-[hsl(var(--background)/0.75)] dark:text-[hsl(var(--foreground)/0.75)] text-base 2xl:text-xl">
+          <span className="font-semibold text-[hsl(var(--foreground))]">
             Starring:
           </span>{" "}
           {cast.map((actor, i) => (
@@ -120,8 +121,7 @@ export default function ModalBody({
                     (res) => res && onSelect?.(res),
                   )
                 }
-                className="underline underline-offset-2 hover:text-[hsl(var(--surface-foreground))]
-                  transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--surface-foreground))]"
+                className="underline underline-offset-2 transition hover:text-[hsl(var(--foreground))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--foreground))]"
               >
                 {actor.name}
               </button>

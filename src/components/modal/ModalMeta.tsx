@@ -93,13 +93,15 @@ export default function ModalMeta({
 
     return (
       <div className="space-y-3">
-        <h2 className="text-3xl font-semibold tracking-tight text-[hsl(var(--surface-foreground))]">
+        {/* Title */}
+        <h2 className="text-3xl font-semibold tracking-tight text-[hsl(var(--foreground))]">
           {movie.name}
         </h2>
 
         <div className="h-px w-20 bg-[hsl(var(--foreground)/0.25)]" />
 
-        <div className="text-sm sm:text-base text-[hsl(var(--surface-foreground)/0.8)] space-y-1">
+        {/* Secondary text */}
+        <div className="text-sm sm:text-base text-[hsl(var(--background)/0.8)] dark:text-[hsl(var(--foreground)/0.8)] space-y-1">
           {birthDate && (
             <div aria-label="Birthday">
               <span role="img" aria-hidden>
@@ -182,14 +184,14 @@ export default function ModalMeta({
 
       {/* Full release date (secondary) */}
       {releaseDate && (
-        <div className="text-sm text-[hsl(var(--surface-foreground)/0.65)] text-center sm:text-left">
+        <div className="text-sm text-[hsl(var(--background)/0.65)] dark:text-[hsl(var(--foreground)/0.65)] text-center sm:text-left">
           Released: {releaseDate}
         </div>
       )}
 
       {/* Genres */}
       {genres && (
-        <div className="text-sm text-[hsl(var(--surface-foreground)/0.7)] text-center sm:text-left">
+        <div className="text-sm text-[hsl(var(--background)/0.7)] dark:text-[hsl(var(--foreground)/0.7)] text-center sm:text-left">
           {genres}
         </div>
       )}
