@@ -127,4 +127,7 @@ export type Movie = BaseMedia & {
   // TV only
   created_by?: Creator[];
   seasons?: Season[];
+
+  production_companies?: { id: number; name: string; logo_path?: string }[];
+  networks?: { id: number; name: string; logo_path?: string }[];
 } & Partial<PersonDetails>;

@@ -164,31 +164,49 @@ function toMovie(detail: any, type: "movie" | "tv" | "person"): Movie {
     id: Number(detail?.id ?? -1),
     media_type: type,
 
+    /* ---------- Naming ---------- */
     title: detail?.title || detail?.name || "Untitled",
     name: detail?.name,
 
+    /* ---------- Core ---------- */
     overview: detail?.overview ?? "",
-
     poster_path: detail?.poster_path ?? "",
     backdrop_path: detail?.backdrop_path ?? "",
     profile_path: detail?.profile_path ?? "",
 
+    /* ---------- Dates / Ratings ---------- */
     release_date: release,
     vote_average:
       typeof detail?.vote_average === "number" ? detail.vote_average : 0,
     vote_count: typeof detail?.vote_count === "number" ? detail.vote_count : 0,
+
+    /* ---------- Genres ---------- */
     genres,
     genres_raw,
+
+    /* ---------- Technical ---------- */
     runtime: typeof detail?.runtime === "number" ? detail.runtime : null,
     original_language: detail?.original_language ?? "",
 
+    /* ---------- TV ---------- */
     created_by: Array.isArray(detail?.created_by) ? detail.created_by : [],
     seasons: Array.isArray(detail?.seasons) ? detail.seasons : [],
 
+    /* ---------- Production / Distribution ---------- */
+    production_companies: Array.isArray(detail?.production_companies)
+      ? detail.production_companies
+      : [],
+
+    networks:
+      type === "tv" && Array.isArray(detail?.networks) ? detail.networks : [],
+
+    /* ---------- Credits ---------- */
     credits: {
       cast: detail?.credits?.cast ?? [],
       crew: detail?.credits?.crew ?? [],
     },
+
+    /* ---------- Person fields ---------- */
     biography: detail?.biography,
     birthday: detail?.birthday,
     deathday: detail?.deathday,
@@ -202,6 +220,7 @@ function toMovie(detail: any, type: "movie" | "tv" | "person"): Movie {
           ? detail.known_for.map((x: any) => toMovieSummary(x))
           : [],
 
+    /* ---------- Related ---------- */
     similar,
     recommendations,
 
