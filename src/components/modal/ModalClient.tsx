@@ -129,7 +129,7 @@ export default function ModalClient({
           {/* Scrollable content area */}
           <div className="flex-1 min-h-0 overflow-y-auto px-4 py-6 sm:px-8 sm:py-8 2xl:px-12 2xl:py-10 space-y-8 2xl:space-y-10">
             {/* HERO */}
-            <div className="flex flex-col sm:flex-row gap-6 2xl:gap-10 items-center sm:items-start">
+            <div className="flex flex-col sm:flex-row gap-6 2xl:gap-10 items-center sm:items-start min-w-0">
               <img
                 src={poster}
                 alt={movie.title || movie.name}
@@ -138,7 +138,7 @@ export default function ModalClient({
               />
 
               <div
-                className={`flex-1 text-center sm:text-left ${
+                className={`flex-1 min-w-0 text-center sm:text-left ${
                   isPerson ? "space-y-4" : "space-y-6"
                 }`}
               >

@@ -71,8 +71,14 @@ const compactNames = (items: NameLike[] | null | undefined, max = 2) => {
 
 /* ---------- UI Helpers ---------- */
 
+/* 
+Key rules:
+- min-w-0 → allow flex shrinking
+- break-words → long company names wrap
+- max-w-full → never exceed container
+*/
 const Pill = ({ children }: { children: React.ReactNode }) => (
-  <span className="px-3 py-0.5 text-sm rounded-full bg-[hsl(var(--background))] ring-1 ring-[hsl(var(--foreground)/0.25)] text-[hsl(var(--foreground)/0.9)] whitespace-nowrap">
+  <span className="px-3 py-0.5 text-sm rounded-full bg-[hsl(var(--background))] ring-1 ring-[hsl(var(--foreground)/0.25)] text-[hsl(var(--foreground)/0.9)] wrap-break-word max-w-full min-w-0">
     {children}
   </span>
 );
@@ -108,46 +114,36 @@ export default function ModalMeta({
     );
 
     return (
-      <div className="space-y-3">
-        <h2 className="text-3xl font-semibold tracking-tight">{movie.name}</h2>
+      <div className="space-y-3 min-w-0">
+        <h2 className="text-3xl font-semibold tracking-tight wrap-break-word">
+          {movie.name}
+        </h2>
 
         <div className="h-px w-20 bg-[hsl(var(--foreground)/0.25)]" />
 
-        <div className="text-sm sm:text-base text-[hsl(var(--background)/0.8)] dark:text-[hsl(var(--foreground)/0.8)] space-y-1">
+        <div className="text-sm sm:text-base text-[hsl(var(--background)/0.8)] dark:text-[hsl(var(--foreground)/0.8)] space-y-1 wrap-break-word">
           {birthDate && (
-            <div aria-label="Birthday">
-              <span role="img" aria-hidden>
-                🎂
-              </span>{" "}
-              Born: {birthDate}
+            <div>
+              <span aria-hidden>🎂</span> Born: {birthDate}
             </div>
           )}
 
           {deathDate ? (
-            <div aria-label="Death date">
-              <span role="img" aria-hidden>
-                🕊️
-              </span>{" "}
-              Passed: {deathDate}
+            <div>
+              <span aria-hidden>🕊️</span> Passed: {deathDate}
               {age !== null && ` (aged ${age})`}
             </div>
           ) : (
             age !== null && (
-              <div aria-label="Current age">
-                <span role="img" aria-hidden>
-                  🎉
-                </span>{" "}
-                Age: {age} years
+              <div>
+                <span aria-hidden>🎉</span> Age: {age} years
               </div>
             )
           )}
 
           {movie.place_of_birth && (
-            <div aria-label="Place of birth">
-              <span role="img" aria-hidden>
-                📍
-              </span>{" "}
-              {movie.place_of_birth}
+            <div>
+              <span aria-hidden>📍</span> {movie.place_of_birth}
             </div>
           )}
         </div>
@@ -176,7 +172,6 @@ export default function ModalMeta({
       ? movie.vote_average.toFixed(1)
       : null;
 
-  // TMDB fields
   const producedBy = useMemo(
     () => compactNames((movie as any).production_companies),
     [movie],
@@ -188,7 +183,7 @@ export default function ModalMeta({
   );
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 min-w-0">
       {rating && (
         <div
           className="text-2xl px-3 py-1 rounded-full bg-[hsl(var(--foreground))] text-[hsl(var(--background))] font-semibold w-fit mx-auto sm:mx-0"
@@ -198,7 +193,8 @@ export default function ModalMeta({
         </div>
       )}
 
-      <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
+      {/* Pill container */}
+      <div className="flex flex-wrap gap-2 justify-center sm:justify-start max-w-full min-w-0">
         {creators && <Pill>📺 {creators}</Pill>}
         {director && <Pill>🎬 {director}</Pill>}
         {airedOn && <Pill>📡 Aired on: {airedOn}</Pill>}
@@ -208,13 +204,13 @@ export default function ModalMeta({
       </div>
 
       {releaseDate && (
-        <div className="text-sm text-[hsl(var(--background)/0.65)] dark:text-[hsl(var(--foreground)/0.65)] text-center sm:text-left">
+        <div className="text-sm text-[hsl(var(--background)/0.65)] dark:text-[hsl(var(--foreground)/0.65)] text-center sm:text-left wrap-break-word">
           Released: {releaseDate}
         </div>
       )}
 
       {genres && (
-        <div className="text-sm text-[hsl(var(--background)/0.7)] dark:text-[hsl(var(--foreground)/0.7)] text-center sm:text-left">
+        <div className="text-sm text-[hsl(var(--background)/0.7)] dark:text-[hsl(var(--foreground)/0.7)] text-center sm:text-left wrap-break-word">
           {genres}
         </div>
       )}
