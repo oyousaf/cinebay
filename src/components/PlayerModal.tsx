@@ -13,11 +13,11 @@ import { useContinueWatching } from "@/hooks/useContinueWatching";
 
 /* ---------------------------------- CONFIG ---------------------------------- */
 const LOADER_MIN_MS = 900;
-const SAVE_INTERVAL = 10;
 const LOAD_TIMEOUT_VIDLINK = 9000;
 const LOAD_TIMEOUT_OTHER = 4000;
 const VIDLINK_ORIGIN = "https://vidlink.pro";
 const THEME = "2dd4bf";
+const START_THRESHOLD_SECONDS = 30;
 
 /* ---------------------------------- HELPERS ---------------------------------- */
 function getIntentKey(i: PlaybackIntent) {
@@ -35,12 +35,12 @@ interface PlayerModalProps {
 export default function PlayerModal({ intent, onClose }: PlayerModalProps) {
   const [showLoader, setShowLoader] = useState(true);
   const [providerIndex, setProviderIndex] = useState(0);
+
   const loadTimerRef = useRef<number | null>(null);
   const loadStartRef = useRef<number>(0);
-  const lastSavedRef = useRef(0);
+  const hasReportedRef = useRef(false);
 
-  const { getTVProgress, setTVProgress, clearTVProgress } =
-    useContinueWatching();
+  const { getTVProgress, reportTVPlayback } = useContinueWatching();
 
   /* Identity */
   const intentKey = useMemo(
@@ -52,14 +52,17 @@ export default function PlayerModal({ intent, onClose }: PlayerModalProps) {
   const startAt = useMemo(() => {
     if (intent.mediaType !== "tv") return 0;
     if (!intent.season || !intent.episode) return 0;
+
     const progress = getTVProgress(intent.tmdbId);
     if (!progress) return 0;
+
     if (
       progress.season === intent.season &&
       progress.episode === intent.episode
     ) {
       return progress.position;
     }
+
     return 0;
   }, [intentKey, getTVProgress]);
 
@@ -84,86 +87,71 @@ export default function PlayerModal({ intent, onClose }: PlayerModalProps) {
   useEffect(() => {
     setProviderIndex(0);
     setShowLoader(true);
-    lastSavedRef.current = 0;
+    hasReportedRef.current = false;
   }, [intentKey]);
 
-  /* Fallback logic if provider fails */
+  /* Provider timeout fallback */
   const handleFallback = useCallback(() => {
     setProviderIndex((i) => (i < PROVIDER_ORDER.length - 1 ? i + 1 : i));
   }, []);
 
-  /* Provider-aware timeout fallback */
   useEffect(() => {
-    if (loadTimerRef.current) {
-      clearTimeout(loadTimerRef.current);
-    }
+    if (loadTimerRef.current) clearTimeout(loadTimerRef.current);
+
     const timeout =
       provider === "vidlink" ? LOAD_TIMEOUT_VIDLINK : LOAD_TIMEOUT_OTHER;
+
     loadStartRef.current = Date.now();
     setShowLoader(true);
+
     loadTimerRef.current = window.setTimeout(handleFallback, timeout);
+
     return () => {
-      if (loadTimerRef.current) {
-        clearTimeout(loadTimerRef.current);
-      }
+      if (loadTimerRef.current) clearTimeout(loadTimerRef.current);
     };
   }, [embedUrl, provider, handleFallback]);
 
-  /* Progress tracking (only for VidLink) */
+  /* ---------------------------------- PLAYBACK TRACKING ---------------------------------- */
   useEffect(() => {
     if (intent.mediaType !== "tv") return;
     if (!intent.season || !intent.episode) return;
 
+    const tmdbId = intent.tmdbId;
     const season = intent.season;
     const episode = intent.episode;
-    const tmdbId = intent.tmdbId;
 
     const handleMessage = (event: MessageEvent) => {
       if (event.origin !== VIDLINK_ORIGIN) return;
+
       const msg = event.data;
       if (!msg || typeof msg !== "object") return;
 
+      let currentTime: number | undefined;
+
+      /* Preferred: MEDIA_DATA */
       if ((msg as any).type === "MEDIA_DATA") {
-        const data = (msg as any).data;
-        if (data?.show_progress) {
-          const key = `s${season}e${episode}`;
-          const ep = data.show_progress[key];
-          if (ep?.progress?.watched) {
-            setTVProgress(
-              tmdbId,
-              season,
-              episode,
-              Math.floor(ep.progress.watched),
-            );
-          }
-        }
-        return;
+        currentTime = (msg as any)?.data?.currentTime;
       }
 
-      if ((msg as any).type !== "PLAYER_EVENT") return;
-      const payload = (msg as any).data;
-      if (!payload) return;
-      const current = payload.currentTime;
-      const eventName = payload.event;
-      if (!current) return;
-
-      if (
-        eventName === "timeupdate" &&
-        current - lastSavedRef.current >= SAVE_INTERVAL
-      ) {
-        lastSavedRef.current = current;
-        setTVProgress(tmdbId, season, episode, Math.floor(current));
+      /* Fallback: PLAYER_EVENT */
+      if (!currentTime && (msg as any).type === "PLAYER_EVENT") {
+        currentTime = (msg as any)?.data?.currentTime;
       }
-      if (eventName === "ended") {
-        clearTVProgress(tmdbId);
+
+      if (!currentTime) return;
+      if (hasReportedRef.current) return;
+
+      if (currentTime >= START_THRESHOLD_SECONDS) {
+        hasReportedRef.current = true;
+        reportTVPlayback(tmdbId, season, episode, Math.floor(currentTime));
       }
     };
 
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [intentKey, setTVProgress, clearTVProgress]);
+  }, [intentKey, reportTVPlayback]);
 
-  /* UI Rendering */
+  /* ---------------------------------- RENDER ---------------------------------- */
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -194,11 +182,10 @@ export default function PlayerModal({ intent, onClose }: PlayerModalProps) {
             }
             const elapsed = Date.now() - loadStartRef.current;
             const remaining = Math.max(LOADER_MIN_MS - elapsed, 0);
-            setTimeout(() => {
-              setShowLoader(false);
-            }, remaining);
+            setTimeout(() => setShowLoader(false), remaining);
           }}
         />
+
         <button
           onClick={onClose}
           className="absolute top-3 right-3 z-20 rounded-full bg-[hsl(var(--background))] ring-2 ring-[hsl(var(--foreground))]"
