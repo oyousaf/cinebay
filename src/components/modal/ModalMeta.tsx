@@ -71,12 +71,6 @@ const compactNames = (items: NameLike[] | null | undefined, max = 2) => {
 
 /* ---------- UI Helpers ---------- */
 
-/* 
-Key rules:
-- min-w-0 → allow flex shrinking
-- break-words → long company names wrap
-- max-w-full → never exceed container
-*/
 const Pill = ({ children }: { children: React.ReactNode }) => (
   <span className="px-3 py-0.5 text-sm rounded-full bg-[hsl(var(--background))] ring-1 ring-[hsl(var(--foreground)/0.25)] text-[hsl(var(--foreground)/0.9)] wrap-break-word max-w-full min-w-0">
     {children}
