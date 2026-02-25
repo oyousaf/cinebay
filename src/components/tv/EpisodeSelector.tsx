@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { FaPlay, FaChevronDown } from "react-icons/fa";
 
 import type { Movie, Season, Episode } from "@/types/movie";
@@ -25,7 +25,10 @@ export default function EpisodeSelector({ tv, onPlay }: Props) {
   const [openSeason, setOpenSeason] = useState(false);
   const [openEpisode, setOpenEpisode] = useState(false);
 
-  /* ---------- RESUME (DERIVED, ALWAYS CURRENT) ---------- */
+  // Prevent resume from re-initialising after user interaction
+  const initialisedRef = useRef(false);
+
+  /* ---------- RESUME (read once per TV) ---------- */
   const resume = useMemo(() => {
     return getTVProgress(tv.id);
   }, [tv.id, getTVProgress]);
@@ -37,14 +40,26 @@ export default function EpisodeSelector({ tv, onPlay }: Props) {
     const validSeasons = tv.seasons.filter((s) => s.season_number > 0);
     setSeasons(validSeasons);
 
-    if (resume) {
-      setSeason(resume.season);
-      setEpisode(resume.episode);
-    } else if (validSeasons.length) {
-      setSeason(validSeasons[0].season_number);
-      setEpisode(null);
+    // Only initialise once per TV
+    if (!initialisedRef.current) {
+      initialisedRef.current = true;
+
+      if (resume) {
+        setSeason(resume.season);
+        setEpisode(resume.episode);
+        return;
+      }
+
+      if (validSeasons.length) {
+        setSeason(validSeasons[0].season_number);
+      }
     }
   }, [tv.id, tv.seasons, resume]);
+
+  /* Reset initialisation when TV changes */
+  useEffect(() => {
+    initialisedRef.current = false;
+  }, [tv.id]);
 
   /* ---------- LOAD EPISODES ---------- */
   useEffect(() => {
@@ -58,9 +73,13 @@ export default function EpisodeSelector({ tv, onPlay }: Props) {
 
       setEpisodes(eps);
 
-      if (!episode || !eps.some((e) => e.episode_number === episode)) {
-        setEpisode(eps[0].episode_number);
-      }
+      // Only auto-select if no valid episode yet
+      setEpisode((current) => {
+        if (current && eps.some((e) => e.episode_number === current)) {
+          return current;
+        }
+        return eps[0].episode_number;
+      });
     });
 
     return () => {
@@ -92,16 +111,12 @@ export default function EpisodeSelector({ tv, onPlay }: Props) {
 
   /* ---------- UI ---------- */
   return (
-    <div
-      className="rounded-xl border border-[hsl(var(--foreground)/0.4)]
-      bg-[hsl(var(--background)/0.85)] p-4 space-y-4"
-    >
+    <div className="rounded-xl border border-[hsl(var(--foreground)/0.4)] bg-[hsl(var(--background)/0.85)] p-4 space-y-4">
       <div className="flex items-center justify-center">
         <button
           onClick={play}
           disabled={!episode}
-          className="flex items-center gap-2 px-4 py-2 rounded-full font-semibold
-            bg-[hsl(var(--foreground))] text-[hsl(var(--background))]
+          className="flex items-center gap-2 px-4 py-2 rounded-full font-semibold bg-[hsl(var(--foreground))] text-[hsl(var(--background))]
             disabled:opacity-40"
         >
           <FaPlay />
@@ -115,8 +130,7 @@ export default function EpisodeSelector({ tv, onPlay }: Props) {
           <button
             onClick={() => setOpenSeason((v) => !v)}
             className="w-full flex items-center justify-between px-3 py-2 rounded-lg
-              border border-[hsl(var(--foreground)/0.4)]
-              bg-[hsl(var(--background))]"
+              border border-[hsl(var(--foreground)/0.4)] bg-[hsl(var(--background))]"
           >
             {season ? `Season ${season}` : "Select season"}
             <FaChevronDown />
@@ -124,8 +138,7 @@ export default function EpisodeSelector({ tv, onPlay }: Props) {
 
           {openSeason && (
             <div
-              className="absolute z-50 mt-1 w-full max-h-60 overflow-y-auto
-              rounded-lg shadow-xl bg-[hsl(var(--background))]
+              className="absolute z-50 mt-1 w-full max-h-60 overflow-y-auto rounded-lg shadow-xl bg-[hsl(var(--background))]
               border border-[hsl(var(--foreground)/0.4)]"
             >
               {seasons.map((s) => (
@@ -135,8 +148,7 @@ export default function EpisodeSelector({ tv, onPlay }: Props) {
                     setSeason(s.season_number);
                     setOpenSeason(false);
                   }}
-                  className="w-full px-3 py-2 text-left
-                    hover:bg-[hsl(var(--foreground)/0.1)]"
+                  className="w-full px-3 py-2 text-left hover:bg-[hsl(var(--foreground)/0.1)]"
                 >
                   Season {s.season_number}
                 </button>
@@ -172,8 +184,7 @@ export default function EpisodeSelector({ tv, onPlay }: Props) {
                     setEpisode(e.episode_number);
                     setOpenEpisode(false);
                   }}
-                  className="w-full px-3 py-2 text-left
-                    hover:bg-[hsl(var(--foreground)/0.1)]"
+                  className="w-full px-3 py-2 text-left hover:bg-[hsl(var(--foreground)/0.1)]"
                 >
                   Episode {e.episode_number}
                   {e.name && (
