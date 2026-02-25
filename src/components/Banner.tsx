@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
 import { FaInfoCircle, FaPlay } from "react-icons/fa";
@@ -56,12 +56,12 @@ export default function Banner({ item, onSelect }: BannerProps) {
   /* -------------------------------------------------
      Resume
   -------------------------------------------------- */
-  const resume = isTV ? getTVProgress(item.id) : null;
+  const resume = useMemo(() => {
+    if (!isTV) return null;
+    return getTVProgress(item.id);
+  }, [isTV, item.id, getTVProgress]);
 
-  const hasResume =
-    resume &&
-    typeof resume.season === "number" &&
-    typeof resume.episode === "number";
+  const hasResume = !!resume;
 
   /* -------------------------------------------------
      Handlers
