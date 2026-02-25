@@ -10,11 +10,17 @@ export const TMDB_IMAGE = "https://image.tmdb.org/t/p/w500";
 
 const MIN_RATING = 6.5;
 
-const THREE_MONTHS_AGO = new Date();
-THREE_MONTHS_AGO.setMonth(THREE_MONTHS_AGO.getMonth() - 3);
+const oneMonthAgo = () => {
+  const d = new Date();
+  d.setMonth(d.getMonth() - 1);
+  return d;
+};
 
-const ONE_MONTH_AGO = new Date();
-ONE_MONTH_AGO.setMonth(ONE_MONTH_AGO.getMonth() - 1);
+const threeMonthsAgo = () => {
+  const d = new Date();
+  d.setMonth(d.getMonth() - 3);
+  return d;
+};
 
 /* =========================================================
    GENRE EXCLUSION (LOGIC ONLY)
@@ -49,17 +55,17 @@ const isAllowedContent = (genres: string[]) =>
   !genres.some((g) => EXCLUDED_GENRES.has(g));
 
 const isNewMovie = (date?: string) =>
-  Boolean(date && new Date(date) >= ONE_MONTH_AGO);
+  Boolean(date && new Date(date) >= oneMonthAgo());
 
 const isWithin3Months = (date?: string) =>
-  Boolean(date && new Date(date) >= THREE_MONTHS_AGO);
+  Boolean(date && new Date(date) >= threeMonthsAgo());
 
 const isNewSeriesByDetail = (detail: any) => {
   const seasons = detail?.seasons ?? [];
   return (
     seasons.length === 1 &&
     seasons[0]?.air_date &&
-    new Date(seasons[0].air_date) >= ONE_MONTH_AGO
+    new Date(seasons[0].air_date) >= oneMonthAgo()
   );
 };
 
@@ -364,12 +370,12 @@ export async function fetchShows(): Promise<Movie[]> {
     const lastAir = lastAirRaw ? new Date(lastAirRaw) : null;
 
     if (isNewSeriesByDetail(s)) s.status = "new";
-    else if (lastAir && lastAir >= ONE_MONTH_AGO) s.status = "renewed";
+    else if (lastAir && lastAir >= oneMonthAgo()) s.status = "renewed";
   });
 
   const within3 = filtered.filter((s) => {
     const lastAirRaw = s.seasons?.at(-1)?.air_date;
-    return Boolean(lastAirRaw && new Date(lastAirRaw) >= THREE_MONTHS_AGO);
+    return Boolean(lastAirRaw && new Date(lastAirRaw) >= threeMonthsAgo());
   });
 
   return [
