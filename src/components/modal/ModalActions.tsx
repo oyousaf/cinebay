@@ -65,7 +65,7 @@ export default function ModalActions({ movie }: { movie: Movie }) {
       </div>
 
       {/* TV EPISODES */}
-      {isTV && <EpisodeSelector tv={movie} onPlay={(intent) => play(intent)} />}
+      {isTV && <EpisodeSelector tv={movie} onPlay={play} />}
     </div>
   );
 }
