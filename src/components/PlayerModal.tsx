@@ -138,7 +138,7 @@ export default function PlayerModal({ intent, onClose }: PlayerModalProps) {
         currentTime = (msg as any)?.data?.currentTime;
       }
 
-      if (!currentTime) return;
+      if (typeof currentTime !== "number") return;
       if (hasReportedRef.current) return;
 
       if (currentTime >= START_THRESHOLD_SECONDS) {
