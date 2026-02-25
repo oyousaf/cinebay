@@ -162,10 +162,8 @@ export default function EpisodeSelector({ tv, onPlay }: Props) {
           <button
             onClick={() => episodes.length && setOpenEpisode((v) => !v)}
             disabled={!episodes.length}
-            className="w-full flex items-center justify-between px-3 py-2 rounded-lg
-              border border-[hsl(var(--foreground)/0.4)]
-              bg-[hsl(var(--background))]
-              disabled:opacity-40"
+            className="w-full flex items-center justify-between px-3 py-2 rounded-lg  border border-[hsl(var(--foreground)/0.4)]
+              bg-[hsl(var(--background))] disabled:opacity-40"
           >
             {episode ? `Episode ${episode}` : "No episodes"}
             <FaChevronDown />
@@ -173,8 +171,7 @@ export default function EpisodeSelector({ tv, onPlay }: Props) {
 
           {openEpisode && (
             <div
-              className="absolute z-50 mt-1 w-full max-h-60 overflow-y-auto
-              rounded-lg shadow-xl bg-[hsl(var(--background))]
+              className="absolute z-50 mt-1 w-full max-h-60 overflow-y-auto rounded-lg shadow-xl bg-[hsl(var(--background))]
               border border-[hsl(var(--foreground)/0.4)]"
             >
               {episodes.map((e) => (
