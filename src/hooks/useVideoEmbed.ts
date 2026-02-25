@@ -3,10 +3,14 @@ import { toast } from "sonner";
 
 import {
   buildEmbedUrl,
-  buildEmbedCacheKey,
-  EMBED_PROVIDERS,
+  PROVIDER_ORDER,
   type PlaybackIntent,
+  type ProviderType,
 } from "@/lib/embed/buildEmbedUrl";
+
+/* -------------------------------------------------
+   CONSTANTS
+-------------------------------------------------- */
 
 const INVALID_MARKERS = [
   "not found",
@@ -19,6 +23,24 @@ const INVALID_MARKERS = [
 ];
 
 const memoryCache = new Map<string, string>();
+
+/* -------------------------------------------------
+   CACHE KEY
+-------------------------------------------------- */
+
+function buildEmbedCacheKey(intent: PlaybackIntent) {
+  const { mediaType, tmdbId, season, episode } = intent;
+
+  if (mediaType === "tv") {
+    return `embed:${mediaType}:${tmdbId}:s${season ?? 1}:e${episode ?? 1}`;
+  }
+
+  return `embed:${mediaType}:${tmdbId}`;
+}
+
+/* -------------------------------------------------
+   HOOK
+-------------------------------------------------- */
 
 export function useVideoEmbed(intent?: PlaybackIntent): string | null {
   const [embedUrl, setEmbedUrl] = useState<string | null>(null);
@@ -46,7 +68,9 @@ export function useVideoEmbed(intent?: PlaybackIntent): string | null {
     hasErroredRef.current = false;
 
     const cacheKey = buildEmbedCacheKey(intent);
-    const cached = memoryCache.get(cacheKey) ?? localStorage.getItem(cacheKey);
+    const cached =
+      memoryCache.get(cacheKey) ??
+      (typeof window !== "undefined" ? localStorage.getItem(cacheKey) : null);
 
     if (cached) {
       memoryCache.set(cacheKey, cached);
@@ -74,24 +98,31 @@ export function useVideoEmbed(intent?: PlaybackIntent): string | null {
     };
 
     const tryNext = () => {
-      if (index >= EMBED_PROVIDERS.length) {
+      if (index >= PROVIDER_ORDER.length) {
         cleanup();
+
         if (!hasErroredRef.current) {
           hasErroredRef.current = true;
           toast.error("No streaming source available.");
         }
+
         return;
       }
 
-      const provider = EMBED_PROVIDERS[index];
-      const src = buildEmbedUrl(provider, intent);
+      const provider: ProviderType = PROVIDER_ORDER[index];
 
-      if (provider.name === "vidlink") {
+      const src = buildEmbedUrl(intent, {
+        provider,
+        autoplay: true,
+      });
+
+      // Primary provider (vidlink) is trusted — no probing
+      if (provider === "vidlink") {
         resolve(src);
         return;
       }
 
-      /* ---------- Fallback providers probing ---------- */
+      /* ---------- Fallback probing ---------- */
 
       if (!iframeRef.current) {
         iframeRef.current = document.createElement("iframe");
@@ -114,7 +145,7 @@ export function useVideoEmbed(intent?: PlaybackIntent): string | null {
 
             resolve(iframeRef.current.src);
           } catch {
-            // cross-origin → assume valid
+            // Cross-origin → assume valid
             resolve(iframeRef.current.src);
           }
         };
