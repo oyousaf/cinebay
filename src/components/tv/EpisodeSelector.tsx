@@ -25,10 +25,13 @@ export default function EpisodeSelector({ tv, onPlay }: Props) {
   const [openSeason, setOpenSeason] = useState(false);
   const [openEpisode, setOpenEpisode] = useState(false);
 
-  // Prevent resume from re-initialising after user interaction
+  // Tracks if user has manually changed anything
+  const userInteractedRef = useRef(false);
+
+  // Ensures resume only applied once per TV
   const initialisedRef = useRef(false);
 
-  /* ---------- RESUME (read once per TV) ---------- */
+  /* ---------- RESUME ---------- */
   const resume = useMemo(() => {
     return getTVProgress(tv.id);
   }, [tv.id, getTVProgress]);
@@ -40,11 +43,11 @@ export default function EpisodeSelector({ tv, onPlay }: Props) {
     const validSeasons = tv.seasons.filter((s) => s.season_number > 0);
     setSeasons(validSeasons);
 
-    // Only initialise once per TV
     if (!initialisedRef.current) {
       initialisedRef.current = true;
 
-      if (resume) {
+      // Apply resume only if user hasn’t interacted
+      if (resume && !userInteractedRef.current) {
         setSeason(resume.season);
         setEpisode(resume.episode);
         return;
@@ -56,9 +59,10 @@ export default function EpisodeSelector({ tv, onPlay }: Props) {
     }
   }, [tv.id, tv.seasons, resume]);
 
-  /* Reset initialisation when TV changes */
+  /* Reset when TV changes */
   useEffect(() => {
     initialisedRef.current = false;
+    userInteractedRef.current = false;
   }, [tv.id]);
 
   /* ---------- LOAD EPISODES ---------- */
@@ -73,7 +77,7 @@ export default function EpisodeSelector({ tv, onPlay }: Props) {
 
       setEpisodes(eps);
 
-      // Only auto-select if no valid episode yet
+      // Keep current episode if valid, otherwise pick first
       setEpisode((current) => {
         if (current && eps.some((e) => e.episode_number === current)) {
           return current;
@@ -145,6 +149,7 @@ export default function EpisodeSelector({ tv, onPlay }: Props) {
                 <button
                   key={s.id}
                   onClick={() => {
+                    userInteractedRef.current = true;
                     setSeason(s.season_number);
                     setOpenSeason(false);
                   }}
@@ -162,7 +167,7 @@ export default function EpisodeSelector({ tv, onPlay }: Props) {
           <button
             onClick={() => episodes.length && setOpenEpisode((v) => !v)}
             disabled={!episodes.length}
-            className="w-full flex items-center justify-between px-3 py-2 rounded-lg  border border-[hsl(var(--foreground)/0.4)]
+            className="w-full flex items-center justify-between px-3 py-2 rounded-lg border border-[hsl(var(--foreground)/0.4)]
               bg-[hsl(var(--background))] disabled:opacity-40"
           >
             {episode ? `Episode ${episode}` : "No episodes"}
@@ -178,6 +183,7 @@ export default function EpisodeSelector({ tv, onPlay }: Props) {
                 <button
                   key={e.id}
                   onClick={() => {
+                    userInteractedRef.current = true;
                     setEpisode(e.episode_number);
                     setOpenEpisode(false);
                   }}
