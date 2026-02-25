@@ -227,6 +227,7 @@ function SearchBar({
               border border-[hsl(var(--foreground)/0.25)] shadow-md"
           >
             <input
+              name="search"
               ref={sb.inputRef}
               value={sb.query}
               onChange={(e) => sb.setQuery(e.target.value)}
