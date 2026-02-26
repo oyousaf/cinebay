@@ -108,8 +108,11 @@ function toMovieSummary(item: any, forcedType?: "movie" | "tv"): Movie {
 
 const buildKnownForFromCredits = (detail: any): Movie[] => {
   const cast = detail?.combined_credits?.cast ?? [];
+  const crew = detail?.combined_credits?.crew ?? [];
 
-  return cast
+  const combined = [...cast, ...crew];
+
+  return combined
     .filter(
       (c: any) =>
         c?.poster_path &&

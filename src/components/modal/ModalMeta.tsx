@@ -68,7 +68,7 @@ export default function ModalMeta({
       : names.join(", ");
   }, [isTV, movie]);
 
-  /* ---------- PERSON VIEW (unchanged behaviour) ---------- */
+  /* ---------- PERSON VIEW ---------- */
 
   if (isPerson) {
     const formatDate = (date?: string) => {
