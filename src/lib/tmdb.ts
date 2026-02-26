@@ -264,13 +264,16 @@ export async function fetchDetails(
   id: number,
   type: "movie" | "tv" | "person",
 ) {
-  const append =
-    type === "person" ? "combined_credits" : "credits,similar,recommendations";
+  let endpoint = "";
 
-  const d = await fetchFromProxy(
-    `/${type}/${id}?language=en-GB&append_to_response=${append}`,
-  );
+  if (type === "person") {
+    // Full person details
+    endpoint = `/person/${id}?language=en-GB&append_to_response=combined_credits,images`;
+  } else {
+    endpoint = `/${type}/${id}?language=en-GB&append_to_response=credits,similar,recommendations`;
+  }
 
+  const d = await fetchFromProxy(endpoint);
   return d ? toMovie(d, type) : null;
 }
 

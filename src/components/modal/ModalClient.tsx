@@ -41,9 +41,6 @@ const SURFACE =
 
 const EASE_OUT = [0.22, 1, 0.36, 1] as const;
 
-/* -------------------------------------------------
-   COMPONENT
--------------------------------------------------- */
 export default function ModalClient({
   movie,
   onClose,
@@ -56,22 +53,18 @@ export default function ModalClient({
   onBack?: () => void;
 }) {
   const modalRef = useRef<HTMLDivElement>(null);
-
-  /* ---------- Person loading state ---------- */
   const [loadingPerson, setLoadingPerson] = useState(false);
 
   const isPerson = movie.media_type === "person";
   const isTV = movie.media_type === "tv";
 
-  /* ---------- Body scroll lock ---------- */
+  /* ---------- Scroll lock ---------- */
   useEffect(() => {
     document.body.classList.add("player-open");
-    return () => {
-      document.body.classList.remove("player-open");
-    };
+    return () => document.body.classList.remove("player-open");
   }, []);
 
-  /* ---------- Escape to close ---------- */
+  /* ---------- ESC close ---------- */
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -80,19 +73,41 @@ export default function ModalClient({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  /* ---------- Derived meta ---------- */
+  /* ---------- Director & Creators ---------- */
   const director = useMemo(() => {
     if (movie.media_type !== "movie") return null;
-    return movie.credits?.crew?.find((c) => c.job === "Director")?.name ?? null;
+    const d = movie.credits?.crew?.find((c) => c.job === "Director");
+    return d ? { id: d.id, name: d.name } : null;
   }, [movie]);
 
   const creators = useMemo(() => {
     if (!isTV || !movie.created_by?.length) return null;
-    return movie.created_by.map((c) => c.name).join(", ");
+    return movie.created_by.map((c) => ({
+      id: c.id,
+      name: c.name,
+    }));
   }, [isTV, movie]);
 
   const posterPath = movie.profile_path || movie.poster_path;
   const poster = posterPath ? `${TMDB_IMAGE}${posterPath}` : "/fallback.jpg";
+
+  /* ---------- Navigate to person by ID ---------- */
+  const handlePersonClick = useCallback(
+    async (id: number) => {
+      if (!id || loadingPerson) return;
+
+      try {
+        setLoadingPerson(true);
+        const full = await fetchDetails(id, "person");
+        if (full) onSelect?.(full);
+      } catch {
+        toast.error("Failed to load person.");
+      } finally {
+        setLoadingPerson(false);
+      }
+    },
+    [onSelect, loadingPerson],
+  );
 
   /* ---------- Selection helper ---------- */
   const handleSelectWithDetails = useCallback(
@@ -111,46 +126,10 @@ export default function ModalClient({
     [movie.media_type, onSelect],
   );
 
-  /* ---------- Open person from name ---------- */
-  const handlePersonClick = useCallback(
-    async (rawName: string) => {
-      if (!rawName || loadingPerson) return;
-
-      // Use first name if multiple provided
-      const name = rawName.split(",")[0].trim();
-
-      try {
-        setLoadingPerson(true);
-
-        const res = await fetch(
-          `/api/tmdb/search/person?query=${encodeURIComponent(name)}&language=en-GB`,
-        );
-
-        const data = await res.json();
-        const person = data?.results?.[0];
-
-        if (!person?.id) {
-          toast.error("Person not found.");
-          return;
-        }
-
-        const full = await fetchDetails(person.id, "person");
-        if (full) onSelect?.(full);
-      } catch {
-        toast.error("Failed to load person.");
-      } finally {
-        setLoadingPerson(false);
-      }
-    },
-    [onSelect, loadingPerson],
-  );
-
   return (
     <AnimatePresence mode="wait">
       <motion.div
         key={movie.id}
-        role="dialog"
-        aria-modal="true"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -169,21 +148,15 @@ export default function ModalClient({
         >
           <ModalHeader onClose={onClose} onBack={onBack} />
 
-          <div className="flex-1 min-h-0 overflow-y-auto px-4 py-6 sm:px-8 sm:py-8 2xl:px-12 2xl:py-10 space-y-8 2xl:space-y-10">
-            {/* HERO */}
-            <div className="flex flex-col sm:flex-row gap-6 2xl:gap-10 items-center sm:items-start min-w-0">
+          <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-8 space-y-8">
+            <div className="flex flex-col sm:flex-row gap-6 items-center sm:items-start">
               <img
                 src={poster}
                 alt={movie.title || movie.name}
-                className="w-40 sm:w-44 2xl:w-64 h-60 sm:h-66 2xl:h-96 rounded-lg shadow-lg object-cover"
-                loading="eager"
+                className="w-40 sm:w-44 h-60 sm:h-66 rounded-lg shadow-lg object-cover"
               />
 
-              <div
-                className={`flex-1 min-w-0 text-center sm:text-left ${
-                  isPerson ? "space-y-4" : "space-y-6"
-                }`}
-              >
+              <div className="flex-1 space-y-6">
                 <ModalMeta
                   movie={movie}
                   director={director}

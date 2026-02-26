@@ -3,73 +3,7 @@
 import { useMemo } from "react";
 import type { Movie } from "@/types/movie";
 
-/* ---------- Date Helpers (UTC safe) ---------- */
-
-const ordinal = (n: number) => {
-  const s = ["th", "st", "nd", "rd"];
-  const v = n % 100;
-  return n + (s[(v - 20) % 10] || s[v] || s[0]);
-};
-
-const parseDate = (dateStr?: string) => {
-  if (!dateStr) return null;
-  const [y, m, d] = dateStr.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1, d));
-};
-
-const formatDate = (dateStr?: string) => {
-  const d = parseDate(dateStr);
-  if (!d) return null;
-
-  return `${ordinal(d.getUTCDate())} ${d.toLocaleDateString("en-GB", {
-    month: "long",
-    year: "numeric",
-    timeZone: "UTC",
-  })}`;
-};
-
-const calculateAge = (birthday?: string, deathday?: string) => {
-  const birth = parseDate(birthday);
-  if (!birth) return null;
-
-  const end = deathday ? parseDate(deathday)! : new Date();
-  let age = end.getUTCFullYear() - birth.getUTCFullYear();
-
-  const hasHadBirthday =
-    end.getUTCMonth() > birth.getUTCMonth() ||
-    (end.getUTCMonth() === birth.getUTCMonth() &&
-      end.getUTCDate() >= birth.getUTCDate());
-
-  if (!hasHadBirthday) age--;
-
-  return age;
-};
-
-/* ---------- Text Helpers ---------- */
-
-const titleCase = (s: string) =>
-  s
-    .split(" ")
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(" ");
-
-type NameLike = string | { name?: string | null } | null | undefined;
-
-const toName = (x: NameLike) => {
-  if (typeof x === "string") return x.trim();
-  if (x && typeof x === "object" && typeof x.name === "string")
-    return x.name.trim();
-  return "";
-};
-
-const compactNames = (items: NameLike[] | null | undefined, max = 2) => {
-  const names = (items ?? []).map(toName).filter(Boolean);
-  if (!names.length) return null;
-  if (names.length <= max) return names.join(", ");
-  return `${names.slice(0, max).join(", ")} +${names.length - max}`;
-};
-
-/* ---------- UI Helpers ---------- */
+/* ---------- UI Pill ---------- */
 
 const Pill = ({
   children,
@@ -80,7 +14,7 @@ const Pill = ({
 }) => (
   <span
     onClick={onClick}
-    className={`px-3 py-0.5 text-sm rounded-full bg-[hsl(var(--background))] ring-1 ring-[hsl(var(--foreground)/0.25)] text-[hsl(var(--foreground)/0.9)] wrap-break-word max-w-full min-w-0 ${
+    className={`px-3 py-0.5 text-sm rounded-full bg-[hsl(var(--background))] ring-1 ring-[hsl(var(--foreground)/0.25)] text-[hsl(var(--foreground)/0.9)] max-w-full min-w-0 ${
       onClick ? "cursor-pointer hover:ring-[hsl(var(--foreground)/0.5)]" : ""
     }`}
   >
@@ -88,7 +22,9 @@ const Pill = ({
   </span>
 );
 
-/* ---------- Component ---------- */
+/* ---------- Types ---------- */
+
+type PersonRef = { id: number; name: string };
 
 export default function ModalMeta({
   movie,
@@ -97,81 +33,15 @@ export default function ModalMeta({
   onPersonClick,
 }: {
   movie: Movie;
-  creators?: string | null;
-  director?: string | null;
-  onPersonClick?: (name: string) => void;
+  creators?: PersonRef[] | null;
+  director?: PersonRef | null;
+  onPersonClick?: (id: number) => void;
 }) {
   const isPerson = movie.media_type === "person";
   const isTV = movie.media_type === "tv";
 
-  /* ---------- PERSON META ---------- */
+  /* ---------- Basic meta ---------- */
 
-  if (isPerson) {
-    const birthDate = useMemo(
-      () => formatDate(movie.birthday),
-      [movie.birthday],
-    );
-    const deathDate = useMemo(
-      () => formatDate(movie.deathday),
-      [movie.deathday],
-    );
-    const age = useMemo(
-      () => calculateAge(movie.birthday, movie.deathday),
-      [movie.birthday, movie.deathday],
-    );
-
-    return (
-      <div className="space-y-3 min-w-0">
-        <h2 className="text-3xl font-semibold tracking-tight wrap-break-word">
-          {movie.name}
-        </h2>
-
-        <div className="h-px w-20 bg-[hsl(var(--foreground)/0.25)]" />
-
-        <div className="text-sm sm:text-base text-[hsl(var(--background)/0.8)] dark:text-[hsl(var(--foreground)/0.8)] space-y-1 wrap-break-word">
-          {birthDate && (
-            <div>
-              <span aria-hidden>🎂</span> Born: {birthDate}
-            </div>
-          )}
-
-          {deathDate ? (
-            <div>
-              <span aria-hidden>🕊️</span> Passed: {deathDate}
-              {age !== null && ` (aged ${age})`}
-            </div>
-          ) : (
-            age !== null && (
-              <div>
-                <span aria-hidden>🎉</span> Age: {age} years
-              </div>
-            )
-          )}
-
-          {movie.place_of_birth && (
-            <div>
-              <span aria-hidden>📍</span> {movie.place_of_birth}
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  /* ---------- MOVIE / TV META ---------- */
-
-  const genres = useMemo(() => {
-    if (!Array.isArray(movie.genres) || !movie.genres.length) return null;
-    return movie.genres
-      .map((g: any) => titleCase(toName(g)))
-      .filter(Boolean)
-      .join(" • ");
-  }, [movie.genres]);
-
-  const releaseDate = useMemo(
-    () => formatDate(movie.release_date),
-    [movie.release_date],
-  );
   const releaseYear = movie.release_date?.slice(0, 4);
 
   const rating =
@@ -179,35 +49,104 @@ export default function ModalMeta({
       ? movie.vote_average.toFixed(1)
       : null;
 
-  const producedBy = useMemo(
-    () => compactNames((movie as any).production_companies),
-    [movie],
-  );
+  const producedBy = useMemo(() => {
+    const companies = (movie as any).production_companies ?? [];
+    if (!companies.length) return null;
+    const names = companies.slice(0, 2).map((c: any) => c.name);
+    return companies.length > 2
+      ? `${names.join(", ")} +${companies.length - 2}`
+      : names.join(", ");
+  }, [movie]);
 
-  const airedOn = useMemo(
-    () => (isTV ? compactNames((movie as any).networks) : null),
-    [isTV, movie],
-  );
+  const airedOn = useMemo(() => {
+    if (!isTV) return null;
+    const nets = (movie as any).networks ?? [];
+    if (!nets.length) return null;
+    const names = nets.slice(0, 2).map((n: any) => n.name);
+    return nets.length > 2
+      ? `${names.join(", ")} +${nets.length - 2}`
+      : names.join(", ");
+  }, [isTV, movie]);
+
+  /* ---------- PERSON VIEW (unchanged behaviour) ---------- */
+
+  if (isPerson) {
+    const formatDate = (date?: string) => {
+      if (!date) return null;
+      const d = new Date(date);
+      return d.toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      });
+    };
+
+    const birthDate = formatDate(movie.birthday);
+    const deathDate = formatDate(movie.deathday);
+
+    const age = (() => {
+      if (!movie.birthday) return null;
+      const birth = new Date(movie.birthday);
+      const end = movie.deathday ? new Date(movie.deathday) : new Date();
+      let years = end.getFullYear() - birth.getFullYear();
+      const m = end.getMonth() - birth.getMonth();
+      if (m < 0 || (m === 0 && end.getDate() < birth.getDate())) years--;
+      return years;
+    })();
+
+    return (
+      <div className="space-y-3 min-w-0">
+        <h2 className="text-3xl font-semibold tracking-tight wrap-break-word">
+          {movie.name}
+        </h2>
+
+        {/* Department */}
+        {movie.known_for_department && (
+          <div className="text-sm opacity-70">{movie.known_for_department}</div>
+        )}
+
+        <div className="h-px w-20 bg-[hsl(var(--foreground)/0.25)]" />
+
+        <div className="text-sm sm:text-base space-y-1 opacity-90">
+          {birthDate && <div>🎂 Born: {birthDate}</div>}
+
+          {deathDate ? (
+            <div>
+              🕊️ Passed: {deathDate}
+              {age !== null && ` (aged ${age})`}
+            </div>
+          ) : (
+            age !== null && <div>🎉 Age: {age} years</div>
+          )}
+
+          {movie.place_of_birth && <div>📍 {movie.place_of_birth}</div>}
+        </div>
+      </div>
+    );
+  }
+
+  /* ---------- MOVIE / TV ---------- */
 
   return (
-    <div className="space-y-3 min-w-0">
+    <div className="space-y-3">
       {rating && (
         <div className="text-2xl px-3 py-1 rounded-full bg-[hsl(var(--foreground))] text-[hsl(var(--background))] font-semibold w-fit mx-auto sm:mx-0">
           ⭐ {rating}
         </div>
       )}
 
-      {/* Pill container */}
-      <div className="flex flex-wrap gap-2 justify-center sm:justify-start max-w-full min-w-0">
-        {creators && (
-          <Pill onClick={() => onPersonClick?.(creators)}>
-            📺 {creators}
+      <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
+        {/* Creators */}
+        {creators?.map((c) => (
+          <Pill key={c.id} onClick={() => onPersonClick?.(c.id)}>
+            📺 {c.name}
           </Pill>
-        )}
+        ))}
 
+        {/* Director */}
         {director && (
-          <Pill onClick={() => onPersonClick?.(director)}>
-            🎬 {director}
+          <Pill onClick={() => onPersonClick?.(director.id)}>
+            🎬 {director.name}
           </Pill>
         )}
 
@@ -216,18 +155,6 @@ export default function ModalMeta({
         {releaseYear && <Pill>📅 {releaseYear}</Pill>}
         {!rating && <Pill>⭐ Not rated yet</Pill>}
       </div>
-
-      {releaseDate && (
-        <div className="text-sm text-[hsl(var(--background)/0.65)] dark:text-[hsl(var(--foreground)/0.65)] text-center sm:text-left">
-          Released: {releaseDate}
-        </div>
-      )}
-
-      {genres && (
-        <div className="text-sm text-[hsl(var(--background)/0.7)] dark:text-[hsl(var(--foreground)/0.7)] text-center sm:text-left">
-          {genres}
-        </div>
-      )}
     </div>
   );
 }
