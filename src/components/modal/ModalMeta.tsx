@@ -68,8 +68,29 @@ export default function ModalMeta({
       return years;
     })();
 
-    /* ---------- Filmography count (reliable) ---------- */
-    const filmCount = movie.known_for?.length ?? 0;
+    /* ---------- Filmography count by department ---------- */
+    const filmCount = useMemo(() => {
+      const dept = movie.known_for_department;
+      const cast = (movie as any)?.combined_credits?.cast ?? [];
+      const crew = (movie as any)?.combined_credits?.crew ?? [];
+
+      if (dept === "Acting") return cast.length;
+
+      if (dept === "Directing")
+        return crew.filter((c: any) => c.job === "Director").length;
+
+      if (dept === "Writing")
+        return crew.filter((c: any) =>
+          ["Writer", "Screenplay", "Creator"].includes(c.job),
+        ).length;
+
+      if (dept === "Production")
+        return crew.filter((c: any) =>
+          ["Producer", "Executive Producer", "Creator"].includes(c.job),
+        ).length;
+
+      return cast.length + crew.length;
+    }, [movie]);
 
     return (
       <div className="space-y-3 min-w-0">
@@ -84,7 +105,7 @@ export default function ModalMeta({
 
         {/* Filmography count */}
         {filmCount > 0 && (
-          <div className="text-sm opacity-70">{filmCount}+ notable credits</div>
+          <div className="text-sm opacity-70">{filmCount} credits</div>
         )}
 
         <div className="h-px w-20 bg-[hsl(var(--foreground)/0.25)]" />
@@ -137,6 +158,18 @@ export default function ModalMeta({
       : names.join(", ");
   }, [isTV, movie]);
 
+  /* ---------- Genres (restored) ---------- */
+  const genres = useMemo(() => {
+    if (!movie.genres?.length) return null;
+
+    return movie.genres
+      .map((g: any) =>
+        typeof g === "string" ? g.charAt(0).toUpperCase() + g.slice(1) : g.name,
+      )
+      .filter(Boolean)
+      .join(" • ");
+  }, [movie.genres]);
+
   return (
     <div className="space-y-3">
       {rating && (
@@ -165,6 +198,13 @@ export default function ModalMeta({
         {releaseYear && <Pill>📅 {releaseYear}</Pill>}
         {!rating && <Pill>⭐ Not rated yet</Pill>}
       </div>
+
+      {/* Genres */}
+      {genres && (
+        <div className="text-sm opacity-70 text-center sm:text-left">
+          {genres}
+        </div>
+      )}
     </div>
   );
 }

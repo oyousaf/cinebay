@@ -1,11 +1,20 @@
 // ========================
 // Core Shared Types
 // ========================
+
 export type CastMember = {
   id: number;
   name: string;
   character?: string;
+  job?: string;
+  department?: string;
+  media_type?: "movie" | "tv";
   profile_path?: string;
+  poster_path?: string;
+  backdrop_path?: string;
+  vote_average?: number;
+  release_date?: string;
+  first_air_date?: string;
 };
 
 export type CrewMember = {
@@ -13,8 +22,27 @@ export type CrewMember = {
   name: string;
   job?: string;
   department?: string;
+  media_type?: "movie" | "tv";
   profile_path?: string;
+  poster_path?: string;
+  backdrop_path?: string;
+  vote_average?: number;
+  release_date?: string;
+  first_air_date?: string;
 };
+
+// ========================
+// Person Filmography
+// ========================
+
+export type CombinedCredits = {
+  cast: CastMember[];
+  crew: CrewMember[];
+};
+
+// ========================
+// Known For
+// ========================
 
 export type KnownForItem = {
   id: number;
@@ -31,6 +59,7 @@ export type KnownForItem = {
 // ========================
 // Genre
 // ========================
+
 export type Genre = {
   id: number;
   name: string;
@@ -39,6 +68,7 @@ export type Genre = {
 // ========================
 // TV Specific
 // ========================
+
 export type Creator = {
   id: number;
   name: string;
@@ -68,6 +98,7 @@ export interface Season {
 // ========================
 // Person Specific
 // ========================
+
 export interface PersonDetails {
   biography?: string;
   known_for_department?: string;
@@ -76,12 +107,16 @@ export interface PersonDetails {
   gender?: number;
   place_of_birth?: string;
   popularity?: number;
+
   known_for?: KnownForItem[];
+
+  combined_credits?: CombinedCredits;
 }
 
 // ========================
 // Base Media (NORMALISED)
 // ========================
+
 type BaseMedia = {
   id: number;
   overview: string;
@@ -116,6 +151,7 @@ type BaseMedia = {
 // ========================
 // Movie / TV / Person Union
 // ========================
+
 export type Movie = BaseMedia & {
   media_type: "movie" | "tv" | "person";
 
@@ -129,6 +165,15 @@ export type Movie = BaseMedia & {
   created_by?: Creator[];
   seasons?: Season[];
 
-  production_companies?: { id: number; name: string; logo_path?: string }[];
-  networks?: { id: number; name: string; logo_path?: string }[];
+  production_companies?: {
+    id: number;
+    name: string;
+    logo_path?: string;
+  }[];
+
+  networks?: {
+    id: number;
+    name: string;
+    logo_path?: string;
+  }[];
 } & Partial<PersonDetails>;

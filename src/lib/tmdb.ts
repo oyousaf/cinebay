@@ -116,7 +116,6 @@ const buildKnownForFromCredits = (detail: any): Movie[] => {
 
   switch (dept) {
     case "Acting":
-      // Actors: use cast only
       relevant = cast;
       break;
 
@@ -132,12 +131,11 @@ const buildKnownForFromCredits = (detail: any): Movie[] => {
 
     case "Production":
       relevant = crew.filter((c: any) =>
-        ["Producer", "Executive Producer"].includes(c.job),
+        ["Producer", "Executive Producer", "Creator"].includes(c.job),
       );
       break;
 
     default:
-      // Fallback: combine but still filter quality
       relevant = [...cast, ...crew];
   }
 
@@ -231,10 +229,18 @@ function toMovie(detail: any, type: "movie" | "tv" | "person"): Movie {
 
     /* ---------- Credits ---------- */
     credits: {
-      cast: detail?.credits?.cast ?? [],
-      crew: detail?.credits?.crew ?? [],
+      cast: detail?.credits?.cast ?? detail?.combined_credits?.cast ?? [],
+      crew: detail?.credits?.crew ?? detail?.combined_credits?.crew ?? [],
     },
 
+    /* ---------- Person-only ---------- */
+    combined_credits: detail?.combined_credits
+      ? {
+          cast: detail.combined_credits.cast ?? [],
+          crew: detail.combined_credits.crew ?? [],
+        }
+      : undefined,
+      
     /* ---------- Person fields ---------- */
     biography: detail?.biography,
     birthday: detail?.birthday,
