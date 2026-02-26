@@ -39,7 +39,8 @@ function KnownFor({ items, onSelect }: Props) {
         Known for
       </h3>
 
-      <div className="flex gap-3 2xl:gap-5 overflow-x-auto pb-2 no-scrollbar">
+      {/* Rail */}
+      <div className="flex gap-3 2xl:gap-5 overflow-x-auto p-2 no-scrollbar">
         {filtered.map((item) => {
           const title = normaliseTitle(item);
           const poster = item.poster_path
@@ -70,23 +71,25 @@ function KnownFor({ items, onSelect }: Props) {
                   vote_average: item.vote_average,
                 })
               }
-              className="w-28 2xl:w-40 shrink-0 text-center space-y-1 rounded-lg focus-visible:outline-none focus-visible:ring-2
-                focus-visible:ring-[hsl(var(--foreground))]"
+              className="w-28 2xl:w-40 shrink-0 text-center rounded-lg focus-visible:outline-none focus-visible:ring-2
+                focus-visible:ring-[hsl(var(--foreground))]
+              "
             >
               <img
                 src={poster}
                 alt={title}
                 loading="lazy"
-                className="w-28 h-40 2xl:w-40 2xl:h-60 rounded-lg object-cover shadow-md transition-transform duration-200
-                  hover:scale-[1.05]"
+                draggable={false}
+                className="w-28 h-40 2xl:w-40 2xl:h-60 rounded-lg object-cover shadow-md transition-transform duration-200 ease-out
+                  will-change-transform hover:scale-[1.05]"
               />
 
-              <div className="text-xs 2xl:text-sm font-medium truncate">
+              <div className="mt-2 2xl:mt-2.5 text-xs 2xl:text-sm font-medium truncate leading-tight">
                 {title}
               </div>
 
               {year && (
-                <div className="text-[11px] 2xl:text-xs">
+                <div className="mt-0.5 text-[11px] 2xl:text-xs text-[hsl(var(--muted-foreground))]">
                   {year}
                 </div>
               )}

@@ -28,7 +28,7 @@ const RecommendationList = ({ items, onSelect, label }: ListProps) => {
       </h3>
 
       <div
-        className="flex gap-3 2xl:gap-5 overflow-x-auto pb-2 no-scrollbar"
+        className="flex gap-3 2xl:gap-5 overflow-x-auto p-2 no-scrollbar"
         aria-label={label}
       >
         {filtered.map((item) => {
@@ -42,19 +42,19 @@ const RecommendationList = ({ items, onSelect, label }: ListProps) => {
               key={item.id}
               type="button"
               onClick={() => onSelect?.(item)}
-              className="w-28 2xl:w-40 shrink-0 text-center space-y-1 rounded-lg focus-visible:outline-none focus-visible:ring-2
-                focus-visible:ring-[hsl(var(--foreground))]"
+              className="w-28 2xl:w-40 shrink-0 text-center rounded-lg focus-visible:outline-none focus-visible:ring-2
+          focus-visible:ring-[hsl(var(--foreground))]"
             >
               <img
                 src={poster}
                 alt={title}
                 loading="lazy"
                 draggable={false}
-                className="w-28 h-40 2xl:w-40 2xl:h-60 rounded-lg object-cover shadow-md transition-transform duration-200
-                  hover:scale-[1.05]"
+                className="w-28 h-40 2xl:w-40 2xl:h-60 rounded-lg object-cover shadow-md transition-transform duration-200 ease-out
+                will-change-transform hover:scale-[1.05]"
               />
 
-              <div className="text-xs 2xl:text-sm font-medium truncate">
+              <div className="mt-2 2xl:mt-2.5 text-xs 2xl:text-sm font-medium truncate leading-tight">
                 {title}
               </div>
             </button>
