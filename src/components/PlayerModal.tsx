@@ -174,8 +174,7 @@ export default function PlayerModal({ intent, onClose }: PlayerModalProps) {
           key={`${intentKey}-${providerIndex}`}
           src={embedUrl}
           className="w-full h-full border-none"
-          allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-          allowFullScreen
+          allow="autoplay; fullscreen *; picture-in-picture *; encrypted-media *"
           referrerPolicy="no-referrer"
           onLoad={() => {
             if (loadTimerRef.current) {
