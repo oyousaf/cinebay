@@ -75,6 +75,7 @@ export default function PlayerModal({ intent, onClose }: PlayerModalProps) {
         provider,
         startAt,
         autoplay: true,
+        fullscreenButton: true,
         theme: THEME,
         subtitles: "en",
         nextButton: intent.mediaType === "tv",
@@ -174,6 +175,7 @@ export default function PlayerModal({ intent, onClose }: PlayerModalProps) {
           src={embedUrl}
           className="w-full h-full border-none"
           allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+          allowFullScreen
           referrerPolicy="no-referrer"
           onLoad={() => {
             if (loadTimerRef.current) {
