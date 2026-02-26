@@ -37,11 +37,29 @@ const dataCache = new Map<string, CacheEntry>();
 const inflight = new Map<string, Promise<any>>();
 
 function getCached(key: string) {
-  const entry = dataCache.get(key);
+  let entry = dataCache.get(key);
+
+  if (!entry && typeof window !== "undefined") {
+    const stored = localStorage.getItem(`tmdb_${key}`);
+
+    if (stored) {
+      try {
+        const parsed: CacheEntry = JSON.parse(stored);
+        entry = parsed;
+        dataCache.set(key, parsed);
+      } catch {
+        localStorage.removeItem(`tmdb_${key}`);
+      }
+    }
+  }
+
   if (!entry) return null;
 
   if (Date.now() > entry.expires) {
     dataCache.delete(key);
+    if (typeof window !== "undefined") {
+      localStorage.removeItem(`tmdb_${key}`);
+    }
     return null;
   }
 
@@ -49,10 +67,14 @@ function getCached(key: string) {
 }
 
 function setCached(key: string, data: any) {
-  dataCache.set(key, {
+  const entry = {
     data,
     expires: Date.now() + CACHE_TTL,
-  });
+  };
+
+  dataCache.set(key, entry);
+
+  localStorage.setItem(`tmdb_${key}`, JSON.stringify(entry));
 }
 
 /* =========================================================
