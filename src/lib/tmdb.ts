@@ -240,7 +240,7 @@ function toMovie(detail: any, type: "movie" | "tv" | "person"): Movie {
           crew: detail.combined_credits.crew ?? [],
         }
       : undefined,
-      
+
     /* ---------- Person fields ---------- */
     biography: detail?.biography,
     birthday: detail?.birthday,
