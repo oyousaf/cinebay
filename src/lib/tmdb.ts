@@ -261,7 +261,32 @@ function toMovie(detail: any, type: "movie" | "tv" | "person"): Movie {
     deathday: detail?.deathday,
     place_of_birth: detail?.place_of_birth,
     known_for_department: detail?.known_for_department,
-    known_for: [],
+    known_for:
+      type === "person" && detail?.combined_credits
+        ? [
+            ...(detail.combined_credits.cast ?? []),
+            ...(detail.combined_credits.crew ?? []),
+          ]
+            .filter(
+              (c: any) =>
+                (c.media_type === "movie" || c.media_type === "tv") &&
+                c.poster_path &&
+                c.vote_average >= MIN_RATING,
+            )
+            .sort((a: any, b: any) => b.vote_average - a.vote_average)
+            .slice(0, 20)
+            .map((c: any) => ({
+              id: c.id,
+              media_type: c.media_type,
+              title: c.title,
+              name: c.name,
+              poster_path: c.poster_path,
+              backdrop_path: c.backdrop_path,
+              vote_average: c.vote_average,
+              release_date: c.release_date,
+              first_air_date: c.first_air_date,
+            }))
+        : [],
     similar,
     recommendations,
     status: undefined,

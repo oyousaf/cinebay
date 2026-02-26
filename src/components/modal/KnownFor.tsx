@@ -72,8 +72,7 @@ function KnownFor({ items, onSelect }: Props) {
                 })
               }
               className="w-28 2xl:w-40 shrink-0 text-center rounded-lg focus-visible:outline-none focus-visible:ring-2
-                focus-visible:ring-[hsl(var(--foreground))]
-              "
+                focus-visible:ring-[hsl(var(--foreground))]"
             >
               <img
                 src={poster}
