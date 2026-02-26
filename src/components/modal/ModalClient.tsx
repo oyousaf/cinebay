@@ -1,14 +1,6 @@
 "use client";
 
-import {
-  useEffect,
-  useCallback,
-  useMemo,
-  useRef,
-  useState,
-  lazy,
-  Suspense,
-} from "react";
+import { useEffect, useCallback, useMemo, useRef, lazy, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 
@@ -53,7 +45,9 @@ export default function ModalClient({
   onBack?: () => void;
 }) {
   const modalRef = useRef<HTMLDivElement>(null);
-  const [loadingPerson, setLoadingPerson] = useState(false);
+
+  /* ---------- CLICK LOCK (no re-render) ---------- */
+  const loadingRef = useRef(false);
 
   const isPerson = movie.media_type === "person";
   const isTV = movie.media_type === "tv";
@@ -91,28 +85,32 @@ export default function ModalClient({
   const posterPath = movie.profile_path || movie.poster_path;
   const poster = posterPath ? `${TMDB_IMAGE}${posterPath}` : "/fallback.jpg";
 
-  /* ---------- Navigate to person by ID ---------- */
+  /* ---------- Navigate to person (FIXED) ---------- */
   const handlePersonClick = useCallback(
     async (id: number) => {
-      if (!id || loadingPerson) return;
+      if (!id || loadingRef.current) return;
+
+      loadingRef.current = true;
 
       try {
-        setLoadingPerson(true);
         const full = await fetchDetails(id, "person");
         if (full) onSelect?.(full);
       } catch {
         toast.error("Failed to load person.");
       } finally {
-        setLoadingPerson(false);
+        loadingRef.current = false;
       }
     },
-    [onSelect, loadingPerson],
+    [onSelect],
   );
 
   /* ---------- Selection helper ---------- */
   const handleSelectWithDetails = useCallback(
     async (item: Movie) => {
-      if (!item?.id) return;
+      if (!item?.id || loadingRef.current) return;
+
+      loadingRef.current = true;
+
       try {
         const full = await fetchDetails(
           item.id,
@@ -121,6 +119,8 @@ export default function ModalClient({
         if (full) onSelect?.(full);
       } catch {
         toast.error("Failed to load details.");
+      } finally {
+        loadingRef.current = false;
       }
     },
     [movie.media_type, onSelect],
@@ -135,7 +135,10 @@ export default function ModalClient({
         exit={{ opacity: 0 }}
         transition={{ duration: 0.25, ease: EASE_OUT }}
         className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${BACKDROP}`}
-        onClick={onClose}
+        /* ---------- BACKDROP FIX ---------- */
+        onClick={(e) => {
+          if (e.target === e.currentTarget) onClose();
+        }}
       >
         <motion.div
           ref={modalRef}
