@@ -93,7 +93,7 @@ export default function ModalMeta({
     }, [movie]);
 
     return (
-      <div className="space-y-3 min-w-0">
+      <div className="space-y-3 min-w-0 text-center sm:text-left">
         <h2 className="text-3xl font-semibold tracking-tight wrap-break-word">
           {movie.name}
         </h2>
@@ -178,7 +178,7 @@ export default function ModalMeta({
         </div>
       )}
 
-      <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
+      <div className="flex flex-wrap gap-2 justify-center text-center sm:justify-start">
         {/* Creators */}
         {creators?.map((c) => (
           <Pill key={c.id} onClick={() => onPersonClick?.(c.id)}>
