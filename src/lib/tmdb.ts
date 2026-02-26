@@ -60,15 +60,6 @@ const isNewMovie = (date?: string) =>
 const isWithin3Months = (date?: string) =>
   Boolean(date && new Date(date) >= threeMonthsAgo());
 
-const isNewSeriesByDetail = (detail: any) => {
-  const seasons = detail?.seasons ?? [];
-  return (
-    seasons.length === 1 &&
-    seasons[0]?.air_date &&
-    new Date(seasons[0].air_date) >= oneMonthAgo()
-  );
-};
-
 const sortByRating = (a: Movie, b: Movie) =>
   (b.vote_average ?? 0) - (a.vote_average ?? 0);
 
@@ -365,19 +356,43 @@ export async function fetchShows(): Promise<Movie[]> {
     isAllowedContent(s.genres ?? []),
   );
 
+  /* ---------- STATUS CLASSIFICATION ---------- */
   filtered.forEach((s) => {
-    const lastAirRaw = s.seasons?.at(-1)?.air_date;
-    const lastAir = lastAirRaw ? new Date(lastAirRaw) : null;
+    const firstAir = s.release_date ? new Date(s.release_date) : null;
 
-    if (isNewSeriesByDetail(s)) s.status = "new";
-    else if (lastAir && lastAir >= oneMonthAgo()) s.status = "renewed";
+    const lastSeasonAir = s.seasons?.at(-1)?.air_date
+      ? new Date(s.seasons.at(-1)!.air_date!)
+      : null;
+
+    const lastAir =
+      lastSeasonAir || (s.last_air_date ? new Date(s.last_air_date) : null);
+
+    // Priority: NEW > RENEWED
+    if (firstAir && firstAir >= oneMonthAgo()) {
+      s.status = "new";
+    } else if (lastAir && lastAir >= oneMonthAgo()) {
+      s.status = "renewed";
+    }
   });
 
+  /* ---------- WITHIN 3 MONTHS ---------- */
   const within3 = filtered.filter((s) => {
-    const lastAirRaw = s.seasons?.at(-1)?.air_date;
-    return Boolean(lastAirRaw && new Date(lastAirRaw) >= threeMonthsAgo());
+    const firstAir = s.release_date ? new Date(s.release_date) : null;
+
+    const lastSeasonAir = s.seasons?.at(-1)?.air_date
+      ? new Date(s.seasons.at(-1)!.air_date!)
+      : null;
+
+    const lastAir =
+      lastSeasonAir || (s.last_air_date ? new Date(s.last_air_date) : null);
+
+    return (
+      (lastAir && lastAir >= threeMonthsAgo()) ||
+      (firstAir && firstAir >= threeMonthsAgo())
+    );
   });
 
+  /* ---------- ORDER ---------- */
   return [
     ...within3.filter((s) => s.status === "new").sort(sortByRating),
     ...within3.filter((s) => s.status === "renewed").sort(sortByRating),
