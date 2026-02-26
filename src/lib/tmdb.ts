@@ -23,62 +23,7 @@ const threeMonthsAgo = () => {
 };
 
 /* =========================================================
-   SAFE REQUEST CACHE
-========================================================= */
-
-type CacheEntry = {
-  data: any;
-  expires: number;
-};
-
-const CACHE_TTL = 1000 * 60 * 5;
-
-const dataCache = new Map<string, CacheEntry>();
-const inflight = new Map<string, Promise<any>>();
-
-function getCached(key: string) {
-  let entry = dataCache.get(key);
-
-  if (!entry && typeof window !== "undefined") {
-    const stored = localStorage.getItem(`tmdb_${key}`);
-
-    if (stored) {
-      try {
-        const parsed: CacheEntry = JSON.parse(stored);
-        entry = parsed;
-        dataCache.set(key, parsed);
-      } catch {
-        localStorage.removeItem(`tmdb_${key}`);
-      }
-    }
-  }
-
-  if (!entry) return null;
-
-  if (Date.now() > entry.expires) {
-    dataCache.delete(key);
-    if (typeof window !== "undefined") {
-      localStorage.removeItem(`tmdb_${key}`);
-    }
-    return null;
-  }
-
-  return entry.data;
-}
-
-function setCached(key: string, data: any) {
-  const entry = {
-    data,
-    expires: Date.now() + CACHE_TTL,
-  };
-
-  dataCache.set(key, entry);
-
-  localStorage.setItem(`tmdb_${key}`, JSON.stringify(entry));
-}
-
-/* =========================================================
-   GENRE EXCLUSION
+   GENRE EXCLUSION (LOGIC ONLY)
 ========================================================= */
 
 const EXCLUDED_GENRES = new Set<string>([
@@ -94,6 +39,18 @@ const EXCLUDED_GENRES = new Set<string>([
   "western",
 ]);
 
+/* =========================================================
+   HELPERS (PURE)
+========================================================= */
+
+/** Raw genres for UI chips. */
+const extractGenresRaw = (detail: any): Genre[] =>
+  Array.isArray(detail?.genres)
+    ? detail.genres
+        .map((g: any) => ({ id: Number(g?.id), name: String(g?.name ?? "") }))
+        .filter((g: Genre) => Number.isFinite(g.id) && g.name.length > 0)
+    : [];
+
 const isAllowedContent = (genres: string[]) =>
   !genres.some((g) => EXCLUDED_GENRES.has(g));
 
@@ -103,22 +60,20 @@ const isNewMovie = (date?: string) =>
 const isWithin3Months = (date?: string) =>
   Boolean(date && new Date(date) >= threeMonthsAgo());
 
+const isNewSeriesByDetail = (detail: any) => {
+  const seasons = detail?.seasons ?? [];
+  return (
+    seasons.length === 1 &&
+    seasons[0]?.air_date &&
+    new Date(seasons[0].air_date) >= oneMonthAgo()
+  );
+};
+
 const sortByRating = (a: Movie, b: Movie) =>
   (b.vote_average ?? 0) - (a.vote_average ?? 0);
 
 /* =========================================================
-   GENRES
-========================================================= */
-
-const extractGenresRaw = (detail: any): Genre[] =>
-  Array.isArray(detail?.genres)
-    ? detail.genres
-        .map((g: any) => ({ id: Number(g?.id), name: String(g?.name ?? "") }))
-        .filter((g: Genre) => Number.isFinite(g.id) && g.name.length > 0)
-    : [];
-
-/* =========================================================
-   SUMMARY TRANSFORMER
+   SUMMARY TRANSFORMER (TMDB list item -> Movie)
 ========================================================= */
 
 function toMovieSummary(item: any, forcedType?: "movie" | "tv"): Movie {
@@ -133,77 +88,57 @@ function toMovieSummary(item: any, forcedType?: "movie" | "tv"): Movie {
     media_type: type,
     title: item?.title || item?.name || "Untitled",
     name: item?.name,
+
     overview: item?.overview ?? "",
+
     poster_path: item?.poster_path ?? "",
     backdrop_path: item?.backdrop_path ?? "",
     profile_path: "",
+
     release_date: release,
-    vote_average: item?.vote_average ?? 0,
-    vote_count: item?.vote_count ?? 0,
+    vote_average:
+      typeof item?.vote_average === "number" ? item.vote_average : 0,
+    vote_count: typeof item?.vote_count === "number" ? item.vote_count : 0,
+
     genres: [],
     genres_raw: [],
+
     runtime: null,
     original_language: item?.original_language ?? "",
+
     known_for: [],
     status: undefined,
   };
 }
 
 /* =========================================================
-   BASE FETCH (CACHED)
+   PERSON: KNOWN FOR
 ========================================================= */
 
-const baseURL = `${import.meta.env.VITE_API_URL}/api/tmdb`;
+const buildKnownForFromCredits = (detail: any): Movie[] => {
+  const cast = detail?.combined_credits?.cast ?? [];
 
-export async function fetchFromProxy(endpoint: string) {
-  // Cached data
-  const cached = getCached(endpoint);
-  if (cached) return cached;
-
-  // In-flight dedup
-  if (inflight.has(endpoint)) {
-    return inflight.get(endpoint);
-  }
-
-  const request = axios
-    .get(`${baseURL}${endpoint}`)
-    .then((res) => {
-      setCached(endpoint, res.data);
-      inflight.delete(endpoint);
-      return res.data;
-    })
-    .catch(() => {
-      inflight.delete(endpoint);
-      return null;
-    });
-
-  inflight.set(endpoint, request);
-
-  return request;
-}
+  return cast
+    .filter(
+      (c: any) =>
+        c?.poster_path &&
+        c?.vote_average >= MIN_RATING &&
+        c?.original_language === "en",
+    )
+    .sort((a: any, b: any) => (b.popularity ?? 0) - (a.popularity ?? 0))
+    .slice(0, 10)
+    .map((c: any) =>
+      toMovieSummary({ ...c, media_type: c?.media_type }, undefined),
+    );
+};
 
 /* =========================================================
-   MULTI-PAGE FETCH
-========================================================= */
-
-async function fetchAllPages(endpoint: string, max = 3) {
-  const out: any[] = [];
-
-  for (let p = 1; p <= max; p++) {
-    const d = await fetchFromProxy(`${endpoint}&page=${p}`);
-    if (!d?.results?.length) break;
-    out.push(...d.results);
-  }
-
-  return out;
-}
-
-/* =========================================================
-   DETAILS TRANSFORMER
+   TRANSFORMER (DETAILS -> Movie)  SINGLE AUTHORITY
 ========================================================= */
 
 function toMovie(detail: any, type: "movie" | "tv" | "person"): Movie {
   const release = detail?.release_date || detail?.first_air_date || "";
+
   const genres_raw = extractGenresRaw(detail);
   const genres = genres_raw.map((g) => g.name.toLowerCase());
 
@@ -234,79 +169,117 @@ function toMovie(detail: any, type: "movie" | "tv" | "person"): Movie {
   return {
     id: Number(detail?.id ?? -1),
     media_type: type,
+
+    /* ---------- Naming ---------- */
     title: detail?.title || detail?.name || "Untitled",
     name: detail?.name,
+
+    /* ---------- Core ---------- */
     overview: detail?.overview ?? "",
     poster_path: detail?.poster_path ?? "",
     backdrop_path: detail?.backdrop_path ?? "",
     profile_path: detail?.profile_path ?? "",
+
+    /* ---------- Dates / Ratings ---------- */
     release_date: release,
-    vote_average: detail?.vote_average ?? 0,
-    vote_count: detail?.vote_count ?? 0,
+    vote_average:
+      typeof detail?.vote_average === "number" ? detail.vote_average : 0,
+    vote_count: typeof detail?.vote_count === "number" ? detail.vote_count : 0,
+
+    /* ---------- Genres ---------- */
     genres,
     genres_raw,
+
+    /* ---------- Technical ---------- */
     runtime: typeof detail?.runtime === "number" ? detail.runtime : null,
     original_language: detail?.original_language ?? "",
-    created_by: detail?.created_by ?? [],
-    seasons: detail?.seasons ?? [],
-    production_companies: detail?.production_companies ?? [],
-    networks: type === "tv" ? (detail?.networks ?? []) : [],
+
+    /* ---------- TV ---------- */
+    created_by: Array.isArray(detail?.created_by) ? detail.created_by : [],
+    seasons: Array.isArray(detail?.seasons) ? detail.seasons : [],
+
+    /* ---------- Production / Distribution ---------- */
+    production_companies: Array.isArray(detail?.production_companies)
+      ? detail.production_companies
+      : [],
+
+    networks:
+      type === "tv" && Array.isArray(detail?.networks) ? detail.networks : [],
+
+    /* ---------- Credits ---------- */
     credits: {
       cast: detail?.credits?.cast ?? [],
       crew: detail?.credits?.crew ?? [],
     },
-    combined_credits: detail?.combined_credits,
+
+    /* ---------- Person fields ---------- */
     biography: detail?.biography,
     birthday: detail?.birthday,
     deathday: detail?.deathday,
     place_of_birth: detail?.place_of_birth,
     known_for_department: detail?.known_for_department,
+
     known_for:
-      type === "person" && detail?.combined_credits
-        ? [
-            ...(detail.combined_credits.cast ?? []),
-            ...(detail.combined_credits.crew ?? []),
-          ]
-            .filter(
-              (c: any) =>
-                (c.media_type === "movie" || c.media_type === "tv") &&
-                c.poster_path &&
-                c.vote_average >= MIN_RATING,
-            )
-            .sort((a: any, b: any) => b.vote_average - a.vote_average)
-            .slice(0, 20)
-            .map((c: any) => ({
-              id: c.id,
-              media_type: c.media_type,
-              title: c.title,
-              name: c.name,
-              poster_path: c.poster_path,
-              backdrop_path: c.backdrop_path,
-              vote_average: c.vote_average,
-              release_date: c.release_date,
-              first_air_date: c.first_air_date,
-            }))
-        : [],
+      type === "person"
+        ? buildKnownForFromCredits(detail)
+        : Array.isArray(detail?.known_for)
+          ? detail.known_for.map((x: any) => toMovieSummary(x))
+          : [],
+
+    /* ---------- Related ---------- */
     similar,
     recommendations,
+
     status: undefined,
   };
 }
 
 /* =========================================================
-   DETAILS
+   BASE FETCHER 
+========================================================= */
+
+const baseURL = `${import.meta.env.VITE_API_URL}/api/tmdb`;
+
+export async function fetchFromProxy(endpoint: string) {
+  try {
+    const { data } = await axios.get(`${baseURL}${endpoint}`);
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+/* =========================================================
+   MULTI-PAGE FETCH
+========================================================= */
+
+async function fetchAllPages(endpoint: string, max = 3) {
+  const out: any[] = [];
+
+  for (let p = 1; p <= max; p++) {
+    const d = await fetchFromProxy(`${endpoint}&page=${p}`);
+    if (!d?.results?.length) break;
+    out.push(...d.results);
+  }
+
+  return out;
+}
+
+/* =========================================================
+   DETAILS (AUTHORITATIVE)
 ========================================================= */
 
 export async function fetchDetails(
   id: number,
   type: "movie" | "tv" | "person",
 ) {
-  const endpoint =
-    type === "person"
-      ? `/person/${id}?language=en-GB&append_to_response=combined_credits,images`
-      : `/${type}/${id}?language=en-GB&append_to_response=credits,similar,recommendations`;
+  const append =
+    type === "person" ? "combined_credits" : "credits,similar,recommendations";
 
-  const d = await fetchFromProxy(endpoint);
+  const d = await fetchFromProxy(
+    `/${type}/${id}?language=en-GB&append_to_response=${append}`,
+  );
+
   return d ? toMovie(d, type) : null;
 }
 
@@ -334,7 +307,7 @@ const empty = (t: "movie" | "tv"): Movie => ({
 });
 
 /* =========================================================
-   MOVIES
+   MOVIES — NEW → RECENT
 ========================================================= */
 
 export async function fetchMovies(): Promise<Movie[]> {
@@ -371,7 +344,7 @@ export async function fetchMovies(): Promise<Movie[]> {
 }
 
 /* =========================================================
-   TV
+   TV — NEW → RENEWED → RECENT
 ========================================================= */
 
 export async function fetchShows(): Promise<Movie[]> {
@@ -393,31 +366,16 @@ export async function fetchShows(): Promise<Movie[]> {
   );
 
   filtered.forEach((s) => {
-    const firstAir = s.release_date ? new Date(s.release_date) : null;
-    const lastSeasonAir = s.seasons?.at(-1)?.air_date
-      ? new Date(s.seasons.at(-1)!.air_date!)
-      : null;
+    const lastAirRaw = s.seasons?.at(-1)?.air_date;
+    const lastAir = lastAirRaw ? new Date(lastAirRaw) : null;
 
-    const lastAir =
-      lastSeasonAir || (s.last_air_date ? new Date(s.last_air_date) : null);
-
-    if (firstAir && firstAir >= oneMonthAgo()) s.status = "new";
+    if (isNewSeriesByDetail(s)) s.status = "new";
     else if (lastAir && lastAir >= oneMonthAgo()) s.status = "renewed";
   });
 
   const within3 = filtered.filter((s) => {
-    const firstAir = s.release_date ? new Date(s.release_date) : null;
-    const lastSeasonAir = s.seasons?.at(-1)?.air_date
-      ? new Date(s.seasons.at(-1)!.air_date!)
-      : null;
-
-    const lastAir =
-      lastSeasonAir || (s.last_air_date ? new Date(s.last_air_date) : null);
-
-    return (
-      (lastAir && lastAir >= threeMonthsAgo()) ||
-      (firstAir && firstAir >= threeMonthsAgo())
-    );
+    const lastAirRaw = s.seasons?.at(-1)?.air_date;
+    return Boolean(lastAirRaw && new Date(lastAirRaw) >= threeMonthsAgo());
   });
 
   return [
@@ -428,7 +386,7 @@ export async function fetchShows(): Promise<Movie[]> {
 }
 
 /* =========================================================
-   SEASON EPISODES
+   TV SEASON EPISODES
 ========================================================= */
 
 export async function fetchSeasonEpisodes(
@@ -436,11 +394,13 @@ export async function fetchSeasonEpisodes(
   season: number,
 ): Promise<any[] | null> {
   const d = await fetchFromProxy(`/tv/${tvId}/season/${season}?language=en-GB`);
-  return d?.episodes ?? null;
+
+  if (!d || !Array.isArray(d.episodes)) return null;
+  return d.episodes;
 }
 
 /* =========================================================
-   DEV PICKS
+   DEV'S PICK
 ========================================================= */
 
 export async function fetchDevsPick(): Promise<Movie[]> {
@@ -459,19 +419,23 @@ export async function fetchTrendingClean(): Promise<Movie[]> {
 
   if (!data?.results?.length) return [];
 
-  return data.results
-    .filter(
-      (item: any) =>
-        item?.id &&
-        (item.media_type === "movie" || item.media_type === "tv") &&
-        item.vote_average >= MIN_RATING &&
-        item.vote_count >= 150 &&
-        item.original_language !== "ja",
-    )
+  return (data.results as any[])
+    .filter((item) => {
+      if (!item?.id) return false;
+
+      if (item.media_type !== "movie" && item.media_type !== "tv") return false;
+
+      if ((item.vote_average ?? 0) < MIN_RATING) return false;
+      if ((item.vote_count ?? 0) < 150) return false;
+      if (item.original_language === "ja") return false;
+
+      return true;
+    })
     .sort(
-      (a: any, b: any) =>
-        b.vote_average - a.vote_average || b.vote_count - a.vote_count,
+      (a, b) =>
+        (b.vote_average ?? 0) - (a.vote_average ?? 0) ||
+        (b.vote_count ?? 0) - (a.vote_count ?? 0),
     )
     .slice(0, 10)
-    .map((item: any) => toMovieSummary(item));
+    .map((item) => toMovieSummary(item));
 }
