@@ -1,6 +1,14 @@
 "use client";
 
-import { useEffect, useCallback, useMemo, useRef, lazy, Suspense } from "react";
+import {
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+  lazy,
+  Suspense,
+} from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 
@@ -25,7 +33,6 @@ const LazyKnownForSlider = lazy(() => import("./KnownFor"));
 const BACKDROP =
   "bg-[radial-gradient(ellipse_at_center,hsl(var(--background)/0.25),hsl(var(--background)/0.55)_60%,hsl(var(--background)/0.75))]";
 
-/* Viewport-safe surface */
 const SURFACE =
   "relative w-[95vw] max-w-4xl 2xl:max-w-6xl rounded-2xl overflow-hidden " +
   "bg-[hsl(var(--background))] ring-2 ring-[hsl(var(--foreground))] " +
@@ -49,6 +56,9 @@ export default function ModalClient({
   onBack?: () => void;
 }) {
   const modalRef = useRef<HTMLDivElement>(null);
+
+  /* ---------- Person loading state ---------- */
+  const [loadingPerson, setLoadingPerson] = useState(false);
 
   const isPerson = movie.media_type === "person";
   const isTV = movie.media_type === "tv";
@@ -84,7 +94,7 @@ export default function ModalClient({
   const posterPath = movie.profile_path || movie.poster_path;
   const poster = posterPath ? `${TMDB_IMAGE}${posterPath}` : "/fallback.jpg";
 
-  /* ---------- Selection ---------- */
+  /* ---------- Selection helper ---------- */
   const handleSelectWithDetails = useCallback(
     async (item: Movie) => {
       if (!item?.id) return;
@@ -101,13 +111,46 @@ export default function ModalClient({
     [movie.media_type, onSelect],
   );
 
+  /* ---------- Open person from name ---------- */
+  const handlePersonClick = useCallback(
+    async (rawName: string) => {
+      if (!rawName || loadingPerson) return;
+
+      // Use first name if multiple provided
+      const name = rawName.split(",")[0].trim();
+
+      try {
+        setLoadingPerson(true);
+
+        const res = await fetch(
+          `/api/tmdb/search/person?query=${encodeURIComponent(name)}&language=en-GB`,
+        );
+
+        const data = await res.json();
+        const person = data?.results?.[0];
+
+        if (!person?.id) {
+          toast.error("Person not found.");
+          return;
+        }
+
+        const full = await fetchDetails(person.id, "person");
+        if (full) onSelect?.(full);
+      } catch {
+        toast.error("Failed to load person.");
+      } finally {
+        setLoadingPerson(false);
+      }
+    },
+    [onSelect, loadingPerson],
+  );
+
   return (
     <AnimatePresence mode="wait">
       <motion.div
         key={movie.id}
         role="dialog"
         aria-modal="true"
-        aria-labelledby="modal-title"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -126,7 +169,6 @@ export default function ModalClient({
         >
           <ModalHeader onClose={onClose} onBack={onBack} />
 
-          {/* Scrollable content area */}
           <div className="flex-1 min-h-0 overflow-y-auto px-4 py-6 sm:px-8 sm:py-8 2xl:px-12 2xl:py-10 space-y-8 2xl:space-y-10">
             {/* HERO */}
             <div className="flex flex-col sm:flex-row gap-6 2xl:gap-10 items-center sm:items-start min-w-0">
@@ -146,6 +188,7 @@ export default function ModalClient({
                   movie={movie}
                   director={director}
                   creators={creators}
+                  onPersonClick={handlePersonClick}
                 />
 
                 <ModalBody movie={movie} onSelect={onSelect} />

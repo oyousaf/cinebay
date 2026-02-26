@@ -71,8 +71,19 @@ const compactNames = (items: NameLike[] | null | undefined, max = 2) => {
 
 /* ---------- UI Helpers ---------- */
 
-const Pill = ({ children }: { children: React.ReactNode }) => (
-  <span className="px-3 py-0.5 text-sm rounded-full bg-[hsl(var(--background))] ring-1 ring-[hsl(var(--foreground)/0.25)] text-[hsl(var(--foreground)/0.9)] wrap-break-word max-w-full min-w-0">
+const Pill = ({
+  children,
+  onClick,
+}: {
+  children: React.ReactNode;
+  onClick?: () => void;
+}) => (
+  <span
+    onClick={onClick}
+    className={`px-3 py-0.5 text-sm rounded-full bg-[hsl(var(--background))] ring-1 ring-[hsl(var(--foreground)/0.25)] text-[hsl(var(--foreground)/0.9)] wrap-break-word max-w-full min-w-0 ${
+      onClick ? "cursor-pointer hover:ring-[hsl(var(--foreground)/0.5)]" : ""
+    }`}
+  >
     {children}
   </span>
 );
@@ -83,10 +94,12 @@ export default function ModalMeta({
   movie,
   creators,
   director,
+  onPersonClick,
 }: {
   movie: Movie;
   creators?: string | null;
   director?: string | null;
+  onPersonClick?: (name: string) => void;
 }) {
   const isPerson = movie.media_type === "person";
   const isTV = movie.media_type === "tv";
@@ -179,18 +192,25 @@ export default function ModalMeta({
   return (
     <div className="space-y-3 min-w-0">
       {rating && (
-        <div
-          className="text-2xl px-3 py-1 rounded-full bg-[hsl(var(--foreground))] text-[hsl(var(--background))] font-semibold w-fit mx-auto sm:mx-0"
-          aria-label={`Rating ${rating} out of 10`}
-        >
+        <div className="text-2xl px-3 py-1 rounded-full bg-[hsl(var(--foreground))] text-[hsl(var(--background))] font-semibold w-fit mx-auto sm:mx-0">
           ⭐ {rating}
         </div>
       )}
 
       {/* Pill container */}
       <div className="flex flex-wrap gap-2 justify-center sm:justify-start max-w-full min-w-0">
-        {creators && <Pill>📺 {creators}</Pill>}
-        {director && <Pill>🎬 {director}</Pill>}
+        {creators && (
+          <Pill onClick={() => onPersonClick?.(creators)}>
+            📺 {creators}
+          </Pill>
+        )}
+
+        {director && (
+          <Pill onClick={() => onPersonClick?.(director)}>
+            🎬 {director}
+          </Pill>
+        )}
+
         {airedOn && <Pill>📡 Aired on: {airedOn}</Pill>}
         {producedBy && <Pill>🏭 Produced by: {producedBy}</Pill>}
         {releaseYear && <Pill>📅 {releaseYear}</Pill>}
@@ -198,13 +218,13 @@ export default function ModalMeta({
       </div>
 
       {releaseDate && (
-        <div className="text-sm text-[hsl(var(--background)/0.65)] dark:text-[hsl(var(--foreground)/0.65)] text-center sm:text-left wrap-break-word">
+        <div className="text-sm text-[hsl(var(--background)/0.65)] dark:text-[hsl(var(--foreground)/0.65)] text-center sm:text-left">
           Released: {releaseDate}
         </div>
       )}
 
       {genres && (
-        <div className="text-sm text-[hsl(var(--background)/0.7)] dark:text-[hsl(var(--foreground)/0.7)] text-center sm:text-left wrap-break-word">
+        <div className="text-sm text-[hsl(var(--background)/0.7)] dark:text-[hsl(var(--foreground)/0.7)] text-center sm:text-left">
           {genres}
         </div>
       )}
