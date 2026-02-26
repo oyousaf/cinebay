@@ -18,7 +18,6 @@ const PORT = Number(process.env.PORT) || 5000;
 const allowedOrigins = [
   "http://localhost:5173",
   process.env.VITE_API_URL,
-  "https://appassets.androidplatform.net",
 ].filter(Boolean);
 
 app.use(

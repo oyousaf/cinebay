@@ -5,16 +5,13 @@ import { VitePWA } from "vite-plugin-pwa";
 import path from "path";
 
 export default defineConfig(() => {
-  const isAndroid = process.env.ANDROID_BUILD === "true";
-
   return {
-    base: isAndroid ? "/assets/" : "/",
+    base: "/",
 
     plugins: [
       tailwindcss(),
       react(),
       VitePWA({
-        disable: isAndroid,
         registerType: "autoUpdate",
 
         includeAssets: [
@@ -33,24 +30,29 @@ export default defineConfig(() => {
           theme_color: "#80FFCC",
           background_color: "#80FFCC",
           start_url: "/",
-          display: "fullscreen",
+          scope: "/",
+          display: "standalone",
           orientation: "any",
           lang: "en-GB",
           dir: "ltr",
           categories: ["entertainment", "streaming", "media"],
           icons: [
-            { src: "/icon-192.png", sizes: "192x192", type: "image/png" },
-            { src: "/icon-512.png", sizes: "512x512", type: "image/png" },
+            { src: "icon-192.png", sizes: "192x192", type: "image/png" },
+            { src: "icon-512.png", sizes: "512x512", type: "image/png" },
+            {
+              src: "icon-512.png",
+              sizes: "512x512",
+              type: "image/png",
+              purpose: "any maskable",
+            },
           ],
         },
 
-        workbox: isAndroid
-          ? undefined
-          : {
-              skipWaiting: true,
-              clientsClaim: true,
-              navigateFallback: "/index.html",
-            },
+        workbox: {
+          skipWaiting: true,
+          clientsClaim: true,
+          navigateFallback: "/index.html",
+        },
       }),
     ],
 
@@ -62,7 +64,7 @@ export default defineConfig(() => {
 
     server: {
       proxy: {
-        "/api": "http://localhost:3000",
+        "/api": "http://localhost:5000",
       },
     },
   };
