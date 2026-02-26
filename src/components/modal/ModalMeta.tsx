@@ -40,7 +40,76 @@ export default function ModalMeta({
   const isPerson = movie.media_type === "person";
   const isTV = movie.media_type === "tv";
 
-  /* ---------- Basic meta ---------- */
+  /* =========================================================
+     PERSON VIEW
+  ========================================================= */
+
+  if (isPerson) {
+    const formatDate = (date?: string) => {
+      if (!date) return null;
+      const d = new Date(date);
+      return d.toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      });
+    };
+
+    const birthDate = formatDate(movie.birthday);
+    const deathDate = formatDate(movie.deathday);
+
+    const age = (() => {
+      if (!movie.birthday) return null;
+      const birth = new Date(movie.birthday);
+      const end = movie.deathday ? new Date(movie.deathday) : new Date();
+      let years = end.getFullYear() - birth.getFullYear();
+      const m = end.getMonth() - birth.getMonth();
+      if (m < 0 || (m === 0 && end.getDate() < birth.getDate())) years--;
+      return years;
+    })();
+
+    /* ---------- Filmography count (reliable) ---------- */
+    const filmCount = movie.known_for?.length ?? 0;
+
+    return (
+      <div className="space-y-3 min-w-0">
+        <h2 className="text-3xl font-semibold tracking-tight wrap-break-word">
+          {movie.name}
+        </h2>
+
+        {/* Department */}
+        {movie.known_for_department && (
+          <div className="text-sm opacity-70">{movie.known_for_department}</div>
+        )}
+
+        {/* Filmography count */}
+        {filmCount > 0 && (
+          <div className="text-sm opacity-70">{filmCount}+ notable credits</div>
+        )}
+
+        <div className="h-px w-20 bg-[hsl(var(--foreground)/0.25)]" />
+
+        <div className="text-sm sm:text-base space-y-1 opacity-90">
+          {birthDate && <div>🎂 Born: {birthDate}</div>}
+
+          {deathDate ? (
+            <div>
+              🕊️ Passed: {deathDate}
+              {age !== null && ` (aged ${age})`}
+            </div>
+          ) : (
+            age !== null && <div>🎉 Age: {age} years</div>
+          )}
+
+          {movie.place_of_birth && <div>📍 {movie.place_of_birth}</div>}
+        </div>
+      </div>
+    );
+  }
+
+  /* =========================================================
+     MOVIE / TV META
+  ========================================================= */
 
   const releaseYear = movie.release_date?.slice(0, 4);
 
@@ -67,65 +136,6 @@ export default function ModalMeta({
       ? `${names.join(", ")} +${nets.length - 2}`
       : names.join(", ");
   }, [isTV, movie]);
-
-  /* ---------- PERSON VIEW ---------- */
-
-  if (isPerson) {
-    const formatDate = (date?: string) => {
-      if (!date) return null;
-      const d = new Date(date);
-      return d.toLocaleDateString("en-GB", {
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-      });
-    };
-
-    const birthDate = formatDate(movie.birthday);
-    const deathDate = formatDate(movie.deathday);
-
-    const age = (() => {
-      if (!movie.birthday) return null;
-      const birth = new Date(movie.birthday);
-      const end = movie.deathday ? new Date(movie.deathday) : new Date();
-      let years = end.getFullYear() - birth.getFullYear();
-      const m = end.getMonth() - birth.getMonth();
-      if (m < 0 || (m === 0 && end.getDate() < birth.getDate())) years--;
-      return years;
-    })();
-
-    return (
-      <div className="space-y-3 min-w-0">
-        <h2 className="text-3xl font-semibold tracking-tight wrap-break-word">
-          {movie.name}
-        </h2>
-
-        {/* Department */}
-        {movie.known_for_department && (
-          <div className="text-sm opacity-70">{movie.known_for_department}</div>
-        )}
-
-        <div className="h-px w-20 bg-[hsl(var(--foreground)/0.25)]" />
-
-        <div className="text-sm sm:text-base space-y-1 opacity-90">
-          {birthDate && <div>🎂 Born: {birthDate}</div>}
-
-          {deathDate ? (
-            <div>
-              🕊️ Passed: {deathDate}
-              {age !== null && ` (aged ${age})`}
-            </div>
-          ) : (
-            age !== null && <div>🎉 Age: {age} years</div>
-          )}
-
-          {movie.place_of_birth && <div>📍 {movie.place_of_birth}</div>}
-        </div>
-      </div>
-    );
-  }
-
-  /* ---------- MOVIE / TV ---------- */
 
   return (
     <div className="space-y-3">

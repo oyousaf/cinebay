@@ -107,12 +107,41 @@ function toMovieSummary(item: any, forcedType?: "movie" | "tv"): Movie {
 ========================================================= */
 
 const buildKnownForFromCredits = (detail: any): Movie[] => {
+  const dept = detail?.known_for_department;
+
   const cast = detail?.combined_credits?.cast ?? [];
   const crew = detail?.combined_credits?.crew ?? [];
 
-  const combined = [...cast, ...crew];
+  let relevant: any[] = [];
 
-  return combined
+  switch (dept) {
+    case "Acting":
+      // Actors: use cast only
+      relevant = cast;
+      break;
+
+    case "Directing":
+      relevant = crew.filter((c: any) => c.job === "Director");
+      break;
+
+    case "Writing":
+      relevant = crew.filter((c: any) =>
+        ["Writer", "Screenplay", "Creator"].includes(c.job),
+      );
+      break;
+
+    case "Production":
+      relevant = crew.filter((c: any) =>
+        ["Producer", "Executive Producer"].includes(c.job),
+      );
+      break;
+
+    default:
+      // Fallback: combine but still filter quality
+      relevant = [...cast, ...crew];
+  }
+
+  return relevant
     .filter(
       (c: any) =>
         c?.poster_path &&
