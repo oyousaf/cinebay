@@ -1,4 +1,4 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <script>
@@ -10,14 +10,12 @@
           ).matches;
           const theme = stored ?? (prefersDark ? "dark" : "light");
 
-          if (theme === "dark") {
-            document.documentElement.classList.add("dark");
-          } else {
-            document.documentElement.classList.remove("dark");
-          }
+          if (theme === "dark") document.documentElement.classList.add("dark");
+          else document.documentElement.classList.remove("dark");
         } catch {}
       })();
     </script>
+
     <meta charset="UTF-8" />
     <meta
       name="viewport"
@@ -31,16 +29,14 @@
     />
 
     <!-- Favicons -->
-    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
-    <link rel="shortcut icon" href="/favicon.ico" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png" />
+    <link rel="shortcut icon" href="favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
 
-    <!-- PWA -->
-    <link rel="manifest" href="/manifest.webmanifest" />
+    <!-- PWA / UI -->
     <meta name="theme-color" content="#80FFCC" />
     <meta name="color-scheme" content="dark light" />
-
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="application-name" content="CineBay" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -53,6 +49,6 @@
 
   <body>
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <script type="module" src="src/main.tsx"></script>
   </body>
 </html>
