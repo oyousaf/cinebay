@@ -249,62 +249,63 @@ export default function Watchlist({
   );
 
   return (
-    <motion.main
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-      className="min-h-full w-full"
-    >
-      {/* ===============================
+  <motion.main
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ duration: 0.4 }}
+    className="h-screen w-full flex flex-col overflow-hidden"
+  >
+    {/* ===============================
         Sticky Header
     =============================== */}
-      <div className="sticky top-0 z-40 backdrop-blur-xl bg-black/40 border-b border-white/10">
-        {/* Title */}
-        <div className="pt-10 pb-4 text-center">
-          <h1 className="text-4xl font-bold">Watchlist</h1>
-        </div>
-
-        {/* Filters */}
-        <div className="px-4 pb-4">
-          <div className="max-w-7xl xl:max-w-400 2xl:max-w-450 mx-auto flex flex-wrap gap-3 justify-center">
-            {SORTS.map((s) => (
-              <FilterPill
-                key={s.key}
-                active={filters.sortBy === s.key}
-                layoutId="sort-pill"
-                onClick={() => setFilters((f) => ({ ...f, sortBy: s.key }))}
-              >
-                {s.label}
-              </FilterPill>
-            ))}
-
-            <span className="w-px bg-white/10 mx-2" />
-
-            {TYPES.map((t) => (
-              <FilterPill
-                key={t.key}
-                active={filters.type === t.key}
-                layoutId="type-pill"
-                onClick={() => setFilters((f) => ({ ...f, type: t.key }))}
-              >
-                {t.label}
-              </FilterPill>
-            ))}
-
-            <button
-              onClick={() => setFilters(defaultFilters)}
-              className="ml-2 px-3 py-2 rounded-full hover:bg-white/10"
-              aria-label="Reset filters"
-            >
-              <RefreshCw size={18} />
-            </button>
-          </div>
-        </div>
+    <div className="sticky top-0 z-40 backdrop-blur-xl bg-black/40 border-b border-white/10">
+      {/* Title */}
+      <div className="pt-10 pb-4 text-center">
+        <h1 className="text-4xl font-bold">Watchlist</h1>
       </div>
 
-      {/* ===============================
-        Content
+      {/* Filters */}
+      <div className="px-4 pb-4">
+        <div className="max-w-7xl xl:max-w-400 2xl:max-w-450 mx-auto flex flex-wrap gap-3 justify-center">
+          {SORTS.map((s) => (
+            <FilterPill
+              key={s.key}
+              active={filters.sortBy === s.key}
+              layoutId="sort-pill"
+              onClick={() => setFilters((f) => ({ ...f, sortBy: s.key }))}
+            >
+              {s.label}
+            </FilterPill>
+          ))}
+
+          <span className="w-px bg-white/10 mx-2" />
+
+          {TYPES.map((t) => (
+            <FilterPill
+              key={t.key}
+              active={filters.type === t.key}
+              layoutId="type-pill"
+              onClick={() => setFilters((f) => ({ ...f, type: t.key }))}
+            >
+              {t.label}
+            </FilterPill>
+          ))}
+
+          <button
+            onClick={() => setFilters(defaultFilters)}
+            className="ml-2 px-3 py-2 rounded-full hover:bg-white/10"
+            aria-label="Reset filters"
+          >
+            <RefreshCw size={18} />
+          </button>
+        </div>
+      </div>
+    </div>
+
+    {/* ===============================
+        Scrollable Content Area
     =============================== */}
+    <div className="flex-1 overflow-y-auto scroll-smooth">
       <div className="max-w-7xl xl:max-w-400 2xl:max-w-450 mx-auto px-4 py-10">
         {filteredList.length === 0 ? (
           <p className="text-center text-foreground md:text-xl text-md">
@@ -337,6 +338,7 @@ export default function Watchlist({
           </motion.div>
         )}
       </div>
-    </motion.main>
-  );
+    </div>
+  </motion.main>
+);
 }
