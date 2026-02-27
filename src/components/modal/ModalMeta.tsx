@@ -68,28 +68,47 @@ export default function ModalMeta({
       return years;
     })();
 
-    /* ---------- Filmography count by department ---------- */
+    /* ---------- Filmography count ---------- */
     const filmCount = useMemo(() => {
       const dept = movie.known_for_department;
-      const cast = (movie as any)?.combined_credits?.cast ?? [];
-      const crew = (movie as any)?.combined_credits?.crew ?? [];
+      const cc = (movie as any)?.combined_credits;
 
-      if (dept === "Acting") return cast.length;
+      const cast: any[] = Array.isArray(cc?.cast) ? cc.cast : [];
+      const crew: any[] = Array.isArray(cc?.crew) ? cc.crew : [];
+
+      const uniqueById = (items: any[]) => {
+        const set = new Set<number>();
+        items.forEach((i) => {
+          if (Number.isFinite(i?.id)) set.add(i.id);
+        });
+        return set.size;
+      };
+
+      if (dept === "Acting") return uniqueById(cast);
 
       if (dept === "Directing")
-        return crew.filter((c: any) => c.job === "Director").length;
+        return uniqueById(crew.filter((c) => c?.job === "Director"));
 
       if (dept === "Writing")
-        return crew.filter((c: any) =>
-          ["Writer", "Screenplay", "Creator"].includes(c.job),
-        ).length;
+        return uniqueById(
+          crew.filter((c) =>
+            ["Writer", "Screenplay", "Story", "Creator"].includes(c?.job),
+          ),
+        );
 
       if (dept === "Production")
-        return crew.filter((c: any) =>
-          ["Producer", "Executive Producer", "Creator"].includes(c.job),
-        ).length;
+        return uniqueById(
+          crew.filter((c) =>
+            [
+              "Producer",
+              "Executive Producer",
+              "Co-Executive Producer",
+              "Creator",
+            ].includes(c?.job),
+          ),
+        );
 
-      return cast.length + crew.length;
+      return uniqueById([...cast, ...crew]);
     }, [movie]);
 
     return (
@@ -98,12 +117,10 @@ export default function ModalMeta({
           {movie.name}
         </h2>
 
-        {/* Department */}
         {movie.known_for_department && (
           <div className="text-sm opacity-70">{movie.known_for_department}</div>
         )}
 
-        {/* Filmography count */}
         {filmCount > 0 && (
           <div className="text-sm opacity-70">{filmCount} credits</div>
         )}
@@ -158,6 +175,26 @@ export default function ModalMeta({
       : names.join(", ");
   }, [isTV, movie]);
 
+  /* ---------- Writers (NEW) ---------- */
+  const writers = useMemo(() => {
+    const crew = movie.credits?.crew ?? [];
+    const jobs = new Set(["Writer", "Screenplay", "Story", "Teleplay"]);
+    const seen = new Set<number>();
+
+    return crew
+      .filter((c: any) => jobs.has(c?.job))
+      .filter((c: any) => {
+        if (!c?.id || seen.has(c.id)) return false;
+        seen.add(c.id);
+        return true;
+      })
+      .slice(0, 2)
+      .map((c: any) => ({
+        id: c.id,
+        name: c.name,
+      }));
+  }, [movie]);
+
   /* ---------- Genres ---------- */
   const genres = useMemo(() => {
     if (!movie.genres?.length) return null;
@@ -193,13 +230,19 @@ export default function ModalMeta({
           </Pill>
         )}
 
+        {/* Writers */}
+        {writers.map((w) => (
+          <Pill key={w.id} onClick={() => onPersonClick?.(w.id)}>
+            ✍️ {w.name}
+          </Pill>
+        ))}
+
         {airedOn && <Pill>📡 Aired on: {airedOn}</Pill>}
         {producedBy && <Pill>🏭 Produced by: {producedBy}</Pill>}
         {releaseYear && <Pill>📅 {releaseYear}</Pill>}
         {!rating && <Pill>⭐ Not rated yet</Pill>}
       </div>
 
-      {/* Genres */}
       {genres && (
         <div className="text-sm opacity-70 text-center sm:text-left">
           {genres}
