@@ -115,17 +115,82 @@ function toMovieSummary(item: any, forcedType?: "movie" | "tv"): Movie {
    PERSON: KNOWN FOR
 ========================================================= */
 
-const buildKnownForFromCredits = (detail: any): Movie[] => {
-  const cast = detail?.combined_credits?.cast ?? [];
+const EXCLUDED_TV_GENRES = new Set([
+  10763, // News
+  10764, // Reality
+  10767, // Talk
+]);
 
-  return cast
-    .filter(
-      (c: any) =>
-        c?.poster_path &&
-        c?.vote_average >= MIN_RATING &&
-        c?.original_language === "en",
-    )
-    .sort((a: any, b: any) => (b.popularity ?? 0) - (a.popularity ?? 0))
+const buildKnownForFromCredits = (detail: any): Movie[] => {
+  const dept = detail?.known_for_department;
+
+  const cast = Array.isArray(detail?.combined_credits?.cast)
+    ? detail.combined_credits.cast
+    : [];
+
+  const crew = Array.isArray(detail?.combined_credits?.crew)
+    ? detail.combined_credits.crew
+    : [];
+
+  const source = dept === "Acting" ? cast : crew;
+
+  const baseFilter = (c: any) => {
+    if (!c?.poster_path) return false;
+    if ((c?.vote_average ?? 0) < MIN_RATING) return false;
+    if (c?.original_language !== "en") return false;
+
+    // Exclude talk / news / reality TV
+    if (
+      c?.media_type === "tv" &&
+      Array.isArray(c?.genre_ids) &&
+      c.genre_ids.some((id: number) => EXCLUDED_TV_GENRES.has(id))
+    ) {
+      return false;
+    }
+
+    return true;
+  };
+
+  // Job focus for non-actors
+  const JOB_FOCUS: Record<string, string[]> = {
+    Directing: ["Director"],
+    Writing: ["Writer", "Screenplay", "Story", "Creator"],
+    Production: [
+      "Producer",
+      "Executive Producer",
+      "Co-Executive Producer",
+      "Creator",
+    ],
+  };
+
+  const allowedJobs = JOB_FOCUS[dept] || [];
+
+  const filtered =
+    dept === "Acting"
+      ? source
+      : source.filter((c: any) =>
+          allowedJobs.length ? allowedJobs.includes(c?.job) : true,
+        );
+
+  // Deduplicate titles
+  const seen = new Set<number>();
+
+  return filtered
+    .filter(baseFilter)
+    .filter((c: any) => {
+      if (!Number.isFinite(c?.id) || seen.has(c.id)) return false;
+      seen.add(c.id);
+      return true;
+    })
+    .sort((a: any, b: any) => {
+      const ya = Number(
+        (a?.release_date || a?.first_air_date || "").slice(0, 4),
+      );
+      const yb = Number(
+        (b?.release_date || b?.first_air_date || "").slice(0, 4),
+      );
+      return yb - ya || (b?.popularity ?? 0) - (a?.popularity ?? 0);
+    })
     .slice(0, 10)
     .map((c: any) =>
       toMovieSummary({ ...c, media_type: c?.media_type }, undefined),
