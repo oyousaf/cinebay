@@ -108,7 +108,7 @@ export default function ModalMeta({
           <div className="text-sm opacity-70">{filmCount} credits</div>
         )}
 
-        <div className="h-px w-20 bg-[hsl(var(--foreground)/0.25)]" />
+        <div className="h-px w-20 bg-[hsl(var(--foreground)/0.25)] justify-center mx-auto sm:justify-start" />
 
         <div className="text-sm sm:text-base space-y-1 opacity-90">
           {birthDate && <div>🎂 Born: {birthDate}</div>}
@@ -158,7 +158,7 @@ export default function ModalMeta({
       : names.join(", ");
   }, [isTV, movie]);
 
-  /* ---------- Genres (restored) ---------- */
+  /* ---------- Genres ---------- */
   const genres = useMemo(() => {
     if (!movie.genres?.length) return null;
 
