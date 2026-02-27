@@ -102,12 +102,17 @@ export function useSearchBar({
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const listeningRef = useRef(false);
 
+  const prevModalOpenRef = useRef(isModalOpen);
+
+  /* ---------- SOUND ---------- */
   const sndRef = useRef<Snd | null>(null);
   const sndReadyRef = useRef(false);
   const sndInitRef = useRef(false);
   const lastSoundKeyRef = useRef<any>(null);
+  const pendingSoundRef = useRef<string | null>(null);
 
   const initSound = useCallback(() => {
+    if (typeof window === "undefined") return;
     if (sndInitRef.current) return;
     sndInitRef.current = true;
 
@@ -119,15 +124,27 @@ export function useSearchBar({
 
     sndRef.current = snd;
 
-    snd.load(Snd.KITS.SND01).then(() => {
-      sndReadyRef.current = true;
-    });
+    snd
+      .load(Snd.KITS.SND01)
+      .then(() => {
+        sndReadyRef.current = true;
 
-    // Optional; depends on snd-lib
-    // @ts-ignore
-    snd.resume?.();
-    // @ts-ignore
-    snd.unlock?.();
+        // Play one queued sound (if any) once ready
+        const pending = pendingSoundRef.current;
+        if (pending) {
+          pendingSoundRef.current = null;
+          try {
+            lastSoundKeyRef.current =
+              sndRef.current?.play(pending, { volume: 0.5 }) ?? null;
+          } catch {
+            lastSoundKeyRef.current = null;
+          }
+        }
+      })
+      .catch(() => {
+        // If load fails, allow future re-init attempts if desired
+        sndReadyRef.current = false;
+      });
   }, []);
 
   useEffect(() => {
@@ -140,39 +157,26 @@ export function useSearchBar({
       window.removeEventListener("pointerdown", onGesture);
       window.removeEventListener("keydown", onGesture);
 
-      // Cleanup (only if a sound key exists)
+      // Best-effort cleanup; avoid stop(undefined)
       try {
         const key = lastSoundKeyRef.current;
         if (key != null) sndRef.current?.stop?.(key);
       } catch {}
       lastSoundKeyRef.current = null;
+      pendingSoundRef.current = null;
     };
   }, [initSound]);
 
-  const prevModalOpenRef = useRef(isModalOpen);
-
-  /* ---------- SOUND ---------- */
-  useEffect(() => {
-    const snd = new Snd({
-      easySetup: false,
-      preloadSoundKit: null,
-      muteOnWindowBlur: true,
-    });
-
-    snd.load(Snd.KITS.SND01).then(() => {
-      sndReadyRef.current = true;
-    });
-
-    sndRef.current = snd;
-
-    return () => {};
-  }, []);
-
   const playSound = useCallback(
     (sound: string) => {
-      // Ensure init occurs when user clicks mic first
+      // Ensure init occurs within the user gesture call chain (e.g., mic click)
       if (!sndInitRef.current) initSound();
-      if (!sndReadyRef.current) return;
+
+      // If not ready yet, queue last requested sound and bail
+      if (!sndReadyRef.current) {
+        pendingSoundRef.current = sound;
+        return;
+      }
 
       try {
         lastSoundKeyRef.current =
@@ -438,7 +442,7 @@ export function useSearchBar({
     if (!recognitionRef.current) {
       const rec = new RecognitionCtor();
 
-      rec.lang = "en-US";
+      rec.lang = "en-GB";
       rec.interimResults = false;
       rec.maxAlternatives = 1;
 
@@ -482,7 +486,7 @@ export function useSearchBar({
         setListening(false);
       }
     }, 50);
-  }, [playSound, runSearch, stopVoice]);
+  }, [playSound, stopVoice]);
 
   useEffect(() => {
     return () => {
