@@ -89,7 +89,7 @@ export default function Banner({ item, onSelect }: BannerProps) {
   -------------------------------------------------- */
   return (
     <div
-      className="relative w-full h-full flex flex-col justify-end text-center sm:text-left overflow-hidden
+      className="relative w-full h-full flex flex-col justify-end overflow-hidden
       bg-[hsl(var(--background))] shadow-2xl"
     >
       {/* BACKDROP */}
@@ -119,7 +119,7 @@ export default function Banner({ item, onSelect }: BannerProps) {
       {/* CONTENT */}
       <motion.div
         key={item.id}
-        className="relative z-10 px-4 md:px-12 py-6 md:py-10 max-w-6xl mx-auto"
+        className="relative z-10 text-center sm:text-left px-4 md:px-12 py-6 md:py-10 max-w-6xl mx-auto"
         initial={{ opacity: 0, y: 14 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: EASE_OUT }}
@@ -148,7 +148,7 @@ export default function Banner({ item, onSelect }: BannerProps) {
 
           <motion.div
             variants={itemVariants}
-            className="flex items-center gap-3"
+            className="flex justify-center sm:justify-start gap-3"
           >
             {/* Play */}
             <motion.button
