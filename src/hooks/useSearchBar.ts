@@ -8,7 +8,6 @@ import {
   useRef,
   useState,
 } from "react";
-import Snd from "snd-lib";
 
 import { fetchDetails, fetchFromProxy, fetchTrendingClean } from "@/lib/tmdb";
 import type { Movie } from "@/types/movie";
@@ -73,6 +72,9 @@ type UseSearchBarParams = {
   isModalOpen?: boolean;
 };
 
+// Sound keys we use internally (don’t touch snd-lib constants until after import)
+type SoundKey = "CAUTION" | "TRANSITION_UP" | "TRANSITION_DOWN";
+
 export function useSearchBar({
   onSelectMovie,
   onSelectPerson,
@@ -105,50 +107,72 @@ export function useSearchBar({
   const prevModalOpenRef = useRef(isModalOpen);
 
   /* ---------- SOUND ---------- */
-  const sndRef = useRef<Snd | null>(null);
-  const sndReadyRef = useRef(false);
   const sndInitRef = useRef(false);
+  const sndReadyRef = useRef(false);
+  const sndInstanceRef = useRef<any>(null);
+  const sndLibRef = useRef<any>(null);
   const lastSoundKeyRef = useRef<any>(null);
-  const pendingSoundRef = useRef<string | null>(null);
+  const pendingSoundRef = useRef<SoundKey | null>(null);
 
-  const initSound = useCallback(() => {
+  const initSound = useCallback(async () => {
     if (typeof window === "undefined") return;
     if (sndInitRef.current) return;
     sndInitRef.current = true;
 
-    const snd = new Snd({
-      easySetup: false,
-      preloadSoundKit: null,
-      muteOnWindowBlur: true,
-    });
+    try {
+      const mod: any = await import("snd-lib");
+      const SndCtor = mod?.default ?? mod;
 
-    sndRef.current = snd;
-
-    snd
-      .load(Snd.KITS.SND01)
-      .then(() => {
-        sndReadyRef.current = true;
-
-        // Play one queued sound (if any) once ready
-        const pending = pendingSoundRef.current;
-        if (pending) {
-          pendingSoundRef.current = null;
-          try {
-            lastSoundKeyRef.current =
-              sndRef.current?.play(pending, { volume: 0.5 }) ?? null;
-          } catch {
-            lastSoundKeyRef.current = null;
-          }
-        }
-      })
-      .catch(() => {
-        // If load fails, allow future re-init attempts if desired
-        sndReadyRef.current = false;
+      sndLibRef.current = mod;
+      const snd = new SndCtor({
+        easySetup: false,
+        preloadSoundKit: null,
+        muteOnWindowBlur: true,
       });
+
+      sndInstanceRef.current = snd;
+
+      // Load kit after gesture + dynamic import
+      const kit = mod?.default?.KITS?.SND01 ?? mod?.KITS?.SND01;
+      if (kit) {
+        await snd.load(kit);
+      } else {
+        // If KITS missing, attempt common string fallback
+        await snd.load?.("SND01");
+      }
+
+      sndReadyRef.current = true;
+
+      // Play one queued sound (if any)
+      const pending = pendingSoundRef.current;
+      if (pending) {
+        pendingSoundRef.current = null;
+        try {
+          const soundValue =
+            mod?.default?.SOUNDS?.[pending] ??
+            mod?.SOUNDS?.[pending] ??
+            pending;
+
+          lastSoundKeyRef.current =
+            sndInstanceRef.current?.play(soundValue, { volume: 0.5 }) ?? null;
+        } catch {
+          lastSoundKeyRef.current = null;
+        }
+      }
+    } catch {
+      // If anything fails, allow future attempts
+      sndInitRef.current = false;
+      sndReadyRef.current = false;
+      sndInstanceRef.current = null;
+      sndLibRef.current = null;
+    }
   }, []);
 
+  // Prime audio on first gesture
   useEffect(() => {
-    const onGesture = () => initSound();
+    const onGesture = () => {
+      void initSound();
+    };
 
     window.addEventListener("pointerdown", onGesture, { once: true });
     window.addEventListener("keydown", onGesture, { once: true });
@@ -157,10 +181,9 @@ export function useSearchBar({
       window.removeEventListener("pointerdown", onGesture);
       window.removeEventListener("keydown", onGesture);
 
-      // Best-effort cleanup; avoid stop(undefined)
       try {
         const key = lastSoundKeyRef.current;
-        if (key != null) sndRef.current?.stop?.(key);
+        if (key != null) sndInstanceRef.current?.stop?.(key);
       } catch {}
       lastSoundKeyRef.current = null;
       pendingSoundRef.current = null;
@@ -168,19 +191,27 @@ export function useSearchBar({
   }, [initSound]);
 
   const playSound = useCallback(
-    (sound: string) => {
-      // Ensure init occurs within the user gesture call chain (e.g., mic click)
-      if (!sndInitRef.current) initSound();
+    (sound: SoundKey) => {
+      // Ensure init begins in the same user gesture call path (mic click etc.)
+      if (!sndInitRef.current) {
+        // Don’t await; queue sound and init
+        pendingSoundRef.current = sound;
+        void initSound();
+        return;
+      }
 
-      // If not ready yet, queue last requested sound and bail
       if (!sndReadyRef.current) {
         pendingSoundRef.current = sound;
         return;
       }
 
       try {
+        const mod = sndLibRef.current;
+        const soundValue =
+          mod?.default?.SOUNDS?.[sound] ?? mod?.SOUNDS?.[sound] ?? sound;
+
         lastSoundKeyRef.current =
-          sndRef.current?.play(sound, { volume: 0.5 }) ?? null;
+          sndInstanceRef.current?.play(soundValue, { volume: 0.5 }) ?? null;
       } catch {
         lastSoundKeyRef.current = null;
       }
@@ -218,9 +249,7 @@ export function useSearchBar({
 
       requestIdRef.current++;
 
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current);
-      }
+      if (debounceRef.current) clearTimeout(debounceRef.current);
       return;
     }
 
@@ -430,7 +459,7 @@ export function useSearchBar({
       (window as any).webkitSpeechRecognition;
 
     if (!RecognitionCtor) {
-      playSound(Snd.SOUNDS.CAUTION);
+      playSound("CAUTION");
       return;
     }
 
@@ -442,7 +471,7 @@ export function useSearchBar({
     if (!recognitionRef.current) {
       const rec = new RecognitionCtor();
 
-      rec.lang = "en-GB";
+      rec.lang = "en-US";
       rec.interimResults = false;
       rec.maxAlternatives = 1;
 
@@ -457,13 +486,13 @@ export function useSearchBar({
       rec.onerror = () => {
         listeningRef.current = false;
         setListening(false);
-        playSound(Snd.SOUNDS.CAUTION);
+        playSound("CAUTION");
       };
 
       rec.onend = () => {
         listeningRef.current = false;
         setListening(false);
-        playSound(Snd.SOUNDS.TRANSITION_DOWN);
+        playSound("TRANSITION_DOWN");
       };
 
       recognitionRef.current = rec;
@@ -476,7 +505,7 @@ export function useSearchBar({
     setResults([]);
     inputRef.current?.focus();
 
-    playSound(Snd.SOUNDS.TRANSITION_UP);
+    playSound("TRANSITION_UP");
 
     setTimeout(() => {
       try {
