@@ -175,10 +175,23 @@ export default function ModalMeta({
       : names.join(", ");
   }, [isTV, movie]);
 
-  /* ---------- Writers (NEW) ---------- */
+  /* ---------- Writers ---------- */
   const writers = useMemo(() => {
     const crew = movie.credits?.crew ?? [];
-    const jobs = new Set(["Writer", "Screenplay", "Story", "Teleplay"]);
+
+    const jobs = new Set([
+      "Writer",
+      "Screenplay",
+      "Story",
+      "Teleplay",
+
+      // TV writing authority roles
+      "Executive Producer",
+      "Co-Executive Producer",
+      "Consulting Producer",
+      "Creator",
+    ]);
+
     const seen = new Set<number>();
 
     return crew
