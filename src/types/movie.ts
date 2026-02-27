@@ -170,6 +170,8 @@ export type Movie = BaseMedia & {
     name: string;
     logo_path?: string;
   }[];
+  
+  credit_count?: number;
 
   networks?: {
     id: number;

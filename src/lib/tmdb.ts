@@ -230,6 +230,27 @@ const buildKnownForFromCredits = (detail: any): Movie[] => {
 };
 
 /* =========================================================
+   PERSON: CREDIT COUNT
+========================================================= */
+
+function getCreditCount(detail: any): number {
+  const cast = detail?.combined_credits?.cast ?? [];
+  const crew = detail?.combined_credits?.crew ?? [];
+
+  const seen = new Set<number>();
+
+  cast.forEach((c: any) => {
+    if (Number.isFinite(c?.id)) seen.add(c.id);
+  });
+
+  crew.forEach((c: any) => {
+    if (Number.isFinite(c?.id)) seen.add(c.id);
+  });
+
+  return seen.size;
+}
+
+/* =========================================================
    TRANSFORMER (DETAILS -> Movie)  SINGLE AUTHORITY
 ========================================================= */
 
@@ -315,6 +336,12 @@ function toMovie(detail: any, type: "movie" | "tv" | "person"): Movie {
     deathday: detail?.deathday,
     place_of_birth: detail?.place_of_birth,
     known_for_department: detail?.known_for_department,
+
+    /* NEW: total unique credits */
+    credit_count:
+      type === "person" && detail?.combined_credits
+        ? getCreditCount(detail)
+        : undefined,
 
     known_for:
       type === "person"
