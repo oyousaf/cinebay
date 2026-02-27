@@ -89,7 +89,7 @@ export default function Banner({ item, onSelect }: BannerProps) {
   -------------------------------------------------- */
   return (
     <div
-      className="relative w-full h-full flex flex-col justify-end overflow-hidden
+      className="relative w-full h-full flex flex-col justify-end text-center sm:text-left overflow-hidden
       bg-[hsl(var(--background))] shadow-2xl"
     >
       {/* BACKDROP */}
