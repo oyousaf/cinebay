@@ -23,7 +23,7 @@ const RecommendationList = ({ items, onSelect, label }: ListProps) => {
 
   return (
     <section className="pt-6 2xl:pt-8 space-y-3 2xl:space-y-4">
-      <h3 className="text-base 2xl:text-lg font-semibold tracking-tight text-[hsl(var(--surface-foreground))]">
+      <h3 className="text-base 2xl:text-lg text-center sm:text-left font-semibold tracking-tight text-[hsl(var(--surface-foreground))]">
         {label}
       </h3>
 

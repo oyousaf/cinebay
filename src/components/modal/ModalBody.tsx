@@ -37,7 +37,7 @@ export default function ModalBody({
               whileHover={{ scale: 1.04 }}
               whileTap={{ scale: 0.96 }}
               aria-expanded={showBio}
-              className="relative flex items-center justify-center gap-3 px-6 py-3 text-base 2xl:px-10 2xl:py-5 2xl:text-2xl 
+              className="relative flex gap-3 px-6 py-3 text-base 2xl:px-10 2xl:py-5 2xl:text-2xl 
               rounded-full font-semibold bg-[hsl(var(--foreground))] text-[hsl(var(--background))] shadow-sm"
             >
               <AnimatePresence mode="wait" initial={false}>
@@ -92,7 +92,7 @@ export default function ModalBody({
                   duration: 0.45,
                   ease: [0.22, 1, 0.36, 1],
                 }}
-                className="mt-6 rounded-xl p-4 text-base 2xl:p-10 2xl:text-xl max-h-80 2xl:max-h-144 overflow-y-auto
+                className="mt-6 rounded-xl p-4 text-center sm:text-left text-base 2xl:p-10 2xl:text-xl max-h-80 2xl:max-h-144 overflow-y-auto
                 bg-[hsl(var(--foreground)/0.06)] dark:bg-[hsl(var(--background)/0.06)] backdrop-blur-sm
                 text-[hsl(var(--background)/0.85)] dark:text-[hsl(var(--foreground)/0.85)] shadow-[0_12px_40px_rgba(0,0,0,0.12)]"
               >

@@ -35,7 +35,7 @@ function KnownFor({ items, onSelect }: Props) {
 
   return (
     <section className="pt-6 2xl:pt-8 space-y-3 2xl:space-y-4">
-      <h3 className="text-base 2xl:text-lg font-semibold tracking-tight text-[hsl(var(--foreground))]">
+      <h3 className="text-base 2xl:text-lg text-center sm:text-left font-semibold tracking-tight text-[hsl(var(--foreground))]">
         Known for
       </h3>
 
