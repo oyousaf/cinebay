@@ -104,6 +104,50 @@ export function useSearchBar({
 
   const sndRef = useRef<Snd | null>(null);
   const sndReadyRef = useRef(false);
+  const sndInitRef = useRef(false);
+  const lastSoundKeyRef = useRef<any>(null);
+
+  const initSound = useCallback(() => {
+    if (sndInitRef.current) return;
+    sndInitRef.current = true;
+
+    const snd = new Snd({
+      easySetup: false,
+      preloadSoundKit: null,
+      muteOnWindowBlur: true,
+    });
+
+    sndRef.current = snd;
+
+    snd.load(Snd.KITS.SND01).then(() => {
+      sndReadyRef.current = true;
+    });
+
+    // Optional; depends on snd-lib
+    // @ts-ignore
+    snd.resume?.();
+    // @ts-ignore
+    snd.unlock?.();
+  }, []);
+
+  useEffect(() => {
+    const onGesture = () => initSound();
+
+    window.addEventListener("pointerdown", onGesture, { once: true });
+    window.addEventListener("keydown", onGesture, { once: true });
+
+    return () => {
+      window.removeEventListener("pointerdown", onGesture);
+      window.removeEventListener("keydown", onGesture);
+
+      // Cleanup (only if a sound key exists)
+      try {
+        const key = lastSoundKeyRef.current;
+        if (key != null) sndRef.current?.stop?.(key);
+      } catch {}
+      lastSoundKeyRef.current = null;
+    };
+  }, [initSound]);
 
   const prevModalOpenRef = useRef(isModalOpen);
 
@@ -121,19 +165,24 @@ export function useSearchBar({
 
     sndRef.current = snd;
 
-    return () => {
-      try {
-        // @ts-ignore
-        snd.stop?.();
-      } catch {}
-    };
+    return () => {};
   }, []);
 
-  const playSound = useCallback((sound: string) => {
-    if (sndReadyRef.current) {
-      sndRef.current?.play(sound, { volume: 0.5 });
-    }
-  }, []);
+  const playSound = useCallback(
+    (sound: string) => {
+      // Ensure init occurs when user clicks mic first
+      if (!sndInitRef.current) initSound();
+      if (!sndReadyRef.current) return;
+
+      try {
+        lastSoundKeyRef.current =
+          sndRef.current?.play(sound, { volume: 0.5 }) ?? null;
+      } catch {
+        lastSoundKeyRef.current = null;
+      }
+    },
+    [initSound],
+  );
 
   /* ---------- PORTAL ROOT ---------- */
   useEffect(() => {
