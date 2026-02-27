@@ -52,7 +52,7 @@ const extractGenresRaw = (detail: any): Genre[] =>
     : [];
 
 const isAllowedContent = (genres: string[]) =>
-  !genres.some((g) => EXCLUDED_GENRES.has(g));
+  !genres.some((g) => EXCLUDED_GENRES.has(g.toLowerCase()));
 
 const isNewMovie = (date?: string) =>
   Boolean(date && new Date(date) >= oneMonthAgo());
@@ -138,37 +138,33 @@ const buildKnownForFromCredits = (detail: any): Movie[] => {
   if (dept === "Acting") {
     const seen = new Set<number>();
 
-    return (
-      cast
-        .filter(
-          (c: any) =>
-            c?.poster_path &&
-            c?.vote_average >= MIN_RATING &&
-            c?.original_language === "en",
-        )
-        .filter((c: any) => {
-          if (
-            c?.media_type === "tv" &&
-            Array.isArray(c?.genre_ids) &&
-            c.genre_ids.some(
-              (id: number) => [10763, 10764, 10767].includes(id),
-            )
-          ) {
-            return false;
-          }
-          return true;
-        })
-        .filter((c: any) => {
-          if (!Number.isFinite(c?.id) || seen.has(c.id)) return false;
-          seen.add(c.id);
-          return true;
-        })
-        .sort((a: any, b: any) => (b.popularity ?? 0) - (a.popularity ?? 0))
-        .slice(0, 10)
-        .map((c: any) =>
-          toMovieSummary({ ...c, media_type: c?.media_type }, undefined),
-        )
-    );
+    return cast
+      .filter(
+        (c: any) =>
+          c?.poster_path &&
+          c?.vote_average >= MIN_RATING &&
+          c?.original_language === "en",
+      )
+      .filter((c: any) => {
+        if (
+          c?.media_type === "tv" &&
+          Array.isArray(c?.genre_ids) &&
+          c.genre_ids.some((id: number) => [10763, 10764, 10767].includes(id))
+        ) {
+          return false;
+        }
+        return true;
+      })
+      .filter((c: any) => {
+        if (!Number.isFinite(c?.id) || seen.has(c.id)) return false;
+        seen.add(c.id);
+        return true;
+      })
+      .sort((a: any, b: any) => (b.popularity ?? 0) - (a.popularity ?? 0))
+      .slice(0, 10)
+      .map((c: any) =>
+        toMovieSummary({ ...c, media_type: c?.media_type }, undefined),
+      );
   }
   /* =====================================================
      CREW
@@ -241,7 +237,7 @@ function toMovie(detail: any, type: "movie" | "tv" | "person"): Movie {
   const release = detail?.release_date || detail?.first_air_date || "";
 
   const genres_raw = extractGenresRaw(detail);
-  const genres = genres_raw.map((g) => g.name.toLowerCase());
+  const genres = genres_raw.map((g) => g.name);
 
   const similar = Array.isArray(detail?.similar?.results)
     ? detail.similar.results

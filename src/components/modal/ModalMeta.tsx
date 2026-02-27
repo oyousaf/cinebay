@@ -199,12 +199,7 @@ export default function ModalMeta({
   const genres = useMemo(() => {
     if (!movie.genres?.length) return null;
 
-    return movie.genres
-      .map((g: any) =>
-        typeof g === "string" ? g.charAt(0).toUpperCase() + g.slice(1) : g.name,
-      )
-      .filter(Boolean)
-      .join(" • ");
+    return movie.genres.join(" • ");
   }, [movie.genres]);
 
   return (
