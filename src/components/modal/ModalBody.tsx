@@ -19,7 +19,7 @@ export default function ModalBody({
   const cast = movie.credits?.cast?.slice(0, 5) ?? [];
 
   return (
-    <div className="space-y-4 2xl:space-y-8">
+    <div className="space-y-4 2xl:space-y-8 text-center sm:text-left">
       {/* OVERVIEW */}
       {!isPerson && movie.overview && (
         <p className="max-w-prose leading-relaxed text-base 2xl:text-xl text-[hsl(var(--background)/0.85)] dark:text-[hsl(var(--foreground)/0.85)]">
@@ -92,7 +92,7 @@ export default function ModalBody({
                   duration: 0.45,
                   ease: [0.22, 1, 0.36, 1],
                 }}
-                className="mt-6 rounded-xl p-4 text-center sm:text-left text-base 2xl:p-10 2xl:text-xl max-h-80 2xl:max-h-144 overflow-y-auto
+                className="mt-6 rounded-xl p-4 text-base text-center sm:text-left 2xl:p-10 2xl:text-xl max-h-80 2xl:max-h-144 overflow-y-auto
                 bg-[hsl(var(--foreground)/0.06)] dark:bg-[hsl(var(--background)/0.06)] backdrop-blur-sm
                 text-[hsl(var(--background)/0.85)] dark:text-[hsl(var(--foreground)/0.85)] shadow-[0_12px_40px_rgba(0,0,0,0.12)]"
               >
@@ -108,9 +108,7 @@ export default function ModalBody({
       {/* CAST */}
       {!isPerson && cast.length > 0 && (
         <div className="pt-4 max-w-prose text-[hsl(var(--background)/0.75)] dark:text-[hsl(var(--foreground)/0.75)] text-base 2xl:text-xl">
-          <span className="font-semibold">
-            Starring:
-          </span>{" "}
+          <span className="font-semibold">Starring:</span>{" "}
           {cast.map((actor, i) => (
             <span key={actor.id}>
               <button
