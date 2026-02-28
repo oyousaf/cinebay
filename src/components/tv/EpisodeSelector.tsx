@@ -39,7 +39,6 @@ export default function EpisodeSelector({ tv, onPlay }: Props) {
   /* ------------------------------------------------------------------ */
   /* RESUME                                                             */
   /* ------------------------------------------------------------------ */
-
   const resume = useMemo(() => {
     return getTVProgress(tv.id);
   }, [tv.id, getTVProgress]);
@@ -47,7 +46,6 @@ export default function EpisodeSelector({ tv, onPlay }: Props) {
   /* ------------------------------------------------------------------ */
   /* RESET WHEN TV CHANGES                                              */
   /* ------------------------------------------------------------------ */
-
   useEffect(() => {
     initialisedRef.current = false;
     userInteractedRef.current = false;
@@ -59,7 +57,6 @@ export default function EpisodeSelector({ tv, onPlay }: Props) {
   /* ------------------------------------------------------------------ */
   /* INITIAL SEASONS LOAD                            */
   /* ------------------------------------------------------------------ */
-
   useEffect(() => {
     if (!Array.isArray(tv.seasons)) return;
 
@@ -78,7 +75,6 @@ export default function EpisodeSelector({ tv, onPlay }: Props) {
   /* ------------------------------------------------------------------ */
   /* RESUME SYNC                            */
   /* ------------------------------------------------------------------ */
-
   useEffect(() => {
     if (!resume) return;
     if (userInteractedRef.current) return;
@@ -90,7 +86,6 @@ export default function EpisodeSelector({ tv, onPlay }: Props) {
   /* ------------------------------------------------------------------ */
   /* LOAD EPISODES                                                      */
   /* ------------------------------------------------------------------ */
-
   useEffect(() => {
     if (!season) return;
 
@@ -119,7 +114,6 @@ export default function EpisodeSelector({ tv, onPlay }: Props) {
   /* ------------------------------------------------------------------ */
   /* PLAY                                                               */
   /* ------------------------------------------------------------------ */
-
   const play = () => {
     if (!season || !episode) return;
 
@@ -136,7 +130,6 @@ export default function EpisodeSelector({ tv, onPlay }: Props) {
   /* ------------------------------------------------------------------ */
   /* LABEL                                                              */
   /* ------------------------------------------------------------------ */
-
   const isResume = resume?.season === season && resume?.episode === episode;
 
   const playLabel =
@@ -149,7 +142,6 @@ export default function EpisodeSelector({ tv, onPlay }: Props) {
   /* ------------------------------------------------------------------ */
   /* UI                                                                 */
   /* ------------------------------------------------------------------ */
-
   return (
     <div className="rounded-xl border border-[hsl(var(--foreground)/0.4)] bg-[hsl(var(--background)/0.85)] p-4 space-y-4">
       {/* Play */}
