@@ -140,7 +140,7 @@ export default function EpisodeSelector({ tv, onPlay }: Props) {
       : "Select episode";
 
   /* ------------------------------------------------------------------ */
-  /* UI                                                                 */
+  /* RENDER                                                                 */
   /* ------------------------------------------------------------------ */
   return (
     <div className="rounded-xl border border-[hsl(var(--foreground)/0.4)] bg-[hsl(var(--background)/0.85)] p-4 space-y-4">

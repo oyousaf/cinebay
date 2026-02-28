@@ -35,6 +35,7 @@ interface PlayerModalProps {
 export default function PlayerModal({ intent, onClose }: PlayerModalProps) {
   const [showLoader, setShowLoader] = useState(true);
   const [providerIndex, setProviderIndex] = useState(0);
+  const [hasNextEpisode, setHasNextEpisode] = useState(false);
 
   const loadTimerRef = useRef<number | null>(null);
   const loadStartRef = useRef<number>(0);
@@ -48,7 +49,37 @@ export default function PlayerModal({ intent, onClose }: PlayerModalProps) {
     [intent.mediaType, intent.tmdbId, intent.season, intent.episode],
   );
 
-  /* Resume StartAt */
+  /* ------------------------------------------------------------------ */
+  /* NEXT EPISODE AVAILABILITY                                          */
+  /* ------------------------------------------------------------------ */
+  useEffect(() => {
+    if (intent.mediaType !== "tv") {
+      setHasNextEpisode(false);
+      return;
+    }
+
+    if (!intent.season || !intent.episode) return;
+
+    let active = true;
+
+    import("@/lib/tmdb").then(({ fetchSeasonEpisodes }) => {
+      fetchSeasonEpisodes(intent.tmdbId, intent.season!).then((eps) => {
+        if (!active || !Array.isArray(eps) || eps.length === 0) return;
+
+        const maxEpisode = Math.max(...eps.map((e: any) => e.episode_number));
+
+        setHasNextEpisode(intent.episode! < maxEpisode);
+      });
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [intentKey]);
+
+  /* ------------------------------------------------------------------ */
+  /* RESUME START POSITION                                              */
+  /* ------------------------------------------------------------------ */
   const startAt = useMemo(() => {
     if (intent.mediaType !== "tv") return 0;
     if (!intent.season || !intent.episode) return 0;
@@ -78,10 +109,10 @@ export default function PlayerModal({ intent, onClose }: PlayerModalProps) {
         fullscreenButton: true,
         theme: THEME,
         subtitles: "en",
-        nextButton: intent.mediaType === "tv",
-        autoNext: intent.mediaType === "tv",
+        nextButton: intent.mediaType === "tv" && hasNextEpisode,
+        autoNext: intent.mediaType === "tv" && hasNextEpisode,
       }),
-    [intentKey, providerIndex, startAt],
+    [intentKey, providerIndex, startAt, hasNextEpisode],
   );
 
   /* Reset when content changes */
@@ -91,7 +122,9 @@ export default function PlayerModal({ intent, onClose }: PlayerModalProps) {
     hasReportedRef.current = false;
   }, [intentKey]);
 
-  /* Provider timeout fallback */
+  /* ------------------------------------------------------------------ */
+  /* PROVIDER TIMEOUT FALLBACK                                          */
+  /* ------------------------------------------------------------------ */
   const handleFallback = useCallback(() => {
     setProviderIndex((i) => (i < PROVIDER_ORDER.length - 1 ? i + 1 : i));
   }, []);
@@ -112,7 +145,9 @@ export default function PlayerModal({ intent, onClose }: PlayerModalProps) {
     };
   }, [embedUrl, provider, handleFallback]);
 
-  /* ---------------------------------- PLAYBACK TRACKING ---------------------------------- */
+  /* ------------------------------------------------------------------ */
+  /* PLAYBACK TRACKING                                                  */
+  /* ------------------------------------------------------------------ */
   useEffect(() => {
     if (intent.mediaType !== "tv") return;
     if (!intent.season || !intent.episode) return;
@@ -123,36 +158,55 @@ export default function PlayerModal({ intent, onClose }: PlayerModalProps) {
 
     const handleMessage = (event: MessageEvent) => {
       if (event.origin !== VIDLINK_ORIGIN) return;
-
-      const msg = event.data;
-      if (!msg || typeof msg !== "object") return;
-
-      let currentTime: number | undefined;
-
-      /* Preferred: MEDIA_DATA */
-      if ((msg as any).type === "MEDIA_DATA") {
-        currentTime = (msg as any)?.data?.currentTime;
-      }
-
-      /* Fallback: PLAYER_EVENT */
-      if (!currentTime && (msg as any).type === "PLAYER_EVENT") {
-        currentTime = (msg as any)?.data?.currentTime;
-      }
-
-      if (typeof currentTime !== "number") return;
       if (hasReportedRef.current) return;
 
-      if (currentTime >= START_THRESHOLD_SECONDS) {
-        hasReportedRef.current = true;
-        reportTVPlayback(tmdbId, season, episode, Math.floor(currentTime));
+      const msg = event.data as any;
+      if (!msg || typeof msg !== "object") return;
+
+      const currentTime: number | undefined = msg?.data?.currentTime;
+      const duration: number | undefined = msg?.data?.duration;
+
+      if (typeof currentTime !== "number") return;
+
+      // Only act after real viewing
+      if (currentTime < START_THRESHOLD_SECONDS) return;
+
+      hasReportedRef.current = true;
+
+      // --------------------------------------------------
+      // HYBRID LOGIC
+      // --------------------------------------------------
+
+      // If episode mostly watched (>= 90%)
+      if (
+        hasNextEpisode &&
+        typeof duration === "number" &&
+        duration > 0 &&
+        currentTime >= duration * 0.9
+      ) {
+        // Mark next episode as ready
+        reportTVPlayback(tmdbId, season, episode + 1, 0);
+        return;
       }
+
+      // Otherwise save current position
+      reportTVPlayback(tmdbId, season, episode, Math.floor(currentTime));
     };
 
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [intentKey, reportTVPlayback]);
+  }, [
+    intentKey,
+    intent.mediaType,
+    intent.season,
+    intent.episode,
+    hasNextEpisode,
+    reportTVPlayback,
+  ]);
 
-  /* ---------------------------------- RENDER ---------------------------------- */
+  /* ------------------------------------------------------------------ */
+  /* RENDER                                                             */
+  /* ------------------------------------------------------------------ */
   return (
     <motion.div
       initial={{ opacity: 0 }}
