@@ -28,7 +28,7 @@ export default function EpisodeSelector({ tv, onPlay }: Props) {
   const [season, setSeason] = useState<number | null>(null);
   const [episode, setEpisode] = useState<number | null>(null);
 
-  // Resume
+  // Resume (reactive)
   const [resume, setResume] = useState(() => getTVProgress(tv.id));
 
   // UI
@@ -38,6 +38,7 @@ export default function EpisodeSelector({ tv, onPlay }: Props) {
   // Guards
   const userInteractedRef = useRef(false);
   const initialisedRef = useRef(false);
+  const resumeLockedRef = useRef(false);
 
   /* ------------------------------------------------------------------ */
   /* LISTEN FOR PROGRESS UPDATES                                        */
@@ -49,6 +50,9 @@ export default function EpisodeSelector({ tv, onPlay }: Props) {
     const handleUpdate = (e: Event) => {
       const event = e as CustomEvent;
       if (event.detail?.tvId !== tv.id) return;
+
+      // Unlock when real progress arrives
+      resumeLockedRef.current = false;
 
       setResume(getTVProgress(tv.id));
     };
@@ -63,6 +67,8 @@ export default function EpisodeSelector({ tv, onPlay }: Props) {
   useEffect(() => {
     initialisedRef.current = false;
     userInteractedRef.current = false;
+    resumeLockedRef.current = false;
+
     setSeason(null);
     setEpisode(null);
     setEpisodes([]);
@@ -87,11 +93,12 @@ export default function EpisodeSelector({ tv, onPlay }: Props) {
   }, [tv.id, tv.seasons]);
 
   /* ------------------------------------------------------------------ */
-  /* RESUME SYNC                                                        */
+  /* RESUME SYNC (RESPECT LOCK)                                         */
   /* ------------------------------------------------------------------ */
   useEffect(() => {
     if (!resume) return;
     if (userInteractedRef.current) return;
+    if (resumeLockedRef.current) return; // 🔒 do not apply while locked
 
     setSeason((s) => (s !== resume.season ? resume.season : s));
     setEpisode((e) => (e !== resume.episode ? resume.episode : e));
@@ -125,12 +132,13 @@ export default function EpisodeSelector({ tv, onPlay }: Props) {
   }, [tv.id, season]);
 
   /* ------------------------------------------------------------------ */
-  /* PLAY                                                               */
+  /* PLAY                                               */
   /* ------------------------------------------------------------------ */
   const play = () => {
     if (!season || !episode) return;
 
     userInteractedRef.current = true;
+    resumeLockedRef.current = true;
 
     onPlay({
       mediaType: "tv",

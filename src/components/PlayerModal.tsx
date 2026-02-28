@@ -15,15 +15,44 @@ import { useContinueWatching } from "@/hooks/useContinueWatching";
 const LOADER_MIN_MS = 900;
 const LOAD_TIMEOUT_VIDLINK = 9000;
 const LOAD_TIMEOUT_OTHER = 4000;
-const VIDLINK_ORIGIN = "https://vidlink.pro";
+
+const VIDLINK_HOSTS = new Set(["vidlink.pro", "www.vidlink.pro"]);
+
 const THEME = "2dd4bf";
 const START_THRESHOLD_SECONDS = 30;
+const NEXT_READY_POSITION = START_THRESHOLD_SECONDS; // must be >= 30 to be stored by your hook
 
 /* ---------------------------------- HELPERS ---------------------------------- */
 function getIntentKey(i: PlaybackIntent) {
   return i.mediaType === "tv"
     ? `${i.tmdbId}-s${i.season ?? 1}-e${i.episode ?? 1}`
     : `${i.tmdbId}-movie`;
+}
+
+function isVidlinkOrigin(origin: string) {
+  try {
+    const url = new URL(origin);
+    const host = url.hostname.toLowerCase();
+    if (VIDLINK_HOSTS.has(host)) return true;
+    // allow subdomains (e.g. cdn.vidlink.pro)
+    return host.endsWith(".vidlink.pro");
+  } catch {
+    return false;
+  }
+}
+
+function safeMsgData(data: unknown): any | null {
+  if (!data) return null;
+  if (typeof data === "object") return data as any;
+  if (typeof data === "string") {
+    try {
+      const parsed = JSON.parse(data);
+      return typeof parsed === "object" && parsed ? parsed : null;
+    } catch {
+      return null;
+    }
+  }
+  return null;
 }
 
 interface PlayerModalProps {
@@ -52,6 +81,9 @@ export default function PlayerModal({ intent, onClose }: PlayerModalProps) {
     () => getIntentKey(intent),
     [intent.mediaType, intent.tmdbId, intent.season, intent.episode],
   );
+
+  /* Provider */
+  const provider = PROVIDER_ORDER[providerIndex] as ProviderType;
 
   /* ------------------------------------------------------------------ */
   /* NEXT EPISODE + SEASON ROLLOVER CHECK                               */
@@ -129,9 +161,6 @@ export default function PlayerModal({ intent, onClose }: PlayerModalProps) {
     return 0;
   }, [intentKey, getTVProgress]);
 
-  /* Provider */
-  const provider = PROVIDER_ORDER[providerIndex] as ProviderType;
-
   const embedUrl = useMemo(
     () =>
       buildEmbedUrl(intent, {
@@ -144,7 +173,7 @@ export default function PlayerModal({ intent, onClose }: PlayerModalProps) {
         nextButton: intent.mediaType === "tv" && hasNextEpisode,
         autoNext: intent.mediaType === "tv" && hasNextEpisode,
       }),
-    [intentKey, providerIndex, startAt, hasNextEpisode],
+    [intentKey, provider, startAt, hasNextEpisode],
   );
 
   /* Reset when content changes */
@@ -176,9 +205,10 @@ export default function PlayerModal({ intent, onClose }: PlayerModalProps) {
   }, [embedUrl, provider, handleFallback]);
 
   /* ------------------------------------------------------------------ */
-  /* PLAYBACK TRACKING                  */
+  /* PLAYBACK TRACKING (VIDLINK ONLY)                                   */
   /* ------------------------------------------------------------------ */
   useEffect(() => {
+    if (provider !== "vidlink") return;
     if (intent.mediaType !== "tv") return;
     if (!intent.season || !intent.episode) return;
 
@@ -187,11 +217,11 @@ export default function PlayerModal({ intent, onClose }: PlayerModalProps) {
     const episode = intent.episode;
 
     const handleMessage = (event: MessageEvent) => {
-      if (event.origin !== VIDLINK_ORIGIN) return;
+      if (!isVidlinkOrigin(event.origin)) return;
       if (hasReportedRef.current) return;
 
-      const msg = event.data as any;
-      if (!msg || typeof msg !== "object") return;
+      const msg = safeMsgData(event.data);
+      if (!msg) return;
 
       const currentTime: number | undefined = msg?.data?.currentTime;
       const duration: number | undefined = msg?.data?.duration;
@@ -201,7 +231,7 @@ export default function PlayerModal({ intent, onClose }: PlayerModalProps) {
 
       hasReportedRef.current = true;
 
-      // Completion threshold
+      // Completion threshold (>= 90%)
       if (
         typeof duration === "number" &&
         duration > 0 &&
@@ -209,7 +239,7 @@ export default function PlayerModal({ intent, onClose }: PlayerModalProps) {
       ) {
         // Same season next
         if (hasNextEpisode && !nextSeasonFirst) {
-          reportTVPlayback(tmdbId, season, episode + 1, 0);
+          reportTVPlayback(tmdbId, season, episode + 1, NEXT_READY_POSITION);
           return;
         }
 
@@ -219,7 +249,7 @@ export default function PlayerModal({ intent, onClose }: PlayerModalProps) {
             tmdbId,
             nextSeasonFirst.season,
             nextSeasonFirst.episode,
-            0,
+            NEXT_READY_POSITION,
           );
           return;
         }
@@ -233,6 +263,7 @@ export default function PlayerModal({ intent, onClose }: PlayerModalProps) {
     return () => window.removeEventListener("message", handleMessage);
   }, [
     intentKey,
+    provider,
     intent.mediaType,
     intent.season,
     intent.episode,
