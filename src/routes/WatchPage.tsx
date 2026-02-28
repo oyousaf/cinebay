@@ -35,22 +35,23 @@ export default function WatchPage() {
     const tmdbId = Number(params.tmdbId);
     if (!Number.isFinite(tmdbId) || tmdbId <= 0) return null;
 
-    const season = params.season ? Number(params.season) : undefined;
-    const episode = params.episode ? Number(params.episode) : undefined;
-
-    if (
-      season !== undefined &&
-      episode !== undefined &&
-      Number.isFinite(season) &&
-      Number.isFinite(episode)
-    ) {
-      return { mediaType: "tv", tmdbId, season, episode };
+    // TV route
+    if (params.season && params.episode) {
+      return {
+        mediaType: "tv",
+        tmdbId,
+        season: Number(params.season),
+        episode: Number(params.episode),
+      };
     }
 
-    return { mediaType: "movie", tmdbId };
+    // Movie route
+    return {
+      mediaType: "movie",
+      tmdbId,
+    };
   }, [params.tmdbId, params.season, params.episode]);
 
-  /* If params invalid, return home safely */
   useEffect(() => {
     if (intent === null) {
       navigate("/", { replace: true });
@@ -61,22 +62,35 @@ export default function WatchPage() {
 
   const key = getIntentKey(intent);
 
+  /* ---------------------------------- NEXT EPISODE NAVIGATION ---------------------------------- */
+
+  const handlePlayNext = useCallback(
+    (next: PlaybackIntent) => {
+      if (next.mediaType === "tv") {
+        navigate(`/watch/tv/${next.tmdbId}/${next.season}/${next.episode}`);
+        return;
+      }
+
+      if (next.mediaType === "movie") {
+        navigate(`/watch/movie/${next.tmdbId}`);
+      }
+    },
+    [navigate],
+  );
+
   /* ---------------------------------- CLOSE STRATEGY ---------------------------------- */
 
   const handleClose = useCallback(() => {
-    // Trigger exit animation
     setVisible(false);
 
     setTimeout(() => {
       const state = location.state as { from?: string } | null;
 
-      // 1) Best case: explicit origin
       if (state?.from) {
         navigate(state.from, { replace: true });
         return;
       }
 
-      // 2) React Router history index
       const historyState = window.history.state as { idx?: number } | null;
       if (
         historyState &&
@@ -87,7 +101,6 @@ export default function WatchPage() {
         return;
       }
 
-      // 3) Fallback
       navigate("/", { replace: true });
     }, 220);
   }, [navigate, location.state]);
@@ -97,7 +110,12 @@ export default function WatchPage() {
   return (
     <AnimatePresence mode="wait">
       {visible && (
-        <PlayerModal key={key} intent={intent} onClose={handleClose} />
+        <PlayerModal
+          key={key}
+          intent={intent}
+          onClose={handleClose}
+          onPlayNext={handlePlayNext}
+        />
       )}
     </AnimatePresence>
   );

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import { X } from "lucide-react";
+import { X, SkipForward, Play } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   buildEmbedUrl,
@@ -10,8 +10,10 @@ import {
   type ProviderType,
 } from "@/lib/embed/buildEmbedUrl";
 import { useContinueWatching } from "@/hooks/useContinueWatching";
+import { fetchSeasonEpisodes } from "@/lib/tmdb";
 
-/* ---------------------------------- CONFIG ---------------------------------- */
+/* -------------------------------- CONFIG -------------------------------- */
+
 const LOADER_MIN_MS = 900;
 const LOAD_TIMEOUT_VIDLINK = 9000;
 const LOAD_TIMEOUT_OTHER = 4000;
@@ -20,9 +22,13 @@ const VIDLINK_HOSTS = new Set(["vidlink.pro", "www.vidlink.pro"]);
 
 const THEME = "2dd4bf";
 const START_THRESHOLD_SECONDS = 30;
-const NEXT_READY_POSITION = START_THRESHOLD_SECONDS; // must be >= 30 to be stored by your hook
+const NEXT_OVERLAY_THRESHOLD = 0.9;
 
-/* ---------------------------------- HELPERS ---------------------------------- */
+/* Skip intro = jump forward from current position */
+const SKIP_FORWARD_SECONDS = 60;
+
+/* -------------------------------- HELPERS -------------------------------- */
+
 function getIntentKey(i: PlaybackIntent) {
   return i.mediaType === "tv"
     ? `${i.tmdbId}-s${i.season ?? 1}-e${i.episode ?? 1}`
@@ -34,7 +40,6 @@ function isVidlinkOrigin(origin: string) {
     const url = new URL(origin);
     const host = url.hostname.toLowerCase();
     if (VIDLINK_HOSTS.has(host)) return true;
-    // allow subdomains (e.g. cdn.vidlink.pro)
     return host.endsWith(".vidlink.pro");
   } catch {
     return false;
@@ -58,82 +63,82 @@ function safeMsgData(data: unknown): any | null {
 interface PlayerModalProps {
   intent: PlaybackIntent;
   onClose: () => void;
+  onPlayNext?: (intent: PlaybackIntent) => void;
 }
 
-export default function PlayerModal({ intent, onClose }: PlayerModalProps) {
+/* ======================================================================== */
+
+export default function PlayerModal({
+  intent,
+  onClose,
+  onPlayNext,
+}: PlayerModalProps) {
   const [showLoader, setShowLoader] = useState(true);
   const [providerIndex, setProviderIndex] = useState(0);
 
+  const [episodeTitle, setEpisodeTitle] = useState("");
   const [hasNextEpisode, setHasNextEpisode] = useState(false);
   const [nextSeasonFirst, setNextSeasonFirst] = useState<{
     season: number;
     episode: number;
   } | null>(null);
 
+  const [showNextOverlay, setShowNextOverlay] = useState(false);
+
   const loadTimerRef = useRef<number | null>(null);
   const loadStartRef = useRef<number>(0);
   const hasReportedRef = useRef(false);
 
+  /* Track current playback time for Skip Intro */
+  const currentTimeRef = useRef(0);
+
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+
   const { getTVProgress, reportTVPlayback } = useContinueWatching();
 
-  /* Identity */
   const intentKey = useMemo(
     () => getIntentKey(intent),
     [intent.mediaType, intent.tmdbId, intent.season, intent.episode],
   );
 
-  /* Provider */
   const provider = PROVIDER_ORDER[providerIndex] as ProviderType;
 
   /* ------------------------------------------------------------------ */
-  /* NEXT EPISODE + SEASON ROLLOVER CHECK                               */
+  /* SEASON DATA                                                        */
   /* ------------------------------------------------------------------ */
-  useEffect(() => {
-    if (intent.mediaType !== "tv") {
-      setHasNextEpisode(false);
-      setNextSeasonFirst(null);
-      return;
-    }
 
-    if (!intent.season || !intent.episode) return;
+  useEffect(() => {
+    if (intent.mediaType !== "tv" || !intent.season) return;
 
     let active = true;
 
-    import("@/lib/tmdb").then(({ fetchSeasonEpisodes }) => {
-      fetchSeasonEpisodes(intent.tmdbId, intent.season!).then(async (eps) => {
-        if (!active || !Array.isArray(eps) || eps.length === 0) return;
+    fetchSeasonEpisodes(intent.tmdbId, intent.season).then(async (eps) => {
+      if (!active || !Array.isArray(eps)) return;
 
-        const maxEpisode = Math.max(...eps.map((e: any) => e.episode_number));
+      const current = eps.find((e: any) => e.episode_number === intent.episode);
+      setEpisodeTitle(current?.name || "");
 
-        // Normal next episode
-        if (intent.episode! < maxEpisode) {
-          setHasNextEpisode(true);
-          setNextSeasonFirst(null);
-          return;
-        }
+      const maxEpisode = Math.max(...eps.map((e: any) => e.episode_number));
 
-        // End of season → check next season
-        const nextSeasonNumber = intent.season! + 1;
-        const nextSeasonEps = await fetchSeasonEpisodes(
-          intent.tmdbId,
-          nextSeasonNumber,
-        );
+      if (intent.episode! < maxEpisode) {
+        setHasNextEpisode(true);
+        setNextSeasonFirst(null);
+        return;
+      }
 
-        if (
-          active &&
-          Array.isArray(nextSeasonEps) &&
-          nextSeasonEps.length > 0
-        ) {
-          setHasNextEpisode(true);
-          setNextSeasonFirst({
-            season: nextSeasonNumber,
-            episode: nextSeasonEps[0].episode_number,
-          });
-        } else {
-          setHasNextEpisode(false);
-          setNextSeasonFirst(null);
-        }
-      });
+      const nextSeason = intent.season! + 1;
+      const nextEps = await fetchSeasonEpisodes(intent.tmdbId, nextSeason);
+
+      if (active && nextEps?.length) {
+        setHasNextEpisode(true);
+        setNextSeasonFirst({
+          season: nextSeason,
+          episode: nextEps[0].episode_number,
+        });
+      } else {
+        setHasNextEpisode(false);
+        setNextSeasonFirst(null);
+      }
     });
 
     return () => {
@@ -142,24 +147,25 @@ export default function PlayerModal({ intent, onClose }: PlayerModalProps) {
   }, [intentKey]);
 
   /* ------------------------------------------------------------------ */
-  /* RESUME START POSITION                                              */
+  /* RESUME                                                             */
   /* ------------------------------------------------------------------ */
+
   const startAt = useMemo(() => {
     if (intent.mediaType !== "tv") return 0;
-    if (!intent.season || !intent.episode) return 0;
-
     const progress = getTVProgress(intent.tmdbId);
-    if (!progress) return 0;
-
     if (
+      progress &&
       progress.season === intent.season &&
       progress.episode === intent.episode
     ) {
       return progress.position;
     }
-
     return 0;
   }, [intentKey, getTVProgress]);
+
+  /* ------------------------------------------------------------------ */
+  /* EMBED                                                              */
+  /* ------------------------------------------------------------------ */
 
   const embedUrl = useMemo(
     () =>
@@ -167,23 +173,21 @@ export default function PlayerModal({ intent, onClose }: PlayerModalProps) {
         provider,
         startAt,
         autoplay: true,
-        fullscreenButton: true,
         theme: THEME,
         subtitles: "en",
-        nextButton: intent.mediaType === "tv" && hasNextEpisode,
-        autoNext: intent.mediaType === "tv" && hasNextEpisode,
+        nextButton: false,
+        autoNext: false,
       }),
-    [intentKey, provider, startAt, hasNextEpisode],
+    [intentKey, provider, startAt],
   );
 
-  /* Reset when content changes */
   useEffect(() => {
     setProviderIndex(0);
     setShowLoader(true);
+    setShowNextOverlay(false);
     hasReportedRef.current = false;
   }, [intentKey]);
 
-  /* Provider timeout fallback */
   const handleFallback = useCallback(() => {
     setProviderIndex((i) => (i < PROVIDER_ORDER.length - 1 ? i + 1 : i));
   }, []);
@@ -205,82 +209,99 @@ export default function PlayerModal({ intent, onClose }: PlayerModalProps) {
   }, [embedUrl, provider, handleFallback]);
 
   /* ------------------------------------------------------------------ */
-  /* PLAYBACK TRACKING (VIDLINK ONLY)                                   */
+  /* PLAYBACK MESSAGES                                                  */
   /* ------------------------------------------------------------------ */
+
   useEffect(() => {
     if (provider !== "vidlink") return;
     if (intent.mediaType !== "tv") return;
-    if (!intent.season || !intent.episode) return;
-
-    const tmdbId = intent.tmdbId;
-    const season = intent.season;
-    const episode = intent.episode;
 
     const handleMessage = (event: MessageEvent) => {
       if (!isVidlinkOrigin(event.origin)) return;
-      if (hasReportedRef.current) return;
 
       const msg = safeMsgData(event.data);
       if (!msg) return;
 
-      const currentTime: number | undefined = msg?.data?.currentTime;
-      const duration: number | undefined = msg?.data?.duration;
+      const currentTime = msg?.data?.currentTime;
+      const duration = msg?.data?.duration;
 
       if (typeof currentTime !== "number") return;
-      if (currentTime < START_THRESHOLD_SECONDS) return;
 
-      hasReportedRef.current = true;
+      currentTimeRef.current = currentTime;
 
-      // Completion threshold (>= 90%)
-      if (
-        typeof duration === "number" &&
-        duration > 0 &&
-        currentTime >= duration * 0.9
-      ) {
-        // Same season next
-        if (hasNextEpisode && !nextSeasonFirst) {
-          reportTVPlayback(tmdbId, season, episode + 1, NEXT_READY_POSITION);
-          return;
-        }
-
-        // Season rollover
-        if (nextSeasonFirst) {
-          reportTVPlayback(
-            tmdbId,
-            nextSeasonFirst.season,
-            nextSeasonFirst.episode,
-            NEXT_READY_POSITION,
-          );
-          return;
-        }
+      if (!hasReportedRef.current && currentTime >= START_THRESHOLD_SECONDS) {
+        hasReportedRef.current = true;
+        reportTVPlayback(
+          intent.tmdbId,
+          intent.season!,
+          intent.episode!,
+          Math.floor(currentTime),
+        );
       }
 
-      // Otherwise save current position
-      reportTVPlayback(tmdbId, season, episode, Math.floor(currentTime));
+      if (
+        hasNextEpisode &&
+        typeof duration === "number" &&
+        duration > 0 &&
+        currentTime >= duration * NEXT_OVERLAY_THRESHOLD
+      ) {
+        setShowNextOverlay(true);
+      }
     };
 
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [
-    intentKey,
-    provider,
-    intent.mediaType,
-    intent.season,
-    intent.episode,
-    hasNextEpisode,
-    nextSeasonFirst,
-    reportTVPlayback,
-  ]);
+  }, [intentKey, provider, hasNextEpisode, reportTVPlayback]);
+
+  /* ------------------------------------------------------------------ */
+  /* NEXT                                                               */
+  /* ------------------------------------------------------------------ */
+
+  const nextIntent = useMemo(() => {
+    if (!hasNextEpisode) return null;
+
+    if (nextSeasonFirst) {
+      return {
+        ...intent,
+        season: nextSeasonFirst.season,
+        episode: nextSeasonFirst.episode,
+      };
+    }
+
+    return {
+      ...intent,
+      episode: (intent.episode ?? 1) + 1,
+    };
+  }, [intentKey, hasNextEpisode, nextSeasonFirst]);
+
+  /* ------------------------------------------------------------------ */
+  /* SKIP INTRO (forward relative)                                      */
+  /* ------------------------------------------------------------------ */
+
+  const handleSkipIntro = () => {
+    const iframe = iframeRef.current;
+    if (!iframe) return;
+
+    const target = Math.floor(currentTimeRef.current + SKIP_FORWARD_SECONDS);
+
+    iframe.contentWindow?.postMessage(
+      {
+        type: "seek",
+        data: { time: target },
+      },
+      "*",
+    );
+  };
 
   /* ------------------------------------------------------------------ */
   /* RENDER                                                             */
   /* ------------------------------------------------------------------ */
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.2 }}
       className="fixed inset-0 z-50 flex items-center justify-center bg-[hsl(var(--foreground)/0.35)] backdrop-blur-md px-3 sm:px-6"
     >
       <motion.div className="relative w-full max-w-6xl aspect-video rounded-2xl overflow-hidden bg-[hsl(var(--background))] ring-2 ring-[hsl(var(--foreground))]">
@@ -293,10 +314,11 @@ export default function PlayerModal({ intent, onClose }: PlayerModalProps) {
         </AnimatePresence>
 
         <iframe
+          ref={iframeRef}
           key={`${intentKey}-${providerIndex}`}
           src={embedUrl}
           className="w-full h-full border-none"
-          allow="autoplay; fullscreen *; picture-in-picture *; encrypted-media *"
+          allow="autoplay; fullscreen *"
           referrerPolicy="no-referrer"
           onLoad={() => {
             if (loadTimerRef.current) {
@@ -309,12 +331,59 @@ export default function PlayerModal({ intent, onClose }: PlayerModalProps) {
           }}
         />
 
+        {/* Skip Intro */}
+        <button
+          onClick={handleSkipIntro}
+          className="absolute top-3 left-3 z-20 rounded-full bg-[hsl(var(--background))] ring-2 ring-[hsl(var(--foreground))] px-3 py-1 text-sm flex items-center gap-1"
+        >
+          <SkipForward size={16} />
+          Skip intro
+        </button>
+
+        {/* Close */}
         <button
           onClick={onClose}
           className="absolute top-3 right-3 z-20 rounded-full bg-[hsl(var(--background))] ring-2 ring-[hsl(var(--foreground))]"
         >
           <X size={22} className="m-2 text-[hsl(var(--foreground))]" />
         </button>
+
+        {/* Next overlay (raised) */}
+        <AnimatePresence>
+          {showNextOverlay && nextIntent && (
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="absolute bottom-20 right-6 z-30 bg-[hsl(var(--background)/0.95)] ring-2 ring-[hsl(var(--foreground))] rounded-xl px-4 py-3 shadow-lg flex items-center gap-3"
+            >
+              <div className="text-sm">
+                <div className="text-xs opacity-70">Up next</div>
+                <div className="font-semibold">
+                  S{nextIntent.season} · E{nextIntent.episode}
+                </div>
+              </div>
+
+              <button
+                onClick={() => {
+                  setShowNextOverlay(false);
+                  onPlayNext?.(nextIntent);
+                }}
+                className="h-10 w-10 rounded-full bg-[hsl(var(--foreground))] text-[hsl(var(--background))] flex items-center justify-center"
+              >
+                <Play size={20} fill="currentColor" />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Episode label */}
+        {episodeTitle && (
+          <div className="absolute top-12 left-3 z-20 text-sm bg-[hsl(var(--background)/0.85)] px-3 py-1.5 rounded-lg">
+            S{intent.season} · E{intent.episode}
+            <span className="ml-2 opacity-80">{episodeTitle}</span>
+          </div>
+        )}
       </motion.div>
     </motion.div>
   );
