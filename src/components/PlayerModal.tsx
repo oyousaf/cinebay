@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import { X, SkipForward, Play } from "lucide-react";
+import { X, Play } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   buildEmbedUrl,
@@ -16,16 +16,13 @@ import { fetchSeasonEpisodes } from "@/lib/tmdb";
 
 const LOADER_MIN_MS = 900;
 const LOAD_TIMEOUT_VIDLINK = 9000;
-const LOAD_TIMEOUT_OTHER = 4000;
+const LOAD_TIMEOUT_OTHER = 5000;
 
 const VIDLINK_HOSTS = new Set(["vidlink.pro", "www.vidlink.pro"]);
 
 const THEME = "2dd4bf";
 const START_THRESHOLD_SECONDS = 30;
 const NEXT_OVERLAY_THRESHOLD = 0.9;
-
-/* Skip intro = jump forward from current position */
-const SKIP_FORWARD_SECONDS = 60;
 
 /* -------------------------------- HELPERS -------------------------------- */
 
@@ -77,6 +74,8 @@ export default function PlayerModal({
   const [providerIndex, setProviderIndex] = useState(0);
 
   const [episodeTitle, setEpisodeTitle] = useState("");
+  const [nextEpisodeTitle, setNextEpisodeTitle] = useState("");
+
   const [hasNextEpisode, setHasNextEpisode] = useState(false);
   const [nextSeasonFirst, setNextSeasonFirst] = useState<{
     season: number;
@@ -88,11 +87,6 @@ export default function PlayerModal({
   const loadTimerRef = useRef<number | null>(null);
   const loadStartRef = useRef<number>(0);
   const hasReportedRef = useRef(false);
-
-  /* Track current playback time for Skip Intro */
-  const currentTimeRef = useRef(0);
-
-  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const { getTVProgress, reportTVPlayback } = useContinueWatching();
 
@@ -120,12 +114,19 @@ export default function PlayerModal({
 
       const maxEpisode = Math.max(...eps.map((e: any) => e.episode_number));
 
+      // Normal next
       if (intent.episode! < maxEpisode) {
+        const nextEp = eps.find(
+          (e: any) => e.episode_number === intent.episode! + 1,
+        );
+
         setHasNextEpisode(true);
         setNextSeasonFirst(null);
+        setNextEpisodeTitle(nextEp?.name || "");
         return;
       }
 
+      // Season rollover
       const nextSeason = intent.season! + 1;
       const nextEps = await fetchSeasonEpisodes(intent.tmdbId, nextSeason);
 
@@ -135,9 +136,11 @@ export default function PlayerModal({
           season: nextSeason,
           episode: nextEps[0].episode_number,
         });
+        setNextEpisodeTitle(nextEps[0].name || "");
       } else {
         setHasNextEpisode(false);
         setNextSeasonFirst(null);
+        setNextEpisodeTitle("");
       }
     });
 
@@ -188,6 +191,7 @@ export default function PlayerModal({
     hasReportedRef.current = false;
   }, [intentKey]);
 
+  /* Provider fallback */
   const handleFallback = useCallback(() => {
     setProviderIndex((i) => (i < PROVIDER_ORDER.length - 1 ? i + 1 : i));
   }, []);
@@ -211,7 +215,6 @@ export default function PlayerModal({
   /* ------------------------------------------------------------------ */
   /* PLAYBACK MESSAGES                                                  */
   /* ------------------------------------------------------------------ */
-
   useEffect(() => {
     if (provider !== "vidlink") return;
     if (intent.mediaType !== "tv") return;
@@ -227,8 +230,7 @@ export default function PlayerModal({
 
       if (typeof currentTime !== "number") return;
 
-      currentTimeRef.current = currentTime;
-
+      /* Continue watching */
       if (!hasReportedRef.current && currentTime >= START_THRESHOLD_SECONDS) {
         hasReportedRef.current = true;
         reportTVPlayback(
@@ -239,10 +241,11 @@ export default function PlayerModal({
         );
       }
 
+      /* Guard against false triggers */
       if (
         hasNextEpisode &&
         typeof duration === "number" &&
-        duration > 0 &&
+        duration > 60 &&
         currentTime >= duration * NEXT_OVERLAY_THRESHOLD
       ) {
         setShowNextOverlay(true);
@@ -256,7 +259,6 @@ export default function PlayerModal({
   /* ------------------------------------------------------------------ */
   /* NEXT                                                               */
   /* ------------------------------------------------------------------ */
-
   const nextIntent = useMemo(() => {
     if (!hasNextEpisode) return null;
 
@@ -275,28 +277,8 @@ export default function PlayerModal({
   }, [intentKey, hasNextEpisode, nextSeasonFirst]);
 
   /* ------------------------------------------------------------------ */
-  /* SKIP INTRO (forward relative)                                      */
-  /* ------------------------------------------------------------------ */
-
-  const handleSkipIntro = () => {
-    const iframe = iframeRef.current;
-    if (!iframe) return;
-
-    const target = Math.floor(currentTimeRef.current + SKIP_FORWARD_SECONDS);
-
-    iframe.contentWindow?.postMessage(
-      {
-        type: "seek",
-        data: { time: target },
-      },
-      "*",
-    );
-  };
-
-  /* ------------------------------------------------------------------ */
   /* RENDER                                                             */
   /* ------------------------------------------------------------------ */
-
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -305,16 +287,7 @@ export default function PlayerModal({
       className="fixed inset-0 z-50 flex items-center justify-center bg-[hsl(var(--foreground)/0.35)] backdrop-blur-md px-3 sm:px-6"
     >
       <motion.div className="relative w-full max-w-6xl aspect-video rounded-2xl overflow-hidden bg-[hsl(var(--background))] ring-2 ring-[hsl(var(--foreground))]">
-        <AnimatePresence>
-          {showLoader && (
-            <motion.div className="absolute inset-0 z-10 flex items-center justify-center bg-[hsl(var(--background))]">
-              <div className="h-8 w-8 rounded-full border-2 border-[hsl(var(--foreground)/0.4)] border-t-[hsl(var(--foreground))] animate-spin" />
-            </motion.div>
-          )}
-        </AnimatePresence>
-
         <iframe
-          ref={iframeRef}
           key={`${intentKey}-${providerIndex}`}
           src={embedUrl}
           className="w-full h-full border-none"
@@ -325,43 +298,49 @@ export default function PlayerModal({
               clearTimeout(loadTimerRef.current);
               loadTimerRef.current = null;
             }
+
             const elapsed = Date.now() - loadStartRef.current;
             const remaining = Math.max(LOADER_MIN_MS - elapsed, 0);
+
             setTimeout(() => setShowLoader(false), remaining);
           }}
         />
-
-        {/* Skip Intro */}
-        <button
-          onClick={handleSkipIntro}
-          className="absolute top-3 left-3 z-20 rounded-full bg-[hsl(var(--background))] ring-2 ring-[hsl(var(--foreground))] px-3 py-1 text-sm flex items-center gap-1"
-        >
-          <SkipForward size={16} />
-          Skip intro
-        </button>
 
         {/* Close */}
         <button
           onClick={onClose}
           className="absolute top-3 right-3 z-20 rounded-full bg-[hsl(var(--background))] ring-2 ring-[hsl(var(--foreground))]"
         >
-          <X size={22} className="m-2 text-[hsl(var(--foreground))]" />
+          <X size={22} className="m-2" />
         </button>
 
-        {/* Next overlay (raised) */}
+        {/* Episode label */}
+        {episodeTitle && (
+          <div className="absolute top-4 left-4 z-20 text-sm bg-[hsl(var(--background)/0.9)] px-3 py-1.5 rounded-lg">
+            S{intent.season} · E{intent.episode}
+            <span className="ml-2 opacity-80">{episodeTitle}</span>
+          </div>
+        )}
+
+        {/* Next overlay */}
         <AnimatePresence>
           {showNextOverlay && nextIntent && (
             <motion.div
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
-              className="absolute bottom-20 right-6 z-30 bg-[hsl(var(--background)/0.95)] ring-2 ring-[hsl(var(--foreground))] rounded-xl px-4 py-3 shadow-lg flex items-center gap-3"
+              className="absolute bottom-20 right-6 z-30 bg-[hsl(var(--background)/0.95)] ring-2 ring-[hsl(var(--foreground))] rounded-xl px-4 py-3 shadow-lg flex items-center gap-4 max-w-xs"
             >
               <div className="text-sm">
                 <div className="text-xs opacity-70">Up next</div>
                 <div className="font-semibold">
                   S{nextIntent.season} · E{nextIntent.episode}
                 </div>
+                {nextEpisodeTitle && (
+                  <div className="text-xs opacity-80 mt-1 line-clamp-2">
+                    {nextEpisodeTitle}
+                  </div>
+                )}
               </div>
 
               <button
@@ -376,14 +355,6 @@ export default function PlayerModal({
             </motion.div>
           )}
         </AnimatePresence>
-
-        {/* Episode label */}
-        {episodeTitle && (
-          <div className="absolute top-12 left-3 z-20 text-sm bg-[hsl(var(--background)/0.85)] px-3 py-1.5 rounded-lg">
-            S{intent.season} · E{intent.episode}
-            <span className="ml-2 opacity-80">{episodeTitle}</span>
-          </div>
-        )}
       </motion.div>
     </motion.div>
   );
