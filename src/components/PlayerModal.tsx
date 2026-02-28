@@ -31,11 +31,15 @@ interface PlayerModalProps {
   onClose: () => void;
 }
 
-/* ---------------------------------- COMPONENT ---------------------------------- */
 export default function PlayerModal({ intent, onClose }: PlayerModalProps) {
   const [showLoader, setShowLoader] = useState(true);
   const [providerIndex, setProviderIndex] = useState(0);
+
   const [hasNextEpisode, setHasNextEpisode] = useState(false);
+  const [nextSeasonFirst, setNextSeasonFirst] = useState<{
+    season: number;
+    episode: number;
+  } | null>(null);
 
   const loadTimerRef = useRef<number | null>(null);
   const loadStartRef = useRef<number>(0);
@@ -50,11 +54,12 @@ export default function PlayerModal({ intent, onClose }: PlayerModalProps) {
   );
 
   /* ------------------------------------------------------------------ */
-  /* NEXT EPISODE AVAILABILITY                                          */
+  /* NEXT EPISODE + SEASON ROLLOVER CHECK                               */
   /* ------------------------------------------------------------------ */
   useEffect(() => {
     if (intent.mediaType !== "tv") {
       setHasNextEpisode(false);
+      setNextSeasonFirst(null);
       return;
     }
 
@@ -63,12 +68,39 @@ export default function PlayerModal({ intent, onClose }: PlayerModalProps) {
     let active = true;
 
     import("@/lib/tmdb").then(({ fetchSeasonEpisodes }) => {
-      fetchSeasonEpisodes(intent.tmdbId, intent.season!).then((eps) => {
+      fetchSeasonEpisodes(intent.tmdbId, intent.season!).then(async (eps) => {
         if (!active || !Array.isArray(eps) || eps.length === 0) return;
 
         const maxEpisode = Math.max(...eps.map((e: any) => e.episode_number));
 
-        setHasNextEpisode(intent.episode! < maxEpisode);
+        // Normal next episode
+        if (intent.episode! < maxEpisode) {
+          setHasNextEpisode(true);
+          setNextSeasonFirst(null);
+          return;
+        }
+
+        // End of season → check next season
+        const nextSeasonNumber = intent.season! + 1;
+        const nextSeasonEps = await fetchSeasonEpisodes(
+          intent.tmdbId,
+          nextSeasonNumber,
+        );
+
+        if (
+          active &&
+          Array.isArray(nextSeasonEps) &&
+          nextSeasonEps.length > 0
+        ) {
+          setHasNextEpisode(true);
+          setNextSeasonFirst({
+            season: nextSeasonNumber,
+            episode: nextSeasonEps[0].episode_number,
+          });
+        } else {
+          setHasNextEpisode(false);
+          setNextSeasonFirst(null);
+        }
       });
     });
 
@@ -122,9 +154,7 @@ export default function PlayerModal({ intent, onClose }: PlayerModalProps) {
     hasReportedRef.current = false;
   }, [intentKey]);
 
-  /* ------------------------------------------------------------------ */
-  /* PROVIDER TIMEOUT FALLBACK                                          */
-  /* ------------------------------------------------------------------ */
+  /* Provider timeout fallback */
   const handleFallback = useCallback(() => {
     setProviderIndex((i) => (i < PROVIDER_ORDER.length - 1 ? i + 1 : i));
   }, []);
@@ -146,7 +176,7 @@ export default function PlayerModal({ intent, onClose }: PlayerModalProps) {
   }, [embedUrl, provider, handleFallback]);
 
   /* ------------------------------------------------------------------ */
-  /* PLAYBACK TRACKING                                                  */
+  /* PLAYBACK TRACKING                  */
   /* ------------------------------------------------------------------ */
   useEffect(() => {
     if (intent.mediaType !== "tv") return;
@@ -167,26 +197,32 @@ export default function PlayerModal({ intent, onClose }: PlayerModalProps) {
       const duration: number | undefined = msg?.data?.duration;
 
       if (typeof currentTime !== "number") return;
-
-      // Only act after real viewing
       if (currentTime < START_THRESHOLD_SECONDS) return;
 
       hasReportedRef.current = true;
 
-      // --------------------------------------------------
-      // HYBRID LOGIC
-      // --------------------------------------------------
-
-      // If episode mostly watched (>= 90%)
+      // Completion threshold
       if (
-        hasNextEpisode &&
         typeof duration === "number" &&
         duration > 0 &&
         currentTime >= duration * 0.9
       ) {
-        // Mark next episode as ready
-        reportTVPlayback(tmdbId, season, episode + 1, 0);
-        return;
+        // Same season next
+        if (hasNextEpisode && !nextSeasonFirst) {
+          reportTVPlayback(tmdbId, season, episode + 1, 0);
+          return;
+        }
+
+        // Season rollover
+        if (nextSeasonFirst) {
+          reportTVPlayback(
+            tmdbId,
+            nextSeasonFirst.season,
+            nextSeasonFirst.episode,
+            0,
+          );
+          return;
+        }
       }
 
       // Otherwise save current position
@@ -201,6 +237,7 @@ export default function PlayerModal({ intent, onClose }: PlayerModalProps) {
     intent.season,
     intent.episode,
     hasNextEpisode,
+    nextSeasonFirst,
     reportTVPlayback,
   ]);
 

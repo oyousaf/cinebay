@@ -9,6 +9,43 @@ export type TVProgress = {
 
 const tvKeyFor = (tvId: number) => `watch:tv:${tvId}`;
 const MIN_RESUME_SECONDS = 30;
+const PROGRESS_EVENT = "tv-progress-updated";
+
+/* ------------------------------------------------------------------ */
+/* INTERNAL HELPERS                                                   */
+/* ------------------------------------------------------------------ */
+
+function dispatchProgressEvent(tvId: number) {
+  if (typeof window === "undefined") return;
+
+  window.dispatchEvent(
+    new CustomEvent(PROGRESS_EVENT, {
+      detail: { tvId },
+    }),
+  );
+}
+
+function safeParse(raw: string | null): TVProgress | null {
+  if (!raw) return null;
+
+  try {
+    const parsed = JSON.parse(raw);
+
+    if (
+      typeof parsed?.season === "number" &&
+      typeof parsed?.episode === "number" &&
+      typeof parsed?.position === "number"
+    ) {
+      return parsed;
+    }
+  } catch {}
+
+  return null;
+}
+
+/* ------------------------------------------------------------------ */
+/* HOOK                                                               */
+/* ------------------------------------------------------------------ */
 
 export function useContinueWatching() {
   const isBrowser = typeof window !== "undefined";
@@ -20,60 +57,34 @@ export function useContinueWatching() {
     (tvId: number): TVProgress | null => {
       if (!isBrowser) return null;
 
-      try {
-        const raw = localStorage.getItem(tvKeyFor(tvId));
-        if (!raw) return null;
+      const parsed = safeParse(localStorage.getItem(tvKeyFor(tvId)));
+      if (!parsed) return null;
 
-        const parsed = JSON.parse(raw);
+      if (parsed.position < MIN_RESUME_SECONDS) return null;
 
-        if (
-          typeof parsed?.season === "number" &&
-          typeof parsed?.episode === "number" &&
-          typeof parsed?.position === "number" &&
-          parsed.position >= MIN_RESUME_SECONDS
-        ) {
-          return parsed;
-        }
-      } catch {
-        // corrupted → ignore
-      }
-
-      return null;
+      return parsed;
     },
     [isBrowser],
   );
 
   /* -------------------------------------------------
-     WRITE (manual)
+     WRITE CORE
   -------------------------------------------------- */
-  const setTVProgress = useCallback(
-    (
-      tvId: number,
-      season: number,
-      episode: number,
-      position: number = MIN_RESUME_SECONDS,
-    ) => {
+  const writeProgress = useCallback(
+    (tvId: number, season: number, episode: number, position: number) => {
       if (!isBrowser) return;
-      if (position < MIN_RESUME_SECONDS) return;
 
       const key = tvKeyFor(tvId);
-      const existing = localStorage.getItem(key);
+      const existing = safeParse(localStorage.getItem(key));
 
-      if (existing) {
-        try {
-          const parsed = JSON.parse(existing);
-
-          // Same episode + already further ahead → skip
-          if (
-            parsed.season === season &&
-            parsed.episode === episode &&
-            parsed.position >= position
-          ) {
-            return;
-          }
-        } catch {
-          // overwrite corrupted
-        }
+      // Skip if same episode and already further ahead
+      if (
+        existing &&
+        existing.season === season &&
+        existing.episode === episode &&
+        existing.position >= position
+      ) {
+        return;
       }
 
       localStorage.setItem(
@@ -85,49 +96,42 @@ export function useContinueWatching() {
           updatedAt: Date.now(),
         }),
       );
+
+      // 🔔 Notify app (reactive update)
+      dispatchProgressEvent(tvId);
     },
     [isBrowser],
   );
 
   /* -------------------------------------------------
-     PLAYER REPORT (MEDIA_DATA)
+     WRITE
+  -------------------------------------------------- */
+  const setTVProgress = useCallback(
+    (
+      tvId: number,
+      season: number,
+      episode: number,
+      position: number = MIN_RESUME_SECONDS,
+    ) => {
+      if (!isBrowser) return;
+      if (position < MIN_RESUME_SECONDS) return;
+
+      writeProgress(tvId, season, episode, position);
+    },
+    [isBrowser, writeProgress],
+  );
+
+  /* -------------------------------------------------
+     PLAYER REPORT
   -------------------------------------------------- */
   const reportTVPlayback = useCallback(
     (tvId: number, season: number, episode: number, currentTime: number) => {
       if (!isBrowser) return;
       if (!currentTime || currentTime < MIN_RESUME_SECONDS) return;
 
-      const key = tvKeyFor(tvId);
-      const existing = localStorage.getItem(key);
-
-      if (existing) {
-        try {
-          const parsed = JSON.parse(existing);
-
-          // Same episode + already further ahead → skip
-          if (
-            parsed.season === season &&
-            parsed.episode === episode &&
-            parsed.position >= currentTime
-          ) {
-            return;
-          }
-        } catch {
-          // overwrite corrupted
-        }
-      }
-
-      localStorage.setItem(
-        key,
-        JSON.stringify({
-          season,
-          episode,
-          position: currentTime,
-          updatedAt: Date.now(),
-        }),
-      );
+      writeProgress(tvId, season, episode, currentTime);
     },
-    [isBrowser],
+    [isBrowser, writeProgress],
   );
 
   /* -------------------------------------------------
@@ -136,7 +140,9 @@ export function useContinueWatching() {
   const clearTVProgress = useCallback(
     (tvId: number) => {
       if (!isBrowser) return;
+
       localStorage.removeItem(tvKeyFor(tvId));
+      dispatchProgressEvent(tvId);
     },
     [isBrowser],
   );
@@ -146,5 +152,6 @@ export function useContinueWatching() {
     setTVProgress,
     reportTVPlayback,
     clearTVProgress,
+    PROGRESS_EVENT,
   };
 }

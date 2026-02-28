@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { FaPlay, FaChevronDown } from "react-icons/fa";
 
 import type { Movie, Season, Episode } from "@/types/movie";
@@ -14,7 +14,7 @@ interface Props {
 }
 
 export default function EpisodeSelector({ tv, onPlay }: Props) {
-  const { getTVProgress } = useContinueWatching();
+  const { getTVProgress, PROGRESS_EVENT } = useContinueWatching();
 
   /* ------------------------------------------------------------------ */
   /* STATE                                                              */
@@ -28,20 +28,34 @@ export default function EpisodeSelector({ tv, onPlay }: Props) {
   const [season, setSeason] = useState<number | null>(null);
   const [episode, setEpisode] = useState<number | null>(null);
 
+  // Resume
+  const [resume, setResume] = useState(() => getTVProgress(tv.id));
+
   // UI
   const [openSeason, setOpenSeason] = useState(false);
   const [openEpisode, setOpenEpisode] = useState(false);
 
-  // Behaviour guards
+  // Guards
   const userInteractedRef = useRef(false);
   const initialisedRef = useRef(false);
 
   /* ------------------------------------------------------------------ */
-  /* RESUME                                                             */
+  /* LISTEN FOR PROGRESS UPDATES                                        */
   /* ------------------------------------------------------------------ */
-  const resume = useMemo(() => {
-    return getTVProgress(tv.id);
-  }, [tv.id, getTVProgress]);
+  useEffect(() => {
+    // Load current progress when TV changes
+    setResume(getTVProgress(tv.id));
+
+    const handleUpdate = (e: Event) => {
+      const event = e as CustomEvent;
+      if (event.detail?.tvId !== tv.id) return;
+
+      setResume(getTVProgress(tv.id));
+    };
+
+    window.addEventListener(PROGRESS_EVENT, handleUpdate);
+    return () => window.removeEventListener(PROGRESS_EVENT, handleUpdate);
+  }, [tv.id, getTVProgress, PROGRESS_EVENT]);
 
   /* ------------------------------------------------------------------ */
   /* RESET WHEN TV CHANGES                                              */
@@ -55,7 +69,7 @@ export default function EpisodeSelector({ tv, onPlay }: Props) {
   }, [tv.id]);
 
   /* ------------------------------------------------------------------ */
-  /* INITIAL SEASONS LOAD                            */
+  /* INITIAL SEASONS LOAD                                               */
   /* ------------------------------------------------------------------ */
   useEffect(() => {
     if (!Array.isArray(tv.seasons)) return;
@@ -73,7 +87,7 @@ export default function EpisodeSelector({ tv, onPlay }: Props) {
   }, [tv.id, tv.seasons]);
 
   /* ------------------------------------------------------------------ */
-  /* RESUME SYNC                            */
+  /* RESUME SYNC                                                        */
   /* ------------------------------------------------------------------ */
   useEffect(() => {
     if (!resume) return;
@@ -97,7 +111,6 @@ export default function EpisodeSelector({ tv, onPlay }: Props) {
 
       setEpisodes(eps);
 
-      // Keep current episode if valid, otherwise default to first
       setEpisode((current) => {
         if (current && eps.some((e) => e.episode_number === current)) {
           return current;
@@ -140,11 +153,10 @@ export default function EpisodeSelector({ tv, onPlay }: Props) {
       : "Select episode";
 
   /* ------------------------------------------------------------------ */
-  /* RENDER                                                                 */
+  /* RENDER                                                             */
   /* ------------------------------------------------------------------ */
   return (
     <div className="rounded-xl border border-[hsl(var(--foreground)/0.4)] bg-[hsl(var(--background)/0.85)] p-4 space-y-4">
-      {/* Play */}
       <div className="flex items-center justify-center">
         <button
           onClick={play}
