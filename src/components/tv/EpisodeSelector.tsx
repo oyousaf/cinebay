@@ -16,27 +16,50 @@ interface Props {
 export default function EpisodeSelector({ tv, onPlay }: Props) {
   const { getTVProgress } = useContinueWatching();
 
+  /* ------------------------------------------------------------------ */
+  /* STATE                                                              */
+  /* ------------------------------------------------------------------ */
+
+  // Data
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [episodes, setEpisodes] = useState<Episode[]>([]);
 
+  // Selection
   const [season, setSeason] = useState<number | null>(null);
   const [episode, setEpisode] = useState<number | null>(null);
 
+  // UI
   const [openSeason, setOpenSeason] = useState(false);
   const [openEpisode, setOpenEpisode] = useState(false);
 
-  // Tracks if user has manually changed anything
+  // Behaviour guards
   const userInteractedRef = useRef(false);
-
-  // Ensures resume only applied once per TV
   const initialisedRef = useRef(false);
 
-  /* ---------- RESUME ---------- */
+  /* ------------------------------------------------------------------ */
+  /* RESUME                                                             */
+  /* ------------------------------------------------------------------ */
+
   const resume = useMemo(() => {
     return getTVProgress(tv.id);
   }, [tv.id, getTVProgress]);
 
-  /* ---------- INITIAL SEASON / EPISODE ---------- */
+  /* ------------------------------------------------------------------ */
+  /* RESET WHEN TV CHANGES                                              */
+  /* ------------------------------------------------------------------ */
+
+  useEffect(() => {
+    initialisedRef.current = false;
+    userInteractedRef.current = false;
+    setSeason(null);
+    setEpisode(null);
+    setEpisodes([]);
+  }, [tv.id]);
+
+  /* ------------------------------------------------------------------ */
+  /* INITIAL SEASONS LOAD                            */
+  /* ------------------------------------------------------------------ */
+
   useEffect(() => {
     if (!Array.isArray(tv.seasons)) return;
 
@@ -46,26 +69,28 @@ export default function EpisodeSelector({ tv, onPlay }: Props) {
     if (!initialisedRef.current) {
       initialisedRef.current = true;
 
-      // Apply resume only if user hasn’t interacted
-      if (resume && !userInteractedRef.current) {
-        setSeason(resume.season);
-        setEpisode(resume.episode);
-        return;
-      }
-
       if (validSeasons.length) {
         setSeason(validSeasons[0].season_number);
       }
     }
-  }, [tv.id, tv.seasons, resume]);
+  }, [tv.id, tv.seasons]);
 
-  /* Reset when TV changes */
+  /* ------------------------------------------------------------------ */
+  /* RESUME SYNC                            */
+  /* ------------------------------------------------------------------ */
+
   useEffect(() => {
-    initialisedRef.current = false;
-    userInteractedRef.current = false;
-  }, [tv.id]);
+    if (!resume) return;
+    if (userInteractedRef.current) return;
 
-  /* ---------- LOAD EPISODES ---------- */
+    setSeason((s) => (s !== resume.season ? resume.season : s));
+    setEpisode((e) => (e !== resume.episode ? resume.episode : e));
+  }, [resume]);
+
+  /* ------------------------------------------------------------------ */
+  /* LOAD EPISODES                                                      */
+  /* ------------------------------------------------------------------ */
+
   useEffect(() => {
     if (!season) return;
 
@@ -77,7 +102,7 @@ export default function EpisodeSelector({ tv, onPlay }: Props) {
 
       setEpisodes(eps);
 
-      // Keep current episode if valid, otherwise pick first
+      // Keep current episode if valid, otherwise default to first
       setEpisode((current) => {
         if (current && eps.some((e) => e.episode_number === current)) {
           return current;
@@ -91,9 +116,14 @@ export default function EpisodeSelector({ tv, onPlay }: Props) {
     };
   }, [tv.id, season]);
 
-  /* ---------- PLAY ---------- */
+  /* ------------------------------------------------------------------ */
+  /* PLAY                                                               */
+  /* ------------------------------------------------------------------ */
+
   const play = () => {
     if (!season || !episode) return;
+
+    userInteractedRef.current = true;
 
     onPlay({
       mediaType: "tv",
@@ -103,7 +133,10 @@ export default function EpisodeSelector({ tv, onPlay }: Props) {
     });
   };
 
-  /* ---------- LABEL ---------- */
+  /* ------------------------------------------------------------------ */
+  /* LABEL                                                              */
+  /* ------------------------------------------------------------------ */
+
   const isResume = resume?.season === season && resume?.episode === episode;
 
   const playLabel =
@@ -113,9 +146,13 @@ export default function EpisodeSelector({ tv, onPlay }: Props) {
         : `S${season} · E${episode}`
       : "Select episode";
 
-  /* ---------- UI ---------- */
+  /* ------------------------------------------------------------------ */
+  /* UI                                                                 */
+  /* ------------------------------------------------------------------ */
+
   return (
     <div className="rounded-xl border border-[hsl(var(--foreground)/0.4)] bg-[hsl(var(--background)/0.85)] p-4 space-y-4">
+      {/* Play */}
       <div className="flex items-center justify-center">
         <button
           onClick={play}
