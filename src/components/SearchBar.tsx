@@ -77,8 +77,7 @@ function SearchBar({
               zIndex: 40,
               scrollbarGutter: "stable",
             }}
-            className="max-h-96 overflow-y-auto rounded-lg shadow-lg bg-[hsl(var(--background))]
-              border border-[hsl(var(--foreground)/0.15)]"
+            className="max-h-96 overflow-y-auto rounded-lg shadow-lg bg-[hsl(var(--background))] border border-[hsl(var(--foreground)/0.15)]"
             onMouseDown={(e) => e.preventDefault()}
           >
             {/* ---------- RECENT HEADER ---------- */}
@@ -223,8 +222,7 @@ function SearchBar({
           <form
             ref={sb.formRef}
             onSubmit={sb.submit}
-            className="flex items-center gap-3 px-4 py-2 rounded-xl bg-[hsl(var(--background))]
-              border border-[hsl(var(--foreground)/0.25)] shadow-md"
+            className="flex items-center gap-3 px-4 py-2 rounded-xl bg-[hsl(var(--background))] border border-[hsl(var(--foreground)/0.25)] shadow-md"
           >
             <input
               name="search"
@@ -236,7 +234,7 @@ function SearchBar({
               placeholder={
                 sb.listening ? "Listening…" : "Search movies, shows, people…"
               }
-              className="flex-1 bg-transparent outline-none text-xl h-12"
+              className="flex-1 bg-transparent outline-none text-xl h-12 placeholder:text-[hsl(var(--foreground)/0.5)]"
             />
 
             {sb.query && (
