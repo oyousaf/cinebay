@@ -11,6 +11,90 @@ export const TMDB_IMAGE = "https://image.tmdb.org/t/p/w500";
 const MIN_RATING = 6.5;
 const MAX_PAGES = 3;
 
+/* =========================================================
+   PERSON ROLE PRIORITY
+   Director > Writer > Actor > Producer
+========================================================= */
+
+const ROLE_PRIORITY = {
+  Director: 4,
+  Writer: 3,
+  Actor: 2,
+  Actress: 2,
+  Producer: 1,
+} as const;
+
+/* =========================================================
+   PERSON ROLE HELPERS (Single Authority)
+========================================================= */
+
+const ROLE_THRESHOLDS: Record<string, number> = {
+  Actor: 5,
+  Actress: 5,
+  Director: 2,
+  Writer: 2,
+  Producer: 3,
+};
+
+const JOB_GROUPS: Record<string, string[]> = {
+  Director: ["Director"],
+  Writer: ["Writer", "Screenplay", "Story", "Creator", "Teleplay"],
+  Producer: [
+    "Producer",
+    "Executive Producer",
+    "Co-Executive Producer",
+    "Consulting Producer",
+  ],
+};
+
+const getActingLabel = (gender?: number) =>
+  gender === 1 ? "Actress" : "Actor";
+
+function countCrewJobs(crew: any[], jobs: string[]) {
+  return crew.reduce((n, c) => (jobs.includes(c?.job) ? n + 1 : n), 0);
+}
+
+function buildPersonRoles(detail: any): string[] {
+  const dept = detail?.known_for_department;
+  const cast = detail?.combined_credits?.cast ?? [];
+  const crew = detail?.combined_credits?.crew ?? [];
+
+  const actingLabel = getActingLabel(detail?.gender);
+
+  const counts: Record<string, number> = {
+    [actingLabel]: cast.length,
+    Director: countCrewJobs(crew, JOB_GROUPS.Director),
+    Writer: countCrewJobs(crew, JOB_GROUPS.Writer),
+    Producer: countCrewJobs(crew, JOB_GROUPS.Producer),
+  };
+
+  const roles: string[] = [];
+
+  // Primary (TMDB authority)
+  if (dept === "Acting") roles.push(actingLabel);
+  else if (dept === "Directing") roles.push("Director");
+  else if (dept === "Writing") roles.push("Writer");
+  else if (dept === "Production") roles.push("Producer");
+
+  // Secondary by priority
+  Object.entries(counts)
+    .filter(([role, count]) => count >= ROLE_THRESHOLDS[role])
+    .sort(
+      (a, b) =>
+        ROLE_PRIORITY[b[0] as keyof typeof ROLE_PRIORITY] -
+        ROLE_PRIORITY[a[0] as keyof typeof ROLE_PRIORITY],
+    )
+    .forEach(([role]) => {
+      if (!roles.includes(role)) roles.push(role);
+    });
+
+  return roles.slice(0, 5);
+}
+
+/* =========================================================
+   TIME-RELATED HELPERS
+========================================================= */
+
 const monthsAgo = (n: number) => {
   const d = new Date();
   d.setMonth(d.getMonth() - n);
@@ -194,12 +278,30 @@ const buildKnownForFromCredits = (detail: any): Movie[] => {
       return true;
     })
     .sort((a: any, b: any) => {
+      const jobScore = (job?: string) => {
+        if (!job) return 0;
+        if (job === "Director") return ROLE_PRIORITY.Director;
+        if (["Writer", "Screenplay", "Story", "Creator"].includes(job))
+          return ROLE_PRIORITY.Writer;
+        if (
+          ["Producer", "Executive Producer", "Co-Executive Producer"].includes(
+            job,
+          )
+        )
+          return ROLE_PRIORITY.Producer;
+        return 0;
+      };
+
+      const scoreDiff = jobScore(b.job) - jobScore(a.job);
+      if (scoreDiff !== 0) return scoreDiff;
+
       const ya = Number(
         (a?.release_date || a?.first_air_date || "").slice(0, 4),
       );
       const yb = Number(
         (b?.release_date || b?.first_air_date || "").slice(0, 4),
       );
+
       return yb - ya || (b?.popularity ?? 0) - (a?.popularity ?? 0);
     })
     .slice(0, 10)
@@ -304,6 +406,13 @@ function toMovie(detail: any, type: "movie" | "tv" | "person"): Movie {
     deathday: detail?.deathday,
     place_of_birth: detail?.place_of_birth,
     known_for_department: detail?.known_for_department,
+    gender: detail?.gender,
+    combined_credits: detail?.combined_credits,
+
+    roles:
+      type === "person" && detail?.combined_credits
+        ? buildPersonRoles(detail)
+        : [],
 
     credit_count:
       type === "person" && detail?.combined_credits

@@ -52,13 +52,6 @@ const calculateAge = (birth?: string, death?: string) => {
   return years;
 };
 
-const ROLE_MAP: Record<string, string> = {
-  Acting: "Actor",
-  Directing: "Director",
-  Writing: "Writer",
-  Production: "Producer",
-};
-
 const uniqueCountById = (items: any[]) => {
   const set = new Set<number>();
   items.forEach((i) => {
@@ -94,18 +87,12 @@ export default function ModalMeta({
     const deathDate = formatDate(movie.deathday);
     const age = calculateAge(movie.birthday, movie.deathday);
 
-    /* ---------- Primary Role ---------- */
-    const primaryRole = useMemo(() => {
-      const dept = movie.known_for_department;
-      if (!dept) return null;
-      return ROLE_MAP[dept] ?? dept;
-    }, [movie.known_for_department]);
+    const primaryRole = movie.roles?.length ? movie.roles.join(" • ") : null;
 
-    /* ---------- Credit Count ---------- */
     const creditTotal = useMemo(() => {
       if (movie.credit_count) return movie.credit_count;
 
-      const cc = (movie as any)?.combined_credits;
+      const cc = movie.combined_credits;
       if (!cc) return 0;
 
       const cast: any[] = Array.isArray(cc.cast) ? cc.cast : [];
@@ -120,7 +107,9 @@ export default function ModalMeta({
       if (dept === "Writing")
         return uniqueCountById(
           crew.filter((c) =>
-            ["Writer", "Screenplay", "Story", "Creator"].includes(c?.job),
+            ["Writer", "Screenplay", "Story", "Creator", "Teleplay"].includes(
+              c?.job,
+            ),
           ),
         );
 
@@ -131,7 +120,7 @@ export default function ModalMeta({
               "Producer",
               "Executive Producer",
               "Co-Executive Producer",
-              "Creator",
+              "Consulting Producer",
             ].includes(c?.job),
           ),
         );
@@ -185,7 +174,7 @@ export default function ModalMeta({
       : null;
 
   const producedBy = useMemo(() => {
-    const companies = (movie as any).production_companies ?? [];
+    const companies = movie.production_companies ?? [];
     if (!companies.length) return null;
 
     const names = companies.slice(0, 2).map((c: any) => c.name);
@@ -197,7 +186,7 @@ export default function ModalMeta({
   const airedOn = useMemo(() => {
     if (!isTV) return null;
 
-    const nets = (movie as any).networks ?? [];
+    const nets = movie.networks ?? [];
     if (!nets.length) return null;
 
     const names = nets.slice(0, 2).map((n: any) => n.name);
@@ -206,24 +195,14 @@ export default function ModalMeta({
       : names.join(", ");
   }, [isTV, movie]);
 
-  /* ---------- Writers ---------- */
   const writers = useMemo(() => {
     const crew = movie.credits?.crew ?? [];
-    const jobs = new Set([
-      "Writer",
-      "Screenplay",
-      "Story",
-      "Teleplay",
-      "Executive Producer",
-      "Co-Executive Producer",
-      "Consulting Producer",
-      "Creator",
-    ]);
-
     const seen = new Set<number>();
 
+    const writerJobs = ["Writer", "Screenplay", "Story", "Teleplay", "Creator"];
+
     return crew
-      .filter((c: any) => jobs.has(c?.job))
+      .filter((c: any) => writerJobs.includes(c?.job))
       .filter((c: any) => {
         if (!c?.id || seen.has(c.id)) return false;
         seen.add(c.id);

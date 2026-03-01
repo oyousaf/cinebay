@@ -111,6 +111,7 @@ export interface PersonDetails {
   known_for?: KnownForItem[];
 
   combined_credits?: CombinedCredits;
+  roles?: string[];
 }
 
 // ========================
