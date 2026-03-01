@@ -60,6 +60,15 @@ const uniqueCountById = (items: any[]) => {
   return set.size;
 };
 
+const formatRuntime = (minutes?: number | null) => {
+  if (!minutes || minutes <= 0) return null;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h <= 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+};
+
 /* =========================================================
    COMPONENT
 ========================================================= */
@@ -173,6 +182,18 @@ export default function ModalMeta({
       ? movie.vote_average.toFixed(1)
       : null;
 
+  // Movie runtime OR TV episode runtime
+  const runtimeLabel = useMemo(() => {
+    if (movie.runtime) return formatRuntime(movie.runtime);
+
+    if (isTV && Array.isArray((movie as any).episode_run_time)) {
+      const ep = (movie as any).episode_run_time[0];
+      return formatRuntime(ep);
+    }
+
+    return null;
+  }, [movie.runtime, movie, isTV]);
+
   const producedBy = useMemo(() => {
     const companies = movie.production_companies ?? [];
     if (!companies.length) return null;
@@ -217,15 +238,19 @@ export default function ModalMeta({
 
   const genres = movie.genres?.length ? movie.genres.join(" • ") : null;
 
+  const certification = movie.certification;
+
   return (
     <div className="space-y-3">
+      {/* Rating Badge */}
       {rating && (
         <div className="text-2xl px-3 py-1 rounded-full bg-[hsl(var(--foreground))] text-[hsl(var(--background))] font-semibold w-fit mx-auto sm:mx-0">
           ⭐ {rating}
         </div>
       )}
 
-      <div className="flex flex-wrap gap-2 justify-center text-center sm:justify-start">
+      {/* Creators / Director / Writers */}
+      <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
         {creators?.map((c) => (
           <Pill key={c.id} onClick={() => onPersonClick?.(c.id)}>
             📺 {c.name}
@@ -243,11 +268,20 @@ export default function ModalMeta({
             ✍️ {w.name}
           </Pill>
         ))}
+      </div>
 
-        {airedOn && <Pill>📡 Aired on: {airedOn}</Pill>}
-        {producedBy && <Pill>🏭 Produced by: {producedBy}</Pill>}
+      {/* Runtime • Year • Certification */}
+      <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
+        {runtimeLabel && <Pill>⏱️ {runtimeLabel}</Pill>}
         {releaseYear && <Pill>📅 {releaseYear}</Pill>}
+        {certification && <Pill>🔞 {certification}</Pill>}
         {!rating && <Pill>⭐ Not rated yet</Pill>}
+      </div>
+
+      {/* Distribution */}
+      <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
+        {airedOn && <Pill>📡 {airedOn}</Pill>}
+        {producedBy && <Pill>🏭 {producedBy}</Pill>}
       </div>
 
       {genres && (

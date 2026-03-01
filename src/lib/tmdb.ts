@@ -337,6 +337,51 @@ function getCreditCount(detail: any): number {
 }
 
 /* =========================================================
+   CERTIFICATION (GB → US fallback)
+========================================================= */
+
+function extractCertification(
+  detail: any,
+  type: "movie" | "tv",
+): string | null {
+  /* -----------------------------
+     MOVIES (release_dates)
+  ----------------------------- */
+  if (type === "movie") {
+    const results = detail?.release_dates?.results ?? [];
+
+    const gb = results.find((r: any) => r.iso_3166_1 === "GB");
+    const us = results.find((r: any) => r.iso_3166_1 === "US");
+
+    const getCert = (country: any) => {
+      const cert = country?.release_dates?.find(
+        (d: any) => d.certification && d.certification.length > 0,
+      )?.certification;
+
+      return cert && cert !== "" ? cert : null;
+    };
+
+    return getCert(gb) || getCert(us) || null;
+  }
+
+  /* -----------------------------
+     TV (content_ratings)
+  ----------------------------- */
+  if (type === "tv") {
+    const ratings = detail?.content_ratings?.results ?? [];
+
+    const gb = ratings.find((r: any) => r.iso_3166_1 === "GB");
+    const us = ratings.find((r: any) => r.iso_3166_1 === "US");
+
+    const cert = gb?.rating || us?.rating;
+
+    return cert && cert.length > 0 ? cert : null;
+  }
+
+  return null;
+}
+
+/* =========================================================
    TRANSFORMER (DETAILS -> Movie)  SINGLE AUTHORITY
 ========================================================= */
 
@@ -353,6 +398,19 @@ function toMovie(detail: any, type: "movie" | "tv" | "person"): Movie {
     detail?.recommendations?.results ?? [],
     forcedType,
   );
+
+  // Runtime: movie.runtime OR TV episode_run_time[0]
+  const runtime =
+    typeof detail?.runtime === "number"
+      ? detail.runtime
+      : Array.isArray(detail?.episode_run_time) &&
+          typeof detail.episode_run_time[0] === "number"
+        ? detail.episode_run_time[0]
+        : null;
+
+  // Certification (GB → US)
+  const certification =
+    type === "person" ? null : extractCertification(detail, type);
 
   return {
     id: Number(detail?.id ?? -1),
@@ -374,12 +432,15 @@ function toMovie(detail: any, type: "movie" | "tv" | "person"): Movie {
       typeof detail?.vote_average === "number" ? detail.vote_average : 0,
     vote_count: typeof detail?.vote_count === "number" ? detail.vote_count : 0,
 
+    /* ---------- Certification ---------- */
+    certification,
+
     /* ---------- Genres ---------- */
     genres,
     genres_raw,
 
     /* ---------- Technical ---------- */
-    runtime: typeof detail?.runtime === "number" ? detail.runtime : null,
+    runtime,
     original_language: detail?.original_language ?? "",
 
     /* ---------- TV ---------- */
@@ -473,11 +534,20 @@ export async function fetchDetails(
   id: number,
   type: "movie" | "tv" | "person",
 ) {
-  const append =
-    type === "person" ? "combined_credits" : "credits,similar,recommendations";
+  let append = "";
+
+  if (type === "person") {
+    append = "combined_credits";
+  } else if (type === "movie") {
+    append = "credits,similar,recommendations,release_dates";
+  } else if (type === "tv") {
+    append = "credits,similar,recommendations,content_ratings";
+  }
 
   const d = await fetchFromProxy(
-    `/${type}/${id}?language=en-GB&append_to_response=${append}`,
+    `/${type}/${id}?language=en-GB${
+      append ? `&append_to_response=${append}` : ""
+    }`,
   );
 
   return d ? toMovie(d, type) : null;

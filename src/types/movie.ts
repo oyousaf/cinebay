@@ -136,6 +136,7 @@ type BaseMedia = {
   genres?: string[];
 
   runtime?: number | null;
+  certification?: string | null;
   original_language?: string;
 
   status?: "new" | "renewed" | "recent";
