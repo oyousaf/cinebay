@@ -30,7 +30,7 @@ const updateSW = registerSW({
   },
 
   onOfflineReady() {
-    toast.success("Systems cached. Standing by.", { duration: 5000 });
+    toast.success("All systems cached. Standing by.", { duration: 5000 });
   },
 });
 
