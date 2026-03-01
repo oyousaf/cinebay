@@ -30,10 +30,7 @@ const updateSW = registerSW({
   },
 
   onOfflineReady() {
-    toast.success("Ready offline", {
-      description: "CineBay is cached and can work without a connection.",
-      duration: 4000,
-    });
+    toast.success("Systems cached. Standing by.", { duration: 5000 });
   },
 });
 
