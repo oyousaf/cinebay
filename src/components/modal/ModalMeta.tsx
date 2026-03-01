@@ -3,7 +3,9 @@
 import { useMemo } from "react";
 import type { Movie } from "@/types/movie";
 
-/* ---------- UI Pill ---------- */
+/* =========================================================
+   UI
+========================================================= */
 
 const Pill = ({
   children,
@@ -22,9 +24,52 @@ const Pill = ({
   </span>
 );
 
-/* ---------- Types ---------- */
-
 type PersonRef = { id: number; name: string };
+
+/* =========================================================
+   HELPERS
+========================================================= */
+
+const formatDate = (date?: string | null) => {
+  if (!date) return null;
+  const d = new Date(date);
+  return d.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+};
+
+const calculateAge = (birth?: string, death?: string) => {
+  if (!birth) return null;
+  const b = new Date(birth);
+  const end = death ? new Date(death) : new Date();
+
+  let years = end.getFullYear() - b.getFullYear();
+  const m = end.getMonth() - b.getMonth();
+  if (m < 0 || (m === 0 && end.getDate() < b.getDate())) years--;
+
+  return years;
+};
+
+const ROLE_MAP: Record<string, string> = {
+  Acting: "Actor",
+  Directing: "Director",
+  Writing: "Writer",
+  Production: "Producer",
+};
+
+const uniqueCountById = (items: any[]) => {
+  const set = new Set<number>();
+  items.forEach((i) => {
+    if (Number.isFinite(i?.id)) set.add(i.id);
+  });
+  return set.size;
+};
+
+/* =========================================================
+   COMPONENT
+========================================================= */
 
 export default function ModalMeta({
   movie,
@@ -45,59 +90,42 @@ export default function ModalMeta({
   ========================================================= */
 
   if (isPerson) {
-    const formatDate = (date?: string) => {
-      if (!date) return null;
-      const d = new Date(date);
-      return d.toLocaleDateString("en-GB", {
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-      });
-    };
-
     const birthDate = formatDate(movie.birthday);
     const deathDate = formatDate(movie.deathday);
+    const age = calculateAge(movie.birthday, movie.deathday);
 
-    const age = (() => {
-      if (!movie.birthday) return null;
-      const birth = new Date(movie.birthday);
-      const end = movie.deathday ? new Date(movie.deathday) : new Date();
-      let years = end.getFullYear() - birth.getFullYear();
-      const m = end.getMonth() - birth.getMonth();
-      if (m < 0 || (m === 0 && end.getDate() < birth.getDate())) years--;
-      return years;
-    })();
-
-    /* ---------- Filmography count ---------- */
-    const filmCount = useMemo(() => {
+    /* ---------- Primary Role ---------- */
+    const primaryRole = useMemo(() => {
       const dept = movie.known_for_department;
+      if (!dept) return null;
+      return ROLE_MAP[dept] ?? dept;
+    }, [movie.known_for_department]);
+
+    /* ---------- Credit Count ---------- */
+    const creditTotal = useMemo(() => {
+      if (movie.credit_count) return movie.credit_count;
+
       const cc = (movie as any)?.combined_credits;
+      if (!cc) return 0;
 
-      const cast: any[] = Array.isArray(cc?.cast) ? cc.cast : [];
-      const crew: any[] = Array.isArray(cc?.crew) ? cc.crew : [];
+      const cast: any[] = Array.isArray(cc.cast) ? cc.cast : [];
+      const crew: any[] = Array.isArray(cc.crew) ? cc.crew : [];
+      const dept = movie.known_for_department;
 
-      const uniqueById = (items: any[]) => {
-        const set = new Set<number>();
-        items.forEach((i) => {
-          if (Number.isFinite(i?.id)) set.add(i.id);
-        });
-        return set.size;
-      };
-
-      if (dept === "Acting") return uniqueById(cast);
+      if (dept === "Acting") return uniqueCountById(cast);
 
       if (dept === "Directing")
-        return uniqueById(crew.filter((c) => c?.job === "Director"));
+        return uniqueCountById(crew.filter((c) => c?.job === "Director"));
 
       if (dept === "Writing")
-        return uniqueById(
+        return uniqueCountById(
           crew.filter((c) =>
             ["Writer", "Screenplay", "Story", "Creator"].includes(c?.job),
           ),
         );
 
       if (dept === "Production")
-        return uniqueById(
+        return uniqueCountById(
           crew.filter((c) =>
             [
               "Producer",
@@ -108,7 +136,7 @@ export default function ModalMeta({
           ),
         );
 
-      return uniqueById([...cast, ...crew]);
+      return uniqueCountById([...cast, ...crew]);
     }, [movie]);
 
     return (
@@ -117,13 +145,11 @@ export default function ModalMeta({
           {movie.name}
         </h2>
 
-        {movie.known_for_department && (
-          <div className="text-sm opacity-70">{movie.known_for_department}</div>
-        )}
-
-        {(movie.credit_count ?? filmCount) > 0 && (
+        {(primaryRole || creditTotal > 0) && (
           <div className="text-sm opacity-70">
-            {movie.credit_count ?? filmCount} credits
+            {primaryRole}
+            {creditTotal > 0 &&
+              ` • ${creditTotal} credit${creditTotal === 1 ? "" : "s"}`}
           </div>
         )}
 
@@ -148,7 +174,7 @@ export default function ModalMeta({
   }
 
   /* =========================================================
-     MOVIE / TV META
+     MOVIE / TV VIEW
   ========================================================= */
 
   const releaseYear = movie.release_date?.slice(0, 4);
@@ -161,6 +187,7 @@ export default function ModalMeta({
   const producedBy = useMemo(() => {
     const companies = (movie as any).production_companies ?? [];
     if (!companies.length) return null;
+
     const names = companies.slice(0, 2).map((c: any) => c.name);
     return companies.length > 2
       ? `${names.join(", ")} +${companies.length - 2}`
@@ -169,8 +196,10 @@ export default function ModalMeta({
 
   const airedOn = useMemo(() => {
     if (!isTV) return null;
+
     const nets = (movie as any).networks ?? [];
     if (!nets.length) return null;
+
     const names = nets.slice(0, 2).map((n: any) => n.name);
     return nets.length > 2
       ? `${names.join(", ")} +${nets.length - 2}`
@@ -180,14 +209,11 @@ export default function ModalMeta({
   /* ---------- Writers ---------- */
   const writers = useMemo(() => {
     const crew = movie.credits?.crew ?? [];
-
     const jobs = new Set([
       "Writer",
       "Screenplay",
       "Story",
       "Teleplay",
-
-      // TV writing authority roles
       "Executive Producer",
       "Co-Executive Producer",
       "Consulting Producer",
@@ -210,12 +236,7 @@ export default function ModalMeta({
       }));
   }, [movie]);
 
-  /* ---------- Genres ---------- */
-  const genres = useMemo(() => {
-    if (!movie.genres?.length) return null;
-
-    return movie.genres.join(" • ");
-  }, [movie.genres]);
+  const genres = movie.genres?.length ? movie.genres.join(" • ") : null;
 
   return (
     <div className="space-y-3">
@@ -226,21 +247,18 @@ export default function ModalMeta({
       )}
 
       <div className="flex flex-wrap gap-2 justify-center text-center sm:justify-start">
-        {/* Creators */}
         {creators?.map((c) => (
           <Pill key={c.id} onClick={() => onPersonClick?.(c.id)}>
             📺 {c.name}
           </Pill>
         ))}
 
-        {/* Director */}
         {director && (
           <Pill onClick={() => onPersonClick?.(director.id)}>
             🎬 {director.name}
           </Pill>
         )}
 
-        {/* Writers */}
         {writers.map((w) => (
           <Pill key={w.id} onClick={() => onPersonClick?.(w.id)}>
             ✍️ {w.name}
