@@ -11,8 +11,79 @@ export const TMDB_IMAGE = "https://image.tmdb.org/t/p/w500";
 const MIN_RATING = 6.5;
 const MAX_PAGES = 3;
 
+const baseURL = `${import.meta.env.VITE_API_URL}/api/tmdb`;
+
 /* =========================================================
-   PERSON ROLE PRIORITY
+   DATE + STATUS CORE (Single Authority)
+========================================================= */
+
+const monthsAgo = (n: number) => {
+  const d = new Date();
+  d.setMonth(d.getMonth() - n);
+  return d;
+};
+
+const isWithinMonths = (date?: string | null, n = 1) =>
+  Boolean(date && new Date(date) >= monthsAgo(n));
+
+const getMovieStatus = (release?: string) =>
+  isWithinMonths(release, 1) ? "new" : undefined;
+
+const getTvStatus = (
+  show: Movie,
+): { status?: "new" | "renewed"; visible: boolean } => {
+  const first1 = isWithinMonths(show.first_air_date, 1);
+  const last1 = isWithinMonths(show.last_air_date, 1);
+
+  const first3 = isWithinMonths(show.first_air_date, 3);
+  const last3 = isWithinMonths(show.last_air_date, 3);
+
+  return {
+    status: first1 ? "new" : last1 ? "renewed" : undefined,
+    visible: first3 || last3,
+  };
+};
+
+/* =========================================================
+   SORTING / GROUPING
+========================================================= */
+
+const sortByRating = (a: Movie, b: Movie) =>
+  (b.vote_average ?? 0) - (a.vote_average ?? 0);
+
+const groupByStatus = (list: Movie[]) => [
+  ...list.filter((i) => i.status === "new").sort(sortByRating),
+  ...list.filter((i) => i.status === "renewed").sort(sortByRating),
+  ...list.filter((i) => !i.status).sort(sortByRating),
+];
+
+/* =========================================================
+   CONTENT QUALITY
+========================================================= */
+
+const EXCLUDED_GENRES = new Set([
+  "animation",
+  "family",
+  "kids",
+  "music",
+  "romance",
+  "news",
+  "reality",
+  "soap",
+  "talk",
+  "western",
+]);
+
+const isAllowedContent = (genres: string[]) =>
+  !genres.some((g) => EXCLUDED_GENRES.has(g.toLowerCase()));
+
+const isHighQuality = (item: any) =>
+  item?.poster_path &&
+  item?.original_language === "en" &&
+  (item?.vote_average ?? 0) >= MIN_RATING;
+
+/* =========================================================
+   PERSON ROLES
 ========================================================= */
 
 const ROLE_PRIORITY = {
@@ -52,7 +123,6 @@ function buildPersonRoles(detail: any): string[] {
   const dept = detail?.known_for_department;
   const cast = detail?.combined_credits?.cast ?? [];
   const crew = detail?.combined_credits?.crew ?? [];
-
   const actingLabel = getActingLabel(detail?.gender);
 
   const counts: Record<string, number> = {
@@ -84,78 +154,7 @@ function buildPersonRoles(detail: any): string[] {
 }
 
 /* =========================================================
-   TIME HELPERS
-========================================================= */
-
-const monthsAgo = (n: number) => {
-  const d = new Date();
-  d.setMonth(d.getMonth() - n);
-  return d;
-};
-
-const isWithinMonths = (date?: string | null, n = 1) =>
-  Boolean(date && new Date(date) >= monthsAgo(n));
-
-const sortByRating = (a: Movie, b: Movie) =>
-  (b.vote_average ?? 0) - (a.vote_average ?? 0);
-
-/* =========================================================
-   TV STATUS (Single Authority)
-========================================================= */
-
-const getTvStatus = (
-  show: Movie,
-): { status: "new" | "renewed" | undefined; visible: boolean } => {
-  const first = show.first_air_date;
-  const last = show.last_air_date;
-
-  const first1m = isWithinMonths(first, 1);
-  const last1m = isWithinMonths(last, 1);
-
-  const first3m = isWithinMonths(first, 3);
-  const last3m = isWithinMonths(last, 3);
-
-  let status: "new" | "renewed" | undefined;
-
-  if (first1m) status = "new";
-  else if (last1m) status = "renewed";
-  else status = undefined;
-
-  return {
-    status,
-    visible: first3m || last3m,
-  };
-};
-
-/* =========================================================
-   CONTENT FILTERS
-========================================================= */
-
-const EXCLUDED_GENRES = new Set([
-  "animation",
-  "family",
-  "kids",
-  "music",
-  "romance",
-  "news",
-  "reality",
-  "soap",
-  "talk",
-  "western",
-]);
-
-const isAllowedContent = (genres: string[]) =>
-  !genres.some((g) => EXCLUDED_GENRES.has(g.toLowerCase()));
-
-const isHighQuality = (item: any) =>
-  Boolean(
-    item?.poster_path &&
-    item?.original_language === "en" &&
-    (item?.vote_average ?? 0) >= MIN_RATING,
-  );
-
-/* =========================================================
-   GENRES
+   TRANSFORMERS
 ========================================================= */
 
 const extractGenresRaw = (detail: any): Genre[] =>
@@ -164,10 +163,6 @@ const extractGenresRaw = (detail: any): Genre[] =>
         .map((g: any) => ({ id: Number(g?.id), name: String(g?.name ?? "") }))
         .filter((g: Genre) => Number.isFinite(g.id) && g.name)
     : [];
-
-/* =========================================================
-   SUMMARY TRANSFORMER
-========================================================= */
 
 function toMovieSummary(item: any, forcedType?: "movie" | "tv"): Movie {
   const type =
@@ -205,17 +200,10 @@ const mapSummaries = (arr: any[], forcedType?: "movie" | "tv"): Movie[] =>
         .map((x) => toMovieSummary(x, forcedType))
     : [];
 
-/* =========================================================
-   DETAILS TRANSFORMER
-========================================================= */
-
 function toMovie(detail: any, type: "movie" | "tv" | "person"): Movie {
   const release = detail?.release_date || detail?.first_air_date || "";
-
   const genres_raw = extractGenresRaw(detail);
   const genres = genres_raw.map((g) => g.name);
-
-  const forcedType = type === "tv" ? "tv" : "movie";
 
   const runtime =
     typeof detail?.runtime === "number"
@@ -254,17 +242,21 @@ function toMovie(detail: any, type: "movie" | "tv" | "person"): Movie {
         ? buildPersonRoles(detail)
         : [],
     known_for: [],
-    similar: mapSummaries(detail?.similar?.results, forcedType),
-    recommendations: mapSummaries(detail?.recommendations?.results, forcedType),
+    similar: mapSummaries(
+      detail?.similar?.results,
+      type === "tv" ? "tv" : "movie",
+    ),
+    recommendations: mapSummaries(
+      detail?.recommendations?.results,
+      type === "tv" ? "tv" : "movie",
+    ),
     status: undefined,
   };
 }
 
 /* =========================================================
-   API
+   API CORE
 ========================================================= */
-
-const baseURL = `${import.meta.env.VITE_API_URL}/api/tmdb`;
 
 export async function fetchFromProxy(endpoint: string) {
   try {
@@ -348,7 +340,7 @@ export async function fetchMovies(): Promise<Movie[]> {
   if (list[0]?.id === -1) return list;
 
   list.forEach((m) => {
-    m.status = isWithinMonths(m.release_date, 1) ? "new" : undefined;
+    m.status = getMovieStatus(m.release_date);
   });
 
   return [
@@ -373,33 +365,17 @@ export async function fetchShows(): Promise<Movie[]> {
 
   const visible: Movie[] = [];
 
-  for (const show of list) {
-    const first1m = isWithinMonths(show.first_air_date, 1);
-    const last1m = isWithinMonths(show.last_air_date, 1);
+  list.forEach((show) => {
+    const { status, visible: isVisible } = getTvStatus(show);
+    show.status = status;
+    if (isVisible) visible.push(show);
+  });
 
-    const first3m = isWithinMonths(show.first_air_date, 3);
-    const last3m = isWithinMonths(show.last_air_date, 3);
-
-    // Status priority
-    if (first1m) show.status = "new";
-    else if (last1m) show.status = "renewed";
-    else show.status = undefined;
-
-    // Visibility window
-    if (first3m || last3m) {
-      visible.push(show);
-    }
-  }
-
-  return [
-    ...visible.filter((s) => s.status === "new").sort(sortByRating),
-    ...visible.filter((s) => s.status === "renewed").sort(sortByRating),
-    ...visible.filter((s) => !s.status).sort(sortByRating),
-  ];
+  return groupByStatus(visible);
 }
 
 /* =========================================================
-   TV SEASON EPISODES
+   SEASONS
 ========================================================= */
 
 export async function fetchSeasonEpisodes(
@@ -407,9 +383,7 @@ export async function fetchSeasonEpisodes(
   season: number,
 ): Promise<any[] | null> {
   const d = await fetchFromProxy(`/tv/${tvId}/season/${season}?language=en-GB`);
-
-  if (!d || !Array.isArray(d.episodes)) return null;
-  return d.episodes;
+  return d?.episodes ?? null;
 }
 
 /* =========================================================
