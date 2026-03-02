@@ -277,7 +277,7 @@ export default function ModalMeta({
           <Star
             size={22}
             strokeWidth={2}
-            className="text-amber-400 shrink-0 *:drop-shadow-[0_0_8px_rgba(251,191,36,0.45)]"
+            className="text-amber-400 shrink-0 drop-shadow-[0_0_8px_rgba(251,191,36,0.45)]"
             fill="currentColor"
           />
           <span className="text-lg font-semibold tracking-tight tabular-nums">
