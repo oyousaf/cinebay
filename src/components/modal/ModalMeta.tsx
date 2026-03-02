@@ -2,6 +2,22 @@
 
 import { useMemo } from "react";
 import type { Movie } from "@/types/movie";
+import CertBadge from "./CertBadge";
+
+import {
+  Star,
+  Calendar,
+  Clock,
+  Clapperboard,
+  PenLine,
+  Tv,
+  Radio,
+  Factory,
+  Cake,
+  MapPin,
+  Feather,
+  Hourglass,
+} from "lucide-react";
 
 /* =========================================================
    UI
@@ -16,7 +32,7 @@ const Pill = ({
 }) => (
   <span
     onClick={onClick}
-    className={`px-3 py-0.5 text-sm rounded-full bg-[hsl(var(--background))] ring-1 ring-[hsl(var(--foreground)/0.25)] text-[hsl(var(--foreground)/0.9)] max-w-full min-w-0 ${
+    className={`inline-flex items-center gap-1 px-3 py-0.5 text-sm rounded-full bg-[hsl(var(--background))] ring-1 ring-[hsl(var(--foreground)/0.25)] text-[hsl(var(--foreground)/0.9)] max-w-full min-w-0 ${
       onClick ? "cursor-pointer hover:ring-[hsl(var(--foreground)/0.5)]" : ""
     }`}
   >
@@ -153,19 +169,35 @@ export default function ModalMeta({
 
         <div className="h-px w-20 bg-[hsl(var(--foreground)/0.25)] mx-auto sm:mx-0" />
 
-        <div className="text-sm sm:text-base space-y-1 opacity-90">
-          {birthDate && <div>🎂 Born: {birthDate}</div>}
+        <div className="text-sm sm:text-base space-y-2 opacity-90">
+          {birthDate && (
+            <div className="flex items-center justify-center sm:justify-start gap-2">
+              <Cake size={16} />
+              Born: {birthDate}
+            </div>
+          )}
 
           {deathDate ? (
-            <div>
-              🕊️ Passed: {deathDate}
+            <div className="flex items-center justify-center sm:justify-start gap-2">
+              <Feather size={16} />
+              Passed: {deathDate}
               {age !== null && ` (aged ${age})`}
             </div>
           ) : (
-            age !== null && <div>🎉 Age: {age} years</div>
+            age !== null && (
+              <div className="flex items-center justify-center sm:justify-start gap-2">
+                <Hourglass size={16} />
+                Age: {age} years
+              </div>
+            )
           )}
 
-          {movie.place_of_birth && <div>📍 {movie.place_of_birth}</div>}
+          {movie.place_of_birth && (
+            <div className="flex items-center justify-center sm:justify-start gap-2">
+              <MapPin size={16} />
+              {movie.place_of_birth}
+            </div>
+          )}
         </div>
       </div>
     );
@@ -182,7 +214,6 @@ export default function ModalMeta({
       ? movie.vote_average.toFixed(1)
       : null;
 
-  // Movie runtime OR TV episode runtime
   const runtimeLabel = useMemo(() => {
     if (movie.runtime) return formatRuntime(movie.runtime);
 
@@ -237,51 +268,78 @@ export default function ModalMeta({
   }, [movie]);
 
   const genres = movie.genres?.length ? movie.genres.join(" • ") : null;
-
   const certification = movie.certification;
 
   return (
     <div className="space-y-3">
-      {/* Rating Badge */}
       {rating && (
-        <div className="text-2xl px-3 py-1 rounded-full bg-[hsl(var(--foreground))] text-[hsl(var(--background))] font-semibold w-fit mx-auto sm:mx-0">
-          ⭐ {rating}
+        <div className="text-2xl px-3 py-1 rounded-full bg-[hsl(var(--foreground))] text-[hsl(var(--background))] font-semibold w-fit mx-auto sm:mx-0 flex items-center gap-2">
+          <Star size={20} /> {rating}
         </div>
       )}
 
-      {/* Creators / Director / Writers */}
       <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
         {creators?.map((c) => (
           <Pill key={c.id} onClick={() => onPersonClick?.(c.id)}>
-            📺 {c.name}
+            <Tv size={14} />
+            {c.name}
           </Pill>
         ))}
 
         {director && (
           <Pill onClick={() => onPersonClick?.(director.id)}>
-            🎬 {director.name}
+            <Clapperboard size={14} />
+            {director.name}
           </Pill>
         )}
 
         {writers.map((w) => (
           <Pill key={w.id} onClick={() => onPersonClick?.(w.id)}>
-            ✍️ {w.name}
+            <PenLine size={14} />
+            {w.name}
           </Pill>
         ))}
       </div>
 
-      {/* Runtime • Year • Certification */}
-      <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
-        {runtimeLabel && <Pill>⏱️ {runtimeLabel}</Pill>}
-        {releaseYear && <Pill>📅 {releaseYear}</Pill>}
-        {certification && <Pill>🔞 {certification}</Pill>}
-        {!rating && <Pill>⭐ Not rated yet</Pill>}
+      <div className="flex flex-wrap items-center gap-3 justify-center sm:justify-start">
+        {runtimeLabel && (
+          <Pill>
+            <Clock size={14} />
+            {runtimeLabel}
+          </Pill>
+        )}
+
+        {releaseYear && (
+          <Pill>
+            <Calendar size={14} />
+            {releaseYear}
+          </Pill>
+        )}
+
+        {certification && <CertBadge rating={certification} size={32} />}
+
+        {!rating && (
+          <Pill>
+            <Star size={14} />
+            Not rated yet
+          </Pill>
+        )}
       </div>
 
-      {/* Distribution */}
       <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
-        {airedOn && <Pill>📡 {airedOn}</Pill>}
-        {producedBy && <Pill>🏭 {producedBy}</Pill>}
+        {airedOn && (
+          <Pill>
+            <Radio size={14} />
+            {airedOn}
+          </Pill>
+        )}
+
+        {producedBy && (
+          <Pill>
+            <Factory size={14} />
+            {producedBy}
+          </Pill>
+        )}
       </div>
 
       {genres && (
