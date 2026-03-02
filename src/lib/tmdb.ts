@@ -363,9 +363,10 @@ export async function fetchMovies(): Promise<Movie[]> {
 
 export async function fetchShows(): Promise<Movie[]> {
   const list = await loadDetailedList(
-    `/discover/tv?language=en&include_adult=false&vote_average.gte=${MIN_RATING}`,
+    `/discover/tv?language=en&include_adult=false&sort_by=first_air_date.desc&vote_count.gte=10`,
     "tv",
-    (s) => s?.original_language === "en",
+    (s) =>
+      s?.original_language === "en" && (s?.vote_average ?? 0) >= MIN_RATING,
   );
 
   if (list[0]?.id === -1) return list;
@@ -373,9 +374,21 @@ export async function fetchShows(): Promise<Movie[]> {
   const visible: Movie[] = [];
 
   for (const show of list) {
-    const { status, visible: isVisible } = getTvStatus(show);
-    show.status = status;
-    if (isVisible) visible.push(show);
+    const first1m = isWithinMonths(show.first_air_date, 1);
+    const last1m = isWithinMonths(show.last_air_date, 1);
+
+    const first3m = isWithinMonths(show.first_air_date, 3);
+    const last3m = isWithinMonths(show.last_air_date, 3);
+
+    // Status priority
+    if (first1m) show.status = "new";
+    else if (last1m) show.status = "renewed";
+    else show.status = undefined;
+
+    // Visibility window
+    if (first3m || last3m) {
+      visible.push(show);
+    }
   }
 
   return [
@@ -383,6 +396,31 @@ export async function fetchShows(): Promise<Movie[]> {
     ...visible.filter((s) => s.status === "renewed").sort(sortByRating),
     ...visible.filter((s) => !s.status).sort(sortByRating),
   ];
+}
+
+/* =========================================================
+   TV SEASON EPISODES
+========================================================= */
+
+export async function fetchSeasonEpisodes(
+  tvId: number,
+  season: number,
+): Promise<any[] | null> {
+  const d = await fetchFromProxy(`/tv/${tvId}/season/${season}?language=en-GB`);
+
+  if (!d || !Array.isArray(d.episodes)) return null;
+  return d.episodes;
+}
+
+/* =========================================================
+   DEV'S PICK
+========================================================= */
+
+export async function fetchDevsPick(): Promise<Movie[]> {
+  const out = await Promise.all(
+    DEVS_PICK_LIST.map((id) => fetchDetails(id, "movie")),
+  );
+  return (out.filter(Boolean) as Movie[]).sort(sortByRating);
 }
 
 /* =========================================================
