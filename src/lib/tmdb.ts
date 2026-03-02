@@ -9,12 +9,12 @@ export const TMDB_IMAGE = "https://image.tmdb.org/t/p/w500";
 ========================================================= */
 
 const MIN_RATING = 6.5;
-const MAX_PAGES = 3;
+const MAX_PAGES = 5;
 
 const baseURL = `${import.meta.env.VITE_API_URL}/api/tmdb`;
 
 /* =========================================================
-   DATE + STATUS CORE (Single Authority)
+   DATE + TV STATUS CORE (Single Authority)
 ========================================================= */
 
 const monthsAgo = (n: number) => {
@@ -38,8 +38,21 @@ const getTvStatus = (
   const first3 = isWithinMonths(show.first_air_date, 3);
   const last3 = isWithinMonths(show.last_air_date, 3);
 
+  const seasonCount =
+    show.seasons?.filter((s) => s.season_number > 0).length ?? 0;
+
+  let status: "new" | "renewed" | undefined;
+
+  if (first1) {
+    // Brand-new premiere window
+    status = "new";
+  } else if (last1 && seasonCount > 1) {
+    // Recent episode AND multiple seasons = true renewal
+    status = "renewed";
+  }
+
   return {
-    status: first1 ? "new" : last1 ? "renewed" : undefined,
+    status,
     visible: first3 || last3,
   };
 };
@@ -353,9 +366,16 @@ export async function fetchMovies(): Promise<Movie[]> {
    TV
 ========================================================= */
 
+const getModernStartDate = () => {
+  const year = new Date().getFullYear() - 5;
+  return `${year}-01-01`;
+};
+
 export async function fetchShows(): Promise<Movie[]> {
+  const modernFrom = getModernStartDate();
+
   const list = await loadDetailedList(
-    `/discover/tv?language=en&include_adult=false&sort_by=first_air_date.desc&vote_count.gte=10`,
+    `/discover/tv?language=en&include_adult=false&sort_by=popularity.desc&first_air_date.gte=${modernFrom}`,
     "tv",
     (s) =>
       s?.original_language === "en" && (s?.vote_average ?? 0) >= MIN_RATING,
