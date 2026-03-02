@@ -340,28 +340,63 @@ async function loadDetailedList(
    MOVIES
 ========================================================= */
 
+const getModernMovieStartDate = () => {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() - 1);
+  const yyyy = d.getFullYear();
+  return `${yyyy}-01-01`;
+};
+
 export async function fetchMovies(): Promise<Movie[]> {
-  const list = await loadDetailedList(
-    `/discover/movie?language=en&include_adult=false&vote_average.gte=${MIN_RATING}`,
-    "movie",
+  const from = getModernMovieStartDate();
+
+  // Lane A: curated popular (stable)
+  const popularBase = await fetchDiscoverBase(
+    `/discover/movie?language=en&include_adult=false&sort_by=popularity.desc&vote_average.gte=${MIN_RATING}&primary_release_date.gte=${from}`,
+  );
+
+  // Lane B: new grace (new releases)
+  const newBase = await fetchDiscoverBase(
+    `/discover/movie?language=en&include_adult=false&sort_by=primary_release_date.desc&primary_release_date.gte=${from}`,
+  );
+
+  const baseUnique = Array.from(
+    new Map([...popularBase, ...newBase].map((x) => [x.id, x])).values(),
+  );
+
+  // Light base filter: avoid fetching details for obvious junk
+  const baseFiltered = baseUnique.filter(
     (m) =>
       m?.original_language === "en" &&
-      (m?.vote_average ?? 0) >= MIN_RATING &&
+      m?.poster_path &&
+      // allow a little slack for brand-new movies
+      (m?.vote_average ?? 0) >= MIN_RATING - 0.5 &&
+      // keep your "only recent" rule at base stage
       isWithinMonths(m?.release_date, 3),
   );
 
-  if (list[0]?.id === -1) return list;
+  const detailed = await Promise.all(
+    baseFiltered.map((i) => fetchDetails(i.id, "movie")),
+  );
 
-  list.forEach((m) => {
+  const list = (detailed.filter(Boolean) as Movie[]).filter((m) =>
+    isAllowedContent(m.genres ?? []),
+  );
+
+  // Final strict filters + status
+  const final = list
+    .filter((m) => (m.vote_average ?? 0) >= MIN_RATING)
+    .filter((m) => isWithinMonths(m.release_date, 3));
+
+  for (const m of final) {
     m.status = getMovieStatus(m.release_date);
-  });
+  }
 
   return [
-    ...list.filter((m) => m.status === "new").sort(sortByRating),
-    ...list.filter((m) => !m.status).sort(sortByRating),
+    ...final.filter((m) => m.status === "new").sort(sortByRating),
+    ...final.filter((m) => !m.status).sort(sortByRating),
   ];
 }
-
 /* =========================================================
    TV
 ========================================================= */
@@ -371,27 +406,63 @@ const getModernStartDate = () => {
   return `${year}-01-01`;
 };
 
+async function fetchDiscoverBase(endpoint: string, max = MAX_PAGES) {
+  const out: any[] = [];
+  for (let p = 1; p <= max; p++) {
+    const d = await fetchFromProxy(`${endpoint}&page=${p}`);
+    if (!d?.results?.length) break;
+    out.push(...d.results);
+  }
+  return out;
+}
+
 export async function fetchShows(): Promise<Movie[]> {
   const modernFrom = getModernStartDate();
 
-  const list = await loadDetailedList(
-    `/discover/tv?language=en&include_adult=false&sort_by=popularity.desc&first_air_date.gte=${modernFrom}`,
-    "tv",
-    (s) =>
-      s?.original_language === "en" && (s?.vote_average ?? 0) >= MIN_RATING,
+  const curatedBase = await fetchDiscoverBase(
+    `/discover/tv?language=en&include_adult=false&sort_by=popularity.desc&vote_count.gte=50&vote_average.gte=${MIN_RATING}&first_air_date.gte=${modernFrom}`,
   );
 
-  if (list[0]?.id === -1) return list;
+  const newBase = await fetchDiscoverBase(
+    `/discover/tv?language=en&include_adult=false&sort_by=first_air_date.desc&first_air_date.gte=${modernFrom}`,
+  );
 
+  // Merge + dedupe ids early
+  const baseUnique = Array.from(
+    new Map([...curatedBase, ...newBase].map((x) => [x.id, x])).values(),
+  );
+
+  // Light base filter to reduce detail calls
+  const baseFiltered = baseUnique.filter(
+    (s) =>
+      s?.original_language === "en" &&
+      s?.poster_path &&
+      (s?.vote_average ?? 0) >= MIN_RATING - 0.5 &&
+      (s?.vote_count ?? 0) >= 5,
+  );
+
+  // Fetch details once per id
+  const detailed = await Promise.all(
+    baseFiltered.map((i) => fetchDetails(i.id, "tv")),
+  );
+
+  const list = (detailed.filter(Boolean) as Movie[]).filter((m) =>
+    isAllowedContent(m.genres ?? []),
+  );
+
+  // Final strict quality + status/visibility
   const visible: Movie[] = [];
-
-  list.forEach((show) => {
+  for (const show of list) {
+    if ((show.vote_average ?? 0) < MIN_RATING) continue;
     const { status, visible: isVisible } = getTvStatus(show);
+    if (!isVisible) continue;
     show.status = status;
-    if (isVisible) visible.push(show);
-  });
+    visible.push(show);
+  }
 
-  return groupByStatus(visible);
+  return groupByStatus(
+    Array.from(new Map(visible.map((s) => [s.id, s])).values()),
+  );
 }
 
 /* =========================================================
