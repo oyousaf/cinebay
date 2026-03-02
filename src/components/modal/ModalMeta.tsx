@@ -273,8 +273,16 @@ export default function ModalMeta({
   return (
     <div className="space-y-3">
       {rating && (
-        <div className="text-2xl px-3 py-1 rounded-full bg-[hsl(var(--foreground))] text-[hsl(var(--background))] font-semibold w-fit mx-auto sm:mx-0 flex items-center gap-2">
-          <Star size={20} /> {rating}
+        <div className="text-2xl px-3.5 py-1.5 rounded-full bg-[hsl(var(--foreground))] text-[hsl(var(--background))] font-semibold w-fit mx-auto sm:mx-0 flex items-center gap-2 leading-none shadow-[0_2px_12px_rgba(0,0,0,0.25)]">
+          <Star
+            size={22}
+            strokeWidth={2}
+            className="text-amber-400 shrink-0 *:drop-shadow-[0_0_8px_rgba(251,191,36,0.45)]"
+            fill="currentColor"
+          />
+          <span className="text-lg font-semibold tracking-tight tabular-nums">
+            {rating}
+          </span>
         </div>
       )}
 
@@ -319,10 +327,19 @@ export default function ModalMeta({
         {certification && <CertBadge rating={certification} size={32} />}
 
         {!rating && (
-          <Pill>
-            <Star size={14} />
+          <div
+            className="
+      inline-flex items-center gap-2 px-3 py-1.5
+      rounded-full
+      bg-[hsl(var(--background)/0.6)] backdrop-blur
+      ring-1 ring-[hsl(var(--foreground)/0.18)]
+      text-sm font-medium opacity-80
+      mx-auto sm:mx-0
+    "
+          >
+            <Star size={14} className="opacity-70" />
             Not rated yet
-          </Pill>
+          </div>
         )}
       </div>
 

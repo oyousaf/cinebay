@@ -196,33 +196,28 @@ function extractCertification(
   detail: any,
   type: "movie" | "tv",
 ): string | null {
-  // MOVIES (release_dates)
   if (type === "movie") {
     const results = detail?.release_dates?.results ?? [];
-
     const gb = results.find((r: any) => r.iso_3166_1 === "GB");
     const us = results.find((r: any) => r.iso_3166_1 === "US");
 
-    const getCert = (country: any) => {
-      const cert = country?.release_dates?.find(
-        (d: any) => d.certification && d.certification.length > 0,
-      )?.certification;
-
-      return cert && cert !== "" ? cert : null;
-    };
+    const getCert = (country: any) =>
+      country?.release_dates?.find((d: any) => d?.certification)
+        ?.certification || null;
 
     return getCert(gb) || getCert(us) || null;
   }
 
-  // TV (content_ratings)
   if (type === "tv") {
-    const ratings = detail?.content_ratings?.results ?? [];
+    const results = detail?.content_ratings?.results ?? [];
+    const gb = results.find((r: any) => r.iso_3166_1 === "GB")?.rating;
+    const us = results.find((r: any) => r.iso_3166_1 === "US")?.rating;
 
-    const gb = ratings.find((r: any) => r.iso_3166_1 === "GB");
-    const us = ratings.find((r: any) => r.iso_3166_1 === "US");
+    const any = results.find(
+      (r: any) => typeof r?.rating === "string" && r.rating.trim().length > 0,
+    )?.rating;
 
-    const cert = gb?.rating || us?.rating;
-    return cert && cert.length > 0 ? cert : null;
+    return (gb || us || any) ?? null;
   }
 
   return null;
