@@ -167,6 +167,149 @@ function buildPersonRoles(detail: any): string[] {
 }
 
 /* =========================================================
+   PERSON: KNOWN FOR
+========================================================= */
+
+const EXCLUDED_TV_GENRE_IDS = new Set([10763, 10764, 10767]);
+
+const buildKnownForFromCredits = (detail: any): Movie[] => {
+  const dept = detail?.known_for_department;
+
+  const cast = Array.isArray(detail?.combined_credits?.cast)
+    ? detail.combined_credits.cast
+    : [];
+
+  const crew = Array.isArray(detail?.combined_credits?.crew)
+    ? detail.combined_credits.crew
+    : [];
+
+  // -----------------------------
+  // ACTORS
+  // -----------------------------
+  if (dept === "Acting") {
+    const seen = new Set<number>();
+
+    return cast
+      .filter(isHighQuality)
+      .filter((c: any) => {
+        if (
+          c?.media_type === "tv" &&
+          Array.isArray(c?.genre_ids) &&
+          c.genre_ids.some((id: number) => EXCLUDED_TV_GENRE_IDS.has(id))
+        ) {
+          return false;
+        }
+        return true;
+      })
+      .filter((c: any) => {
+        if (!Number.isFinite(c?.id) || seen.has(c.id)) return false;
+        seen.add(c.id);
+        return true;
+      })
+      .sort((a: any, b: any) => (b.popularity ?? 0) - (a.popularity ?? 0))
+      .slice(0, 10)
+      .map((c: any) =>
+        toMovieSummary({ ...c, media_type: c?.media_type }, undefined),
+      );
+  }
+
+  // -----------------------------
+  // CREW
+  // -----------------------------
+  const JOB_FOCUS: Record<string, string[]> = {
+    Directing: ["Director"],
+    Writing: ["Writer", "Screenplay", "Story", "Creator"],
+    Production: [
+      "Producer",
+      "Executive Producer",
+      "Co-Executive Producer",
+      "Creator",
+    ],
+  };
+
+  const allowedJobs = JOB_FOCUS[dept] ?? [];
+  const seen = new Set<number>();
+
+  return crew
+    .filter((c: any) =>
+      allowedJobs.length ? allowedJobs.includes(c?.job) : true,
+    )
+    .filter(isHighQuality)
+    .filter((c: any) => {
+      if (
+        c?.media_type === "tv" &&
+        Array.isArray(c?.genre_ids) &&
+        c.genre_ids.some((id: number) => EXCLUDED_TV_GENRE_IDS.has(id))
+      ) {
+        return false;
+      }
+      return true;
+    })
+    .filter((c: any) => {
+      if (!Number.isFinite(c?.id) || seen.has(c.id)) return false;
+      seen.add(c.id);
+      return true;
+    })
+    .sort((a: any, b: any) => {
+      const jobScore = (job?: string) => {
+        if (!job) return 0;
+        if (job === "Director") return ROLE_PRIORITY.Director;
+        if (["Writer", "Screenplay", "Story", "Creator"].includes(job))
+          return ROLE_PRIORITY.Writer;
+        if (
+          ["Producer", "Executive Producer", "Co-Executive Producer"].includes(
+            job,
+          )
+        )
+          return ROLE_PRIORITY.Producer;
+        return 0;
+      };
+
+      const scoreDiff = jobScore(b.job) - jobScore(a.job);
+      if (scoreDiff !== 0) return scoreDiff;
+
+      const ya = Number(
+        (a?.release_date || a?.first_air_date || "").slice(0, 4),
+      );
+      const yb = Number(
+        (b?.release_date || b?.first_air_date || "").slice(0, 4),
+      );
+
+      return yb - ya || (b?.popularity ?? 0) - (a?.popularity ?? 0);
+    })
+    .slice(0, 10)
+    .map((c: any) =>
+      toMovieSummary({ ...c, media_type: c?.media_type }, undefined),
+    );
+};
+
+/* =========================================================
+   PERSON: CREDIT COUNT
+========================================================= */
+
+function getCreditCount(detail: any): number {
+  const cast = Array.isArray(detail?.combined_credits?.cast)
+    ? detail.combined_credits.cast
+    : [];
+
+  const crew = Array.isArray(detail?.combined_credits?.crew)
+    ? detail.combined_credits.crew
+    : [];
+
+  const seen = new Set<number>();
+
+  cast.forEach((c: any) => {
+    if (Number.isFinite(c?.id)) seen.add(c.id);
+  });
+
+  crew.forEach((c: any) => {
+    if (Number.isFinite(c?.id)) seen.add(c.id);
+  });
+
+  return seen.size;
+}
+
+/* =========================================================
    TRANSFORMERS
 ========================================================= */
 
@@ -223,46 +366,85 @@ function toMovie(detail: any, type: "movie" | "tv" | "person"): Movie {
       ? detail.runtime
       : (detail?.episode_run_time?.[0] ?? null);
 
+  const forcedType = type === "tv" ? "tv" : "movie";
+
   return {
     id: Number(detail?.id ?? -1),
     media_type: type,
+
+    /* ---------- Naming ---------- */
     title: detail?.title || detail?.name || "Untitled",
     name: detail?.name,
+
+    /* ---------- Core ---------- */
     overview: detail?.overview ?? "",
     poster_path: detail?.poster_path ?? "",
     backdrop_path: detail?.backdrop_path ?? "",
     profile_path: detail?.profile_path ?? "",
+
+    /* ---------- Dates ---------- */
     release_date: release,
     first_air_date: detail?.first_air_date,
     last_air_date: detail?.last_air_date ?? null,
-    vote_average: detail?.vote_average ?? 0,
-    vote_count: detail?.vote_count ?? 0,
+
+    /* ---------- Ratings ---------- */
+    vote_average:
+      typeof detail?.vote_average === "number" ? detail.vote_average : 0,
+    vote_count: typeof detail?.vote_count === "number" ? detail.vote_count : 0,
+
+    /* ---------- Genres ---------- */
     genres,
     genres_raw,
+
+    /* ---------- Technical ---------- */
     runtime,
     original_language: detail?.original_language ?? "",
-    created_by: detail?.created_by ?? [],
-    seasons: detail?.seasons ?? [],
-    production_companies: detail?.production_companies ?? [],
-    networks: type === "tv" ? (detail?.networks ?? []) : [],
+
+    /* ---------- TV ---------- */
+    created_by: Array.isArray(detail?.created_by) ? detail.created_by : [],
+    seasons: Array.isArray(detail?.seasons) ? detail.seasons : [],
+    production_companies: Array.isArray(detail?.production_companies)
+      ? detail.production_companies
+      : [],
+    networks:
+      type === "tv" && Array.isArray(detail?.networks) ? detail.networks : [],
+
+    /* ---------- Credits ---------- */
     credits: {
       cast: detail?.credits?.cast ?? [],
       crew: detail?.credits?.crew ?? [],
     },
+
+    /* ---------- Person fields (required for ModalMeta) ---------- */
+    biography: detail?.biography,
+    birthday: detail?.birthday,
+    deathday: detail?.deathday,
+    place_of_birth: detail?.place_of_birth,
+    known_for_department: detail?.known_for_department,
+    gender: detail?.gender,
     combined_credits: detail?.combined_credits,
+
     roles:
       type === "person" && detail?.combined_credits
         ? buildPersonRoles(detail)
         : [],
-    known_for: [],
-    similar: mapSummaries(
-      detail?.similar?.results,
-      type === "tv" ? "tv" : "movie",
-    ),
-    recommendations: mapSummaries(
-      detail?.recommendations?.results,
-      type === "tv" ? "tv" : "movie",
-    ),
+
+    credit_count:
+      type === "person" && detail?.combined_credits
+        ? getCreditCount(detail)
+        : undefined,
+
+    known_for:
+      type === "person"
+        ? buildKnownForFromCredits(detail)
+        : Array.isArray(detail?.known_for)
+          ? detail.known_for.map((x: any) => toMovieSummary(x))
+          : [],
+
+    /* ---------- Related ---------- */
+    similar: mapSummaries(detail?.similar?.results, forcedType),
+    recommendations: mapSummaries(detail?.recommendations?.results, forcedType),
+
     status: undefined,
   };
 }
