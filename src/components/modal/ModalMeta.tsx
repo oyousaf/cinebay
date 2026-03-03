@@ -325,22 +325,6 @@ export default function ModalMeta({
         )}
 
         {certification && <CertBadge rating={certification} size={32} />}
-
-        {!rating && (
-          <div
-            className="
-      inline-flex items-center gap-2 px-3 py-1.5
-      rounded-full
-      bg-[hsl(var(--background)/0.6)] backdrop-blur
-      ring-1 ring-[hsl(var(--foreground)/0.18)]
-      text-sm font-medium opacity-80
-      mx-auto sm:mx-0
-    "
-          >
-            <Star size={14} className="opacity-70" />
-            Not rated yet
-          </div>
-        )}
       </div>
 
       <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
