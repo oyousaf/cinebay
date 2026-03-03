@@ -1,3 +1,5 @@
+"use client";
+
 import {
   createContext,
   useContext,
@@ -8,7 +10,6 @@ import {
 } from "react";
 import { toast } from "sonner";
 import type { Movie } from "@/types/movie";
-import { getWatchlist } from "@/lib/watchlist";
 
 interface WatchlistContextType {
   watchlist: Movie[];
@@ -18,17 +19,34 @@ interface WatchlistContextType {
   isInWatchlist: (id: number) => boolean;
 }
 
+const STORAGE_KEY = "watchlist";
+
 const WatchlistContext = createContext<WatchlistContextType | null>(null);
 
+/* ---------- Storage helpers (internal only) ---------- */
+
+function readStorage(): Movie[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeStorage(list: Movie[]) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+}
+
 export function WatchlistProvider({ children }: { children: ReactNode }) {
-  const [watchlist, setWatchlist] = useState<Movie[]>(() =>
-    typeof window !== "undefined" ? getWatchlist() : []
-  );
+  const [watchlist, setWatchlist] = useState<Movie[]>(readStorage);
+
+  /* ---------- Sync to localStorage ---------- */
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("watchlist", JSON.stringify(watchlist));
-    }
+    writeStorage(watchlist);
   }, [watchlist]);
 
   /* ---------- Toast helpers ---------- */
@@ -37,7 +55,7 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
     toast.success(
       <span>
         Added <strong>{movie.title || movie.name}</strong> to Watchlist
-      </span>
+      </span>,
     );
   };
 
@@ -45,7 +63,7 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
     toast.success(
       <span>
         Restored <strong>{movie.title || movie.name}</strong>
-      </span>
+      </span>,
     );
   };
 
@@ -65,7 +83,7 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
           Undo
         </button>
       </div>,
-      { duration: 6000 }
+      { duration: 6000 },
     );
   };
 
@@ -80,43 +98,41 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
     notifyAdd(movie);
   }, []);
 
-  const removeFromWatchlist = useCallback(
-    (id: number) => {
-      const movie = watchlist.find((m) => m.id === id);
-      if (!movie) return;
-
-      setWatchlist((prev) => prev.filter((m) => m.id !== id));
+  const removeFromWatchlist = useCallback((id: number) => {
+    setWatchlist((prev) => {
+      const movie = prev.find((m) => m.id === id);
+      if (!movie) return prev;
 
       notifyRemove(movie, () => {
-        setWatchlist((prev) => [movie, ...prev]);
+        setWatchlist((restorePrev) => [movie, ...restorePrev]);
         notifyRestore(movie);
       });
-    },
-    [watchlist]
-  );
 
-  const toggleWatchlist = useCallback(
-    (movie: Movie) => {
-      const exists = watchlist.some((m) => m.id === movie.id);
+      return prev.filter((m) => m.id !== id);
+    });
+  }, []);
+
+  const toggleWatchlist = useCallback((movie: Movie) => {
+    setWatchlist((prev) => {
+      const exists = prev.some((m) => m.id === movie.id);
 
       if (exists) {
-        setWatchlist((prev) => prev.filter((m) => m.id !== movie.id));
-
         notifyRemove(movie, () => {
-          setWatchlist((prev) => [movie, ...prev]);
+          setWatchlist((restorePrev) => [movie, ...restorePrev]);
           notifyRestore(movie);
         });
-      } else {
-        setWatchlist((prev) => [movie, ...prev]);
-        notifyAdd(movie);
+
+        return prev.filter((m) => m.id !== movie.id);
       }
-    },
-    [watchlist]
-  );
+
+      notifyAdd(movie);
+      return [movie, ...prev];
+    });
+  }, []);
 
   const isInWatchlist = useCallback(
     (id: number) => watchlist.some((m) => m.id === id),
-    [watchlist]
+    [watchlist],
   );
 
   return (
