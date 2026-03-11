@@ -346,6 +346,19 @@ export default function PlayerModal({
           }}
         />
 
+        <AnimatePresence>
+          {showLoader && (
+            <motion.div
+              initial={{ opacity: 1 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 z-10 flex items-center justify-center bg-[hsl(var(--background))]"
+            >
+              <div className="h-10 w-10 animate-spin rounded-full border-2 border-[hsl(var(--foreground))] border-t-transparent" />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <button
           onClick={onClose}
           className="absolute top-3 right-3 z-20 rounded-full bg-[hsl(var(--background))] ring-2 ring-[hsl(var(--foreground))]"
