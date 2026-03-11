@@ -16,8 +16,8 @@ import { fetchSeasonEpisodes } from "@/lib/tmdb";
 
 const LOADER_MIN_MS = 900;
 
-const IFRAME_LOAD_TIMEOUT = 9000;
-const PLAYBACK_START_TIMEOUT = 8000;
+const IFRAME_LOAD_TIMEOUT = 7000;
+const PLAYBACK_START_TIMEOUT = 5000;
 
 const START_THRESHOLD_SECONDS = 30;
 const NEXT_OVERLAY_THRESHOLD = 0.9;
@@ -289,19 +289,29 @@ export default function PlayerModal({
 
       const currentTime = msg?.data?.currentTime;
       const duration = msg?.data?.duration;
+      const eventType = msg?.event || msg?.type;
 
-      if (typeof currentTime !== "number") return;
+      const started =
+        (typeof currentTime === "number" && currentTime > 0) ||
+        eventType === "play" ||
+        eventType === "playing" ||
+        eventType === "ready";
 
-      if (currentTime > 0) {
+      if (started) {
         playbackStartedRef.current = true;
         clearTimers();
       }
 
-      if (!hasStartedRef.current && currentTime >= START_THRESHOLD_SECONDS) {
+      if (
+        typeof currentTime === "number" &&
+        !hasStartedRef.current &&
+        currentTime >= START_THRESHOLD_SECONDS
+      ) {
         hasStartedRef.current = true;
       }
 
       if (
+        typeof currentTime === "number" &&
         hasStartedRef.current &&
         currentTime - lastWriteRef.current >= PROGRESS_WRITE_INTERVAL
       ) {
@@ -316,6 +326,7 @@ export default function PlayerModal({
       }
 
       if (
+        typeof currentTime === "number" &&
         hasNextEpisode &&
         typeof duration === "number" &&
         duration > 60 &&
