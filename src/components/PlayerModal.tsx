@@ -15,15 +15,16 @@ import { fetchSeasonEpisodes } from "@/lib/tmdb";
 /* -------------------------------- CONFIG -------------------------------- */
 
 const LOADER_MIN_MS = 900;
-const LOAD_TIMEOUT_VIDLINK = 9000;
-const LOAD_TIMEOUT_OTHER = 5000;
 
-const VIDLINK_HOSTS = new Set(["vidlink.pro", "www.vidlink.pro"]);
+const IFRAME_LOAD_TIMEOUT = 9000;
+const PLAYBACK_START_TIMEOUT = 8000;
 
-const THEME = "2dd4bf";
 const START_THRESHOLD_SECONDS = 30;
 const NEXT_OVERLAY_THRESHOLD = 0.9;
+
 const PROGRESS_WRITE_INTERVAL = 10;
+
+const THEME = "2dd4bf";
 
 /* -------------------------------- HELPERS -------------------------------- */
 
@@ -31,17 +32,6 @@ function getIntentKey(i: PlaybackIntent) {
   return i.mediaType === "tv"
     ? `${i.tmdbId}-s${i.season ?? 1}-e${i.episode ?? 1}`
     : `${i.tmdbId}-movie`;
-}
-
-function isVidlinkOrigin(origin: string) {
-  try {
-    const url = new URL(origin);
-    const host = url.hostname.toLowerCase();
-    if (VIDLINK_HOSTS.has(host)) return true;
-    return host.endsWith(".vidlink.pro");
-  } catch {
-    return false;
-  }
 }
 
 function safeMsgData(data: unknown): any | null {
@@ -59,6 +49,16 @@ function safeMsgData(data: unknown): any | null {
   }
 
   return null;
+}
+
+function isPlayerOrigin(origin: string) {
+  if (!origin) return false;
+
+  const o = origin.toLowerCase();
+
+  return (
+    o.includes("vidlink") || o.includes("vidfast") || o.includes("multiembed")
+  );
 }
 
 interface PlayerModalProps {
@@ -81,6 +81,7 @@ export default function PlayerModal({
   const [nextEpisodeTitle, setNextEpisodeTitle] = useState("");
 
   const [hasNextEpisode, setHasNextEpisode] = useState(false);
+
   const [nextSeasonFirst, setNextSeasonFirst] = useState<{
     season: number;
     episode: number;
@@ -88,21 +89,43 @@ export default function PlayerModal({
 
   const [showNextOverlay, setShowNextOverlay] = useState(false);
 
-  const loadTimerRef = useRef<number | null>(null);
-  const loadStartRef = useRef<number>(0);
+  const iframeTimerRef = useRef<number | null>(null);
+  const playbackTimerRef = useRef<number | null>(null);
+
+  const loadStartRef = useRef(0);
+
+  const playbackStartedRef = useRef(false);
 
   const startAtRef = useRef(0);
+
   const hasStartedRef = useRef(false);
   const lastWriteRef = useRef(0);
 
   const { getTVProgress, reportTVPlayback } = useContinueWatching();
 
-  const intentKey = useMemo(
-    () => getIntentKey(intent),
-    [intent.mediaType, intent.tmdbId, intent.season, intent.episode],
-  );
+  const intentKey = useMemo(() => getIntentKey(intent), [intent]);
 
   const provider = PROVIDER_ORDER[providerIndex] as ProviderType;
+
+  /* ------------------------------------------------------------------ */
+  /* PROVIDER FAILOVER                                                 */
+  /* ------------------------------------------------------------------ */
+
+  const fallbackProvider = useCallback(() => {
+    setProviderIndex((i) => (i + 1) % PROVIDER_ORDER.length);
+  }, []);
+
+  function clearTimers() {
+    if (iframeTimerRef.current) {
+      clearTimeout(iframeTimerRef.current);
+      iframeTimerRef.current = null;
+    }
+
+    if (playbackTimerRef.current) {
+      clearTimeout(playbackTimerRef.current);
+      playbackTimerRef.current = null;
+    }
+  }
 
   /* ------------------------------------------------------------------ */
   /* SEASON DATA                                                        */
@@ -136,6 +159,7 @@ export default function PlayerModal({
       }
 
       const nextSeason = intent.season! + 1;
+
       const nextEps = await fetchSeasonEpisodes(intent.tmdbId, nextSeason);
 
       if (active && nextEps?.length) {
@@ -200,10 +224,10 @@ export default function PlayerModal({
       nextButton: false,
       autoNext: false,
     });
-  }, [provider, intentKey]);
+  }, [provider, intentKey, startAt]);
 
   /* ------------------------------------------------------------------ */
-  /* RESET STATE                                                        */
+  /* RESET PLAYER                                                       */
   /* ------------------------------------------------------------------ */
 
   useEffect(() => {
@@ -211,45 +235,51 @@ export default function PlayerModal({
     setShowLoader(true);
     setShowNextOverlay(false);
 
+    playbackStartedRef.current = false;
+
     hasStartedRef.current = false;
     lastWriteRef.current = 0;
   }, [intentKey]);
 
   /* ------------------------------------------------------------------ */
-  /* PROVIDER FALLBACK                                                  */
+  /* FAILOVER TIMERS                                                    */
   /* ------------------------------------------------------------------ */
 
-  const handleFallback = useCallback(() => {
-    setProviderIndex((i) => (i < PROVIDER_ORDER.length - 1 ? i + 1 : i));
-  }, []);
-
   useEffect(() => {
-    if (loadTimerRef.current) clearTimeout(loadTimerRef.current);
-
-    const timeout =
-      provider === "vidlink" ? LOAD_TIMEOUT_VIDLINK : LOAD_TIMEOUT_OTHER;
+    clearTimers();
 
     loadStartRef.current = Date.now();
 
     setShowLoader(true);
 
-    loadTimerRef.current = window.setTimeout(handleFallback, timeout);
+    playbackStartedRef.current = false;
 
-    return () => {
-      if (loadTimerRef.current) clearTimeout(loadTimerRef.current);
-    };
-  }, [embedUrl, provider, handleFallback]);
+    iframeTimerRef.current = window.setTimeout(() => {
+      if (!playbackStartedRef.current) {
+        fallbackProvider();
+      }
+    }, IFRAME_LOAD_TIMEOUT);
+
+    playbackTimerRef.current = window.setTimeout(() => {
+      if (!playbackStartedRef.current) {
+        fallbackProvider();
+      }
+    }, PLAYBACK_START_TIMEOUT);
+
+    setTimeout(() => {
+      setShowLoader(false);
+    }, LOADER_MIN_MS + 2000);
+
+    return clearTimers;
+  }, [embedUrl]);
 
   /* ------------------------------------------------------------------ */
   /* PLAYER MESSAGE HANDLER                                             */
   /* ------------------------------------------------------------------ */
 
   useEffect(() => {
-    if (provider !== "vidlink") return;
-    if (intent.mediaType !== "tv") return;
-
     const handleMessage = (event: MessageEvent) => {
-      if (!isVidlinkOrigin(event.origin)) return;
+      if (!isPlayerOrigin(event.origin)) return;
 
       const msg = safeMsgData(event.data);
       if (!msg) return;
@@ -259,12 +289,15 @@ export default function PlayerModal({
 
       if (typeof currentTime !== "number") return;
 
-      /* Mark start */
+      if (currentTime > 0) {
+        playbackStartedRef.current = true;
+        clearTimers();
+      }
+
       if (!hasStartedRef.current && currentTime >= START_THRESHOLD_SECONDS) {
         hasStartedRef.current = true;
       }
 
-      /* Write progress every 10 seconds */
       if (
         hasStartedRef.current &&
         currentTime - lastWriteRef.current >= PROGRESS_WRITE_INTERVAL
@@ -279,23 +312,25 @@ export default function PlayerModal({
         );
       }
 
-      /* Next episode overlay */
       if (
         hasNextEpisode &&
         typeof duration === "number" &&
         duration > 60 &&
         currentTime >= duration * NEXT_OVERLAY_THRESHOLD
       ) {
-        setShowNextOverlay(true);
+        if (!showNextOverlay) {
+          setShowNextOverlay(true);
+        }
       }
     };
 
     window.addEventListener("message", handleMessage);
+
     return () => window.removeEventListener("message", handleMessage);
-  }, [intentKey, provider, hasNextEpisode, reportTVPlayback]);
+  }, [intentKey, hasNextEpisode, reportTVPlayback, showNextOverlay]);
 
   /* ------------------------------------------------------------------ */
-  /* NEXT INTENT                                                        */
+  /* NEXT EPISODE                                                       */
   /* ------------------------------------------------------------------ */
 
   const nextIntent = useMemo(() => {
@@ -331,14 +366,9 @@ export default function PlayerModal({
           key={`${intentKey}-${providerIndex}`}
           src={embedUrl}
           className="w-full h-full border-none"
-          allow="autoplay; fullscreen *"
+          allow="autoplay; fullscreen; picture-in-picture"
           referrerPolicy="no-referrer"
           onLoad={() => {
-            if (loadTimerRef.current) {
-              clearTimeout(loadTimerRef.current);
-              loadTimerRef.current = null;
-            }
-
             const elapsed = Date.now() - loadStartRef.current;
             const remaining = Math.max(LOADER_MIN_MS - elapsed, 0);
 
@@ -383,9 +413,11 @@ export default function PlayerModal({
             >
               <div className="text-sm">
                 <div className="text-xs opacity-70">Up next</div>
+
                 <div className="font-semibold">
                   S{nextIntent.season} · E{nextIntent.episode}
                 </div>
+
                 {nextEpisodeTitle && (
                   <div className="text-xs opacity-80 mt-1 line-clamp-2">
                     {nextEpisodeTitle}

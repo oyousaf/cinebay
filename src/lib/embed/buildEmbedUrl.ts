@@ -11,7 +11,7 @@ export interface PlaybackIntent {
   episode?: number;
 }
 
-export type ProviderType = "vidlink" | "superembed";
+export type ProviderType = "vidlink" | "vidfast" | "superembed";
 
 export interface BuildEmbedOptions {
   provider?: ProviderType;
@@ -35,7 +35,11 @@ export interface BuildEmbedOptions {
    PROVIDER ORDER
 -------------------------------------------------- */
 
-export const PROVIDER_ORDER: ProviderType[] = ["vidlink", "superembed"];
+export const PROVIDER_ORDER: ProviderType[] = [
+  "vidlink",
+  "vidfast",
+  "superembed",
+];
 
 const DEFAULT_THEME = "2dd4bf";
 
@@ -93,13 +97,11 @@ function buildVidFastUrl(intent: PlaybackIntent, o: BuildEmbedOptions) {
 }
 
 /* -------------------------------------------------
-   VIDLINK (primary)
+   VIDLINK
 -------------------------------------------------- */
+
 function buildVidLinkUrl(intent: PlaybackIntent, o: BuildEmbedOptions) {
   const { mediaType, tmdbId } = intent;
-
-  // Build VidFast fallback
-  const vidfastFallback = buildVidFastUrl(intent, o);
 
   const query = buildQuery({
     primaryColor: o.theme ?? DEFAULT_THEME,
@@ -110,12 +112,9 @@ function buildVidLinkUrl(intent: PlaybackIntent, o: BuildEmbedOptions) {
     poster: o.poster ?? true,
     autoplay: o.autoplay ?? true,
 
-    // VidLink expects lowercase
     nextbutton: o.nextButton ?? mediaType === "tv",
 
     startAt: o.startAt && o.startAt > 0 ? o.startAt : undefined,
-
-    fallback_url: vidfastFallback,
   });
 
   if (mediaType === "tv") {
@@ -127,7 +126,7 @@ function buildVidLinkUrl(intent: PlaybackIntent, o: BuildEmbedOptions) {
 }
 
 /* -------------------------------------------------
-   SUPEREMBED (fallback)
+   SUPEREMBED
 -------------------------------------------------- */
 
 function buildSuperEmbedUrl(intent: PlaybackIntent, o: BuildEmbedOptions = {}) {
@@ -138,14 +137,8 @@ function buildSuperEmbedUrl(intent: PlaybackIntent, o: BuildEmbedOptions = {}) {
 
   const query = buildQuery({
     tmdb: 1,
-
-    // playback
     autoplay,
-
-    // resume support (works on some mirrors)
     t: o.startAt && o.startAt > 0 ? o.startAt : undefined,
-
-    // UI
     color: theme,
   });
 
@@ -161,14 +154,19 @@ function buildSuperEmbedUrl(intent: PlaybackIntent, o: BuildEmbedOptions = {}) {
 /* -------------------------------------------------
    PUBLIC API
 -------------------------------------------------- */
+
 export function buildEmbedUrl(
   intent: PlaybackIntent,
   options: BuildEmbedOptions = {},
 ): string {
   const provider = options.provider ?? "vidlink";
 
+  if (provider === "vidfast") {
+    return buildVidFastUrl(intent, options);
+  }
+
   if (provider === "superembed") {
-    return buildSuperEmbedUrl(intent);
+    return buildSuperEmbedUrl(intent, options);
   }
 
   return buildVidLinkUrl(intent, options);
