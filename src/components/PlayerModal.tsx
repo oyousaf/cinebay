@@ -112,7 +112,10 @@ export default function PlayerModal({
   /* ------------------------------------------------------------------ */
 
   const fallbackProvider = useCallback(() => {
-    setProviderIndex((i) => (i + 1) % PROVIDER_ORDER.length);
+    setProviderIndex((i) => {
+      if (i >= PROVIDER_ORDER.length - 1) return i;
+      return i + 1;
+    });
   }, []);
 
   function clearTimers() {
