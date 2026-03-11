@@ -23,6 +23,7 @@ const VIDLINK_HOSTS = new Set(["vidlink.pro", "www.vidlink.pro"]);
 const THEME = "2dd4bf";
 const START_THRESHOLD_SECONDS = 30;
 const NEXT_OVERLAY_THRESHOLD = 0.9;
+const PROGRESS_WRITE_INTERVAL = 10;
 
 /* -------------------------------- HELPERS -------------------------------- */
 
@@ -45,15 +46,18 @@ function isVidlinkOrigin(origin: string) {
 
 function safeMsgData(data: unknown): any | null {
   if (!data) return null;
+
   if (typeof data === "object") return data as any;
+
   if (typeof data === "string") {
     try {
       const parsed = JSON.parse(data);
-      return typeof parsed === "object" && parsed ? parsed : null;
+      return typeof parsed === "object" ? parsed : null;
     } catch {
       return null;
     }
   }
+
   return null;
 }
 
@@ -86,7 +90,10 @@ export default function PlayerModal({
 
   const loadTimerRef = useRef<number | null>(null);
   const loadStartRef = useRef<number>(0);
-  const hasReportedRef = useRef(false);
+
+  const startAtRef = useRef(0);
+  const hasStartedRef = useRef(false);
+  const lastWriteRef = useRef(0);
 
   const { getTVProgress, reportTVPlayback } = useContinueWatching();
 
@@ -106,15 +113,17 @@ export default function PlayerModal({
 
     let active = true;
 
-    fetchSeasonEpisodes(intent.tmdbId, intent.season).then(async (eps) => {
+    async function loadSeason() {
+      const eps = await fetchSeasonEpisodes(intent.tmdbId, intent.season!);
+
       if (!active || !Array.isArray(eps)) return;
 
       const current = eps.find((e: any) => e.episode_number === intent.episode);
+
       setEpisodeTitle(current?.name || "");
 
       const maxEpisode = Math.max(...eps.map((e: any) => e.episode_number));
 
-      // Normal next
       if (intent.episode! < maxEpisode) {
         const nextEp = eps.find(
           (e: any) => e.episode_number === intent.episode! + 1,
@@ -126,23 +135,26 @@ export default function PlayerModal({
         return;
       }
 
-      // Season rollover
       const nextSeason = intent.season! + 1;
       const nextEps = await fetchSeasonEpisodes(intent.tmdbId, nextSeason);
 
       if (active && nextEps?.length) {
         setHasNextEpisode(true);
+
         setNextSeasonFirst({
           season: nextSeason,
           episode: nextEps[0].episode_number,
         });
+
         setNextEpisodeTitle(nextEps[0].name || "");
       } else {
         setHasNextEpisode(false);
         setNextSeasonFirst(null);
         setNextEpisodeTitle("");
       }
-    });
+    }
+
+    loadSeason();
 
     return () => {
       active = false;
@@ -150,48 +162,63 @@ export default function PlayerModal({
   }, [intentKey]);
 
   /* ------------------------------------------------------------------ */
-  /* RESUME                                                             */
+  /* RESUME LOCK                                                        */
   /* ------------------------------------------------------------------ */
 
-  const startAt = useMemo(() => {
-    if (intent.mediaType !== "tv") return 0;
+  useEffect(() => {
+    if (intent.mediaType !== "tv") {
+      startAtRef.current = 0;
+      return;
+    }
+
     const progress = getTVProgress(intent.tmdbId);
+
     if (
       progress &&
       progress.season === intent.season &&
       progress.episode === intent.episode
     ) {
-      return progress.position;
+      startAtRef.current = progress.position;
+    } else {
+      startAtRef.current = 0;
     }
-    return 0;
-  }, [intentKey, getTVProgress]);
+  }, [intentKey]);
+
+  const startAt = startAtRef.current;
 
   /* ------------------------------------------------------------------ */
-  /* EMBED                                                              */
+  /* EMBED URL                                                          */
   /* ------------------------------------------------------------------ */
 
-  const embedUrl = useMemo(
-    () =>
-      buildEmbedUrl(intent, {
-        provider,
-        startAt,
-        autoplay: true,
-        theme: THEME,
-        subtitles: "en",
-        nextButton: false,
-        autoNext: false,
-      }),
-    [intentKey, provider, startAt],
-  );
+  const embedUrl = useMemo(() => {
+    return buildEmbedUrl(intent, {
+      provider,
+      startAt,
+      autoplay: true,
+      theme: THEME,
+      subtitles: "en",
+      nextButton: false,
+      autoNext: false,
+    });
+  }, [provider, intentKey]);
+
+  /* ------------------------------------------------------------------ */
+  /* RESET STATE                                                        */
+  /* ------------------------------------------------------------------ */
 
   useEffect(() => {
     setProviderIndex(0);
     setShowLoader(true);
     setShowNextOverlay(false);
-    hasReportedRef.current = false;
+
+    hasStartedRef.current = false;
+    lastWriteRef.current = 0;
   }, [intentKey]);
 
-  /* Provider fallback */
+  /* ------------------------------------------------------------------ */
+  /* PROVIDER FALLBACK                                                  */
+  /* ------------------------------------------------------------------ */
+
   const handleFallback = useCallback(() => {
     setProviderIndex((i) => (i < PROVIDER_ORDER.length - 1 ? i + 1 : i));
   }, []);
@@ -203,6 +230,7 @@ export default function PlayerModal({
       provider === "vidlink" ? LOAD_TIMEOUT_VIDLINK : LOAD_TIMEOUT_OTHER;
 
     loadStartRef.current = Date.now();
+
     setShowLoader(true);
 
     loadTimerRef.current = window.setTimeout(handleFallback, timeout);
@@ -213,8 +241,9 @@ export default function PlayerModal({
   }, [embedUrl, provider, handleFallback]);
 
   /* ------------------------------------------------------------------ */
-  /* PLAYBACK MESSAGES                                                  */
+  /* PLAYER MESSAGE HANDLER                                             */
   /* ------------------------------------------------------------------ */
+
   useEffect(() => {
     if (provider !== "vidlink") return;
     if (intent.mediaType !== "tv") return;
@@ -230,9 +259,18 @@ export default function PlayerModal({
 
       if (typeof currentTime !== "number") return;
 
-      /* Continue watching */
-      if (!hasReportedRef.current && currentTime >= START_THRESHOLD_SECONDS) {
-        hasReportedRef.current = true;
+      /* Mark start */
+      if (!hasStartedRef.current && currentTime >= START_THRESHOLD_SECONDS) {
+        hasStartedRef.current = true;
+      }
+
+      /* Write progress every 10 seconds */
+      if (
+        hasStartedRef.current &&
+        currentTime - lastWriteRef.current >= PROGRESS_WRITE_INTERVAL
+      ) {
+        lastWriteRef.current = currentTime;
+
         reportTVPlayback(
           intent.tmdbId,
           intent.season!,
@@ -241,7 +279,7 @@ export default function PlayerModal({
         );
       }
 
-      /* Guard against false triggers */
+      /* Next episode overlay */
       if (
         hasNextEpisode &&
         typeof duration === "number" &&
@@ -257,8 +295,9 @@ export default function PlayerModal({
   }, [intentKey, provider, hasNextEpisode, reportTVPlayback]);
 
   /* ------------------------------------------------------------------ */
-  /* NEXT                                                               */
+  /* NEXT INTENT                                                        */
   /* ------------------------------------------------------------------ */
+
   const nextIntent = useMemo(() => {
     if (!hasNextEpisode) return null;
 
@@ -279,6 +318,7 @@ export default function PlayerModal({
   /* ------------------------------------------------------------------ */
   /* RENDER                                                             */
   /* ------------------------------------------------------------------ */
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -306,7 +346,6 @@ export default function PlayerModal({
           }}
         />
 
-        {/* Close */}
         <button
           onClick={onClose}
           className="absolute top-3 right-3 z-20 rounded-full bg-[hsl(var(--background))] ring-2 ring-[hsl(var(--foreground))]"
@@ -314,7 +353,6 @@ export default function PlayerModal({
           <X size={22} className="m-2" />
         </button>
 
-        {/* Episode label */}
         {episodeTitle && (
           <div className="absolute top-4 left-4 z-20 text-sm bg-[hsl(var(--background)/0.9)] px-3 py-1.5 rounded-lg">
             S{intent.season} · E{intent.episode}
@@ -322,7 +360,6 @@ export default function PlayerModal({
           </div>
         )}
 
-        {/* Next overlay */}
         <AnimatePresence>
           {showNextOverlay && nextIntent && (
             <motion.div
