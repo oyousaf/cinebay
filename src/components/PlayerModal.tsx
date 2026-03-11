@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import { X, Play } from "lucide-react";
+import { X, Play, LoaderCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   buildEmbedUrl,
@@ -354,7 +354,7 @@ export default function PlayerModal({
               exit={{ opacity: 0 }}
               className="absolute inset-0 z-10 flex items-center justify-center bg-[hsl(var(--background))]"
             >
-              <div className="h-10 w-10 animate-spin rounded-full border-2 border-[hsl(var(--foreground))] border-t-transparent" />
+              <LoaderCircle className="h-10 w-10 animate-spin text-[hsl(var(--foreground))]" />
             </motion.div>
           )}
         </AnimatePresence>
