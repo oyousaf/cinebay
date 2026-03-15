@@ -17,7 +17,7 @@ import { fetchSeasonEpisodes } from "@/lib/tmdb";
 const LOADER_MIN_MS = 900;
 
 const IFRAME_LOAD_TIMEOUT = 7000;
-const PLAYBACK_START_TIMEOUT = 5000;
+const PLAYBACK_START_TIMEOUT = 15000;
 
 const START_THRESHOLD_SECONDS = 30;
 const NEXT_OVERLAY_THRESHOLD = 0.9;
