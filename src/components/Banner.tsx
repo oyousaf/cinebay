@@ -43,6 +43,8 @@ export default function Banner({ item, onSelect }: BannerProps) {
   const hasResume = Boolean(resume);
 
   const handlePlay = useCallback(() => {
+    sessionStorage.setItem("lastFocusedTile", String(item.id));
+
     if (isTV) {
       navigate(
         `/watch/tv/${item.id}/${resume?.season ?? 1}/${resume?.episode ?? 1}`,

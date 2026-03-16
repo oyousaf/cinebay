@@ -87,19 +87,19 @@ export default function ContentRail({ items, onSelect }: ContentRailProps) {
   const { focus, setFocusByIndex, registerRail, updateRailLength, activeTab } =
     useNavigation();
 
-  /* Reset rail when tab changes */
+  /* reset rail on tab change */
 
   useEffect(() => {
     setRailIndex(null);
   }, [activeTab]);
 
-  /* Keep refs array aligned */
+  /* keep refs aligned */
 
   useEffect(() => {
     tileRefs.current = tileRefs.current.slice(0, items.length);
   }, [items.length]);
 
-  /* Register rail */
+  /* register rail */
 
   useEffect(() => {
     if (!items.length) {
@@ -108,16 +108,35 @@ export default function ContentRail({ items, onSelect }: ContentRailProps) {
     }
 
     setRailIndex((prev) => {
-      if (prev === null) {
-        return registerRail(items.length);
-      }
-
+      if (prev === null) return registerRail(items.length);
       updateRailLength(prev, items.length);
       return prev;
     });
   }, [items.length, registerRail, updateRailLength]);
 
-  /* Clamp focus if data shrinks */
+  /* restore last focused tile after returning from player */
+
+  useEffect(() => {
+    if (railIndex === null) return;
+
+    const last = sessionStorage.getItem("lastFocusedTile");
+    if (!last) return;
+
+    const idx = items.findIndex((m) => String(m.id) === last);
+
+    if (idx >= 0) {
+      setFocusByIndex(railIndex, idx);
+
+      requestAnimationFrame(() => {
+        const el = tileRefs.current[idx];
+        if (el) el.focus({ preventScroll: true });
+      });
+    }
+
+    sessionStorage.removeItem("lastFocusedTile");
+  }, [items, railIndex, setFocusByIndex]);
+
+  /* clamp focus */
 
   useEffect(() => {
     if (railIndex === null || !items.length) return;
@@ -130,7 +149,7 @@ export default function ContentRail({ items, onSelect }: ContentRailProps) {
     }
   }, [railIndex, items.length, focus.section, focus.index, setFocusByIndex]);
 
-  /* Ensure first rail receives default focus */
+  /* ensure first rail focus */
 
   useEffect(() => {
     if (railIndex === null || !items.length) return;
@@ -149,8 +168,6 @@ export default function ContentRail({ items, onSelect }: ContentRailProps) {
 
   const activeItem = items[safeIndex] ?? items[0];
 
-  /* User interaction */
-
   const handleFocus = useCallback(
     (_movie: Movie, idx: number) => {
       if (railIndex !== null) {
@@ -160,7 +177,7 @@ export default function ContentRail({ items, onSelect }: ContentRailProps) {
     [railIndex, setFocusByIndex],
   );
 
-  /* Scroll focused tile into view */
+  /* scroll tile */
 
   useEffect(() => {
     if (railIndex === null || focus.section !== railIndex) return;
@@ -179,7 +196,7 @@ export default function ContentRail({ items, onSelect }: ContentRailProps) {
     });
   }, [focus.section, safeIndex, railIndex]);
 
-  /* Move DOM focus */
+  /* enforce DOM focus */
 
   useEffect(() => {
     if (railIndex === null || focus.section !== railIndex) return;
@@ -195,8 +212,6 @@ export default function ContentRail({ items, onSelect }: ContentRailProps) {
 
   return (
     <section className="relative w-full h-dvh flex flex-col pb-16 md:pb-0">
-      {/* Banner */}
-
       <div className="flex-7">
         <motion.div
           initial={{ opacity: 0 }}
@@ -207,8 +222,6 @@ export default function ContentRail({ items, onSelect }: ContentRailProps) {
           <Banner item={activeItem} onSelect={onSelect} />
         </motion.div>
       </div>
-
-      {/* Rail */}
 
       {railIndex !== null && (
         <motion.div
