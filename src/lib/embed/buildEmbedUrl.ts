@@ -51,7 +51,7 @@ type QueryValue = string | number | boolean | null | undefined;
 
 function buildQuery(params: Record<string, QueryValue>) {
   const entries = Object.entries(params)
-    .filter(([, v]) => v !== undefined && v !== null)
+    .filter(([, v]) => v !== undefined && v !== null && v !== false)
     .map(([k, v]) => [k, String(v)]);
 
   return new URLSearchParams(entries).toString();
@@ -72,7 +72,7 @@ function buildVidFastUrl(intent: PlaybackIntent, o: BuildEmbedOptions) {
   const { mediaType, tmdbId } = intent;
 
   const query = buildQuery({
-    autoPlay: o.autoplay ?? true,
+    autoplay: o.autoplay ?? true,
     startAt: o.startAt && o.startAt > 0 ? o.startAt : undefined,
     theme: o.theme ?? DEFAULT_THEME,
     title: o.title,
@@ -140,6 +140,7 @@ function buildSuperEmbedUrl(intent: PlaybackIntent, o: BuildEmbedOptions = {}) {
     autoplay,
     t: o.startAt && o.startAt > 0 ? o.startAt : undefined,
     color: theme,
+    quality: "auto",
   });
 
   if (mediaType === "tv") {
