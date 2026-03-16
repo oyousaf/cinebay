@@ -10,36 +10,18 @@ import type { Movie } from "@/types/movie";
 import { useWatchlist } from "@/context/WatchlistContext";
 import { useContinueWatching } from "@/hooks/useContinueWatching";
 
-/* -------------------------------------------------
-   MOTION
--------------------------------------------------- */
 const EASE_OUT = [0.22, 1, 0.36, 1] as const;
 
 const containerVariants: Variants = {
   hidden: {},
-  show: {
-    transition: {
-      staggerChildren: 0.05,
-      delayChildren: 0.06,
-    },
-  },
+  show: { transition: { staggerChildren: 0.05, delayChildren: 0.06 } },
 };
 
 const itemVariants: Variants = {
   hidden: { opacity: 0, y: 12 },
-  show: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: 0.4,
-      ease: EASE_OUT,
-    },
-  },
+  show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: EASE_OUT } },
 };
 
-/* -------------------------------------------------
-   COMPONENT
--------------------------------------------------- */
 interface BannerProps {
   item: Movie;
   onSelect: (movie: Movie) => void;
@@ -51,21 +33,15 @@ export default function Banner({ item, onSelect }: BannerProps) {
   const { getTVProgress } = useContinueWatching();
 
   const isTV = item.media_type === "tv";
-  const isSaved = isInWatchlist(item.id);
 
-  /* -------------------------------------------------
-     Resume
-  -------------------------------------------------- */
   const resume = useMemo(() => {
     if (!isTV) return null;
     return getTVProgress(item.id);
   }, [isTV, item.id, getTVProgress]);
 
-  const hasResume = !!resume;
+  const isSaved = isInWatchlist(item.id);
+  const hasResume = Boolean(resume);
 
-  /* -------------------------------------------------
-     Handlers
-  -------------------------------------------------- */
   const handlePlay = useCallback(() => {
     if (isTV) {
       navigate(
@@ -78,29 +54,22 @@ export default function Banner({ item, onSelect }: BannerProps) {
 
   const handleInfo = useCallback(() => {
     onSelect(item);
-  }, [onSelect, item]);
+  }, [item, onSelect]);
 
   const handleWatchlist = useCallback(() => {
     toggleWatchlist(item);
   }, [toggleWatchlist, item]);
 
-  /* -------------------------------------------------
-     UI
-  -------------------------------------------------- */
+  const backdrop = item.backdrop_path
+    ? `https://image.tmdb.org/t/p/original${item.backdrop_path}`
+    : "/fallback-bg.png";
+
   return (
-    <div
-      className="relative w-full h-full flex flex-col justify-end overflow-hidden
-      bg-[hsl(var(--background))] shadow-2xl"
-    >
-      {/* BACKDROP */}
+    <div className="relative w-full h-full flex flex-col justify-end overflow-hidden bg-[hsl(var(--background))] shadow-2xl">
       <AnimatePresence initial={false}>
         <motion.img
           key={item.id}
-          src={
-            item.backdrop_path
-              ? `https://image.tmdb.org/t/p/original${item.backdrop_path}`
-              : "/fallback-bg.png"
-          }
+          src={backdrop}
           alt=""
           loading="eager"
           fetchPriority="high"
@@ -113,10 +82,8 @@ export default function Banner({ item, onSelect }: BannerProps) {
         />
       </AnimatePresence>
 
-      {/* Gradient */}
       <div className="absolute inset-0 bg-linear-to-t from-black via-black/80 to-black/30 pointer-events-none" />
 
-      {/* CONTENT */}
       <motion.div
         key={item.id}
         className="relative z-10 text-center sm:text-left px-4 md:px-12 py-6 md:py-10 max-w-6xl mx-auto"
@@ -139,8 +106,7 @@ export default function Banner({ item, onSelect }: BannerProps) {
           {item.overview && (
             <motion.p
               variants={itemVariants}
-              className="max-w-4xl mb-8 text-[hsl(var(--surface-foreground)/0.85)] text-[clamp(1rem,1.2vw,1.25rem)]
-              leading-relaxed line-clamp-5 md:line-clamp-6"
+              className="max-w-4xl mb-8 text-[hsl(var(--surface-foreground)/0.85)] text-[clamp(1rem,1.2vw,1.25rem)] leading-relaxed line-clamp-5 md:line-clamp-6"
             >
               {item.overview}
             </motion.p>
@@ -150,38 +116,28 @@ export default function Banner({ item, onSelect }: BannerProps) {
             variants={itemVariants}
             className="flex justify-center sm:justify-start gap-3"
           >
-            {/* Play */}
             <motion.button
               onClick={handlePlay}
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
-              className={`relative inline-flex items-center justify-center gap-3 h-12
-                ${hasResume ? "px-7" : "px-6"} rounded-full font-semibold shadow-lg shadow-black/40
-                bg-[hsl(var(--foreground))] text-[hsl(var(--background))] focus-visible:outline-none focus-visible:ring-2
-                focus-visible:ring-[hsl(var(--foreground))]`}
+              className={`relative inline-flex items-center justify-center gap-3 h-12 ${hasResume ? "px-7" : "px-6"} rounded-full font-semibold shadow-lg shadow-black/40 bg-[hsl(var(--foreground))] text-[hsl(var(--background))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--foreground))]`}
             >
               <span className="absolute inset-0 rounded-full ring-1 ring-white/15" />
               <FaPlay size={22} />
               {hasResume && <span>Resume</span>}
             </motion.button>
 
-            {/* Info */}
             <button
               onClick={handleInfo}
-              className="inline-flex items-center justify-center h-12 w-12 rounded-full
-              bg-[hsl(var(--foreground))] text-[hsl(var(--background))] transition hover:scale-105 active:scale-95
-              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--foreground))]"
+              className="inline-flex items-center justify-center h-12 w-12 rounded-full bg-[hsl(var(--foreground))] text-[hsl(var(--background))] transition hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--foreground))]"
             >
               <FaInfoCircle size={22} />
             </button>
 
-            {/* Watchlist */}
             <button
               onClick={handleWatchlist}
               aria-pressed={isSaved}
-              className="inline-flex items-center justify-center h-12 w-12 rounded-full
-               bg-[hsl(var(--foreground))] text-[hsl(var(--background))] transition hover:scale-105 active:scale-95
-               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--foreground))]"
+              className="inline-flex items-center justify-center h-12 w-12 rounded-full bg-[hsl(var(--foreground))] text-[hsl(var(--background))] transition hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--foreground))]"
             >
               <Bookmark
                 size={22}

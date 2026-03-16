@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect, useState, useCallback } from "react";
+import { useRef, useEffect, useCallback, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import React from "react";
 
@@ -16,6 +16,7 @@ interface ContentRailProps {
 }
 
 /* ---------- TILE ---------- */
+
 const Tile = React.memo(function Tile({
   movie,
   isFocused,
@@ -40,7 +41,11 @@ const Tile = React.memo(function Tile({
       role="listitem"
       onClick={onFocus}
       className={`relative shrink-0 rounded-lg snap-center focus:outline-none
-        ${isFocused ? "ring-4 2xl:ring-[6px] ring-[#80ffcc] shadow-pulse z-60" : "z-40"}`}
+        ${
+          isFocused
+            ? "ring-4 2xl:ring-[6px] ring-[#80ffcc] shadow-pulse z-60"
+            : "z-40"
+        }`}
       animate={
         isFocused ? { scale: 1.1, opacity: 1 } : { scale: 1, opacity: 0.7 }
       }
@@ -72,117 +77,126 @@ const Tile = React.memo(function Tile({
 });
 
 /* ---------- CONTENT RAIL ---------- */
+
 export default function ContentRail({ items, onSelect }: ContentRailProps) {
   const railRef = useRef<HTMLDivElement | null>(null);
   const tileRefs = useRef<(HTMLButtonElement | null)[]>([]);
-  const railIndexRef = useRef<number | null>(null);
 
-  const { focus, setFocusById, registerRail, updateRailLength, activeTab } =
+  const [railIndex, setRailIndex] = useState<number | null>(null);
+
+  const { focus, setFocusByIndex, registerRail, updateRailLength, activeTab } =
     useNavigation();
 
-  const [activeItem, setActiveItem] = useState<Movie | null>(null);
-
   /* Reset rail when tab changes */
+
   useEffect(() => {
-    railIndexRef.current = null;
+    setRailIndex(null);
   }, [activeTab]);
 
+  /* Keep refs array aligned */
+
+  useEffect(() => {
+    tileRefs.current = tileRefs.current.slice(0, items.length);
+  }, [items.length]);
+
   /* Register rail */
+
   useEffect(() => {
     if (!items.length) {
-      railIndexRef.current = null;
+      setRailIndex(null);
       return;
     }
 
-    if (railIndexRef.current === null) {
-      railIndexRef.current = registerRail(items.length);
-    } else {
-      updateRailLength(railIndexRef.current, items.length);
-    }
+    setRailIndex((prev) => {
+      if (prev === null) {
+        return registerRail(items.length);
+      }
+
+      updateRailLength(prev, items.length);
+      return prev;
+    });
   }, [items.length, registerRail, updateRailLength]);
 
-  const railIndex = railIndexRef.current;
+  /* Clamp focus if data shrinks */
 
-  /* Default focus (first load only) */
+  useEffect(() => {
+    if (railIndex === null || !items.length) return;
+    if (focus.section !== railIndex) return;
+
+    const safeIndex = Math.min(Math.max(focus.index, 0), items.length - 1);
+
+    if (safeIndex !== focus.index) {
+      setFocusByIndex(railIndex, safeIndex);
+    }
+  }, [railIndex, items.length, focus.section, focus.index, setFocusByIndex]);
+
+  /* Ensure first rail receives default focus */
+
   useEffect(() => {
     if (railIndex === null || !items.length) return;
 
-    if (focus.id === undefined && railIndex === 0) {
-      const first = items[0];
-      setActiveItem(first);
-      setFocusById(railIndex, 0, first.id);
+    if (railIndex === 0 && focus.section !== 0) {
+      setFocusByIndex(0, 0);
     }
-  }, [railIndex, items, focus.id, setFocusById]);
+  }, [railIndex, items.length, focus.section, setFocusByIndex]);
 
-  /* Recover focus by ID */
-  useEffect(() => {
-    if (railIndex === null || !items.length) return;
-    if (focus.id === undefined) return;
-    if (focus.section === railIndex) return;
+  const safeIndex = useMemo(() => {
+    if (!items.length || railIndex === null) return 0;
+    if (focus.section !== railIndex) return 0;
 
-    const idx = items.findIndex((m) => m.id === focus.id);
-    if (idx !== -1) {
-      setFocusById(railIndex, idx, focus.id);
-    }
-  }, [railIndex, items, focus.id, focus.section, setFocusById]);
+    return Math.min(Math.max(focus.index, 0), items.length - 1);
+  }, [items.length, railIndex, focus.section, focus.index]);
+
+  const activeItem = items[safeIndex] ?? items[0];
 
   /* User interaction */
+
   const handleFocus = useCallback(
-    (movie: Movie, idx: number) => {
-      setActiveItem(movie);
+    (_movie: Movie, idx: number) => {
       if (railIndex !== null) {
-        setFocusById(railIndex, idx, movie.id);
+        setFocusByIndex(railIndex, idx);
       }
     },
-    [railIndex, setFocusById],
+    [railIndex, setFocusByIndex],
   );
 
-  /* Sync focus → scroll + banner */
-  useEffect(() => {
-    if (railIndex === null || focus.section !== railIndex || !items.length)
-      return;
+  /* Scroll focused tile into view */
 
-    let index = focus.index;
-
-    if (focus.id !== undefined) {
-      const found = items.findIndex((m) => m.id === focus.id);
-      if (found !== -1) index = found;
-    }
-
-    index = Math.min(index, items.length - 1);
-
-    const movie = items[index];
-    setActiveItem(movie);
-
-    const el = tileRefs.current[index];
-    const container = railRef.current;
-
-    if (el && container) {
-      const target =
-        el.offsetLeft - container.clientWidth / 2 + el.offsetWidth / 2;
-
-      container.scrollTo({
-        left: Math.max(0, target),
-        behavior: "smooth",
-      });
-    }
-  }, [focus, items, railIndex]);
-
-  /* DOM focus */
   useEffect(() => {
     if (railIndex === null || focus.section !== railIndex) return;
 
-    const el = tileRefs.current[focus.index];
+    const el = tileRefs.current[safeIndex];
+    const container = railRef.current;
+
+    if (!el || !container) return;
+
+    const target =
+      el.offsetLeft - container.clientWidth / 2 + el.offsetWidth / 2;
+
+    container.scrollTo({
+      left: Math.max(0, target),
+      behavior: "smooth",
+    });
+  }, [focus.section, safeIndex, railIndex]);
+
+  /* Move DOM focus */
+
+  useEffect(() => {
+    if (railIndex === null || focus.section !== railIndex) return;
+
+    const el = tileRefs.current[safeIndex];
+
     if (el && document.activeElement !== el) {
       requestAnimationFrame(() => el.focus({ preventScroll: true }));
     }
-  }, [focus.section, focus.index, railIndex]);
+  }, [focus.section, safeIndex, railIndex]);
 
   if (!items.length) return null;
 
   return (
     <section className="relative w-full h-dvh flex flex-col pb-16 md:pb-0">
       {/* Banner */}
+
       <div className="flex-7">
         <motion.div
           initial={{ opacity: 0 }}
@@ -190,11 +204,12 @@ export default function ContentRail({ items, onSelect }: ContentRailProps) {
           transition={{ duration: 0.25, ease: EASE_OUT }}
           className="w-full h-full"
         >
-          <Banner item={activeItem ?? items[0]} onSelect={onSelect} />
+          <Banner item={activeItem} onSelect={onSelect} />
         </motion.div>
       </div>
 
       {/* Rail */}
+
       {railIndex !== null && (
         <motion.div
           initial={{ opacity: 0, y: 8 }}
@@ -206,15 +221,17 @@ export default function ContentRail({ items, onSelect }: ContentRailProps) {
             ref={railRef}
             role="list"
             className="flex gap-3 2xl:gap-6 overflow-x-auto snap-x no-scrollbar
-              pl-2 md:pl-4 pr-2 md:pr-4 py-4 scroll-smooth"
+            pl-2 md:pl-4 pr-2 md:pr-4 py-4 scroll-smooth"
           >
             {items.map((movie, idx) => (
               <Tile
                 key={movie.id}
                 movie={movie}
-                isFocused={focus.section === railIndex && focus.index === idx}
+                isFocused={focus.section === railIndex && safeIndex === idx}
                 onFocus={() => handleFocus(movie, idx)}
-                refSetter={(el) => (tileRefs.current[idx] = el)}
+                refSetter={(el) => {
+                  tileRefs.current[idx] = el;
+                }}
               />
             ))}
           </div>
