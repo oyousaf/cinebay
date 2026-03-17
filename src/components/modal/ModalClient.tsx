@@ -7,6 +7,8 @@ import { toast } from "sonner";
 import type { Movie } from "@/types/movie";
 import { fetchDetails, TMDB_IMAGE } from "@/lib/tmdb";
 
+import { useNavigation } from "@/context/NavigationContext";
+
 import ModalHeader from "./ModalHeader";
 import ModalMeta from "./ModalMeta";
 import ModalActions from "./ModalActions";
@@ -17,7 +19,9 @@ const LazySimilar = lazy(() =>
   import("./Recommendations").then((m) => ({ default: m.Similar })),
 );
 const LazyRecommendations = lazy(() =>
-  import("./Recommendations").then((m) => ({ default: m.Recommendations })),
+  import("./Recommendations").then((m) => ({
+    default: m.Recommendations,
+  })),
 );
 const LazyKnownForSlider = lazy(() => import("./KnownFor"));
 
@@ -46,19 +50,43 @@ export default function ModalClient({
 }) {
   const modalRef = useRef<HTMLDivElement>(null);
 
-  /* ---------- CLICK LOCK (no re-render) ---------- */
+  const { setTabNavigator, setModalOpen } = useNavigation();
+
+  /* ---------- CLICK LOCK ---------- */
   const loadingRef = useRef(false);
 
   const isPerson = movie.media_type === "person";
   const isTV = movie.media_type === "tv";
 
+  /* =========================
+     MODAL INPUT CONTROL
+  ========================= */
+
+  useEffect(() => {
+    setModalOpen(true);
+
+    setTabNavigator((dir) => {
+      if (dir === "escape") {
+        if (onBack) onBack();
+        else onClose();
+      }
+    });
+
+    return () => {
+      setModalOpen(false);
+      setTabNavigator(() => {});
+    };
+  }, [onClose, onBack, setTabNavigator, setModalOpen]);
+
   /* ---------- Scroll lock ---------- */
+
   useEffect(() => {
     document.body.classList.add("player-open");
     return () => document.body.classList.remove("player-open");
   }, []);
 
-  /* ---------- ESC close ---------- */
+  /* ---------- ESC fallback (keyboard) ---------- */
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -68,6 +96,7 @@ export default function ModalClient({
   }, [onClose]);
 
   /* ---------- Director & Creators ---------- */
+
   const director = useMemo(() => {
     if (movie.media_type !== "movie") return null;
     const d = movie.credits?.crew?.find((c) => c.job === "Director");
@@ -86,6 +115,7 @@ export default function ModalClient({
   const poster = posterPath ? `${TMDB_IMAGE}${posterPath}` : "/fallback.jpg";
 
   /* ---------- Navigate to person ---------- */
+
   const handlePersonClick = useCallback(
     async (id: number) => {
       if (!id || loadingRef.current) return;
@@ -105,6 +135,7 @@ export default function ModalClient({
   );
 
   /* ---------- Selection helper ---------- */
+
   const handleSelectWithDetails = useCallback(
     async (item: Movie) => {
       if (!item?.id || loadingRef.current) return;
