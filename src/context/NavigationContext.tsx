@@ -186,7 +186,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   );
 
   /* =========================
-     KEYBOARD / REMOTE
+     KEYBOARD
   ========================= */
 
   useEffect(() => {
@@ -198,26 +198,25 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      if (key === "ArrowUp") tabNavigatorRef.current?.("up");
-      if (key === "ArrowDown") tabNavigatorRef.current?.("down");
-      if (key === "ArrowLeft") moveHorizontal("left");
-      if (key === "ArrowRight") moveHorizontal("right");
+      if (key === "ArrowUp" || key === "w") tabNavigatorRef.current?.("up");
+      if (key === "ArrowDown" || key === "s") tabNavigatorRef.current?.("down");
+      if (key === "ArrowLeft" || key === "a") moveHorizontal("left");
+      if (key === "ArrowRight" || key === "d") moveHorizontal("right");
 
-      if (["Enter", "OK"].includes(key)) {
-        selectRef.current?.();
-      }
+      if (key === "Enter" || key === "i" || key === "I") selectRef.current?.();
 
-      if (key === "MediaPlayPause" || key === "MediaPlay" || key === "Play") {
+      if (
+        key === "p" ||
+        key === "P" ||
+        key === "MediaPlayPause" ||
+        key === "MediaPlay"
+      )
         playRef.current?.();
-      }
 
-      if (key === "ContextMenu" || key === "F2") {
-        toggleRef.current?.();
-      }
+      if (key === "y" || key === "Y") toggleRef.current?.();
 
-      if (key === "Escape" || key === "Backspace" || key === "BrowserBack") {
+      if (key === "Escape" || key === "Backspace" || key === "BrowserBack")
         tabNavigatorRef.current?.("escape");
-      }
     };
 
     window.addEventListener("keydown", handle);
@@ -267,11 +266,8 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const single = useCallback((key: string, active: boolean, fn: () => void) => {
-    if (!holdRef.current[key]) {
-      holdRef.current[key] = { pressed: false };
-    }
-
-    const s = holdRef.current[key];
+    const s =
+      holdRef.current[key] ?? (holdRef.current[key] = { pressed: false });
 
     if (active && !s.pressed) {
       s.pressed = true;
@@ -282,7 +278,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const poll = useCallback(() => {
-    const pad = navigator.getGamepads?.()[0];
+    const pad = navigator.getGamepads?.()?.[0];
 
     if (!pad) {
       rafRef.current = requestAnimationFrame(poll);
@@ -294,45 +290,41 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     const axX = pad.axes[0] ?? 0;
     const axY = pad.axes[1] ?? 0;
 
-    const dpadUp = isPressed(pad.buttons[12]);
-    const dpadDown = isPressed(pad.buttons[13]);
-    const dpadLeft = isPressed(pad.buttons[14]);
-    const dpadRight = isPressed(pad.buttons[15]);
-
-    /* ---------- NAVIGATION (BLOCKED IN MODAL) ---------- */
+    const dpadUp = isPressed(pad.buttons?.[12]);
+    const dpadDown = isPressed(pad.buttons?.[13]);
+    const dpadLeft = isPressed(pad.buttons?.[14]);
+    const dpadRight = isPressed(pad.buttons?.[15]);
 
     if (!isModal) {
       repeat("left", axX < -STICK_DEADZONE || dpadLeft, () =>
         moveHorizontal("left"),
       );
-
       repeat("right", axX > STICK_DEADZONE || dpadRight, () =>
         moveHorizontal("right"),
       );
-
       repeat("up", axY < -STICK_DEADZONE || dpadUp, () =>
         tabNavigatorRef.current?.("up"),
       );
-
       repeat("down", axY > STICK_DEADZONE || dpadDown, () =>
         tabNavigatorRef.current?.("down"),
       );
 
-      single("lb", isPressed(pad.buttons[4]), () => cycleTab("prev"));
-      single("rb", isPressed(pad.buttons[5]), () => cycleTab("next"));
+      single("lb", isPressed(pad.buttons?.[4]), () => cycleTab("prev"));
+      single("rb", isPressed(pad.buttons?.[5]), () => cycleTab("next"));
     }
 
-    /* ---------- ACTIONS (ALWAYS ALLOWED) ---------- */
-
-    single("a", isPressed(pad.buttons[0]), () => selectRef.current?.());
-
-    single("y", isPressed(pad.buttons[3]), () => toggleRef.current?.());
-
-    single("start", isPressed(pad.buttons[9]), () => playRef.current?.());
-
-    single("b", isPressed(pad.buttons[1]), () =>
+    single("a", isPressed(pad.buttons?.[0]), () => selectRef.current?.());
+    single("y", isPressed(pad.buttons?.[3]), () => toggleRef.current?.());
+    single("b", isPressed(pad.buttons?.[1]), () =>
       tabNavigatorRef.current?.("escape"),
     );
+
+    const playPressed =
+      isPressed(pad.buttons?.[9]) ||
+      isPressed(pad.buttons?.[8]) ||
+      (pad.buttons?.[7]?.value ?? 0) > 0.75;
+
+    single("start", playPressed, () => playRef.current?.());
 
     rafRef.current = requestAnimationFrame(poll);
   }, [cycleTab, moveHorizontal, repeat, single]);
@@ -343,6 +335,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     return () => {
       if (rafRef.current !== null) {
         cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
       }
     };
   }, [poll]);

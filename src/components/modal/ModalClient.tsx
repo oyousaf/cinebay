@@ -50,9 +50,12 @@ export default function ModalClient({
 }) {
   const modalRef = useRef<HTMLDivElement>(null);
 
-  const { setTabNavigator, setModalOpen } = useNavigation();
+  const {
+    setTabNavigator,
+    setModalOpen,
+    setPlayHandler,
+  } = useNavigation();
 
-  /* ---------- CLICK LOCK ---------- */
   const loadingRef = useRef(false);
 
   const isPerson = movie.media_type === "person";
@@ -72,11 +75,30 @@ export default function ModalClient({
       }
     });
 
+    setPlayHandler(() => {
+      sessionStorage.setItem("lastFocusedTile", String(movie.id));
+
+      if (movie.media_type === "tv") {
+        window.location.href = `/watch/tv/${movie.id}/1/1`;
+      } else {
+        window.location.href = `/watch/movie/${movie.id}`;
+      }
+    });
+
     return () => {
       setModalOpen(false);
       setTabNavigator(() => {});
+      setPlayHandler(null);
     };
-  }, [onClose, onBack, setTabNavigator, setModalOpen]);
+  }, [
+    movie.id,
+    movie.media_type,
+    onClose,
+    onBack,
+    setTabNavigator,
+    setModalOpen,
+    setPlayHandler,
+  ]);
 
   /* ---------- Scroll lock ---------- */
 
@@ -85,17 +107,7 @@ export default function ModalClient({
     return () => document.body.classList.remove("player-open");
   }, []);
 
-  /* ---------- ESC fallback (keyboard) ---------- */
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
-  /* ---------- Director & Creators ---------- */
+  /* ---------- Derived data ---------- */
 
   const director = useMemo(() => {
     if (movie.media_type !== "movie") return null;
@@ -114,7 +126,7 @@ export default function ModalClient({
   const posterPath = movie.profile_path || movie.poster_path;
   const poster = posterPath ? `${TMDB_IMAGE}${posterPath}` : "/fallback.jpg";
 
-  /* ---------- Navigate to person ---------- */
+  /* ---------- Handlers ---------- */
 
   const handlePersonClick = useCallback(
     async (id: number) => {
@@ -133,8 +145,6 @@ export default function ModalClient({
     },
     [onSelect],
   );
-
-  /* ---------- Selection helper ---------- */
 
   const handleSelectWithDetails = useCallback(
     async (item: Movie) => {
