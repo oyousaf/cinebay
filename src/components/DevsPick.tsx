@@ -10,11 +10,7 @@ interface DevsPickProps {
 }
 
 export default function DevsPick({ onSelect }: DevsPickProps) {
-  const items = useRailData<Movie>(
-    fetchDevsPick,
-    (m) =>
-      Boolean(m?.id) && Boolean(m.title || m.name) && m.media_type !== "person",
-  );
+  const items = useRailData<Movie>(fetchDevsPick);
 
   /* ---------- Not ready ---------- */
   if (items === null) {
