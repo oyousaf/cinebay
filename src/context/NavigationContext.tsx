@@ -19,7 +19,6 @@ export type Tab = "movies" | "tvshows" | "search" | "devspick" | "watchlist";
 
 type FocusTarget = { section: number; index: number };
 type TabDirection = "up" | "down" | "escape";
-
 type SetFocus = (f: FocusTarget | ((prev: FocusTarget) => FocusTarget)) => void;
 
 interface NavigationContextType {
@@ -44,9 +43,7 @@ interface NavigationContextType {
   setToggleHandler: (fn: (() => void) | null) => void;
 }
 
-/* =========================
-   CONSTANTS
-========================= */
+/* ========================= */
 
 const NavigationContext = createContext<NavigationContextType | null>(null);
 
@@ -62,29 +59,18 @@ const STICK_DEADZONE = 0.45;
 const INITIAL_REPEAT_DELAY = 220;
 const REPEAT_INTERVAL = 90;
 
-/* =========================
-   HELPERS
-========================= */
+const isPressed = (b?: GamepadButton) => !!b?.pressed || (b?.value ?? 0) > 0.5;
 
-function isPressed(button?: GamepadButton) {
-  return !!button?.pressed || (button?.value ?? 0) > 0.5;
-}
-
-/* =========================
-   PROVIDER
-========================= */
+/* ========================= */
 
 export function NavigationProvider({ children }: { children: ReactNode }) {
   const [activeTab, setActiveTab] = useState<Tab>("movies");
+  const [focus, setFocus] = useState<FocusTarget>({ section: 0, index: 0 });
 
-  const [focus, setFocus] = useState<FocusTarget>({
-    section: 0,
-    index: 0,
-  });
-
-  const setFocusByIndex = useCallback((section: number, index: number) => {
-    setFocus({ section, index });
-  }, []);
+  const setFocusByIndex = useCallback(
+    (section: number, index: number) => setFocus({ section, index }),
+    [],
+  );
 
   /* ---------- rails ---------- */
 
@@ -97,13 +83,13 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   }, [rails]);
 
   const registerRail = useCallback((length: number) => {
-    const idx = railCount.current++;
+    const i = railCount.current++;
     setRails((p) => {
       const n = [...p];
-      n[idx] = length;
+      n[i] = length;
       return n;
     });
-    return idx;
+    return i;
   }, []);
 
   const updateRailLength = useCallback((i: number, l: number) => {
@@ -132,7 +118,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
 
   /* ---------- handlers ---------- */
 
-  const tabNavigatorRef = useRef<((dir: TabDirection) => void) | null>(null);
+  const tabNavigatorRef = useRef<((d: TabDirection) => void) | null>(null);
   const selectRef = useRef<(() => void) | null>(null);
   const playRef = useRef<(() => void) | null>(null);
   const toggleRef = useRef<(() => void) | null>(null);
@@ -159,7 +145,6 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     setFocus((f) => {
       const len = railsRef.current[f.section] ?? 1;
       const max = Math.max(len - 1, 0);
-
       return {
         ...f,
         index:
@@ -185,37 +170,30 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     [activeTab, restoreFocusForTab],
   );
 
-  /* =========================
-     KEYBOARD
-  ========================= */
+  /* ---------- keyboard ---------- */
 
   useEffect(() => {
     const handle = (e: KeyboardEvent) => {
-      const key = e.key;
+      const k = e.key;
 
       if (isModalOpenRef.current) {
-        if (key === "Escape") tabNavigatorRef.current?.("escape");
+        if (k === "Escape") tabNavigatorRef.current?.("escape");
         return;
       }
 
-      if (key === "ArrowUp" || key === "w") tabNavigatorRef.current?.("up");
-      if (key === "ArrowDown" || key === "s") tabNavigatorRef.current?.("down");
-      if (key === "ArrowLeft" || key === "a") moveHorizontal("left");
-      if (key === "ArrowRight" || key === "d") moveHorizontal("right");
+      if (k === "ArrowUp" || k === "w") tabNavigatorRef.current?.("up");
+      if (k === "ArrowDown" || k === "s") tabNavigatorRef.current?.("down");
+      if (k === "ArrowLeft" || k === "a") moveHorizontal("left");
+      if (k === "ArrowRight" || k === "d") moveHorizontal("right");
 
-      if (key === "Enter" || key === "i" || key === "I") selectRef.current?.();
+      if (k === "Enter" || k.toLowerCase() === "i") selectRef.current?.();
 
-      if (
-        key === "p" ||
-        key === "P" ||
-        key === "MediaPlayPause" ||
-        key === "MediaPlay"
-      )
+      if (k === "p" || k === "P" || k === "MediaPlayPause" || k === "MediaPlay")
         playRef.current?.();
 
-      if (key === "y" || key === "Y") toggleRef.current?.();
+      if (k.toLowerCase() === "y") toggleRef.current?.();
 
-      if (key === "Escape" || key === "Backspace" || key === "BrowserBack")
+      if (k === "Escape" || k === "Backspace" || k === "BrowserBack")
         tabNavigatorRef.current?.("escape");
     };
 
@@ -223,9 +201,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("keydown", handle);
   }, [moveHorizontal]);
 
-  /* =========================
-     GAMEPAD
-  ========================= */
+  /* ---------- gamepad ---------- */
 
   const rafRef = useRef<number | null>(null);
 
@@ -234,29 +210,18 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     down: { pressed: false, nextAt: 0 },
     left: { pressed: false, nextAt: 0 },
     right: { pressed: false, nextAt: 0 },
-
-    a: { pressed: false },
-    y: { pressed: false },
-    b: { pressed: false },
-    start: { pressed: false },
-    lb: { pressed: false },
-    rb: { pressed: false },
   });
 
-  const repeat = useCallback((key: string, active: boolean, fn: () => void) => {
-    const s = holdRef.current[key];
+  const repeat = useCallback((k: string, active: boolean, fn: () => void) => {
+    const s = holdRef.current[k];
     const now = performance.now();
 
-    if (!active) {
-      s.pressed = false;
-      return;
-    }
+    if (!active) return (s.pressed = false);
 
     if (!s.pressed) {
       s.pressed = true;
       s.nextAt = now + INITIAL_REPEAT_DELAY;
-      fn();
-      return;
+      return fn();
     }
 
     if (now >= s.nextAt) {
@@ -265,15 +230,12 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const single = useCallback((key: string, active: boolean, fn: () => void) => {
-    const s =
-      holdRef.current[key] ?? (holdRef.current[key] = { pressed: false });
-
+  const single = useCallback((k: string, active: boolean, fn: () => void) => {
+    const s = (holdRef.current[k] ??= { pressed: false });
     if (active && !s.pressed) {
       s.pressed = true;
       fn();
     }
-
     if (!active) s.pressed = false;
   }, []);
 
@@ -313,18 +275,24 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       single("rb", isPressed(pad.buttons?.[5]), () => cycleTab("next"));
     }
 
-    single("a", isPressed(pad.buttons?.[0]), () => selectRef.current?.());
-    single("y", isPressed(pad.buttons?.[3]), () => toggleRef.current?.());
+    /* merged A + Back */
+    const selectPressed =
+      isPressed(pad.buttons?.[0]) || isPressed(pad.buttons?.[8]);
+
+    single("select", selectPressed, () => {
+      if (!isModal) selectRef.current?.();
+    });
+
+    const startPressed =
+      isPressed(pad.buttons?.[9]) || (pad.buttons?.[7]?.value ?? 0) > 0.75;
+
+    single("start", startPressed, () => playRef.current?.());
+
     single("b", isPressed(pad.buttons?.[1]), () =>
       tabNavigatorRef.current?.("escape"),
     );
 
-    const playPressed =
-      isPressed(pad.buttons?.[9]) ||
-      isPressed(pad.buttons?.[8]) ||
-      (pad.buttons?.[7]?.value ?? 0) > 0.75;
-
-    single("start", playPressed, () => playRef.current?.());
+    single("y", isPressed(pad.buttons?.[3]), () => toggleRef.current?.());
 
     rafRef.current = requestAnimationFrame(poll);
   }, [cycleTab, moveHorizontal, repeat, single]);
@@ -340,9 +308,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     };
   }, [poll]);
 
-  /* =========================
-     CONTEXT
-  ========================= */
+  /* ---------- context ---------- */
 
   const value = useMemo(
     () => ({
@@ -371,9 +337,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   );
 }
 
-/* =========================
-   HOOK
-========================= */
+/* ========================= */
 
 export function useNavigation() {
   const ctx = useContext(NavigationContext);
