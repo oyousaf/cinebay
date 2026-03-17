@@ -61,6 +61,7 @@ const TAB_ORDER: Tab[] = [
 const STICK_DEADZONE = 0.45;
 const INITIAL_REPEAT_DELAY = 220;
 const REPEAT_INTERVAL = 90;
+const LONG_PRESS_MS = 500;
 
 /* =========================
    HELPERS
@@ -186,32 +187,38 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   );
 
   /* =========================
-     KEYBOARD
+     KEYBOARD / REMOTE
   ========================= */
 
   useEffect(() => {
     const handle = (e: KeyboardEvent) => {
+      const key = e.key;
+
       if (isModalOpenRef.current) {
-        if (e.key === "Escape") tabNavigatorRef.current?.("escape");
+        if (key === "Escape") tabNavigatorRef.current?.("escape");
         return;
       }
 
-      if (["ArrowUp", "w"].includes(e.key)) tabNavigatorRef.current?.("up");
+      if (key === "ArrowUp") tabNavigatorRef.current?.("up");
+      if (key === "ArrowDown") tabNavigatorRef.current?.("down");
+      if (key === "ArrowLeft") moveHorizontal("left");
+      if (key === "ArrowRight") moveHorizontal("right");
 
-      if (["ArrowDown", "s"].includes(e.key)) tabNavigatorRef.current?.("down");
+      if (["Enter", "OK"].includes(key)) {
+        selectRef.current?.();
+      }
 
-      if (["ArrowLeft", "a"].includes(e.key)) moveHorizontal("left");
+      if (key === "MediaPlayPause" || key === "MediaPlay" || key === "Play") {
+        playRef.current?.();
+      }
 
-      if (["ArrowRight", "d"].includes(e.key)) moveHorizontal("right");
+      if (key === "ContextMenu" || key === "F2") {
+        toggleRef.current?.();
+      }
 
-      if (["Enter", "i", "I"].includes(e.key)) selectRef.current?.();
-
-      if (["p", "P"].includes(e.key)) playRef.current?.();
-
-      if (["y", "Y"].includes(e.key)) toggleRef.current?.();
-
-      if (["Escape", "Backspace"].includes(e.key))
+      if (key === "Escape" || key === "Backspace" || key === "BrowserBack") {
         tabNavigatorRef.current?.("escape");
+      }
     };
 
     window.addEventListener("keydown", handle);
@@ -229,13 +236,14 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     down: { pressed: false, nextAt: 0 },
     left: { pressed: false, nextAt: 0 },
     right: { pressed: false, nextAt: 0 },
-
-    a: { pressed: false },
     b: { pressed: false },
-    x: { pressed: false },
     start: { pressed: false },
     lb: { pressed: false },
     rb: { pressed: false },
+  });
+
+  const longPressRef = useRef<{ selectStart: number | null }>({
+    selectStart: null,
   });
 
   const repeat = useCallback((key: string, active: boolean, fn: () => void) => {
@@ -282,24 +290,48 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     const axX = pad.axes[0] ?? 0;
     const axY = pad.axes[1] ?? 0;
 
-    repeat("left", axX < -STICK_DEADZONE, () => moveHorizontal("left"));
-    repeat("right", axX > STICK_DEADZONE, () => moveHorizontal("right"));
+    const dpadUp = isPressed(pad.buttons[12]);
+    const dpadDown = isPressed(pad.buttons[13]);
+    const dpadLeft = isPressed(pad.buttons[14]);
+    const dpadRight = isPressed(pad.buttons[15]);
 
-    repeat("up", axY < -STICK_DEADZONE, () => tabNavigatorRef.current?.("up"));
+    /* ---------- movement (stick + dpad) ---------- */
 
-    repeat("down", axY > STICK_DEADZONE, () =>
+    repeat("left", axX < -STICK_DEADZONE || dpadLeft, () =>
+      moveHorizontal("left"),
+    );
+
+    repeat("right", axX > STICK_DEADZONE || dpadRight, () =>
+      moveHorizontal("right"),
+    );
+
+    repeat("up", axY < -STICK_DEADZONE || dpadUp, () =>
+      tabNavigatorRef.current?.("up"),
+    );
+
+    repeat("down", axY > STICK_DEADZONE || dpadDown, () =>
       tabNavigatorRef.current?.("down"),
     );
 
+    /* ---------- SELECT (A) ---------- */
+
     single("a", isPressed(pad.buttons[0]), () => selectRef.current?.());
 
+    /* ---------- WATCHLIST (Y) ---------- */
+
+    single("y", isPressed(pad.buttons[3]), () => toggleRef.current?.());
+
+    /* ---------- PLAY ---------- */
+
     single("start", isPressed(pad.buttons[9]), () => playRef.current?.());
+
+    /* ---------- BACK ---------- */
 
     single("b", isPressed(pad.buttons[1]), () =>
       tabNavigatorRef.current?.("escape"),
     );
 
-    single("x", isPressed(pad.buttons[2]), () => toggleRef.current?.());
+    /* ---------- TABS ---------- */
 
     single("lb", isPressed(pad.buttons[4]), () => cycleTab("prev"));
 
