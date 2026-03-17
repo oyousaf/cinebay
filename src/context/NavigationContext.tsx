@@ -289,6 +289,8 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    const isModal = isModalOpenRef.current;
+
     const axX = pad.axes[0] ?? 0;
     const axY = pad.axes[1] ?? 0;
 
@@ -297,21 +299,30 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     const dpadLeft = isPressed(pad.buttons[14]);
     const dpadRight = isPressed(pad.buttons[15]);
 
-    repeat("left", axX < -STICK_DEADZONE || dpadLeft, () =>
-      moveHorizontal("left"),
-    );
+    /* ---------- NAVIGATION (BLOCKED IN MODAL) ---------- */
 
-    repeat("right", axX > STICK_DEADZONE || dpadRight, () =>
-      moveHorizontal("right"),
-    );
+    if (!isModal) {
+      repeat("left", axX < -STICK_DEADZONE || dpadLeft, () =>
+        moveHorizontal("left"),
+      );
 
-    repeat("up", axY < -STICK_DEADZONE || dpadUp, () =>
-      tabNavigatorRef.current?.("up"),
-    );
+      repeat("right", axX > STICK_DEADZONE || dpadRight, () =>
+        moveHorizontal("right"),
+      );
 
-    repeat("down", axY > STICK_DEADZONE || dpadDown, () =>
-      tabNavigatorRef.current?.("down"),
-    );
+      repeat("up", axY < -STICK_DEADZONE || dpadUp, () =>
+        tabNavigatorRef.current?.("up"),
+      );
+
+      repeat("down", axY > STICK_DEADZONE || dpadDown, () =>
+        tabNavigatorRef.current?.("down"),
+      );
+
+      single("lb", isPressed(pad.buttons[4]), () => cycleTab("prev"));
+      single("rb", isPressed(pad.buttons[5]), () => cycleTab("next"));
+    }
+
+    /* ---------- ACTIONS (ALWAYS ALLOWED) ---------- */
 
     single("a", isPressed(pad.buttons[0]), () => selectRef.current?.());
 
@@ -322,10 +333,6 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     single("b", isPressed(pad.buttons[1]), () =>
       tabNavigatorRef.current?.("escape"),
     );
-
-    single("lb", isPressed(pad.buttons[4]), () => cycleTab("prev"));
-
-    single("rb", isPressed(pad.buttons[5]), () => cycleTab("next"));
 
     rafRef.current = requestAnimationFrame(poll);
   }, [cycleTab, moveHorizontal, repeat, single]);

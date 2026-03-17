@@ -179,12 +179,17 @@ export default function ContentRail({ items, onSelect }: ContentRailProps) {
     return Math.min(Math.max(focus.index, 0), items.length - 1);
   }, [items.length, railIndex, focus.section, focus.index]);
 
-  const activeItem = items[safeIndex] ?? items[0];
+  const activeItem = useMemo(() => {
+    return items[safeIndex] ?? items[0];
+  }, [items, safeIndex]);
 
-  /* ---------- controller bindings (SAFE) ---------- */
+  /* ---------- controller bindings ---------- */
 
   useEffect(() => {
     if (!activeItem) return;
+    if (railIndex === null) return;
+
+    if (focus.section !== railIndex) return;
 
     setSelectHandler(() => {
       onSelect(activeItem);
@@ -209,7 +214,7 @@ export default function ContentRail({ items, onSelect }: ContentRailProps) {
       setPlayHandler(null);
       setToggleHandler(null);
     };
-  }, [activeItem, onSelect, toggleWatchlist]);
+  }, [activeItem, onSelect, toggleWatchlist, focus.section, railIndex]);
 
   /* ---------- focus handler ---------- */
 
