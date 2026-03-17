@@ -49,6 +49,5 @@ export const DEVS_PICK_LIST = [
   1368, // First Blood
   11690, // Bloodsport
   10222, // Kickboxer
-  13672, // JCVD
   752, // V for Vendetta
 ];
