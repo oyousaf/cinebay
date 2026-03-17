@@ -11,6 +11,10 @@ import {
   type ReactNode,
 } from "react";
 
+/* =========================
+   TYPES
+========================= */
+
 export type Tab = "movies" | "tvshows" | "search" | "devspick" | "watchlist";
 
 type FocusTarget = { section: number; index: number };
@@ -37,10 +41,12 @@ interface NavigationContextType {
 
   setSelectHandler: (fn: (() => void) | null) => void;
   setPlayHandler: (fn: (() => void) | null) => void;
-
-  triggerSelect?: () => void;
-  triggerPlay?: () => void;
+  setToggleHandler: (fn: (() => void) | null) => void;
 }
+
+/* =========================
+   CONSTANTS
+========================= */
 
 const NavigationContext = createContext<NavigationContextType | null>(null);
 
@@ -56,13 +62,17 @@ const STICK_DEADZONE = 0.45;
 const INITIAL_REPEAT_DELAY = 220;
 const REPEAT_INTERVAL = 90;
 
+/* =========================
+   HELPERS
+========================= */
+
 function isPressed(button?: GamepadButton) {
   return !!button?.pressed || (button?.value ?? 0) > 0.5;
 }
 
-function nowMs() {
-  return performance.now();
-}
+/* =========================
+   PROVIDER
+========================= */
 
 export function NavigationProvider({ children }: { children: ReactNode }) {
   const [activeTab, setActiveTab] = useState<Tab>("movies");
@@ -75,6 +85,8 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   const setFocusByIndex = useCallback((section: number, index: number) => {
     setFocus({ section, index });
   }, []);
+
+  /* ---------- rails ---------- */
 
   const [rails, setRails] = useState<number[]>([]);
   const railsRef = useRef<number[]>([]);
@@ -108,6 +120,8 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     setActiveTab(tab);
   }, []);
 
+  /* ---------- modal ---------- */
+
   const [isModalOpen, setModalOpenState] = useState(false);
   const isModalOpenRef = useRef(false);
 
@@ -116,9 +130,12 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     setModalOpenState(open);
   }, []);
 
+  /* ---------- handlers ---------- */
+
   const tabNavigatorRef = useRef<((dir: TabDirection) => void) | null>(null);
   const selectRef = useRef<(() => void) | null>(null);
   const playRef = useRef<(() => void) | null>(null);
+  const toggleRef = useRef<(() => void) | null>(null);
 
   const setTabNavigator = useCallback((fn: any) => {
     tabNavigatorRef.current = fn;
@@ -131,6 +148,12 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   const setPlayHandler = useCallback((fn: any) => {
     playRef.current = fn;
   }, []);
+
+  const setToggleHandler = useCallback((fn: any) => {
+    toggleRef.current = fn;
+  }, []);
+
+  /* ---------- movement ---------- */
 
   const moveHorizontal = useCallback((dir: "left" | "right") => {
     setFocus((f) => {
@@ -163,7 +186,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   );
 
   /* =========================
-     KEYBOARD / REMOTE
+     KEYBOARD
   ========================= */
 
   useEffect(() => {
@@ -173,26 +196,22 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      // arrows / WASD / remote
-      if (["ArrowUp", "w"].includes(e.key)) {
-        tabNavigatorRef.current?.("up");
-      }
-      if (["ArrowDown", "s"].includes(e.key)) {
-        tabNavigatorRef.current?.("down");
-      }
+      if (["ArrowUp", "w"].includes(e.key)) tabNavigatorRef.current?.("up");
+
+      if (["ArrowDown", "s"].includes(e.key)) tabNavigatorRef.current?.("down");
+
       if (["ArrowLeft", "a"].includes(e.key)) moveHorizontal("left");
+
       if (["ArrowRight", "d"].includes(e.key)) moveHorizontal("right");
 
-      // select (A / OK)
-      if (["Enter"].includes(e.key)) selectRef.current?.();
+      if (["Enter", "i", "I"].includes(e.key)) selectRef.current?.();
 
-      // play (start)
-      if (["p"].includes(e.key)) playRef.current?.();
+      if (["p", "P"].includes(e.key)) playRef.current?.();
 
-      // escape / back
-      if (["Escape", "Backspace"].includes(e.key)) {
+      if (["y", "Y"].includes(e.key)) toggleRef.current?.();
+
+      if (["Escape", "Backspace"].includes(e.key))
         tabNavigatorRef.current?.("escape");
-      }
     };
 
     window.addEventListener("keydown", handle);
@@ -210,11 +229,18 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     down: { pressed: false, nextAt: 0 },
     left: { pressed: false, nextAt: 0 },
     right: { pressed: false, nextAt: 0 },
+
+    a: { pressed: false },
+    b: { pressed: false },
+    x: { pressed: false },
+    start: { pressed: false },
+    lb: { pressed: false },
+    rb: { pressed: false },
   });
 
   const repeat = useCallback((key: string, active: boolean, fn: () => void) => {
     const s = holdRef.current[key];
-    const t = nowMs();
+    const now = performance.now();
 
     if (!active) {
       s.pressed = false;
@@ -223,13 +249,13 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
 
     if (!s.pressed) {
       s.pressed = true;
-      s.nextAt = t + INITIAL_REPEAT_DELAY;
+      s.nextAt = now + INITIAL_REPEAT_DELAY;
       fn();
       return;
     }
 
-    if (t >= s.nextAt) {
-      s.nextAt = t + REPEAT_INTERVAL;
+    if (now >= s.nextAt) {
+      s.nextAt = now + REPEAT_INTERVAL;
       fn();
     }
   }, []);
@@ -247,6 +273,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
 
   const poll = useCallback(() => {
     const pad = navigator.getGamepads?.()[0];
+
     if (!pad) {
       rafRef.current = requestAnimationFrame(poll);
       return;
@@ -255,33 +282,27 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     const axX = pad.axes[0] ?? 0;
     const axY = pad.axes[1] ?? 0;
 
-    const left = axX <= -STICK_DEADZONE || isPressed(pad.buttons[14]);
-    const right = axX >= STICK_DEADZONE || isPressed(pad.buttons[15]);
-    const up = axY <= -STICK_DEADZONE || isPressed(pad.buttons[12]);
-    const down = axY >= STICK_DEADZONE || isPressed(pad.buttons[13]);
+    repeat("left", axX < -STICK_DEADZONE, () => moveHorizontal("left"));
+    repeat("right", axX > STICK_DEADZONE, () => moveHorizontal("right"));
 
-    repeat("up", up, () => tabNavigatorRef.current?.("up"));
-    repeat("down", down, () => tabNavigatorRef.current?.("down"));
-    repeat("left", left, () => moveHorizontal("left"));
-    repeat("right", right, () => moveHorizontal("right"));
+    repeat("up", axY < -STICK_DEADZONE, () => tabNavigatorRef.current?.("up"));
 
-    // A → open info
-    single("a", isPressed(pad.buttons[0]), () => {
-      selectRef.current?.();
-    });
+    repeat("down", axY > STICK_DEADZONE, () =>
+      tabNavigatorRef.current?.("down"),
+    );
 
-    // START → play
-    single("start", isPressed(pad.buttons[9]), () => {
-      playRef.current?.();
-    });
+    single("a", isPressed(pad.buttons[0]), () => selectRef.current?.());
 
-    // B → close modal
-    single("b", isPressed(pad.buttons[1]), () => {
-      tabNavigatorRef.current?.("escape");
-    });
+    single("start", isPressed(pad.buttons[9]), () => playRef.current?.());
 
-    // LB / RB → tabs
+    single("b", isPressed(pad.buttons[1]), () =>
+      tabNavigatorRef.current?.("escape"),
+    );
+
+    single("x", isPressed(pad.buttons[2]), () => toggleRef.current?.());
+
     single("lb", isPressed(pad.buttons[4]), () => cycleTab("prev"));
+
     single("rb", isPressed(pad.buttons[5]), () => cycleTab("next"));
 
     rafRef.current = requestAnimationFrame(poll);
@@ -289,10 +310,17 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     rafRef.current = requestAnimationFrame(poll);
+
     return () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+      }
     };
   }, [poll]);
+
+  /* =========================
+     CONTEXT
+  ========================= */
 
   const value = useMemo(
     () => ({
@@ -309,17 +337,9 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       setTabNavigator,
       setSelectHandler,
       setPlayHandler,
-      triggerSelect: () => selectRef.current?.(),
-      triggerPlay: () => playRef.current?.(),
+      setToggleHandler,
     }),
-    [
-      activeTab,
-      focus,
-      isModalOpen,
-      setModalOpen,
-      registerRail,
-      updateRailLength,
-    ],
+    [activeTab, focus, isModalOpen],
   );
 
   return (
@@ -328,6 +348,10 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     </NavigationContext.Provider>
   );
 }
+
+/* =========================
+   HOOK
+========================= */
 
 export function useNavigation() {
   const ctx = useContext(NavigationContext);

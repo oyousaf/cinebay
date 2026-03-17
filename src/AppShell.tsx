@@ -17,7 +17,8 @@ import { useModalManager } from "@/context/ModalContext";
 import { useNavigation } from "@/context/NavigationContext";
 
 export default function AppShell() {
-  const { activeTab, setActiveTab } = useNavigation();
+  const { activeTab, setActiveTab, setModalOpen, setPlayHandler } =
+    useNavigation();
 
   const {
     activeModal,
@@ -31,7 +32,25 @@ export default function AppShell() {
   const isModalOpen = Boolean(activeModal);
 
   /* ----------------------------------
-     Standalone detection (stable)
+     Sync modal state
+  ---------------------------------- */
+  useEffect(() => {
+    setModalOpen(isModalOpen);
+  }, [isModalOpen, setModalOpen]);
+
+  useEffect(() => {
+    if (!selectedItem) return;
+
+    setPlayHandler(() => {
+      sessionStorage.setItem("autoplay", "1");
+      openContent(selectedItem);
+    });
+
+    return () => setPlayHandler(null);
+  }, [selectedItem?.id]);
+
+  /* ----------------------------------
+     Standalone detection
   ---------------------------------- */
   const [isStandalone] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -59,7 +78,6 @@ export default function AppShell() {
       return;
     }
 
-    // Prevent duplicate pushes
     if (
       lastStateRef.current?.tab === nextState.tab &&
       lastStateRef.current?.modal === nextState.modal
@@ -80,25 +98,21 @@ export default function AppShell() {
     const handlePopState = (e: PopStateEvent) => {
       const state = e.state as { tab?: string; modal?: string } | null;
 
-      /* Close modal first */
       if (isModalOpen && state?.modal !== activeModal) {
         close();
         return;
       }
 
-      /* Restore exit modal */
       if (state?.modal === "exit") {
         openExit();
         return;
       }
 
-      /* Restore tab from history */
       if (state?.tab && state.tab !== activeTab) {
         setActiveTab(state.tab as any);
         return;
       }
 
-      /* No more history → native app behaviour */
       if (activeTab !== "movies") {
         setActiveTab("movies");
         return;
@@ -112,7 +126,7 @@ export default function AppShell() {
   }, [activeTab, activeModal, isModalOpen, setActiveTab, openExit, close]);
 
   /* ----------------------------------
-     Escape key (desktop behaviour)
+     Escape key (desktop fallback)
   ---------------------------------- */
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -132,7 +146,7 @@ export default function AppShell() {
   }, [activeTab, isModalOpen, setActiveTab, openExit]);
 
   /* ----------------------------------
-     Memoised tab content
+     Content
   ---------------------------------- */
   const content = useMemo(() => {
     switch (activeTab) {
@@ -177,7 +191,7 @@ export default function AppShell() {
           initial={{ opacity: 0, x: -40 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: 40 }}
-          transition={{ duration: 0.25, ease: "easeOut" }}
+          transition={{ duration: 0.25 }}
           className="flex-1 min-h-0"
         >
           {content}
