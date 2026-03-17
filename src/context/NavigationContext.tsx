@@ -44,114 +44,20 @@ interface NavigationContextType {
 
 const NavigationContext = createContext<NavigationContextType | null>(null);
 
-const TAB_KEY = "tv-active-tab";
-const FOCUS_KEY = "tv-focus-by-tab";
+const TAB_ORDER: Tab[] = [
+  "movies",
+  "tvshows",
+  "search",
+  "devspick",
+  "watchlist",
+];
 
-const defaultFocus: FocusTarget = { section: 0, index: 0 };
-
-const defaultFocusByTab: Record<Tab, FocusTarget> = {
-  movies: defaultFocus,
-  tvshows: defaultFocus,
-  search: defaultFocus,
-  devspick: defaultFocus,
-  watchlist: defaultFocus,
-};
-
-const TAB_ORDER: Tab[] = ["movies", "tvshows", "search", "devspick", "watchlist"];
-
-/* -------------------------------------------------
-GAMEPAD CONFIG
--------------------------------------------------- */
-
-const GAMEPAD_POLL_MS = 0; // RAF-driven, kept for clarity
 const STICK_DEADZONE = 0.45;
 const INITIAL_REPEAT_DELAY = 220;
 const REPEAT_INTERVAL = 90;
 
-/* -------------------------------------------------
-SAFE STORAGE
--------------------------------------------------- */
-
-function canUseDOM() {
-  return typeof window !== "undefined";
-}
-
-function readStoredTab(): Tab {
-  if (!canUseDOM()) return "movies";
-
-  try {
-    const value = localStorage.getItem(TAB_KEY);
-    if (value && TAB_ORDER.includes(value as Tab)) {
-      return value as Tab;
-    }
-  } catch {}
-
-  return "movies";
-}
-
-function readStoredFocusByTab(): Record<Tab, FocusTarget> {
-  if (!canUseDOM()) return defaultFocusByTab;
-
-  try {
-    const saved = localStorage.getItem(FOCUS_KEY);
-    if (!saved) return defaultFocusByTab;
-
-    const parsed = JSON.parse(saved) as Partial<Record<Tab, FocusTarget>>;
-
-    return {
-      ...defaultFocusByTab,
-      ...Object.fromEntries(
-        TAB_ORDER.map((tab) => {
-          const entry = parsed?.[tab];
-          return [
-            tab,
-            {
-              section: Math.max(0, Number(entry?.section) || 0),
-              index: Math.max(0, Number(entry?.index) || 0),
-            },
-          ];
-        }),
-      ),
-    };
-  } catch {
-    return defaultFocusByTab;
-  }
-}
-
-/* -------------------------------------------------
-GAMEPAD HELPERS
--------------------------------------------------- */
-
 function isPressed(button?: GamepadButton) {
   return !!button?.pressed || (button?.value ?? 0) > 0.5;
-}
-
-function getHorizontalIntent(gamepad: Gamepad) {
-  const left = isPressed(gamepad.buttons[14]);
-  const right = isPressed(gamepad.buttons[15]);
-
-  if (left && !right) return "left";
-  if (right && !left) return "right";
-
-  const axisX = gamepad.axes[0] ?? 0;
-  if (axisX <= -STICK_DEADZONE) return "left";
-  if (axisX >= STICK_DEADZONE) return "right";
-
-  return null;
-}
-
-function getVerticalIntent(gamepad: Gamepad) {
-  const up = isPressed(gamepad.buttons[12]);
-  const down = isPressed(gamepad.buttons[13]);
-
-  if (up && !down) return "up";
-  if (down && !up) return "down";
-
-  const axisY = gamepad.axes[1] ?? 0;
-  if (axisY <= -STICK_DEADZONE) return "up";
-  if (axisY >= STICK_DEADZONE) return "down";
-
-  return null;
 }
 
 function nowMs() {
@@ -159,100 +65,51 @@ function nowMs() {
 }
 
 export function NavigationProvider({ children }: { children: ReactNode }) {
-  const [activeTab, setActiveTabState] = useState<Tab>(readStoredTab);
+  const [activeTab, setActiveTab] = useState<Tab>("movies");
 
-  const setActiveTab = useCallback((tab: Tab) => {
-    setActiveTabState(tab);
+  const [focus, setFocus] = useState<FocusTarget>({
+    section: 0,
+    index: 0,
+  });
 
-    if (canUseDOM()) {
-      try {
-        localStorage.setItem(TAB_KEY, tab);
-      } catch {}
-    }
+  const setFocusByIndex = useCallback((section: number, index: number) => {
+    setFocus({ section, index });
   }, []);
 
-  const [focusByTab, setFocusByTab] =
-    useState<Record<Tab, FocusTarget>>(readStoredFocusByTab);
-
-  const focus = focusByTab[activeTab] ?? defaultFocus;
-
-  const setFocus: SetFocus = useCallback(
-    (f) => {
-      setFocusByTab((prev) => {
-        const current = prev[activeTab] ?? defaultFocus;
-        const next = typeof f === "function" ? f(current) : f;
-
-        return {
-          ...prev,
-          [activeTab]: {
-            section: Math.max(0, next.section),
-            index: Math.max(0, next.index),
-          },
-        };
-      });
-    },
-    [activeTab],
-  );
-
-  const setFocusByIndex = useCallback(
-    (section: number, index: number) => {
-      setFocus({ section, index });
-    },
-    [setFocus],
-  );
-
-  useEffect(() => {
-    if (!canUseDOM()) return;
-
-    try {
-      localStorage.setItem(FOCUS_KEY, JSON.stringify(focusByTab));
-    } catch {}
-  }, [focusByTab]);
-
   const [rails, setRails] = useState<number[]>([]);
-  const railCount = useRef(0);
   const railsRef = useRef<number[]>([]);
-  const activeTabRef = useRef<Tab>(activeTab);
-  const isModalOpenRef = useRef(false);
+  const railCount = useRef(0);
 
   useEffect(() => {
     railsRef.current = rails;
   }, [rails]);
 
-  useEffect(() => {
-    activeTabRef.current = activeTab;
-  }, [activeTab]);
-
   const registerRail = useCallback((length: number) => {
     const idx = railCount.current++;
-
-    setRails((prev) => {
-      const next = [...prev];
-      next[idx] = Math.max(0, length);
-      return next;
+    setRails((p) => {
+      const n = [...p];
+      n[idx] = length;
+      return n;
     });
-
     return idx;
   }, []);
 
-  const updateRailLength = useCallback((index: number, length: number) => {
-    setRails((prev) => {
-      const next = [...prev];
-      next[index] = Math.max(0, length);
-      return next;
+  const updateRailLength = useCallback((i: number, l: number) => {
+    setRails((p) => {
+      const n = [...p];
+      n[i] = l;
+      return n;
     });
   }, []);
 
-  const restoreFocusForTab = useCallback(
-    (tab: Tab) => {
-      railCount.current = 0;
-      setRails([]);
-      setActiveTab(tab);
-    },
-    [setActiveTab],
-  );
+  const restoreFocusForTab = useCallback((tab: Tab) => {
+    railCount.current = 0;
+    setRails([]);
+    setActiveTab(tab);
+  }, []);
 
   const [isModalOpen, setModalOpenState] = useState(false);
+  const isModalOpenRef = useRef(false);
 
   const setModalOpen = useCallback((open: boolean) => {
     isModalOpenRef.current = open;
@@ -263,282 +120,181 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   const selectRef = useRef<(() => void) | null>(null);
   const playRef = useRef<(() => void) | null>(null);
 
-  const setTabNavigator = useCallback((fn: (dir: TabDirection) => void) => {
+  const setTabNavigator = useCallback((fn: any) => {
     tabNavigatorRef.current = fn;
   }, []);
 
-  const setSelectHandler = useCallback((fn: (() => void) | null) => {
+  const setSelectHandler = useCallback((fn: any) => {
     selectRef.current = fn;
   }, []);
 
-  const setPlayHandler = useCallback((fn: (() => void) | null) => {
+  const setPlayHandler = useCallback((fn: any) => {
     playRef.current = fn;
   }, []);
 
-  const moveHorizontal = useCallback(
-    (dir: "left" | "right") => {
-      setFocus((f) => {
-        const railLength = railsRef.current[f.section] ?? 1;
-        const maxIndex = Math.max(railLength - 1, 0);
+  const moveHorizontal = useCallback((dir: "left" | "right") => {
+    setFocus((f) => {
+      const len = railsRef.current[f.section] ?? 1;
+      const max = Math.max(len - 1, 0);
 
-        return {
-          ...f,
-          index:
-            dir === "right"
-              ? Math.min(f.index + 1, maxIndex)
-              : Math.max(0, f.index - 1),
-        };
-      });
-    },
-    [setFocus],
-  );
+      return {
+        ...f,
+        index:
+          dir === "right"
+            ? Math.min(f.index + 1, max)
+            : Math.max(0, f.index - 1),
+      };
+    });
+  }, []);
 
   const cycleTab = useCallback(
     (dir: "prev" | "next") => {
-      const current = activeTabRef.current;
-      const currentIndex = TAB_ORDER.indexOf(current);
-      if (currentIndex === -1) return;
+      const i = TAB_ORDER.indexOf(activeTab);
+      if (i === -1) return;
 
-      const nextIndex =
+      const next =
         dir === "next"
-          ? (currentIndex + 1) % TAB_ORDER.length
-          : (currentIndex - 1 + TAB_ORDER.length) % TAB_ORDER.length;
+          ? (i + 1) % TAB_ORDER.length
+          : (i - 1 + TAB_ORDER.length) % TAB_ORDER.length;
 
-      restoreFocusForTab(TAB_ORDER[nextIndex]);
+      restoreFocusForTab(TAB_ORDER[next]);
     },
-    [restoreFocusForTab],
+    [activeTab, restoreFocusForTab],
   );
 
+  /* =========================
+     KEYBOARD / REMOTE
+  ========================= */
+
   useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      if (isModalOpenRef.current) return;
-
-      const t = e.target as HTMLElement | null;
-      if (t && ["INPUT", "TEXTAREA", "SELECT"].includes(t.tagName)) return;
-
-      if (tabNavigatorRef.current) {
-        if (["ArrowUp", "w", "W"].includes(e.key)) {
-          e.preventDefault();
-          tabNavigatorRef.current("up");
-          return;
-        }
-
-        if (["ArrowDown", "s", "S"].includes(e.key)) {
-          e.preventDefault();
-          tabNavigatorRef.current("down");
-          return;
-        }
-
-        if (e.key === "Escape") {
-          tabNavigatorRef.current("escape");
-          return;
-        }
-      }
-
-      if (["Enter", "p", "P"].includes(e.key)) {
-        e.preventDefault();
-        playRef.current?.();
+    const handle = (e: KeyboardEvent) => {
+      if (isModalOpenRef.current) {
+        if (e.key === "Escape") tabNavigatorRef.current?.("escape");
         return;
       }
 
-      if (["i", "I"].includes(e.key)) {
-        e.preventDefault();
-        selectRef.current?.();
-        return;
+      // arrows / WASD / remote
+      if (["ArrowUp", "w"].includes(e.key)) {
+        tabNavigatorRef.current?.("up");
       }
-
-      if (["ArrowRight", "d", "D"].includes(e.key)) {
-        e.preventDefault();
-        moveHorizontal("right");
-        return;
+      if (["ArrowDown", "s"].includes(e.key)) {
+        tabNavigatorRef.current?.("down");
       }
+      if (["ArrowLeft", "a"].includes(e.key)) moveHorizontal("left");
+      if (["ArrowRight", "d"].includes(e.key)) moveHorizontal("right");
 
-      if (["ArrowLeft", "a", "A"].includes(e.key)) {
-        e.preventDefault();
-        moveHorizontal("left");
+      // select (A / OK)
+      if (["Enter"].includes(e.key)) selectRef.current?.();
+
+      // play (start)
+      if (["p"].includes(e.key)) playRef.current?.();
+
+      // escape / back
+      if (["Escape", "Backspace"].includes(e.key)) {
+        tabNavigatorRef.current?.("escape");
       }
     };
 
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
+    window.addEventListener("keydown", handle);
+    return () => window.removeEventListener("keydown", handle);
   }, [moveHorizontal]);
 
-  /* -------------------------------------------------
-     GAMEPAD SUPPORT
-  -------------------------------------------------- */
+  /* =========================
+     GAMEPAD
+  ========================= */
 
   const rafRef = useRef<number | null>(null);
-  const connectedPadsRef = useRef<Set<number>>(new Set());
 
-  const holdRef = useRef<
-    Record<
-      string,
-      {
-        pressed: boolean;
-        nextAt: number;
-      }
-    >
-  >({
+  const holdRef = useRef<any>({
     up: { pressed: false, nextAt: 0 },
     down: { pressed: false, nextAt: 0 },
     left: { pressed: false, nextAt: 0 },
     right: { pressed: false, nextAt: 0 },
-    lb: { pressed: false, nextAt: 0 },
-    rb: { pressed: false, nextAt: 0 },
-    a: { pressed: false, nextAt: 0 },
-    x: { pressed: false, nextAt: 0 },
-    b: { pressed: false, nextAt: 0 },
   });
 
-  const runRepeatingAction = useCallback(
-    (key: keyof typeof holdRef.current, active: boolean, action: () => void) => {
-      const state = holdRef.current[key];
-      const ts = nowMs();
+  const repeat = useCallback((key: string, active: boolean, fn: () => void) => {
+    const s = holdRef.current[key];
+    const t = nowMs();
 
-      if (!active) {
-        state.pressed = false;
-        state.nextAt = 0;
-        return;
-      }
-
-      if (!state.pressed) {
-        state.pressed = true;
-        state.nextAt = ts + INITIAL_REPEAT_DELAY;
-        action();
-        return;
-      }
-
-      if (ts >= state.nextAt) {
-        state.nextAt = ts + REPEAT_INTERVAL;
-        action();
-      }
-    },
-    [],
-  );
-
-  const runSinglePressAction = useCallback(
-    (key: keyof typeof holdRef.current, active: boolean, action: () => void) => {
-      const state = holdRef.current[key];
-
-      if (active && !state.pressed) {
-        state.pressed = true;
-        action();
-        return;
-      }
-
-      if (!active) {
-        state.pressed = false;
-      }
-    },
-    [],
-  );
-
-  const pollGamepads = useCallback(() => {
-    if (isModalOpenRef.current) {
-      rafRef.current = window.requestAnimationFrame(pollGamepads);
+    if (!active) {
+      s.pressed = false;
       return;
     }
 
-    const pads = navigator.getGamepads?.() ?? [];
-    const pad = pads.find(Boolean);
+    if (!s.pressed) {
+      s.pressed = true;
+      s.nextAt = t + INITIAL_REPEAT_DELAY;
+      fn();
+      return;
+    }
 
+    if (t >= s.nextAt) {
+      s.nextAt = t + REPEAT_INTERVAL;
+      fn();
+    }
+  }, []);
+
+  const single = useCallback((key: string, active: boolean, fn: () => void) => {
+    const s = holdRef.current[key];
+
+    if (active && !s.pressed) {
+      s.pressed = true;
+      fn();
+    }
+
+    if (!active) s.pressed = false;
+  }, []);
+
+  const poll = useCallback(() => {
+    const pad = navigator.getGamepads?.()[0];
     if (!pad) {
-      rafRef.current = window.requestAnimationFrame(pollGamepads);
+      rafRef.current = requestAnimationFrame(poll);
       return;
     }
 
-    const vertical = getVerticalIntent(pad);
-    const horizontal = getHorizontalIntent(pad);
+    const axX = pad.axes[0] ?? 0;
+    const axY = pad.axes[1] ?? 0;
 
-    runRepeatingAction("up", vertical === "up", () => {
-      tabNavigatorRef.current?.("up");
-    });
+    const left = axX <= -STICK_DEADZONE || isPressed(pad.buttons[14]);
+    const right = axX >= STICK_DEADZONE || isPressed(pad.buttons[15]);
+    const up = axY <= -STICK_DEADZONE || isPressed(pad.buttons[12]);
+    const down = axY >= STICK_DEADZONE || isPressed(pad.buttons[13]);
 
-    runRepeatingAction("down", vertical === "down", () => {
-      tabNavigatorRef.current?.("down");
-    });
+    repeat("up", up, () => tabNavigatorRef.current?.("up"));
+    repeat("down", down, () => tabNavigatorRef.current?.("down"));
+    repeat("left", left, () => moveHorizontal("left"));
+    repeat("right", right, () => moveHorizontal("right"));
 
-    runRepeatingAction("left", horizontal === "left", () => {
-      moveHorizontal("left");
-    });
-
-    runRepeatingAction("right", horizontal === "right", () => {
-      moveHorizontal("right");
-    });
-
-    runSinglePressAction("a", isPressed(pad.buttons[0]), () => {
-      playRef.current?.();
-    });
-
-    runSinglePressAction("b", isPressed(pad.buttons[1]), () => {
-      tabNavigatorRef.current?.("escape");
-    });
-
-    runSinglePressAction("x", isPressed(pad.buttons[2]), () => {
+    // A → open info
+    single("a", isPressed(pad.buttons[0]), () => {
       selectRef.current?.();
     });
 
-    runSinglePressAction("lb", isPressed(pad.buttons[4]), () => {
-      cycleTab("prev");
+    // START → play
+    single("start", isPressed(pad.buttons[9]), () => {
+      playRef.current?.();
     });
 
-    runSinglePressAction("rb", isPressed(pad.buttons[5]), () => {
-      cycleTab("next");
+    // B → close modal
+    single("b", isPressed(pad.buttons[1]), () => {
+      tabNavigatorRef.current?.("escape");
     });
 
-    rafRef.current = window.requestAnimationFrame(pollGamepads);
-  }, [cycleTab, moveHorizontal, runRepeatingAction, runSinglePressAction]);
+    // LB / RB → tabs
+    single("lb", isPressed(pad.buttons[4]), () => cycleTab("prev"));
+    single("rb", isPressed(pad.buttons[5]), () => cycleTab("next"));
+
+    rafRef.current = requestAnimationFrame(poll);
+  }, [cycleTab, moveHorizontal, repeat, single]);
 
   useEffect(() => {
-    const startPolling = () => {
-      if (rafRef.current != null) return;
-      rafRef.current = window.requestAnimationFrame(pollGamepads);
-    };
-
-    const stopPolling = () => {
-      if (rafRef.current != null) {
-        cancelAnimationFrame(rafRef.current);
-        rafRef.current = null;
-      }
-    };
-
-    const onConnect = (e: GamepadEvent) => {
-      connectedPadsRef.current.add(e.gamepad.index);
-      startPolling();
-    };
-
-    const onDisconnect = (e: GamepadEvent) => {
-      connectedPadsRef.current.delete(e.gamepad.index);
-
-      const pads = navigator.getGamepads?.() ?? [];
-      const stillConnected = pads.some(Boolean);
-
-      if (!stillConnected) {
-        stopPolling();
-
-        for (const key of Object.keys(holdRef.current) as Array<
-          keyof typeof holdRef.current
-        >) {
-          holdRef.current[key].pressed = false;
-          holdRef.current[key].nextAt = 0;
-        }
-      }
-    };
-
-    window.addEventListener("gamepadconnected", onConnect);
-    window.addEventListener("gamepaddisconnected", onDisconnect);
-
-    const alreadyConnected = (navigator.getGamepads?.() ?? []).some(Boolean);
-    if (alreadyConnected) startPolling();
-
+    rafRef.current = requestAnimationFrame(poll);
     return () => {
-      window.removeEventListener("gamepadconnected", onConnect);
-      window.removeEventListener("gamepaddisconnected", onDisconnect);
-      stopPolling();
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-  }, [pollGamepads]);
+  }, [poll]);
 
-  const value = useMemo<NavigationContextType>(
+  const value = useMemo(
     () => ({
       activeTab,
       setActiveTab,
@@ -558,18 +314,11 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     }),
     [
       activeTab,
-      setActiveTab,
       focus,
-      setFocus,
-      setFocusByIndex,
-      registerRail,
-      updateRailLength,
-      restoreFocusForTab,
       isModalOpen,
       setModalOpen,
-      setTabNavigator,
-      setSelectHandler,
-      setPlayHandler,
+      registerRail,
+      updateRailLength,
     ],
   );
 
