@@ -11,6 +11,7 @@ import {
 } from "@/lib/embed/buildEmbedUrl";
 import { useContinueWatching } from "@/hooks/useContinueWatching";
 import { fetchSeasonEpisodes } from "@/lib/tmdb";
+import { useNavigation } from "@/context/NavigationContext";
 
 /* -------------------------------- CONFIG -------------------------------- */
 
@@ -197,6 +198,8 @@ export default function PlayerModal({
   const intentKey = useMemo(() => getIntentKey(intent), [intent]);
 
   const provider = PROVIDER_ORDER[providerIndex] as ProviderType;
+
+  const { setTabNavigator, setModalOpen } = useNavigation();
 
   /* ------------------------------------------------------------------ */
   /* MOUNT STATE                                                        */
@@ -673,6 +676,26 @@ export default function PlayerModal({
     showNextOverlayRef.current = false;
     onPlayNext?.(nextIntent);
   }, [flushPendingProgress, nextIntent, onPlayNext]);
+
+  /* ------------------------------------------------------------------ */
+  /* NAVIGATION (BACK / ESCAPE / CONTROLLER B)                           */
+  /* ------------------------------------------------------------------ */
+
+  useEffect(() => {
+    const handleNav = (dir: "up" | "down" | "escape") => {
+      if (dir === "escape") {
+        handleClose();
+      }
+    };
+
+    setTabNavigator(handleNav);
+    setModalOpen(true);
+
+    return () => {
+      setTabNavigator(() => {});
+      setModalOpen(false);
+    };
+  }, [handleClose, setTabNavigator, setModalOpen]);
 
   /* ------------------------------------------------------------------ */
   /* RENDER                                                             */
