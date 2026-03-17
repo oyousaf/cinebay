@@ -43,7 +43,7 @@ interface NavigationContextType {
   setToggleHandler: (fn: (() => void) | null) => void;
 }
 
-/* ========================= */
+/* ======  CONSTANTS  ======== */
 
 const NavigationContext = createContext<NavigationContextType | null>(null);
 
@@ -61,7 +61,6 @@ const REPEAT_INTERVAL = 90;
 
 const isPressed = (b?: GamepadButton) => !!b?.pressed || (b?.value ?? 0) > 0.5;
 
-/* ========================= */
 
 export function NavigationProvider({ children }: { children: ReactNode }) {
   const [activeTab, setActiveTab] = useState<Tab>("movies");
@@ -336,8 +335,6 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     </NavigationContext.Provider>
   );
 }
-
-/* ========================= */
 
 export function useNavigation() {
   const ctx = useContext(NavigationContext);
