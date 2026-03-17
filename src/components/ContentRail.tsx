@@ -7,6 +7,7 @@ import React from "react";
 import type { Movie } from "@/types/movie";
 import Banner from "./Banner";
 import { useNavigation } from "@/context/NavigationContext";
+import { useWatchlist } from "@/context/WatchlistContext";
 
 const EASE_OUT = [0.22, 1, 0.36, 1] as const;
 
@@ -43,8 +44,8 @@ const Tile = React.memo(function Tile({
       className={`relative shrink-0 rounded-lg snap-center focus:outline-none
         ${
           isFocused
-            ? "ring-4 2xl:ring-[6px] ring-[#80ffcc] shadow-pulse z-60"
-            : "z-40"
+            ? "ring-4 2xl:ring-[6px] ring-[#80ffcc] shadow-pulse z-50"
+            : "z-10"
         }`}
       animate={
         isFocused ? { scale: 1.1, opacity: 1 } : { scale: 1, opacity: 0.7 }
@@ -84,22 +85,32 @@ export default function ContentRail({ items, onSelect }: ContentRailProps) {
 
   const [railIndex, setRailIndex] = useState<number | null>(null);
 
-  const { focus, setFocusByIndex, registerRail, updateRailLength, activeTab } =
-    useNavigation();
+  const {
+    focus,
+    setFocusByIndex,
+    registerRail,
+    updateRailLength,
+    activeTab,
+    setSelectHandler,
+    setPlayHandler,
+    setToggleHandler,
+  } = useNavigation();
 
-  /* reset rail on tab change */
+  const { toggleWatchlist } = useWatchlist();
+
+  /* ---------- reset rail on tab change ---------- */
 
   useEffect(() => {
     setRailIndex(null);
   }, [activeTab]);
 
-  /* keep refs aligned */
+  /* ---------- keep refs aligned ---------- */
 
   useEffect(() => {
     tileRefs.current = tileRefs.current.slice(0, items.length);
   }, [items.length]);
 
-  /* register rail */
+  /* ---------- register rail ---------- */
 
   useEffect(() => {
     if (!items.length) {
@@ -114,7 +125,7 @@ export default function ContentRail({ items, onSelect }: ContentRailProps) {
     });
   }, [items.length, registerRail, updateRailLength]);
 
-  /* restore last focused tile after returning from player */
+  /* ---------- RESTORE FOCUS AFTER PLAYER ---------- */
 
   useEffect(() => {
     if (railIndex === null) return;
@@ -136,7 +147,7 @@ export default function ContentRail({ items, onSelect }: ContentRailProps) {
     sessionStorage.removeItem("lastFocusedTile");
   }, [items, railIndex, setFocusByIndex]);
 
-  /* clamp focus */
+  /* ---------- clamp focus ---------- */
 
   useEffect(() => {
     if (railIndex === null || !items.length) return;
@@ -149,7 +160,7 @@ export default function ContentRail({ items, onSelect }: ContentRailProps) {
     }
   }, [railIndex, items.length, focus.section, focus.index, setFocusByIndex]);
 
-  /* ensure first rail focus */
+  /* ---------- ensure first rail focus ---------- */
 
   useEffect(() => {
     if (railIndex === null || !items.length) return;
@@ -158,6 +169,8 @@ export default function ContentRail({ items, onSelect }: ContentRailProps) {
       setFocusByIndex(0, 0);
     }
   }, [railIndex, items.length, focus.section, setFocusByIndex]);
+
+  /* ---------- active item ---------- */
 
   const safeIndex = useMemo(() => {
     if (!items.length || railIndex === null) return 0;
@@ -168,6 +181,38 @@ export default function ContentRail({ items, onSelect }: ContentRailProps) {
 
   const activeItem = items[safeIndex] ?? items[0];
 
+  /* ---------- controller bindings (SAFE) ---------- */
+
+  useEffect(() => {
+    if (!activeItem) return;
+
+    setSelectHandler(() => {
+      onSelect(activeItem);
+    });
+
+    setPlayHandler(() => {
+      sessionStorage.setItem("lastFocusedTile", String(activeItem.id));
+
+      if (activeItem.media_type === "tv") {
+        window.location.href = `/watch/tv/${activeItem.id}/1/1`;
+      } else {
+        window.location.href = `/watch/movie/${activeItem.id}`;
+      }
+    });
+
+    setToggleHandler(() => {
+      toggleWatchlist(activeItem);
+    });
+
+    return () => {
+      setSelectHandler(null);
+      setPlayHandler(null);
+      setToggleHandler(null);
+    };
+  }, [activeItem, onSelect, toggleWatchlist]);
+
+  /* ---------- focus handler ---------- */
+
   const handleFocus = useCallback(
     (_movie: Movie, idx: number) => {
       if (railIndex !== null) {
@@ -177,7 +222,7 @@ export default function ContentRail({ items, onSelect }: ContentRailProps) {
     [railIndex, setFocusByIndex],
   );
 
-  /* scroll tile */
+  /* ---------- scroll ---------- */
 
   useEffect(() => {
     if (railIndex === null || focus.section !== railIndex) return;
@@ -196,7 +241,7 @@ export default function ContentRail({ items, onSelect }: ContentRailProps) {
     });
   }, [focus.section, safeIndex, railIndex]);
 
-  /* enforce DOM focus */
+  /* ---------- DOM focus ---------- */
 
   useEffect(() => {
     if (railIndex === null || focus.section !== railIndex) return;

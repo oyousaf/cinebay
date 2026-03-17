@@ -61,7 +61,6 @@ const TAB_ORDER: Tab[] = [
 const STICK_DEADZONE = 0.45;
 const INITIAL_REPEAT_DELAY = 220;
 const REPEAT_INTERVAL = 90;
-const LONG_PRESS_MS = 500;
 
 /* =========================
    HELPERS
@@ -236,14 +235,13 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     down: { pressed: false, nextAt: 0 },
     left: { pressed: false, nextAt: 0 },
     right: { pressed: false, nextAt: 0 },
+
+    a: { pressed: false },
+    y: { pressed: false },
     b: { pressed: false },
     start: { pressed: false },
     lb: { pressed: false },
     rb: { pressed: false },
-  });
-
-  const longPressRef = useRef<{ selectStart: number | null }>({
-    selectStart: null,
   });
 
   const repeat = useCallback((key: string, active: boolean, fn: () => void) => {
@@ -269,6 +267,10 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const single = useCallback((key: string, active: boolean, fn: () => void) => {
+    if (!holdRef.current[key]) {
+      holdRef.current[key] = { pressed: false };
+    }
+
     const s = holdRef.current[key];
 
     if (active && !s.pressed) {
@@ -295,8 +297,6 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     const dpadLeft = isPressed(pad.buttons[14]);
     const dpadRight = isPressed(pad.buttons[15]);
 
-    /* ---------- movement (stick + dpad) ---------- */
-
     repeat("left", axX < -STICK_DEADZONE || dpadLeft, () =>
       moveHorizontal("left"),
     );
@@ -313,25 +313,15 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       tabNavigatorRef.current?.("down"),
     );
 
-    /* ---------- SELECT (A) ---------- */
-
     single("a", isPressed(pad.buttons[0]), () => selectRef.current?.());
-
-    /* ---------- WATCHLIST (Y) ---------- */
 
     single("y", isPressed(pad.buttons[3]), () => toggleRef.current?.());
 
-    /* ---------- PLAY ---------- */
-
     single("start", isPressed(pad.buttons[9]), () => playRef.current?.());
-
-    /* ---------- BACK ---------- */
 
     single("b", isPressed(pad.buttons[1]), () =>
       tabNavigatorRef.current?.("escape"),
     );
-
-    /* ---------- TABS ---------- */
 
     single("lb", isPressed(pad.buttons[4]), () => cycleTab("prev"));
 
