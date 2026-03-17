@@ -8,7 +8,7 @@ export const TMDB_IMAGE = "https://image.tmdb.org/t/p/w500";
    CONFIG
 ========================================================= */
 
-const MIN_RATING = 6.5;
+const MIN_RATING = 7;
 const MAX_PAGES = 5;
 
 const baseURL = `${import.meta.env.VITE_API_URL}/api/tmdb`;

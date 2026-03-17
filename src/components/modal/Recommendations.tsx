@@ -15,7 +15,7 @@ type ListProps = Props & {
 
 const RecommendationList = ({ items, onSelect, label }: ListProps) => {
   const filtered = [...items]
-    .filter((item) => (item.vote_average ?? 0) >= 6.5)
+    .filter((item) => (item.vote_average ?? 0) >= 7)
     .sort((a, b) => (b.vote_average ?? 0) - (a.vote_average ?? 0))
     .slice(0, 10);
 

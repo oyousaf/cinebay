@@ -25,7 +25,7 @@ function KnownFor({ items, onSelect }: Props) {
         if (seen.has(key)) return false;
 
         seen.add(key);
-        return (item.vote_average ?? 0) >= 6.5;
+        return (item.vote_average ?? 0) >= 7;
       })
       .sort((a, b) => (b.vote_average ?? 0) - (a.vote_average ?? 0))
       .slice(0, 10);
