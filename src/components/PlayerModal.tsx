@@ -34,6 +34,13 @@ const NEXT_OVERLAY_THRESHOLD = 0.9;
 const PROGRESS_QUEUE_STEP_SECONDS = 15;
 const PROGRESS_FLUSH_INTERVAL_MS = 30000;
 
+/* Watchdog */
+const WATCHDOG_CHECK_INTERVAL_MS = 1000;
+const WATCHDOG_SOFT_STALL_MS = 3000;
+const WATCHDOG_HARD_STALL_MS = 6000;
+const SCRUB_DELTA_SECONDS = 5;
+const STABLE_DELTA_SECONDS = 1;
+
 const THEME = "2dd4bf";
 
 /* -------------------------------- TYPES -------------------------------- */
@@ -117,7 +124,10 @@ function isPlayerOrigin(origin: string) {
   const o = origin.toLowerCase();
 
   return (
-    o.includes("vidlink") || o.includes("vidfast") || o.includes("multiembed")
+    o.includes("vidlink") ||
+    o.includes("vidfast") ||
+    o.includes("multiembed") ||
+    o.includes("embed")
   );
 }
 
@@ -177,6 +187,7 @@ export default function PlayerModal({
   const playbackStartTimerRef = useRef<number | null>(null);
   const loaderTimerRef = useRef<number | null>(null);
   const progressFlushIntervalRef = useRef<number | null>(null);
+  const watchdogIntervalRef = useRef<number | null>(null);
 
   const loadStartRef = useRef(0);
 
@@ -192,6 +203,10 @@ export default function PlayerModal({
 
   const showNextOverlayRef = useRef(false);
   const mountedRef = useRef(false);
+
+  const lastEventTimeRef = useRef(Date.now());
+  const lastKnownTimeRef = useRef(0);
+  const isScrubbingRef = useRef(false);
 
   const { getTVProgress, reportTVPlayback } = useContinueWatching();
 
@@ -246,11 +261,24 @@ export default function PlayerModal({
     }
   }, []);
 
+  const clearWatchdogInterval = useCallback(() => {
+    if (watchdogIntervalRef.current !== null) {
+      clearInterval(watchdogIntervalRef.current);
+      watchdogIntervalRef.current = null;
+    }
+  }, []);
+
   const clearAllTimers = useCallback(() => {
     clearLoaderTimer();
     clearFailoverTimers();
     clearProgressFlushInterval();
-  }, [clearLoaderTimer, clearFailoverTimers, clearProgressFlushInterval]);
+    clearWatchdogInterval();
+  }, [
+    clearLoaderTimer,
+    clearFailoverTimers,
+    clearProgressFlushInterval,
+    clearWatchdogInterval,
+  ]);
 
   const scheduleHideLoader = useCallback(
     (minimumVisibleMs = LOADER_MIN_MS) => {
@@ -350,6 +378,9 @@ export default function PlayerModal({
       playbackStartedRef.current = false;
       hasStartedRef.current = false;
       showNextOverlayRef.current = false;
+      lastEventTimeRef.current = Date.now();
+      lastKnownTimeRef.current = 0;
+      isScrubbingRef.current = false;
 
       setShowNextOverlay(false);
       setShowLoader(true);
@@ -399,13 +430,9 @@ export default function PlayerModal({
         ...currentSeasonEpisodes.map((e) => e.episode_number),
       );
 
-      /* Normalize season/episode once */
       const season = intent.season ?? 1;
       const episode = intent.episode ?? 1;
 
-      /* Prefetch next season when near or at the end of the current season.
-      That makes the next overlay and episode transition feel instant.
-      */
       if (episode >= maxEpisode - 1) {
         prefetchSeasonEpisodes(intent.tmdbId, season + 1);
       }
@@ -523,6 +550,9 @@ export default function PlayerModal({
     lastQueuedProgressRef.current = 0;
     pendingProgressRef.current = null;
     showNextOverlayRef.current = false;
+    lastEventTimeRef.current = Date.now();
+    lastKnownTimeRef.current = 0;
+    isScrubbingRef.current = false;
 
     clearFailoverTimers();
     clearLoaderTimer();
@@ -542,6 +572,9 @@ export default function PlayerModal({
 
     iframeLoadedRef.current = false;
     playbackStartedRef.current = false;
+    lastEventTimeRef.current = Date.now();
+    lastKnownTimeRef.current = 0;
+    isScrubbingRef.current = false;
 
     iframeLoadTimerRef.current = window.setTimeout(() => {
       if (!iframeLoadedRef.current && !playbackStartedRef.current) {
@@ -573,6 +606,20 @@ export default function PlayerModal({
       if (!msg) return;
 
       const { currentTime, duration, eventType } = extractPlayerMetrics(msg);
+
+      lastEventTimeRef.current = Date.now();
+
+      if (typeof currentTime === "number") {
+        const delta = Math.abs(currentTime - lastKnownTimeRef.current);
+
+        if (delta >= SCRUB_DELTA_SECONDS) {
+          isScrubbingRef.current = true;
+        } else if (delta <= STABLE_DELTA_SECONDS) {
+          isScrubbingRef.current = false;
+        }
+
+        lastKnownTimeRef.current = currentTime;
+      }
 
       const started =
         (typeof currentTime === "number" && currentTime > 0) ||
@@ -637,6 +684,40 @@ export default function PlayerModal({
   ]);
 
   /* ------------------------------------------------------------------ */
+  /* WATCHDOG                                                           */
+  /* ------------------------------------------------------------------ */
+
+  useEffect(() => {
+    clearWatchdogInterval();
+
+    if (!providerSupportsPlaybackEvents(provider)) {
+      return;
+    }
+
+    watchdogIntervalRef.current = window.setInterval(() => {
+      if (!playbackStartedRef.current) return;
+
+      const silence = Date.now() - lastEventTimeRef.current;
+
+      if (silence >= WATCHDOG_SOFT_STALL_MS) {
+        scheduleHideLoader(0);
+      }
+
+      if (
+        silence >= WATCHDOG_HARD_STALL_MS &&
+        isScrubbingRef.current &&
+        providerSupportsPlaybackEvents(provider)
+      ) {
+        fallbackProvider("scrub-stall");
+      }
+    }, WATCHDOG_CHECK_INTERVAL_MS);
+
+    return () => {
+      clearWatchdogInterval();
+    };
+  }, [provider, fallbackProvider, scheduleHideLoader, clearWatchdogInterval]);
+
+  /* ------------------------------------------------------------------ */
   /* NEXT EPISODE                                                       */
   /* ------------------------------------------------------------------ */
 
@@ -678,7 +759,7 @@ export default function PlayerModal({
   }, [flushPendingProgress, nextIntent, onPlayNext]);
 
   /* ------------------------------------------------------------------ */
-  /* NAVIGATION (BACK / ESCAPE / CONTROLLER B)                           */
+  /* NAVIGATION (BACK / ESCAPE / CONTROLLER B)                          */
   /* ------------------------------------------------------------------ */
 
   useEffect(() => {
@@ -717,6 +798,7 @@ export default function PlayerModal({
           referrerPolicy="no-referrer"
           onLoad={() => {
             iframeLoadedRef.current = true;
+            lastEventTimeRef.current = Date.now();
 
             if (iframeLoadTimerRef.current !== null) {
               clearTimeout(iframeLoadTimerRef.current);
