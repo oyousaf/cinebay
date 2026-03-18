@@ -718,6 +718,43 @@ export default function PlayerModal({
   }, [provider, fallbackProvider, scheduleHideLoader, clearWatchdogInterval]);
 
   /* ------------------------------------------------------------------ */
+  /* FALLBACK TICKER                                                    */
+  /* ------------------------------------------------------------------ */
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      if (!playbackStartedRef.current) return;
+
+      const silence = Date.now() - lastEventTimeRef.current;
+
+      if (
+        silence > WATCHDOG_SOFT_STALL_MS &&
+        silence < WATCHDOG_HARD_STALL_MS &&
+        !isScrubbingRef.current
+      ) {
+        lastKnownTimeRef.current += 1;
+
+        /*
+        Keep progress system alive even during stall
+      */
+        if (intent.mediaType === "tv" && hasStartedRef.current) {
+          const floored = Math.floor(lastKnownTimeRef.current);
+
+          if (
+            floored - lastQueuedProgressRef.current >=
+            PROGRESS_QUEUE_STEP_SECONDS
+          ) {
+            lastQueuedProgressRef.current = floored;
+            queueProgressWrite(floored);
+          }
+        }
+      }
+    }, 1000);
+
+    return () => clearInterval(id);
+  }, [intent.mediaType, queueProgressWrite]);
+
+  /* ------------------------------------------------------------------ */
   /* NEXT EPISODE                                                       */
   /* ------------------------------------------------------------------ */
 
