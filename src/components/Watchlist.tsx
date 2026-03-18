@@ -41,7 +41,6 @@ const defaultFilters: Filters = { sortBy: "rating-desc", type: "all" };
 
 function readStoredFilters(): Filters {
   if (typeof window === "undefined") return defaultFilters;
-
   try {
     const stored = localStorage.getItem("watchlistFilters");
     return stored ? JSON.parse(stored) : defaultFilters;
@@ -137,6 +136,7 @@ const WatchlistTile = React.memo(function WatchlistTile({
 });
 
 /* ---------- Filter Pill ---------- */
+
 function FilterPill({
   active,
   children,
@@ -152,22 +152,21 @@ function FilterPill({
     <button
       type="button"
       onClick={onClick}
-      className="relative rounded-full px-4 py-2 text-sm xl:px-6 xl:py-3 xl:text-base transition-colors duration-150 hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#80ffcc]"
+      className="relative rounded-full px-4 py-2 text-sm xl:px-6 xl:py-3 xl:text-base hover:bg-white/5"
     >
       {active && (
         <motion.span
           layoutId={layoutId}
-          className="absolute inset-0 rounded-full bg-white/10 xl:bg-white/15 ring-1 ring-white/20 will-change-transform"
-          transition={{ type: "spring", stiffness: 500, damping: 35 }}
+          className="absolute inset-0 rounded-full bg-white/10 ring-1 ring-white/20"
         />
       )}
-
-      <span className="relative z-10 whitespace-nowrap">{children}</span>
+      <span className="relative z-10">{children}</span>
     </button>
   );
 }
 
 /* ---------- Watchlist ---------- */
+
 export default function Watchlist({
   onSelect,
 }: {
@@ -188,44 +187,19 @@ export default function Watchlist({
 
   const undoRef = useRef<{ movie: Movie; ts: number } | null>(null);
   const railIndexRef = useRef<number | null>(null);
-  const hasClaimedInitialFocusRef = useRef(false);
 
   const [filters, setFilters] = useState<Filters>(readStoredFilters);
   const deferredFilters = useDeferredValue(filters);
 
-  /* ---------- Undo ---------- */
+  /* ---------- Actions ---------- */
 
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null;
-      const isTyping =
-        target &&
-        (target.tagName === "INPUT" ||
-          target.tagName === "TEXTAREA" ||
-          target.isContentEditable);
-
-      if (isTyping) return;
-
-      if (
-        (e.metaKey || e.ctrlKey) &&
-        e.key.toLowerCase() === "z" &&
-        undoRef.current &&
-        Date.now() - undoRef.current.ts < 5000
-      ) {
-        toggleWatchlist(undoRef.current.movie);
-        undoRef.current = null;
-      }
-    };
-
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [toggleWatchlist]);
-
-  /* ---------- Persist filters ---------- */
-
-  useEffect(() => {
-    localStorage.setItem("watchlistFilters", JSON.stringify(filters));
-  }, [filters]);
+  const handleRemove = useCallback(
+    (movie: Movie) => {
+      undoRef.current = { movie, ts: Date.now() };
+      toggleWatchlist(movie);
+    },
+    [toggleWatchlist],
+  );
 
   /* ---------- Filtered list ---------- */
 
@@ -253,19 +227,10 @@ export default function Watchlist({
     }
   }, [watchlist, deferredFilters]);
 
-  /* ---------- Rail lifecycle ---------- */
+  /* ---------- Rail ---------- */
 
   useEffect(() => {
-    railIndexRef.current = null;
-    hasClaimedInitialFocusRef.current = false;
-  }, [activeTab]);
-
-  useEffect(() => {
-    if (filteredList.length === 0) {
-      railIndexRef.current = null;
-      hasClaimedInitialFocusRef.current = false;
-      return;
-    }
+    if (!filteredList.length) return;
 
     if (railIndexRef.current === null) {
       railIndexRef.current = registerRail(filteredList.length);
@@ -276,60 +241,16 @@ export default function Watchlist({
 
   const railIndex = railIndexRef.current;
 
-  /* ---------- Default / claimed focus when watchlist becomes active ---------- */
-
-  useEffect(() => {
-    if (activeTab !== "watchlist") return;
-    if (railIndex === null) return;
-    if (!filteredList.length) return;
-
-    setFocus((f) => {
-      if (!hasClaimedInitialFocusRef.current) {
-        hasClaimedInitialFocusRef.current = true;
-        return { section: railIndex, index: 0 };
-      }
-
-      if (f.section !== railIndex) {
-        return { section: railIndex, index: 0 };
-      }
-
-      const safeIndex = Math.min(f.index, filteredList.length - 1);
-      return safeIndex === f.index ? f : { ...f, index: safeIndex };
-    });
-  }, [activeTab, railIndex, filteredList.length, setFocus]);
-
-  /* ---------- Clamp focus after shrink ---------- */
-
-  useEffect(() => {
-    if (!filteredList.length || railIndex === null) return;
-    if (focus.section !== railIndex) return;
-
-    setFocus((f) => {
-      if (f.index < filteredList.length) return f;
-      return { ...f, index: filteredList.length - 1 };
-    });
-  }, [filteredList.length, railIndex, focus.section, setFocus]);
-
-  /* ---------- Actions ---------- */
-
-  const handleRemove = useCallback(
-    (movie: Movie) => {
-      undoRef.current = { movie, ts: Date.now() };
-      toggleWatchlist(movie);
-    },
-    [toggleWatchlist],
-  );
-
-  /* ---------- Focused item ---------- */
+  /* ---------- Focus ---------- */
 
   const focusedMovie = useMemo(() => {
     if (activeTab !== "watchlist") return null;
     if (railIndex === null) return null;
     if (focus.section !== railIndex) return null;
     return filteredList[focus.index] ?? null;
-  }, [activeTab, railIndex, focus.section, focus.index, filteredList]);
+  }, [activeTab, railIndex, focus, filteredList]);
 
-  /* ---------- Context-level controller / keyboard / remote handlers ---------- */
+  /* ---------- Controller mapping ---------- */
 
   useEffect(() => {
     if (activeTab !== "watchlist") {
@@ -346,7 +267,14 @@ export default function Watchlist({
 
     setPlayHandler(() => {
       if (!focusedMovie) return;
-      onSelect(focusedMovie);
+
+      sessionStorage.setItem("lastFocusedTile", String(focusedMovie.id));
+
+      if (focusedMovie.media_type === "tv") {
+        window.location.href = `/watch/tv/${focusedMovie.id}/1/1`;
+      } else {
+        window.location.href = `/watch/movie/${focusedMovie.id}`;
+      }
     });
 
     setToggleHandler(() => {
@@ -369,20 +297,17 @@ export default function Watchlist({
     setToggleHandler,
   ]);
 
+  /* ---------- UI ---------- */
+
   return (
-    <motion.main
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-      className="h-screen w-full flex flex-col overflow-hidden"
-    >
+    <motion.main className="h-screen w-full flex flex-col overflow-hidden">
       <div className="sticky top-0 z-40 backdrop-blur-xl bg-black/40 border-b border-white/10">
         <div className="pt-10 pb-4 text-center">
           <h1 className="text-4xl font-bold">Watchlist</h1>
         </div>
 
         <div className="px-4 pb-4">
-          <div className="max-w-7xl xl:max-w-400 2xl:max-w-450 mx-auto flex flex-wrap gap-3 justify-center">
+          <div className="max-w-7xl mx-auto flex flex-wrap gap-3 justify-center">
             {SORTS.map((s) => (
               <FilterPill
                 key={s.key}
@@ -408,10 +333,8 @@ export default function Watchlist({
             ))}
 
             <button
-              type="button"
               onClick={() => setFilters(defaultFilters)}
               className="ml-2 px-3 py-2 rounded-full hover:bg-white/10"
-              aria-label="Reset filters"
             >
               <RefreshCw size={18} />
             </button>
@@ -419,38 +342,29 @@ export default function Watchlist({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto scroll-smooth">
-        <div className="max-w-7xl xl:max-w-400 2xl:max-w-450 mx-auto px-4 py-10">
-          {filteredList.length === 0 ? (
-            <p className="text-center text-foreground md:text-xl text-md">
-              Nothing queued. That’s a dangerous amount of free time.
-            </p>
-          ) : (
-            <motion.div
-              layout
-              className="grid gap-3 xl:gap-5 grid-cols-3 md:grid-cols-5 lg:grid-cols-7"
-            >
-              <AnimatePresence mode="popLayout">
-                {filteredList.map((movie, idx) => (
-                  <WatchlistTile
-                    key={`${movie.media_type ?? "item"}-${movie.id}`}
-                    movie={movie}
-                    isFocused={
-                      railIndex !== null &&
-                      focus.section === railIndex &&
-                      focus.index === idx
-                    }
-                    onFocus={() => {
-                      if (railIndex === null) return;
-                      setFocus({ section: railIndex, index: idx });
-                    }}
-                    onSelect={onSelect}
-                    onRemove={() => handleRemove(movie)}
-                  />
-                ))}
-              </AnimatePresence>
-            </motion.div>
-          )}
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-7xl mx-auto px-4 py-10">
+          <motion.div className="grid gap-3 grid-cols-3 md:grid-cols-5 lg:grid-cols-7">
+            <AnimatePresence>
+              {filteredList.map((movie, idx) => (
+                <WatchlistTile
+                  key={movie.id}
+                  movie={movie}
+                  isFocused={
+                    railIndex !== null &&
+                    focus.section === railIndex &&
+                    focus.index === idx
+                  }
+                  onFocus={() => {
+                    if (railIndex === null) return;
+                    setFocus({ section: railIndex, index: idx });
+                  }}
+                  onSelect={onSelect}
+                  onRemove={() => handleRemove(movie)}
+                />
+              ))}
+            </AnimatePresence>
+          </motion.div>
         </div>
       </div>
     </motion.main>
