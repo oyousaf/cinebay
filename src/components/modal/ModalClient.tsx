@@ -8,6 +8,7 @@ import type { Movie } from "@/types/movie";
 import { fetchDetails, TMDB_IMAGE } from "@/lib/tmdb";
 
 import { useNavigation } from "@/context/NavigationContext";
+import { useWatchlist } from "@/context/WatchlistContext";
 
 import ModalHeader from "./ModalHeader";
 import ModalMeta from "./ModalMeta";
@@ -48,13 +49,38 @@ export default function ModalClient({
   onBack?: () => void;
 }) {
   const modalRef = useRef<HTMLDivElement>(null);
-
-  const { setModalOpen, setPlayHandler } = useNavigation();
-
   const loadingRef = useRef(false);
+
+  const { setModalOpen, setPlayHandler, setSelectHandler, setToggleHandler } =
+    useNavigation();
+
+  const { toggleWatchlist } = useWatchlist();
 
   const isPerson = movie.media_type === "person";
   const isTV = movie.media_type === "tv";
+
+  /* =========================
+     PLAY
+  ========================= */
+
+  const handlePlay = useCallback(() => {
+    sessionStorage.setItem("lastFocusedTile", String(movie.id));
+
+    if (movie.media_type === "tv") {
+      window.location.href = `/watch/tv/${movie.id}/1/1`;
+    } else {
+      window.location.href = `/watch/movie/${movie.id}`;
+    }
+  }, [movie.id, movie.media_type]);
+
+  /* =========================
+     TOGGLE WATCHLIST
+  ========================= */
+
+  const handleToggle = useCallback(() => {
+    toggleWatchlist(movie);
+    toast.success("Watchlist updated");
+  }, [movie, toggleWatchlist]);
 
   /* =========================
      ESCAPE
@@ -66,18 +92,28 @@ export default function ModalClient({
   }, [onBack, onClose]);
 
   /* =========================
-     HARD INPUT LAYER
+     KEYBOARD
   ========================= */
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const key = e.key;
+      const key = e.key.toLowerCase();
 
-      if (
-        key === "Escape" ||
-        key === "Backspace" ||
-        key === "BrowserBack"
-      ) {
+      if (key === "enter") {
+        e.preventDefault();
+        e.stopPropagation();
+        handlePlay();
+        return;
+      }
+
+      if (key === "y") {
+        e.preventDefault();
+        e.stopPropagation();
+        handleToggle();
+        return;
+      }
+
+      if (key === "escape" || key === "backspace") {
         e.preventDefault();
         e.stopPropagation();
         handleEscape();
@@ -85,14 +121,11 @@ export default function ModalClient({
     };
 
     window.addEventListener("keydown", onKey, true);
-
-    return () => {
-      window.removeEventListener("keydown", onKey, true);
-    };
-  }, [handleEscape]);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [handlePlay, handleToggle, handleEscape]);
 
   /* =========================
-     GAMEPAD (LOCAL, NOT GLOBAL)
+     GAMEPAD
   ========================= */
 
   useEffect(() => {
@@ -102,20 +135,22 @@ export default function ModalClient({
       const pad = navigator.getGamepads?.()[0];
 
       if (pad) {
-        const bPressed = pad.buttons?.[1]?.pressed;
+        const start = pad.buttons?.[9]?.pressed;
+        const rt = (pad.buttons?.[7]?.value ?? 0) > 0.75;
+        const y = pad.buttons?.[3]?.pressed;
+        const b = pad.buttons?.[1]?.pressed;
 
-        if (bPressed) {
-          handleEscape();
-        }
+        if (start || rt) handlePlay();
+        if (y) handleToggle();
+        if (b) handleEscape();
       }
 
       raf = requestAnimationFrame(loop);
     };
 
     raf = requestAnimationFrame(loop);
-
     return () => cancelAnimationFrame(raf);
-  }, [handleEscape]);
+  }, [handlePlay, handleToggle, handleEscape]);
 
   /* =========================
      MODAL LIFECYCLE
@@ -124,21 +159,24 @@ export default function ModalClient({
   useEffect(() => {
     setModalOpen(true);
 
-    setPlayHandler(() => {
-      sessionStorage.setItem("lastFocusedTile", String(movie.id));
-
-      if (movie.media_type === "tv") {
-        window.location.href = `/watch/tv/${movie.id}/1/1`;
-      } else {
-        window.location.href = `/watch/movie/${movie.id}`;
-      }
-    });
+    setPlayHandler(() => handlePlay);
+    setSelectHandler(() => handlePlay);
+    setToggleHandler(() => handleToggle);
 
     return () => {
       setModalOpen(false);
       setPlayHandler(null);
+      setSelectHandler(null);
+      setToggleHandler(null);
     };
-  }, [movie.id, movie.media_type, setModalOpen, setPlayHandler]);
+  }, [
+    handlePlay,
+    handleToggle,
+    setModalOpen,
+    setPlayHandler,
+    setSelectHandler,
+    setToggleHandler,
+  ]);
 
   /* ---------- Scroll lock ---------- */
 
@@ -166,25 +204,7 @@ export default function ModalClient({
   const posterPath = movie.profile_path || movie.poster_path;
   const poster = posterPath ? `${TMDB_IMAGE}${posterPath}` : "/fallback.jpg";
 
-  /* ---------- Handlers ---------- */
-
-  const handlePersonClick = useCallback(
-    async (id: number) => {
-      if (!id || loadingRef.current) return;
-
-      loadingRef.current = true;
-
-      try {
-        const full = await fetchDetails(id, "person");
-        if (full) onSelect?.(full);
-      } catch {
-        toast.error("Failed to load person.");
-      } finally {
-        loadingRef.current = false;
-      }
-    },
-    [onSelect],
-  );
+  /* ---------- Select helpers ---------- */
 
   const handleSelectWithDetails = useCallback(
     async (item: Movie) => {
@@ -207,6 +227,10 @@ export default function ModalClient({
     [movie.media_type, onSelect],
   );
 
+  /* =========================
+     UI
+  ========================= */
+
   return (
     <AnimatePresence mode="wait">
       <motion.div
@@ -214,7 +238,6 @@ export default function ModalClient({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        transition={{ duration: 0.25, ease: EASE_OUT }}
         className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${BACKDROP}`}
         onClick={(e) => {
           if (e.target === e.currentTarget) handleEscape();
@@ -225,7 +248,6 @@ export default function ModalClient({
           initial={{ scale: 0.98, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.98, opacity: 0 }}
-          transition={{ duration: 0.25, ease: EASE_OUT }}
           className={SURFACE}
           onClick={(e) => e.stopPropagation()}
         >
@@ -244,7 +266,6 @@ export default function ModalClient({
                   movie={movie}
                   director={director}
                   creators={creators}
-                  onPersonClick={handlePersonClick}
                 />
 
                 <ModalBody movie={movie} onSelect={onSelect} />
