@@ -29,20 +29,12 @@ const navItems: NavItem[] = [
 export default function Navbar() {
   const { showTooltip, hideTooltip } = useTooltip();
 
-  const {
-    activeTab,
-    setActiveTab,
-    setTabNavigator,
-    isModalOpen,
-    focus,
-    setFocusByIndex,
-  } = useNavigation();
+  const { activeTab, restoreFocusForTab, setTabNavigator, isModalOpen } =
+    useNavigation();
 
   const pressTimeout = useRef<number | null>(null);
 
-  /* -------------------------------------------------
-     TAB NAVIGATION (CONTROLLER / KEYBOARD)
-  -------------------------------------------------- */
+  /* ---------- TAB NAVIGATION (controller / keyboard) ---------- */
   useEffect(() => {
     setTabNavigator((direction) => {
       if (isModalOpen) return;
@@ -51,48 +43,22 @@ export default function Navbar() {
       if (index === -1) return;
 
       if (direction === "up") {
-        const next =
-          navItems[(index - 1 + navItems.length) % navItems.length].id;
-        setActiveTab(next);
+        restoreFocusForTab(
+          navItems[(index - 1 + navItems.length) % navItems.length].id,
+        );
       }
 
       if (direction === "down") {
-        const next = navItems[(index + 1) % navItems.length].id;
-        setActiveTab(next);
+        restoreFocusForTab(navItems[(index + 1) % navItems.length].id);
       }
 
       if (direction === "escape" && activeTab === "search") {
-        setActiveTab("movies");
+        restoreFocusForTab("movies");
       }
     });
-  }, [activeTab, isModalOpen, setActiveTab, setTabNavigator]);
+  }, [activeTab, isModalOpen, restoreFocusForTab, setTabNavigator]);
 
-  /* -------------------------------------------------
-     FOCUS SYNC (NAVBAR <-> GRID)
-  -------------------------------------------------- */
-
-  // When user moves UP from first rail → move focus to navbar (virtual section -1)
-  useEffect(() => {
-    if (focus.section === 0) {
-      // already in first rail, nothing to do
-      return;
-    }
-
-    if (focus.section < 0) {
-      // navbar "focused"
-      return;
-    }
-  }, [focus.section]);
-
-  // Clicking navbar = reset focus to grid top
-  const handleClick = (tab: Tab) => {
-    setActiveTab(tab);
-    setFocusByIndex(0, 0);
-  };
-
-  /* -------------------------------------------------
-     TOUCH TOOLTIP (MOBILE)
-  -------------------------------------------------- */
+  /* ---------- TOOLTIP (mobile long press) ---------- */
   const handleTouchStart = (label: string, target: HTMLElement) => {
     pressTimeout.current = window.setTimeout(() => {
       showTooltip(label, "top", target);
@@ -107,24 +73,19 @@ export default function Navbar() {
     hideTooltip();
   };
 
-  /* -------------------------------------------------
-     CLEANUP
-  -------------------------------------------------- */
+  /* ---------- CLEANUP ---------- */
   useEffect(() => {
     return () => {
       if (pressTimeout.current !== null) {
         clearTimeout(pressTimeout.current);
-        pressTimeout.current = null;
       }
     };
   }, []);
 
-  /* -------------------------------------------------
-     RENDER
-  -------------------------------------------------- */
+  /* ---------- RENDER ---------- */
   return (
     <>
-      {/* Desktop Sidebar */}
+      {/* Desktop */}
       <aside className="hidden md:flex fixed left-0 top-0 bottom-0 w-20 flex-col items-center justify-between bg-[hsl(var(--background))] border-r border-border z-40">
         <div className="pt-4">
           <motion.img
@@ -147,7 +108,7 @@ export default function Navbar() {
                 type="button"
                 aria-label={item.label}
                 aria-current={active ? "page" : undefined}
-                onClick={() => handleClick(item.id)}
+                onClick={() => restoreFocusForTab(item.id)}
                 onMouseEnter={(e) =>
                   showTooltip(item.label, "side", e.currentTarget)
                 }
@@ -180,7 +141,7 @@ export default function Navbar() {
         </div>
       </aside>
 
-      {/* Mobile Bottom Nav */}
+      {/* Mobile */}
       <nav
         className="md:hidden fixed bottom-0 left-0 w-full z-30 bg-[hsl(var(--background))] border-t border-border
         flex justify-around items-center h-[calc(var(--bottom-nav-height)+env(safe-area-inset-bottom))]
@@ -196,7 +157,7 @@ export default function Navbar() {
               type="button"
               aria-label={item.label}
               aria-current={active ? "page" : undefined}
-              onClick={() => handleClick(item.id)}
+              onClick={() => restoreFocusForTab(item.id)}
               onTouchStart={(e) =>
                 handleTouchStart(item.label, e.currentTarget)
               }
@@ -206,9 +167,7 @@ export default function Navbar() {
                 active ? "text-[hsl(var(--foreground))]" : "opacity-50"
               }`}
             >
-              <motion.span whileTap={{ scale: 0.9 }}>
-                {item.icon}
-              </motion.span>
+              <motion.span whileTap={{ scale: 0.9 }}>{item.icon}</motion.span>
 
               <AnimatePresence>
                 {active && (
