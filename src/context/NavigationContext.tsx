@@ -43,8 +43,6 @@ interface NavigationContextType {
   setToggleHandler: (fn: (() => void) | null) => void;
 }
 
-/* ======  CONSTANTS  ======== */
-
 const NavigationContext = createContext<NavigationContextType | null>(null);
 
 const TAB_ORDER: Tab[] = [
@@ -55,6 +53,11 @@ const TAB_ORDER: Tab[] = [
   "watchlist",
 ];
 
+const TAB_STORAGE_KEY = "nav_active_tab";
+const FOCUS_STORAGE_KEY = "nav_focus_memory";
+
+/* ========================= */
+
 const STICK_DEADZONE = 0.45;
 const INITIAL_REPEAT_DELAY = 220;
 const REPEAT_INTERVAL = 90;
@@ -62,12 +65,89 @@ const REPEAT_INTERVAL = 90;
 const isPressed = (b?: GamepadButton) => !!b?.pressed || (b?.value ?? 0) > 0.5;
 
 export function NavigationProvider({ children }: { children: ReactNode }) {
-  const [activeTab, setActiveTab] = useState<Tab>("movies");
-  const [focus, setFocus] = useState<FocusTarget>({ section: 0, index: 0 });
+  /* ---------- ACTIVE TAB ---------- */
+
+  const [activeTab, _setActiveTab] = useState<Tab>("movies");
+
+  useEffect(() => {
+    const stored = localStorage.getItem(TAB_STORAGE_KEY);
+    if (stored && TAB_ORDER.includes(stored as Tab)) {
+      _setActiveTab(stored as Tab);
+    }
+  }, []);
+
+  const setActiveTab = useCallback((tab: Tab) => {
+    _setActiveTab(tab);
+    localStorage.setItem(TAB_STORAGE_KEY, tab);
+  }, []);
+
+  /* ---------- FOCUS + MEMORY ---------- */
+
+  const [focus, setFocus] = useState<FocusTarget>({
+    section: 0,
+    index: 0,
+  });
+
+  const focusMemoryRef = useRef<Record<Tab, FocusTarget>>({
+    movies: { section: 0, index: 0 },
+    tvshows: { section: 0, index: 0 },
+    search: { section: 0, index: 0 },
+    devspick: { section: 0, index: 0 },
+    watchlist: { section: 0, index: 0 },
+  });
+
+  const activeTabRef = useRef<Tab>("movies");
+
+  useEffect(() => {
+    activeTabRef.current = activeTab;
+  }, [activeTab]);
+
+  /* ---------- LOAD FOCUS MEMORY ---------- */
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(FOCUS_STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        focusMemoryRef.current = {
+          ...focusMemoryRef.current,
+          ...parsed,
+        };
+      }
+    } catch {}
+  }, []);
+
+  /* ---------- RESTORE FOCUS ON TAB LOAD ---------- */
+
+  useEffect(() => {
+    const saved = focusMemoryRef.current[activeTab];
+    if (saved) {
+      setFocus(saved);
+    }
+  }, [activeTab]);
+
+  /* ---------- SAFE FOCUS SETTER ---------- */
+
+  const setFocusSafe: SetFocus = useCallback((next) => {
+    setFocus((prev) => {
+      const resolved = typeof next === "function" ? next(prev) : next;
+
+      const tab = activeTabRef.current;
+      focusMemoryRef.current[tab] = resolved;
+
+      // persist
+      localStorage.setItem(
+        FOCUS_STORAGE_KEY,
+        JSON.stringify(focusMemoryRef.current),
+      );
+
+      return resolved;
+    });
+  }, []);
 
   const setFocusByIndex = useCallback(
-    (section: number, index: number) => setFocus({ section, index }),
-    [],
+    (section: number, index: number) => setFocusSafe({ section, index }),
+    [setFocusSafe],
   );
 
   /* ---------- rails ---------- */
@@ -98,11 +178,22 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const restoreFocusForTab = useCallback((tab: Tab) => {
-    railCount.current = 0;
-    setRails([]);
-    setActiveTab(tab);
-  }, []);
+  const restoreFocusForTab = useCallback(
+    (tab: Tab) => {
+      // save current tab focus
+      focusMemoryRef.current[activeTabRef.current] = focus;
+
+      railCount.current = 0;
+      setRails([]);
+
+      setActiveTab(tab);
+
+      const nextFocus = focusMemoryRef.current[tab] ?? { section: 0, index: 0 };
+
+      setFocus(nextFocus);
+    },
+    [focus, setActiveTab],
+  );
 
   /* ---------- modal ---------- */
 
@@ -139,19 +230,23 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
 
   /* ---------- movement ---------- */
 
-  const moveHorizontal = useCallback((dir: "left" | "right") => {
-    setFocus((f) => {
-      const len = railsRef.current[f.section] ?? 1;
-      const max = Math.max(len - 1, 0);
-      return {
-        ...f,
-        index:
-          dir === "right"
-            ? Math.min(f.index + 1, max)
-            : Math.max(0, f.index - 1),
-      };
-    });
-  }, []);
+  const moveHorizontal = useCallback(
+    (dir: "left" | "right") => {
+      setFocusSafe((f) => {
+        const len = railsRef.current[f.section] ?? 1;
+        const max = Math.max(len - 1, 0);
+
+        return {
+          ...f,
+          index:
+            dir === "right"
+              ? Math.min(f.index + 1, max)
+              : Math.max(0, f.index - 1),
+        };
+      });
+    },
+    [setFocusSafe],
+  );
 
   const cycleTab = useCallback(
     (dir: "prev" | "next") => {
@@ -181,12 +276,8 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
           target.tagName === "TEXTAREA" ||
           target.isContentEditable);
 
-      // 🚫 Ignore navigation keys while typing
       if (isTyping) {
-        // Allow escape still
-        if (k === "Escape") {
-          tabNavigatorRef.current?.("escape");
-        }
+        if (k === "Escape") tabNavigatorRef.current?.("escape");
         return;
       }
 
@@ -284,7 +375,6 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       single("rb", isPressed(pad.buttons?.[5]), () => cycleTab("next"));
     }
 
-    /* merged A + Back */
     const selectPressed =
       isPressed(pad.buttons?.[0]) || isPressed(pad.buttons?.[8]);
 
@@ -324,7 +414,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       activeTab,
       setActiveTab,
       focus,
-      setFocus,
+      setFocus: setFocusSafe,
       setFocusByIndex,
       registerRail,
       updateRailLength,
@@ -336,7 +426,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       setPlayHandler,
       setToggleHandler,
     }),
-    [activeTab, focus, isModalOpen],
+    [activeTab, focus, isModalOpen, setFocusSafe, setFocusByIndex],
   );
 
   return (
