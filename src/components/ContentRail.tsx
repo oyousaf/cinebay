@@ -125,46 +125,50 @@ export default function ContentRail({ items, onSelect }: ContentRailProps) {
     });
   }, [items.length, registerRail, updateRailLength]);
 
-  /* ---------- SINGLE SOURCE: restore + clamp + default ---------- */
+  /* ---------- RESTORE FOCUS AFTER PLAYER ---------- */
+
+  useEffect(() => {
+    if (railIndex === null) return;
+
+    const last = sessionStorage.getItem("lastFocusedTile");
+    if (!last) return;
+
+    const idx = items.findIndex((m) => String(m.id) === last);
+
+    if (idx >= 0) {
+      setFocusByIndex(railIndex, idx);
+
+      requestAnimationFrame(() => {
+        const el = tileRefs.current[idx];
+        if (el) el.focus({ preventScroll: true });
+      });
+    }
+
+    sessionStorage.removeItem("lastFocusedTile");
+  }, [items, railIndex, setFocusByIndex]);
+
+  /* ---------- clamp focus ---------- */
+
+  useEffect(() => {
+    if (railIndex === null || !items.length) return;
+    if (focus.section !== railIndex) return;
+
+    const safeIndex = Math.min(Math.max(focus.index, 0), items.length - 1);
+
+    if (safeIndex !== focus.index) {
+      setFocusByIndex(railIndex, safeIndex);
+    }
+  }, [railIndex, items.length, focus.section, focus.index, setFocusByIndex]);
+
+  /* ---------- ensure first rail focus ---------- */
 
   useEffect(() => {
     if (railIndex === null || !items.length) return;
 
-    // 1. restore from player
-    const last = sessionStorage.getItem("lastFocusedTile");
-
-    if (last) {
-      const idx = items.findIndex((m) => String(m.id) === last);
-
-      if (idx >= 0) {
-        setFocusByIndex(railIndex, idx);
-
-        requestAnimationFrame(() => {
-          tileRefs.current[idx]?.focus({ preventScroll: true });
-        });
-
-        sessionStorage.removeItem("lastFocusedTile");
-        return;
-      }
-
-      sessionStorage.removeItem("lastFocusedTile");
-    }
-
-    // 2. clamp if this rail is active
-    if (focus.section === railIndex) {
-      const safe = Math.min(focus.index, items.length - 1);
-
-      if (safe !== focus.index) {
-        setFocusByIndex(railIndex, safe);
-      }
-      return;
-    }
-
-    // 3. default first rail
-    if (railIndex === 0) {
+    if (railIndex === 0 && focus.section !== 0) {
       setFocusByIndex(0, 0);
     }
-  }, [railIndex, items, focus.section, focus.index, setFocusByIndex]);
+  }, [railIndex, items.length, focus.section, setFocusByIndex]);
 
   /* ---------- active item ---------- */
 
@@ -172,7 +176,7 @@ export default function ContentRail({ items, onSelect }: ContentRailProps) {
     if (!items.length || railIndex === null) return 0;
     if (focus.section !== railIndex) return 0;
 
-    return Math.min(focus.index, items.length - 1);
+    return Math.min(Math.max(focus.index, 0), items.length - 1);
   }, [items.length, railIndex, focus.section, focus.index]);
 
   const activeItem = useMemo(() => {
@@ -184,11 +188,14 @@ export default function ContentRail({ items, onSelect }: ContentRailProps) {
   useEffect(() => {
     if (!activeItem) return;
     if (railIndex === null) return;
+
     if (focus.section !== railIndex) return;
 
-    setSelectHandler(() => () => onSelect(activeItem));
+    setSelectHandler(() => {
+      onSelect(activeItem);
+    });
 
-    setPlayHandler(() => () => {
+    setPlayHandler(() => {
       sessionStorage.setItem("lastFocusedTile", String(activeItem.id));
 
       if (activeItem.media_type === "tv") {
@@ -198,7 +205,7 @@ export default function ContentRail({ items, onSelect }: ContentRailProps) {
       }
     });
 
-    setToggleHandler(() => () => {
+    setToggleHandler(() => {
       toggleWatchlist(activeItem);
     });
 
@@ -212,8 +219,10 @@ export default function ContentRail({ items, onSelect }: ContentRailProps) {
   /* ---------- focus handler ---------- */
 
   const handleFocus = useCallback(
-    (_: Movie, idx: number) => {
-      if (railIndex !== null) setFocusByIndex(railIndex, idx);
+    (_movie: Movie, idx: number) => {
+      if (railIndex !== null) {
+        setFocusByIndex(railIndex, idx);
+      }
     },
     [railIndex, setFocusByIndex],
   );
