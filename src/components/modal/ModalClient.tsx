@@ -14,7 +14,7 @@ import ModalMeta from "./ModalMeta";
 import ModalActions from "./ModalActions";
 import ModalBody from "./ModalBody";
 
-/* ---------- Lazy blocks ---------- */
+/* ---------- Lazy ---------- */
 const LazySimilar = lazy(() =>
   import("./Recommendations").then((m) => ({ default: m.Similar })),
 );
@@ -25,7 +25,6 @@ const LazyRecommendations = lazy(() =>
 );
 const LazyKnownForSlider = lazy(() => import("./KnownFor"));
 
-/* ---------- Visual tokens ---------- */
 const BACKDROP =
   "bg-[radial-gradient(ellipse_at_center,hsl(var(--background)/0.25),hsl(var(--background)/0.55)_60%,hsl(var(--background)/0.75))]";
 
@@ -50,11 +49,7 @@ export default function ModalClient({
 }) {
   const modalRef = useRef<HTMLDivElement>(null);
 
-  const {
-    setTabNavigator,
-    setModalOpen,
-    setPlayHandler,
-  } = useNavigation();
+  const { setModalOpen, setPlayHandler } = useNavigation();
 
   const loadingRef = useRef(false);
 
@@ -62,18 +57,72 @@ export default function ModalClient({
   const isTV = movie.media_type === "tv";
 
   /* =========================
-     MODAL INPUT CONTROL
+     ESCAPE
+  ========================= */
+
+  const handleEscape = useCallback(() => {
+    if (onBack) onBack();
+    else onClose();
+  }, [onBack, onClose]);
+
+  /* =========================
+     HARD INPUT LAYER
+  ========================= */
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const key = e.key;
+
+      if (
+        key === "Escape" ||
+        key === "Backspace" ||
+        key === "BrowserBack"
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+        handleEscape();
+      }
+    };
+
+    window.addEventListener("keydown", onKey, true);
+
+    return () => {
+      window.removeEventListener("keydown", onKey, true);
+    };
+  }, [handleEscape]);
+
+  /* =========================
+     GAMEPAD (LOCAL, NOT GLOBAL)
+  ========================= */
+
+  useEffect(() => {
+    let raf: number;
+
+    const loop = () => {
+      const pad = navigator.getGamepads?.()[0];
+
+      if (pad) {
+        const bPressed = pad.buttons?.[1]?.pressed;
+
+        if (bPressed) {
+          handleEscape();
+        }
+      }
+
+      raf = requestAnimationFrame(loop);
+    };
+
+    raf = requestAnimationFrame(loop);
+
+    return () => cancelAnimationFrame(raf);
+  }, [handleEscape]);
+
+  /* =========================
+     MODAL LIFECYCLE
   ========================= */
 
   useEffect(() => {
     setModalOpen(true);
-
-    setTabNavigator((dir) => {
-      if (dir === "escape") {
-        if (onBack) onBack();
-        else onClose();
-      }
-    });
 
     setPlayHandler(() => {
       sessionStorage.setItem("lastFocusedTile", String(movie.id));
@@ -87,18 +136,9 @@ export default function ModalClient({
 
     return () => {
       setModalOpen(false);
-      setTabNavigator(() => {});
       setPlayHandler(null);
     };
-  }, [
-    movie.id,
-    movie.media_type,
-    onClose,
-    onBack,
-    setTabNavigator,
-    setModalOpen,
-    setPlayHandler,
-  ]);
+  }, [movie.id, movie.media_type, setModalOpen, setPlayHandler]);
 
   /* ---------- Scroll lock ---------- */
 
@@ -107,7 +147,7 @@ export default function ModalClient({
     return () => document.body.classList.remove("player-open");
   }, []);
 
-  /* ---------- Derived data ---------- */
+  /* ---------- Derived ---------- */
 
   const director = useMemo(() => {
     if (movie.media_type !== "movie") return null;
@@ -177,7 +217,7 @@ export default function ModalClient({
         transition={{ duration: 0.25, ease: EASE_OUT }}
         className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${BACKDROP}`}
         onClick={(e) => {
-          if (e.target === e.currentTarget) onClose();
+          if (e.target === e.currentTarget) handleEscape();
         }}
       >
         <motion.div
