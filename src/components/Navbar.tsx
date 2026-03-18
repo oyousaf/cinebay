@@ -12,12 +12,6 @@ import logo from "/logo.png";
 
 type Tab = "movies" | "tvshows" | "search" | "devspick" | "watchlist";
 
-interface NavbarProps {
-  activeTab: Tab;
-  onTabChange: (tab: Tab) => void;
-  isModalOpen?: boolean;
-}
-
 type NavItem = {
   id: Tab;
   icon: React.ReactElement;
@@ -32,18 +26,22 @@ const navItems: NavItem[] = [
   { id: "watchlist", icon: <FaBookmark size={30} />, label: "Watchlist" },
 ];
 
-export default function Navbar({
-  activeTab,
-  onTabChange,
-  isModalOpen,
-}: NavbarProps) {
+export default function Navbar() {
   const { showTooltip, hideTooltip } = useTooltip();
-  const { setTabNavigator } = useNavigation();
+
+  const {
+    activeTab,
+    setActiveTab,
+    setTabNavigator,
+    isModalOpen,
+    focus,
+    setFocusByIndex,
+  } = useNavigation();
 
   const pressTimeout = useRef<number | null>(null);
 
   /* -------------------------------------------------
-     TAB NAVIGATION REGISTRATION
+     TAB NAVIGATION (CONTROLLER / KEYBOARD)
   -------------------------------------------------- */
   useEffect(() => {
     setTabNavigator((direction) => {
@@ -53,20 +51,44 @@ export default function Navbar({
       if (index === -1) return;
 
       if (direction === "up") {
-        onTabChange(
-          navItems[(index - 1 + navItems.length) % navItems.length].id,
-        );
+        const next =
+          navItems[(index - 1 + navItems.length) % navItems.length].id;
+        setActiveTab(next);
       }
 
       if (direction === "down") {
-        onTabChange(navItems[(index + 1) % navItems.length].id);
+        const next = navItems[(index + 1) % navItems.length].id;
+        setActiveTab(next);
       }
 
       if (direction === "escape" && activeTab === "search") {
-        onTabChange("movies");
+        setActiveTab("movies");
       }
     });
-  }, [activeTab, isModalOpen, onTabChange, setTabNavigator]);
+  }, [activeTab, isModalOpen, setActiveTab, setTabNavigator]);
+
+  /* -------------------------------------------------
+     FOCUS SYNC (NAVBAR <-> GRID)
+  -------------------------------------------------- */
+
+  // When user moves UP from first rail → move focus to navbar (virtual section -1)
+  useEffect(() => {
+    if (focus.section === 0) {
+      // already in first rail, nothing to do
+      return;
+    }
+
+    if (focus.section < 0) {
+      // navbar "focused"
+      return;
+    }
+  }, [focus.section]);
+
+  // Clicking navbar = reset focus to grid top
+  const handleClick = (tab: Tab) => {
+    setActiveTab(tab);
+    setFocusByIndex(0, 0);
+  };
 
   /* -------------------------------------------------
      TOUCH TOOLTIP (MOBILE)
@@ -111,7 +133,7 @@ export default function Navbar({
             className="w-12 h-12 rounded-full"
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.35, ease: "easeOut" }}
+            transition={{ duration: 0.35 }}
           />
         </div>
 
@@ -125,7 +147,7 @@ export default function Navbar({
                 type="button"
                 aria-label={item.label}
                 aria-current={active ? "page" : undefined}
-                onClick={() => onTabChange(item.id)}
+                onClick={() => handleClick(item.id)}
                 onMouseEnter={(e) =>
                   showTooltip(item.label, "side", e.currentTarget)
                 }
@@ -144,8 +166,7 @@ export default function Navbar({
                       initial={{ scaleY: 0 }}
                       animate={{ scaleY: 1 }}
                       exit={{ scaleY: 0 }}
-                      transition={{ duration: 0.2, ease: "easeOut" }}
-                      className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-full bg-[hsl(var(--foreground))] origin-center"
+                      className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-full bg-[hsl(var(--foreground))]"
                     />
                   )}
                 </AnimatePresence>
@@ -175,7 +196,7 @@ export default function Navbar({
               type="button"
               aria-label={item.label}
               aria-current={active ? "page" : undefined}
-              onClick={() => onTabChange(item.id)}
+              onClick={() => handleClick(item.id)}
               onTouchStart={(e) =>
                 handleTouchStart(item.label, e.currentTarget)
               }
@@ -185,7 +206,9 @@ export default function Navbar({
                 active ? "text-[hsl(var(--foreground))]" : "opacity-50"
               }`}
             >
-              <motion.span whileTap={{ scale: 0.9 }}>{item.icon}</motion.span>
+              <motion.span whileTap={{ scale: 0.9 }}>
+                {item.icon}
+              </motion.span>
 
               <AnimatePresence>
                 {active && (
@@ -193,8 +216,7 @@ export default function Navbar({
                     initial={{ scaleX: 0 }}
                     animate={{ scaleX: 1 }}
                     exit={{ scaleX: 0 }}
-                    transition={{ duration: 0.2, ease: "easeOut" }}
-                    className="absolute -bottom-1.5 w-8 h-1 rounded-full bg-[hsl(var(--foreground))] origin-center"
+                    className="absolute -bottom-1.5 w-8 h-1 rounded-full bg-[hsl(var(--foreground))]"
                   />
                 )}
               </AnimatePresence>
