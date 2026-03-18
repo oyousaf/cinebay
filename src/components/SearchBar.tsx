@@ -231,6 +231,7 @@ function SearchBar({
               onChange={(e) => sb.setQuery(e.target.value)}
               onFocus={sb.onFocus}
               onBlur={sb.onBlur}
+              onKeyDown={(e) => e.stopPropagation()}
               placeholder={
                 sb.listening ? "Listening…" : "Search movies, shows, people…"
               }

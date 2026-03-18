@@ -61,7 +61,6 @@ const REPEAT_INTERVAL = 90;
 
 const isPressed = (b?: GamepadButton) => !!b?.pressed || (b?.value ?? 0) > 0.5;
 
-
 export function NavigationProvider({ children }: { children: ReactNode }) {
   const [activeTab, setActiveTab] = useState<Tab>("movies");
   const [focus, setFocus] = useState<FocusTarget>({ section: 0, index: 0 });
@@ -174,9 +173,20 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const handle = (e: KeyboardEvent) => {
       const k = e.key;
+      const target = e.target as HTMLElement | null;
 
-      if (isModalOpenRef.current) {
-        if (k === "Escape") tabNavigatorRef.current?.("escape");
+      const isTyping =
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable);
+
+      // 🚫 Ignore navigation keys while typing
+      if (isTyping) {
+        // Allow escape still
+        if (k === "Escape") {
+          tabNavigatorRef.current?.("escape");
+        }
         return;
       }
 
