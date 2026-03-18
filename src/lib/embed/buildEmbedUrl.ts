@@ -11,7 +11,7 @@ export interface PlaybackIntent {
   episode?: number;
 }
 
-export type ProviderType = "vidlink" | "vidfast" | "superembed";
+export type ProviderType = "vidfast" | "vidlink" | "superembed";
 
 export interface BuildEmbedOptions {
   provider?: ProviderType;
@@ -19,12 +19,8 @@ export interface BuildEmbedOptions {
   autoplay?: boolean;
   theme?: string;
   subtitles?: string;
-  title?: boolean;
-  poster?: boolean;
-  nextButton?: boolean;
-  autoNext?: boolean;
 
-  // VidFast optional controls
+  // VidFast controls
   server?: string;
   hideServer?: boolean;
   fullscreenButton?: boolean;
@@ -32,16 +28,22 @@ export interface BuildEmbedOptions {
 }
 
 /* -------------------------------------------------
-   PROVIDER ORDER
+   PROVIDER ORDER (UPDATED)
 -------------------------------------------------- */
 
 export const PROVIDER_ORDER: ProviderType[] = [
-  "vidlink",
   "vidfast",
+  "vidlink",
   "superembed",
 ];
 
-const DEFAULT_THEME = "2dd4bf";
+/* -------------------------------------------------
+   THEME (OMEGA STYLE)
+-------------------------------------------------- */
+
+const DEFAULT_THEME = "2dd4bf"; // teal
+const GOLD_ACCENT = "f59e0b";
+const WHITE = "ffffff";
 
 /* -------------------------------------------------
    INTERNAL
@@ -65,7 +67,7 @@ function tvDefaults(intent: PlaybackIntent) {
 }
 
 /* -------------------------------------------------
-   VIDFAST
+   VIDFAST 
 -------------------------------------------------- */
 
 function buildVidFastUrl(intent: PlaybackIntent, o: BuildEmbedOptions) {
@@ -73,19 +75,16 @@ function buildVidFastUrl(intent: PlaybackIntent, o: BuildEmbedOptions) {
 
   const query = buildQuery({
     autoplay: o.autoplay ?? true,
-    startAt: o.startAt && o.startAt > 0 ? o.startAt : undefined,
+    startAt: o.startAt && o.startAt > 5 ? o.startAt : undefined,
     theme: o.theme ?? DEFAULT_THEME,
-    title: o.title,
-    poster: o.poster,
-    sub: o.subtitles,
 
-    nextButton: o.nextButton ?? mediaType === "tv",
-    autoNext: o.autoNext ?? mediaType === "tv",
+    sub: o.subtitles ?? "en",
 
-    server: o.server,
-    hideServer: o.hideServer,
-    fullscreenButton: o.fullscreenButton,
-    chromecast: o.chromecast,
+    server: o.server ?? "auto",
+    hideServer: o.hideServer ?? true,
+
+    fullscreenButton: o.fullscreenButton ?? true,
+    chromecast: o.chromecast ?? true,
   });
 
   if (mediaType === "tv") {
@@ -105,16 +104,11 @@ function buildVidLinkUrl(intent: PlaybackIntent, o: BuildEmbedOptions) {
 
   const query = buildQuery({
     primaryColor: o.theme ?? DEFAULT_THEME,
-    secondaryColor: "f59e0b",
-    iconColor: "ffffff",
+    secondaryColor: GOLD_ACCENT,
+    iconColor: WHITE,
 
-    title: o.title ?? true,
-    poster: o.poster ?? true,
     autoplay: o.autoplay ?? true,
-
-    nextbutton: o.nextButton ?? mediaType === "tv",
-
-    startAt: o.startAt && o.startAt > 0 ? o.startAt : undefined,
+    startAt: o.startAt && o.startAt > 5 ? o.startAt : undefined,
   });
 
   if (mediaType === "tv") {
@@ -138,7 +132,7 @@ function buildSuperEmbedUrl(intent: PlaybackIntent, o: BuildEmbedOptions = {}) {
   const query = buildQuery({
     tmdb: 1,
     autoplay,
-    t: o.startAt && o.startAt > 0 ? o.startAt : undefined,
+    t: o.startAt && o.startAt > 5 ? o.startAt : undefined,
     color: theme,
     quality: "auto",
   });
@@ -160,15 +154,15 @@ export function buildEmbedUrl(
   intent: PlaybackIntent,
   options: BuildEmbedOptions = {},
 ): string {
-  const provider = options.provider ?? "vidlink";
+  const provider = options.provider ?? "vidfast";
 
   if (provider === "vidfast") {
     return buildVidFastUrl(intent, options);
   }
 
-  if (provider === "superembed") {
-    return buildSuperEmbedUrl(intent, options);
+  if (provider === "vidlink") {
+    return buildVidLinkUrl(intent, options);
   }
 
-  return buildVidLinkUrl(intent, options);
+  return buildSuperEmbedUrl(intent, options);
 }
