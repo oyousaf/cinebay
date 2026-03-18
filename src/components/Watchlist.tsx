@@ -37,6 +37,19 @@ const TYPES = [
 
 const defaultFilters: Filters = { sortBy: "rating-desc", type: "all" };
 
+/* ---------- Storage ---------- */
+
+function readStoredFilters(): Filters {
+  if (typeof window === "undefined") return defaultFilters;
+
+  try {
+    const stored = localStorage.getItem("watchlistFilters");
+    return stored ? JSON.parse(stored) : defaultFilters;
+  } catch {
+    return defaultFilters;
+  }
+}
+
 /* ---------- Tile ---------- */
 const WatchlistTile = React.memo(function WatchlistTile({
   movie,
@@ -51,8 +64,17 @@ const WatchlistTile = React.memo(function WatchlistTile({
   onSelect: (movie: Movie) => void;
   onRemove: () => void;
 }) {
+  const tileRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (isFocused) {
+      tileRef.current?.focus();
+    }
+  }, [isFocused]);
+
   return (
     <motion.div
+      ref={tileRef}
       layout
       tabIndex={0}
       role="button"
@@ -67,9 +89,11 @@ const WatchlistTile = React.memo(function WatchlistTile({
         if (e.key === "Delete") onRemove();
       }}
       className={[
-        "group relative aspect-[2/2.8] rounded-xl overflow-hidden bg-black",
+        "group relative aspect-[2/2.8] rounded-xl overflow-hidden bg-black transition",
         "focus-visible:ring-4 ring-[#80ffcc]",
-        isFocused ? "z-30" : "z-10",
+        isFocused
+          ? "z-30 ring-4 ring-[#80ffcc] scale-[1.03]"
+          : "z-10 ring-1 ring-transparent",
       ].join(" ")}
     >
       <img
@@ -81,7 +105,9 @@ const WatchlistTile = React.memo(function WatchlistTile({
         alt={movie.title || movie.name}
         loading="lazy"
         className="w-full h-full object-cover"
-        onError={(e) => ((e.target as HTMLImageElement).src = "/fallback.jpg")}
+        onError={(e) => {
+          (e.target as HTMLImageElement).src = "/fallback.jpg";
+        }}
       />
 
       <button
@@ -124,15 +150,14 @@ function FilterPill({
 }) {
   return (
     <button
+      type="button"
       onClick={onClick}
-      className="relative rounded-full px-4 py-2 text-sm xl:px-6 xl:py-3 xl:text-base transition-colors duration-150
-        hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#80ffcc]"
+      className="relative rounded-full px-4 py-2 text-sm xl:px-6 xl:py-3 xl:text-base transition-colors duration-150 hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#80ffcc]"
     >
       {active && (
         <motion.span
           layoutId={layoutId}
-          className="absolute inset-0 rounded-full bg-white/10 xl:bg-white/15 ring-1 ring-white/20
-            will-change-transform"
+          className="absolute inset-0 rounded-full bg-white/10 xl:bg-white/15 ring-1 ring-white/20 will-change-transform"
           transition={{ type: "spring", stiffness: 500, damping: 35 }}
         />
       )}
@@ -149,13 +174,38 @@ export default function Watchlist({
   onSelect: (movie: Movie) => void;
 }) {
   const { watchlist, toggleWatchlist } = useWatchlist();
-  const { focus, setFocus, registerRail, updateRailLength, activeTab } =
-    useNavigation();
+
+  const {
+    focus,
+    setFocus,
+    registerRail,
+    updateRailLength,
+    activeTab,
+    setSelectHandler,
+    setPlayHandler,
+    setToggleHandler,
+  } = useNavigation();
 
   const undoRef = useRef<{ movie: Movie; ts: number } | null>(null);
+  const railIndexRef = useRef<number | null>(null);
+  const hasClaimedInitialFocusRef = useRef(false);
+
+  const [filters, setFilters] = useState<Filters>(readStoredFilters);
+  const deferredFilters = useDeferredValue(filters);
+
+  /* ---------- Undo ---------- */
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const isTyping =
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable);
+
+      if (isTyping) return;
+
       if (
         (e.metaKey || e.ctrlKey) &&
         e.key.toLowerCase() === "z" &&
@@ -166,24 +216,18 @@ export default function Watchlist({
         undoRef.current = null;
       }
     };
+
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [toggleWatchlist]);
 
-  const [filters, setFilters] = useState<Filters>(() => {
-    try {
-      const stored = localStorage.getItem("watchlistFilters");
-      return stored ? JSON.parse(stored) : defaultFilters;
-    } catch {
-      return defaultFilters;
-    }
-  });
-
-  const deferredFilters = useDeferredValue(filters);
+  /* ---------- Persist filters ---------- */
 
   useEffect(() => {
     localStorage.setItem("watchlistFilters", JSON.stringify(filters));
   }, [filters]);
+
+  /* ---------- Filtered list ---------- */
 
   const filteredList = useMemo(() => {
     const list = watchlist.filter(
@@ -209,15 +253,17 @@ export default function Watchlist({
     }
   }, [watchlist, deferredFilters]);
 
-  const railIndexRef = useRef<number | null>(null);
+  /* ---------- Rail lifecycle ---------- */
 
   useEffect(() => {
     railIndexRef.current = null;
+    hasClaimedInitialFocusRef.current = false;
   }, [activeTab]);
 
   useEffect(() => {
     if (filteredList.length === 0) {
       railIndexRef.current = null;
+      hasClaimedInitialFocusRef.current = false;
       return;
     }
 
@@ -230,6 +276,30 @@ export default function Watchlist({
 
   const railIndex = railIndexRef.current;
 
+  /* ---------- Default / claimed focus when watchlist becomes active ---------- */
+
+  useEffect(() => {
+    if (activeTab !== "watchlist") return;
+    if (railIndex === null) return;
+    if (!filteredList.length) return;
+
+    setFocus((f) => {
+      if (!hasClaimedInitialFocusRef.current) {
+        hasClaimedInitialFocusRef.current = true;
+        return { section: railIndex, index: 0 };
+      }
+
+      if (f.section !== railIndex) {
+        return { section: railIndex, index: 0 };
+      }
+
+      const safeIndex = Math.min(f.index, filteredList.length - 1);
+      return safeIndex === f.index ? f : { ...f, index: safeIndex };
+    });
+  }, [activeTab, railIndex, filteredList.length, setFocus]);
+
+  /* ---------- Clamp focus after shrink ---------- */
+
   useEffect(() => {
     if (!filteredList.length || railIndex === null) return;
     if (focus.section !== railIndex) return;
@@ -240,6 +310,8 @@ export default function Watchlist({
     });
   }, [filteredList.length, railIndex, focus.section, setFocus]);
 
+  /* ---------- Actions ---------- */
+
   const handleRemove = useCallback(
     (movie: Movie) => {
       undoRef.current = { movie, ts: Date.now() };
@@ -248,6 +320,55 @@ export default function Watchlist({
     [toggleWatchlist],
   );
 
+  /* ---------- Focused item ---------- */
+
+  const focusedMovie = useMemo(() => {
+    if (activeTab !== "watchlist") return null;
+    if (railIndex === null) return null;
+    if (focus.section !== railIndex) return null;
+    return filteredList[focus.index] ?? null;
+  }, [activeTab, railIndex, focus.section, focus.index, filteredList]);
+
+  /* ---------- Context-level controller / keyboard / remote handlers ---------- */
+
+  useEffect(() => {
+    if (activeTab !== "watchlist") {
+      setSelectHandler(null);
+      setPlayHandler(null);
+      setToggleHandler(null);
+      return;
+    }
+
+    setSelectHandler(() => {
+      if (!focusedMovie) return;
+      onSelect(focusedMovie);
+    });
+
+    setPlayHandler(() => {
+      if (!focusedMovie) return;
+      onSelect(focusedMovie);
+    });
+
+    setToggleHandler(() => {
+      if (!focusedMovie) return;
+      handleRemove(focusedMovie);
+    });
+
+    return () => {
+      setSelectHandler(null);
+      setPlayHandler(null);
+      setToggleHandler(null);
+    };
+  }, [
+    activeTab,
+    focusedMovie,
+    onSelect,
+    handleRemove,
+    setSelectHandler,
+    setPlayHandler,
+    setToggleHandler,
+  ]);
+
   return (
     <motion.main
       initial={{ opacity: 0, y: 20 }}
@@ -255,16 +376,11 @@ export default function Watchlist({
       transition={{ duration: 0.4 }}
       className="h-screen w-full flex flex-col overflow-hidden"
     >
-      {/* ===============================
-        Sticky Header
-    =============================== */}
       <div className="sticky top-0 z-40 backdrop-blur-xl bg-black/40 border-b border-white/10">
-        {/* Title */}
         <div className="pt-10 pb-4 text-center">
           <h1 className="text-4xl font-bold">Watchlist</h1>
         </div>
 
-        {/* Filters */}
         <div className="px-4 pb-4">
           <div className="max-w-7xl xl:max-w-400 2xl:max-w-450 mx-auto flex flex-wrap gap-3 justify-center">
             {SORTS.map((s) => (
@@ -292,6 +408,7 @@ export default function Watchlist({
             ))}
 
             <button
+              type="button"
               onClick={() => setFilters(defaultFilters)}
               className="ml-2 px-3 py-2 rounded-full hover:bg-white/10"
               aria-label="Reset filters"
@@ -302,9 +419,6 @@ export default function Watchlist({
         </div>
       </div>
 
-      {/* ===============================
-        Scrollable Content Area
-    =============================== */}
       <div className="flex-1 overflow-y-auto scroll-smooth">
         <div className="max-w-7xl xl:max-w-400 2xl:max-w-450 mx-auto px-4 py-10">
           {filteredList.length === 0 ? (
@@ -319,17 +433,17 @@ export default function Watchlist({
               <AnimatePresence mode="popLayout">
                 {filteredList.map((movie, idx) => (
                   <WatchlistTile
-                    key={movie.id}
+                    key={`${movie.media_type ?? "item"}-${movie.id}`}
                     movie={movie}
                     isFocused={
                       railIndex !== null &&
                       focus.section === railIndex &&
                       focus.index === idx
                     }
-                    onFocus={() =>
-                      railIndex !== null &&
-                      setFocus({ section: railIndex, index: idx })
-                    }
+                    onFocus={() => {
+                      if (railIndex === null) return;
+                      setFocus({ section: railIndex, index: idx });
+                    }}
                     onSelect={onSelect}
                     onRemove={() => handleRemove(movie)}
                   />
