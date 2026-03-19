@@ -61,7 +61,7 @@ export default function ModalClient({
   const isTV = movie.media_type === "tv";
 
   /* =========================
-     PLAY (FIXED)
+     PLAY
   ========================= */
 
   const handlePlay = useCallback(() => {
