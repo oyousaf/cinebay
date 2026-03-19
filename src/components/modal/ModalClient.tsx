@@ -99,7 +99,7 @@ export default function ModalClient({
   }, [onBack, onClose]);
 
   /* =========================
-     FOCUS OWNERSHIP (FIXED)
+     FOCUS OWNERSHIP
   ========================= */
 
   useEffect(() => {
