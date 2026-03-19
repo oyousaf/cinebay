@@ -8,6 +8,7 @@ import type { Movie } from "@/types/movie";
 import Banner from "./Banner";
 import { useNavigation } from "@/context/NavigationContext";
 import { useWatchlist } from "@/context/WatchlistContext";
+import { getTVProgress } from "@/lib/continueWatching";
 
 const EASE_OUT = [0.22, 1, 0.36, 1] as const;
 
@@ -65,11 +66,7 @@ const Tile = React.memo(function Tile({
       />
 
       {showStatus && (
-        <div
-          className="absolute top-2 left-2 rounded-full px-2 py-0.5
-          text-[10px] md:text-xs font-bold uppercase
-          bg-[hsl(var(--foreground))] text-[hsl(var(--background))] shadow-md"
-        >
+        <div className="absolute top-2 left-2 rounded-full px-2 py-0.5 text-[10px] md:text-xs font-bold uppercase bg-[hsl(var(--foreground))] text-[hsl(var(--background))] shadow-md">
           {movie.status!.toUpperCase()}
         </div>
       )}
@@ -82,6 +79,8 @@ const Tile = React.memo(function Tile({
 export default function ContentRail({ items, onSelect }: ContentRailProps) {
   const railRef = useRef<HTMLDivElement | null>(null);
   const tileRefs = useRef<(HTMLButtonElement | null)[]>([]);
+
+  const activeItemRef = useRef<Movie | null>(null);
 
   const [railIndex, setRailIndex] = useState<number | null>(null);
 
@@ -98,13 +97,13 @@ export default function ContentRail({ items, onSelect }: ContentRailProps) {
 
   const { toggleWatchlist } = useWatchlist();
 
-  /* ---------- reset rail on tab change ---------- */
+  /* ---------- reset rail ---------- */
 
   useEffect(() => {
     setRailIndex(null);
   }, [activeTab]);
 
-  /* ---------- keep refs aligned ---------- */
+  /* ---------- refs ---------- */
 
   useEffect(() => {
     tileRefs.current = tileRefs.current.slice(0, items.length);
@@ -125,7 +124,7 @@ export default function ContentRail({ items, onSelect }: ContentRailProps) {
     });
   }, [items.length, registerRail, updateRailLength]);
 
-  /* ---------- RESTORE FOCUS AFTER PLAYER ---------- */
+  /* ---------- restore focus ---------- */
 
   useEffect(() => {
     if (railIndex === null) return;
@@ -139,38 +138,14 @@ export default function ContentRail({ items, onSelect }: ContentRailProps) {
       setFocusByIndex(railIndex, idx);
 
       requestAnimationFrame(() => {
-        const el = tileRefs.current[idx];
-        if (el) el.focus({ preventScroll: true });
+        tileRefs.current[idx]?.focus({ preventScroll: true });
       });
     }
 
     sessionStorage.removeItem("lastFocusedTile");
   }, [items, railIndex, setFocusByIndex]);
 
-  /* ---------- clamp focus ---------- */
-
-  useEffect(() => {
-    if (railIndex === null || !items.length) return;
-    if (focus.section !== railIndex) return;
-
-    const safeIndex = Math.min(Math.max(focus.index, 0), items.length - 1);
-
-    if (safeIndex !== focus.index) {
-      setFocusByIndex(railIndex, safeIndex);
-    }
-  }, [railIndex, items.length, focus.section, focus.index, setFocusByIndex]);
-
-  /* ---------- ensure first rail focus ---------- */
-
-  useEffect(() => {
-    if (railIndex === null || !items.length) return;
-
-    if (railIndex === 0 && focus.section !== 0) {
-      setFocusByIndex(0, 0);
-    }
-  }, [railIndex, items.length, focus.section, setFocusByIndex]);
-
-  /* ---------- active item ---------- */
+  /* ---------- safe index ---------- */
 
   const safeIndex = useMemo(() => {
     if (!items.length || railIndex === null) return 0;
@@ -179,34 +154,48 @@ export default function ContentRail({ items, onSelect }: ContentRailProps) {
     return Math.min(Math.max(focus.index, 0), items.length - 1);
   }, [items.length, railIndex, focus.section, focus.index]);
 
-  const activeItem = useMemo(() => {
-    return items[safeIndex] ?? items[0];
-  }, [items, safeIndex]);
+  const activeItem = items[safeIndex] ?? items[0];
+
+  useEffect(() => {
+    activeItemRef.current = activeItem;
+  }, [activeItem]);
 
   /* ---------- controller bindings ---------- */
 
   useEffect(() => {
-    if (!activeItem) return;
     if (railIndex === null) return;
-
     if (focus.section !== railIndex) return;
 
     setSelectHandler(() => {
-      onSelect(activeItem);
+      const item = activeItemRef.current;
+      if (!item) return;
+      onSelect(item);
     });
 
     setPlayHandler(() => {
-      sessionStorage.setItem("lastFocusedTile", String(activeItem.id));
+      const item = activeItemRef.current;
+      if (!item) return;
 
-      if (activeItem.media_type === "tv") {
-        window.location.href = `/watch/tv/${activeItem.id}/1/1`;
-      } else {
-        window.location.href = `/watch/movie/${activeItem.id}`;
+      sessionStorage.setItem("lastFocusedTile", String(item.id));
+
+      if (item.media_type === "tv") {
+        const progress = getTVProgress(item.id);
+
+        const season = progress?.season ?? 1;
+        const episode = progress?.episode ?? 1;
+
+        window.location.href = `/watch/tv/${item.id}/${season}/${episode}`;
+        return;
       }
+
+      window.location.href = `/watch/movie/${item.id}`;
     });
 
     setToggleHandler(() => {
-      toggleWatchlist(activeItem);
+      const item = activeItemRef.current;
+      if (!item) return;
+
+      toggleWatchlist(item);
     });
 
     return () => {
@@ -214,7 +203,7 @@ export default function ContentRail({ items, onSelect }: ContentRailProps) {
       setPlayHandler(null);
       setToggleHandler(null);
     };
-  }, [activeItem, onSelect, toggleWatchlist, focus.section, railIndex]);
+  }, [focus.section, railIndex, onSelect, toggleWatchlist]);
 
   /* ---------- focus handler ---------- */
 
@@ -283,8 +272,7 @@ export default function ContentRail({ items, onSelect }: ContentRailProps) {
           <div
             ref={railRef}
             role="list"
-            className="flex gap-3 2xl:gap-6 overflow-x-auto snap-x no-scrollbar
-            pl-2 md:pl-4 pr-2 md:pr-4 py-4 scroll-smooth"
+            className="flex gap-3 2xl:gap-6 overflow-x-auto snap-x no-scrollbar pl-2 md:pl-4 pr-2 md:pr-4 py-4 scroll-smooth"
           >
             {items.map((movie, idx) => (
               <Tile
