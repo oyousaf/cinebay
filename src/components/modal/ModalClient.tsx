@@ -107,7 +107,28 @@ export default function ModalClient({
     const el = modalRef.current;
     if (!el) return;
 
-    el.focus(); // 👈 modal takes control
+    let raf1 = requestAnimationFrame(() => {
+      let raf2 = requestAnimationFrame(() => {
+        el.focus();
+      });
+      return () => cancelAnimationFrame(raf2);
+    });
+
+    return () => cancelAnimationFrame(raf1);
+  }, []);
+
+  useEffect(() => {
+    const enforceFocus = () => {
+      const el = modalRef.current;
+      if (!el) return;
+
+      if (!el.contains(document.activeElement)) {
+        el.focus();
+      }
+    };
+
+    window.addEventListener("focusin", enforceFocus);
+    return () => window.removeEventListener("focusin", enforceFocus);
   }, []);
 
   const isModalActive = () => {
@@ -120,7 +141,7 @@ export default function ModalClient({
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (!isModalActive()) return;
+      if (!modalRef.current) return;
 
       const key = e.key.toLowerCase();
 
@@ -290,6 +311,8 @@ export default function ModalClient({
         <motion.div
           ref={modalRef}
           tabIndex={-1}
+          role="dialog"
+          aria-modal="true"
           initial={{ scale: 0.98, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.98, opacity: 0 }}
