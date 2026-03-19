@@ -526,7 +526,6 @@ export default function PlayerModal({
       startAt,
       autoplay: true,
       theme: THEME,
-      subtitles: "en",
     });
   }, [provider, startAt, intent]);
 

@@ -18,7 +18,6 @@ export interface BuildEmbedOptions {
   startAt?: number;
   autoplay?: boolean;
   theme?: string;
-  subtitles?: string;
 
   server?: string;
   hideServer?: boolean;
@@ -100,7 +99,6 @@ function buildVidFastUrl(intent: PlaybackIntent, o: BuildEmbedOptions) {
     autoplay: o.autoplay ?? true,
     startAt: o.startAt && o.startAt > 5 ? o.startAt : undefined,
     theme: o.theme ?? DEFAULT_THEME,
-    sub: o.subtitles ?? "en",
     server: o.server ?? "auto",
     hideServer: o.hideServer ?? true,
     fullscreenButton: o.fullscreenButton ?? true,
