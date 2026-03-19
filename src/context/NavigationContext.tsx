@@ -79,6 +79,7 @@ const NAV_STORAGE_KEY = "nav_state_v2";
 const STICK_DEADZONE = 0.45;
 const INITIAL_REPEAT_DELAY = 220;
 const REPEAT_INTERVAL = 90;
+const POLL_INTERVAL_MS = 50;
 
 /* =========================
    HELPERS
@@ -187,7 +188,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   const railsRef = useRef<number[]>([]);
   const railCountRef = useRef(0);
 
-  const rafRef = useRef<number | null>(null);
+  const persistTimeoutRef = useRef<number | null>(null);
 
   const tabNavigatorRef = useRef<((dir: TabDirection) => void) | null>(null);
   const selectRef = useRef<(() => void) | null>(null);
@@ -226,12 +227,27 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   const persistState = useCallback(() => {
     if (typeof window === "undefined") return;
 
-    const payload: PersistedNavigationState = {
-      activeTab: activeTabRef.current,
-      focusMemory: focusMemoryRef.current,
-    };
+    if (persistTimeoutRef.current !== null) return;
 
-    localStorage.setItem(NAV_STORAGE_KEY, JSON.stringify(payload));
+    persistTimeoutRef.current = window.setTimeout(() => {
+      persistTimeoutRef.current = null;
+
+      const payload: PersistedNavigationState = {
+        activeTab: activeTabRef.current,
+        focusMemory: focusMemoryRef.current,
+      };
+
+      localStorage.setItem(NAV_STORAGE_KEY, JSON.stringify(payload));
+    }, 500);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (persistTimeoutRef.current !== null) {
+        clearTimeout(persistTimeoutRef.current);
+        persistTimeoutRef.current = null;
+      }
+    };
   }, []);
 
   /* ---------- SAFE CALL ---------- */
@@ -521,7 +537,6 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     const pad = pads[0] ?? null;
 
     if (!pad) {
-      rafRef.current = requestAnimationFrame(poll);
       return;
     }
 
@@ -544,6 +559,26 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     const startPressed = isPressed(pad.buttons?.[9]);
 
     const rtPressed = (pad.buttons?.[7]?.value ?? 0) > 0.75;
+
+    // ✅ EARLY EXIT — no meaningful input
+    const noStick =
+      Math.abs(axX) < STICK_DEADZONE && Math.abs(axY) < STICK_DEADZONE;
+
+    const noDpad = !dpadUp && !dpadDown && !dpadLeft && !dpadRight;
+
+    const noButtons =
+      !aPressed &&
+      !bPressed &&
+      !yPressed &&
+      !lbPressed &&
+      !rbPressed &&
+      !backPressed &&
+      !startPressed &&
+      !rtPressed;
+
+    if (noStick && noDpad && noButtons) {
+      return;
+    }
 
     if (!isModal) {
       repeat("left", axX < -STICK_DEADZONE || dpadLeft, () => {
@@ -586,8 +621,6 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     single("back", bPressed, () => {
       callTabNav("escape");
     });
-
-    rafRef.current = requestAnimationFrame(poll);
   }, [call, callTabNav, cycleTab, moveHorizontal, repeat, single]);
 
   useEffect(() => {
@@ -602,16 +635,15 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     window.addEventListener("gamepadconnected", onGamepadConnected);
     window.addEventListener("gamepaddisconnected", onGamepadDisconnected);
 
-    rafRef.current = requestAnimationFrame(poll);
+    const intervalId = window.setInterval(() => {
+      poll();
+    }, POLL_INTERVAL_MS);
 
     return () => {
       window.removeEventListener("gamepadconnected", onGamepadConnected);
       window.removeEventListener("gamepaddisconnected", onGamepadDisconnected);
 
-      if (rafRef.current !== null) {
-        cancelAnimationFrame(rafRef.current);
-        rafRef.current = null;
-      }
+      clearInterval(intervalId);
     };
   }, [poll, resetHoldState]);
 
