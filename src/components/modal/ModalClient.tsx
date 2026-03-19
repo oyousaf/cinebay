@@ -35,8 +35,6 @@ const SURFACE =
   "shadow-[0_40px_120px_rgba(0,0,0,0.9)] " +
   "max-h-[calc(100dvh-2rem)] flex flex-col";
 
-const EASE_OUT = [0.22, 1, 0.36, 1] as const;
-
 export default function ModalClient({
   movie,
   onClose,
@@ -50,6 +48,9 @@ export default function ModalClient({
 }) {
   const modalRef = useRef<HTMLDivElement>(null);
   const loadingRef = useRef(false);
+
+  // 👇 gamepad edge detection
+  const prevButtonsRef = useRef<Record<string, boolean>>({});
 
   const { setModalOpen, setPlayHandler, setSelectHandler, setToggleHandler } =
     useNavigation();
@@ -67,10 +68,17 @@ export default function ModalClient({
     sessionStorage.setItem("lastFocusedTile", String(movie.id));
 
     if (movie.media_type === "tv") {
-      window.location.href = `/watch/tv/${movie.id}/1/1`;
-    } else {
-      window.location.href = `/watch/movie/${movie.id}`;
+      const saved = sessionStorage.getItem(`tv:${movie.id}:selection`);
+      const parsed = saved ? JSON.parse(saved) : null;
+
+      const season = parsed?.season ?? 1;
+      const episode = parsed?.episode ?? 1;
+
+      window.location.href = `/watch/tv/${movie.id}/${season}/${episode}`;
+      return;
     }
+
+    window.location.href = `/watch/movie/${movie.id}`;
   }, [movie.id, movie.media_type]);
 
   /* =========================
@@ -92,14 +100,31 @@ export default function ModalClient({
   }, [onBack, onClose]);
 
   /* =========================
-     KEYBOARD
+     FOCUS OWNERSHIP
+  ========================= */
+
+  useEffect(() => {
+    const el = modalRef.current;
+    if (!el) return;
+
+    el.focus(); // 👈 modal takes control
+  }, []);
+
+  const isModalActive = () => {
+    return modalRef.current?.contains(document.activeElement);
+  };
+
+  /* =========================
+     KEYBOARD (SCOPED)
   ========================= */
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (!isModalActive()) return;
+
       const key = e.key.toLowerCase();
 
-      if (key === "enter") {
+      if (key === "enter" || key === "p") {
         e.preventDefault();
         e.stopPropagation();
         handlePlay();
@@ -135,14 +160,33 @@ export default function ModalClient({
       const pad = navigator.getGamepads?.()[0];
 
       if (pad) {
-        const start = pad.buttons?.[9]?.pressed;
-        const rt = (pad.buttons?.[7]?.value ?? 0) > 0.75;
-        const y = pad.buttons?.[3]?.pressed;
-        const b = pad.buttons?.[1]?.pressed;
+        if (!isModalActive()) {
+          raf = requestAnimationFrame(loop);
+          return;
+        }
 
-        if (start || rt) handlePlay();
-        if (y) handleToggle();
-        if (b) handleEscape();
+        const pressed = {
+          start: pad.buttons?.[9]?.pressed ?? false,
+          rt: (pad.buttons?.[7]?.value ?? 0) > 0.75,
+          y: pad.buttons?.[3]?.pressed ?? false,
+          b: pad.buttons?.[1]?.pressed ?? false,
+        };
+
+        const prev = prevButtonsRef.current;
+
+        if ((pressed.start || pressed.rt) && !(prev.start || prev.rt)) {
+          handlePlay();
+        }
+
+        if (pressed.y && !prev.y) {
+          handleToggle();
+        }
+
+        if (pressed.b && !prev.b) {
+          handleEscape();
+        }
+
+        prevButtonsRef.current = pressed;
       }
 
       raf = requestAnimationFrame(loop);
@@ -245,6 +289,7 @@ export default function ModalClient({
       >
         <motion.div
           ref={modalRef}
+          tabIndex={-1}
           initial={{ scale: 0.98, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.98, opacity: 0 }}
