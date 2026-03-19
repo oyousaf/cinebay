@@ -577,6 +577,9 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       !rtPressed;
 
     if (noStick && noDpad && noButtons) {
+      for (const key of Object.keys(holdRef.current)) {
+        holdRef.current[key].pressed = false;
+      }
       return;
     }
 
