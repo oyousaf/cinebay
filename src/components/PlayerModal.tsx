@@ -212,7 +212,7 @@ export default function PlayerModal({
 
   const intentKey = useMemo(() => getIntentKey(intent), [intent]);
 
-  const provider = PROVIDER_ORDER[providerIndex] as ProviderType;
+  const provider = PROVIDER_ORDER[providerIndex] ?? PROVIDER_ORDER[0];
 
   const { setTabNavigator, setModalOpen } = useNavigation();
 
