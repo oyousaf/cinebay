@@ -11,7 +11,7 @@ export interface PlaybackIntent {
   episode?: number;
 }
 
-export type ProviderType = "vidfast" | "vidlink" | "superembed";
+export type ProviderType = "vidlink" | "vidfast" | "superembed";
 
 export interface BuildEmbedOptions {
   provider?: ProviderType;
@@ -20,7 +20,6 @@ export interface BuildEmbedOptions {
   theme?: string;
   subtitles?: string;
 
-  // VidFast controls
   server?: string;
   hideServer?: boolean;
   fullscreenButton?: boolean;
@@ -28,20 +27,20 @@ export interface BuildEmbedOptions {
 }
 
 /* -------------------------------------------------
-   PROVIDER ORDER (UPDATED)
+   PROVIDER ORDER
 -------------------------------------------------- */
 
 export const PROVIDER_ORDER: ProviderType[] = [
-  "vidfast",
   "vidlink",
+  "vidfast",
   "superembed",
 ];
 
 /* -------------------------------------------------
-   THEME (OMEGA STYLE)
+   THEME
 -------------------------------------------------- */
 
-const DEFAULT_THEME = "2dd4bf"; // teal
+const DEFAULT_THEME = "2dd4bf";
 const GOLD_ACCENT = "f59e0b";
 const WHITE = "ffffff";
 
@@ -67,35 +66,6 @@ function tvDefaults(intent: PlaybackIntent) {
 }
 
 /* -------------------------------------------------
-   VIDFAST 
--------------------------------------------------- */
-
-function buildVidFastUrl(intent: PlaybackIntent, o: BuildEmbedOptions) {
-  const { mediaType, tmdbId } = intent;
-
-  const query = buildQuery({
-    autoplay: o.autoplay ?? true,
-    startAt: o.startAt && o.startAt > 5 ? o.startAt : undefined,
-    theme: o.theme ?? DEFAULT_THEME,
-
-    sub: o.subtitles ?? "en",
-
-    server: o.server ?? "auto",
-    hideServer: o.hideServer ?? true,
-
-    fullscreenButton: o.fullscreenButton ?? true,
-    chromecast: o.chromecast ?? true,
-  });
-
-  if (mediaType === "tv") {
-    const { season, episode } = tvDefaults(intent);
-    return `https://vidfast.pro/tv/${tmdbId}/${season}/${episode}?${query}`;
-  }
-
-  return `https://vidfast.pro/movie/${tmdbId}?${query}`;
-}
-
-/* -------------------------------------------------
    VIDLINK
 -------------------------------------------------- */
 
@@ -106,9 +76,9 @@ function buildVidLinkUrl(intent: PlaybackIntent, o: BuildEmbedOptions) {
     primaryColor: o.theme ?? DEFAULT_THEME,
     secondaryColor: GOLD_ACCENT,
     iconColor: WHITE,
-
     autoplay: o.autoplay ?? true,
     startAt: o.startAt && o.startAt > 5 ? o.startAt : undefined,
+    nextButton: false,
   });
 
   if (mediaType === "tv") {
@@ -117,6 +87,32 @@ function buildVidLinkUrl(intent: PlaybackIntent, o: BuildEmbedOptions) {
   }
 
   return `https://vidlink.pro/movie/${tmdbId}?${query}`;
+}
+
+/* -------------------------------------------------
+   VIDFAST
+-------------------------------------------------- */
+
+function buildVidFastUrl(intent: PlaybackIntent, o: BuildEmbedOptions) {
+  const { mediaType, tmdbId } = intent;
+
+  const query = buildQuery({
+    autoplay: o.autoplay ?? true,
+    startAt: o.startAt && o.startAt > 5 ? o.startAt : undefined,
+    theme: o.theme ?? DEFAULT_THEME,
+    sub: o.subtitles ?? "en",
+    server: o.server ?? "auto",
+    hideServer: o.hideServer ?? true,
+    fullscreenButton: o.fullscreenButton ?? true,
+    chromecast: false,
+  });
+
+  if (mediaType === "tv") {
+    const { season, episode } = tvDefaults(intent);
+    return `https://vidfast.pro/tv/${tmdbId}/${season}/${episode}?${query}`;
+  }
+
+  return `https://vidfast.pro/movie/${tmdbId}?${query}`;
 }
 
 /* -------------------------------------------------
@@ -139,7 +135,6 @@ function buildSuperEmbedUrl(intent: PlaybackIntent, o: BuildEmbedOptions = {}) {
 
   if (mediaType === "tv") {
     const { season, episode } = tvDefaults(intent);
-
     return `https://multiembed.mov/?video_id=${tmdbId}&s=${season}&e=${episode}&${query}`;
   }
 
@@ -154,14 +149,14 @@ export function buildEmbedUrl(
   intent: PlaybackIntent,
   options: BuildEmbedOptions = {},
 ): string {
-  const provider = options.provider ?? "vidfast";
-
-  if (provider === "vidfast") {
-    return buildVidFastUrl(intent, options);
-  }
+  const provider = options.provider ?? "vidlink";
 
   if (provider === "vidlink") {
     return buildVidLinkUrl(intent, options);
+  }
+
+  if (provider === "vidfast") {
+    return buildVidFastUrl(intent, options);
   }
 
   return buildSuperEmbedUrl(intent, options);
