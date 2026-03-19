@@ -35,7 +35,7 @@ const PROGRESS_QUEUE_STEP_SECONDS = 15;
 const PROGRESS_FLUSH_INTERVAL_MS = 30000;
 
 /* Watchdog */
-const WATCHDOG_CHECK_INTERVAL_MS = 1000;
+const WATCHDOG_CHECK_INTERVAL_MS = 2500;
 const WATCHDOG_SOFT_STALL_MS = 3000;
 const WATCHDOG_HARD_STALL_MS = 6000;
 const SCRUB_DELTA_SECONDS = 5;
@@ -596,6 +596,11 @@ export default function PlayerModal({
   /* PLAYER MESSAGE HANDLER                                             */
   /* ------------------------------------------------------------------ */
 
+  const lastProcessedRef = useRef(0);
+
+  if (Date.now() - lastProcessedRef.current < 250) return;
+  lastProcessedRef.current = Date.now();
+  
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (!isPlayerOrigin(event.origin)) return;
@@ -666,7 +671,15 @@ export default function PlayerModal({
         !showNextOverlayRef.current
       ) {
         showNextOverlayRef.current = true;
-        setShowNextOverlay(true);
+        if (!showNextOverlayRef.current) {
+          showNextOverlayRef.current = true;
+
+          requestAnimationFrame(() => {
+            if (mountedRef.current) {
+              setShowNextOverlay(true);
+            }
+          });
+        }
       }
     };
 
@@ -714,43 +727,6 @@ export default function PlayerModal({
       clearWatchdogInterval();
     };
   }, [provider, fallbackProvider, scheduleHideLoader, clearWatchdogInterval]);
-
-  /* ------------------------------------------------------------------ */
-  /* FALLBACK TICKER                                                    */
-  /* ------------------------------------------------------------------ */
-
-  useEffect(() => {
-    const id = window.setInterval(() => {
-      if (!playbackStartedRef.current) return;
-
-      const silence = Date.now() - lastEventTimeRef.current;
-
-      if (
-        silence > WATCHDOG_SOFT_STALL_MS &&
-        silence < WATCHDOG_HARD_STALL_MS &&
-        !isScrubbingRef.current
-      ) {
-        lastKnownTimeRef.current += 1;
-
-        /*
-        Keep progress system alive even during stall
-      */
-        if (intent.mediaType === "tv" && hasStartedRef.current) {
-          const floored = Math.floor(lastKnownTimeRef.current);
-
-          if (
-            floored - lastQueuedProgressRef.current >=
-            PROGRESS_QUEUE_STEP_SECONDS
-          ) {
-            lastQueuedProgressRef.current = floored;
-            queueProgressWrite(floored);
-          }
-        }
-      }
-    }, 1000);
-
-    return () => clearInterval(id);
-  }, [intent.mediaType, queueProgressWrite]);
 
   /* ------------------------------------------------------------------ */
   /* NEXT EPISODE                                                       */
