@@ -598,19 +598,20 @@ export default function PlayerModal({
 
   const lastProcessedRef = useRef(0);
 
-  if (Date.now() - lastProcessedRef.current < 250) return;
-  lastProcessedRef.current = Date.now();
-  
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (!isPlayerOrigin(event.origin)) return;
+
+      const now = Date.now();
+      if (now - lastProcessedRef.current < 250) return;
+      lastProcessedRef.current = now;
 
       const msg = safeMsgData(event.data);
       if (!msg) return;
 
       const { currentTime, duration, eventType } = extractPlayerMetrics(msg);
 
-      lastEventTimeRef.current = Date.now();
+      lastEventTimeRef.current = now;
 
       if (typeof currentTime === "number") {
         const delta = Math.abs(currentTime - lastKnownTimeRef.current);
@@ -671,15 +672,12 @@ export default function PlayerModal({
         !showNextOverlayRef.current
       ) {
         showNextOverlayRef.current = true;
-        if (!showNextOverlayRef.current) {
-          showNextOverlayRef.current = true;
 
-          requestAnimationFrame(() => {
-            if (mountedRef.current) {
-              setShowNextOverlay(true);
-            }
-          });
-        }
+        requestAnimationFrame(() => {
+          if (mountedRef.current) {
+            setShowNextOverlay(true);
+          }
+        });
       }
     };
 
