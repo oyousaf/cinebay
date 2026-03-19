@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import type { Movie } from "@/types/movie";
 import { fetchDetails, TMDB_IMAGE } from "@/lib/tmdb";
+import { getTVProgress } from "@/lib/continueWatching";
 
 import { useNavigation } from "@/context/NavigationContext";
 import { useWatchlist } from "@/context/WatchlistContext";
@@ -49,7 +50,6 @@ export default function ModalClient({
   const modalRef = useRef<HTMLDivElement>(null);
   const loadingRef = useRef(false);
 
-  // 👇 gamepad edge detection
   const prevButtonsRef = useRef<Record<string, boolean>>({});
 
   const { setModalOpen, setPlayHandler, setSelectHandler, setToggleHandler } =
@@ -61,18 +61,17 @@ export default function ModalClient({
   const isTV = movie.media_type === "tv";
 
   /* =========================
-     PLAY
+     PLAY (FIXED)
   ========================= */
 
   const handlePlay = useCallback(() => {
     sessionStorage.setItem("lastFocusedTile", String(movie.id));
 
     if (movie.media_type === "tv") {
-      const saved = sessionStorage.getItem(`tv:${movie.id}:selection`);
-      const parsed = saved ? JSON.parse(saved) : null;
+      const progress = getTVProgress(movie.id);
 
-      const season = parsed?.season ?? 1;
-      const episode = parsed?.episode ?? 1;
+      const season = progress?.season ?? 1;
+      const episode = progress?.episode ?? 1;
 
       window.location.href = `/watch/tv/${movie.id}/${season}/${episode}`;
       return;
@@ -100,7 +99,7 @@ export default function ModalClient({
   }, [onBack, onClose]);
 
   /* =========================
-     FOCUS OWNERSHIP
+     FOCUS OWNERSHIP (FIXED)
   ========================= */
 
   useEffect(() => {
@@ -131,18 +130,12 @@ export default function ModalClient({
     return () => window.removeEventListener("focusin", enforceFocus);
   }, []);
 
-  const isModalActive = () => {
-    return modalRef.current?.contains(document.activeElement);
-  };
-
   /* =========================
-     KEYBOARD (SCOPED)
+     KEYBOARD (SIMPLIFIED)
   ========================= */
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (!modalRef.current) return;
-
       const key = e.key.toLowerCase();
 
       if (key === "enter" || key === "p") {
@@ -181,11 +174,6 @@ export default function ModalClient({
       const pad = navigator.getGamepads?.()[0];
 
       if (pad) {
-        if (!isModalActive()) {
-          raf = requestAnimationFrame(loop);
-          return;
-        }
-
         const pressed = {
           start: pad.buttons?.[9]?.pressed ?? false,
           rt: (pad.buttons?.[7]?.value ?? 0) > 0.75,
