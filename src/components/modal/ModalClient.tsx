@@ -131,7 +131,7 @@ export default function ModalClient({
   }, []);
 
   /* =========================
-     KEYBOARD (SIMPLIFIED)
+     KEYBOARD
   ========================= */
 
   useEffect(() => {
