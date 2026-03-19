@@ -69,7 +69,6 @@ export default function ModalClient({
 
     if (movie.media_type === "tv") {
       const progress = getTVProgress(movie.id);
-
       const season = progress?.season ?? 1;
       const episode = progress?.episode ?? 1;
 
@@ -99,39 +98,25 @@ export default function ModalClient({
   }, [onBack, onClose]);
 
   /* =========================
-     FOCUS OWNERSHIP
+     PERSON NAVIGATION
   ========================= */
 
-  useEffect(() => {
-    const el = modalRef.current;
-    if (!el) return;
+  const handlePersonClick = useCallback(
+    async (id: number) => {
+      if (!id) return;
 
-    let raf1 = requestAnimationFrame(() => {
-      let raf2 = requestAnimationFrame(() => {
-        el.focus();
-      });
-      return () => cancelAnimationFrame(raf2);
-    });
-
-    return () => cancelAnimationFrame(raf1);
-  }, []);
-
-  useEffect(() => {
-    const enforceFocus = () => {
-      const el = modalRef.current;
-      if (!el) return;
-
-      if (!el.contains(document.activeElement)) {
-        el.focus();
+      try {
+        const full = await fetchDetails(id, "person");
+        if (full) onSelect?.(full);
+      } catch {
+        toast.error("Failed to load person.");
       }
-    };
-
-    window.addEventListener("focusin", enforceFocus);
-    return () => window.removeEventListener("focusin", enforceFocus);
-  }, []);
+    },
+    [onSelect],
+  );
 
   /* =========================
-     KEYBOARD
+     INPUT + GAMEPAD
   ========================= */
 
   useEffect(() => {
@@ -162,10 +147,6 @@ export default function ModalClient({
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
   }, [handlePlay, handleToggle, handleEscape]);
-
-  /* =========================
-     GAMEPAD
-  ========================= */
 
   useEffect(() => {
     let raf: number;
@@ -231,18 +212,18 @@ export default function ModalClient({
     setToggleHandler,
   ]);
 
-  /* ---------- Scroll lock ---------- */
-
   useEffect(() => {
     document.body.classList.add("player-open");
     return () => document.body.classList.remove("player-open");
   }, []);
 
-  /* ---------- Derived ---------- */
+  /* =========================
+     DERIVED (FIXED)
+  ========================= */
 
   const director = useMemo(() => {
-    if (movie.media_type !== "movie") return null;
-    const d = movie.credits?.crew?.find((c) => c.job === "Director");
+    const crew = movie.credits?.crew ?? [];
+    const d = crew.find((c) => c.job === "Director");
     return d ? { id: d.id, name: d.name } : null;
   }, [movie]);
 
@@ -257,7 +238,9 @@ export default function ModalClient({
   const posterPath = movie.profile_path || movie.poster_path;
   const poster = posterPath ? `${TMDB_IMAGE}${posterPath}` : "/fallback.jpg";
 
-  /* ---------- Select helpers ---------- */
+  /* =========================
+     SELECT HELPERS
+  ========================= */
 
   const handleSelectWithDetails = useCallback(
     async (item: Movie) => {
@@ -322,6 +305,7 @@ export default function ModalClient({
                   movie={movie}
                   director={director}
                   creators={creators}
+                  onPersonClick={handlePersonClick}
                 />
 
                 <ModalBody movie={movie} onSelect={onSelect} />
