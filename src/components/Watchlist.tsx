@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  useState,
-  useEffect,
-  useMemo,
-  useRef,
-  useDeferredValue,
-  useCallback,
-} from "react";
+import { useState, useEffect, useMemo, useDeferredValue } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, RefreshCw } from "lucide-react";
 import React from "react";
@@ -17,7 +10,8 @@ import { TMDB_IMAGE } from "@/lib/tmdb";
 import { useWatchlist } from "@/context/WatchlistContext";
 import { useNavigation } from "@/context/NavigationContext";
 
-/* ---------- Filters ---------- */
+/* ---------- Types ---------- */
+
 type SortKey = "rating-desc" | "newest" | "title-asc" | "title-desc";
 type TypeKey = "all" | "movie" | "tv";
 type Filters = { sortBy: SortKey; type: TypeKey };
@@ -35,21 +29,24 @@ const TYPES = [
   { key: "tv", label: "TV" },
 ] as const;
 
-const defaultFilters: Filters = { sortBy: "rating-desc", type: "all" };
+const STORAGE_KEY = "watchlist:lastFocusedId";
 
-/* ---------- Storage ---------- */
+const defaultFilters: Filters = { sortBy: "rating-desc", type: "all" };
 
 function readStoredFilters(): Filters {
   if (typeof window === "undefined") return defaultFilters;
   try {
-    const stored = localStorage.getItem("watchlistFilters");
-    return stored ? JSON.parse(stored) : defaultFilters;
+    return (
+      JSON.parse(localStorage.getItem("watchlistFilters") || "null") ??
+      defaultFilters
+    );
   } catch {
     return defaultFilters;
   }
 }
 
 /* ---------- Tile ---------- */
+
 const WatchlistTile = React.memo(function WatchlistTile({
   movie,
   isFocused,
@@ -63,24 +60,23 @@ const WatchlistTile = React.memo(function WatchlistTile({
   onSelect: (movie: Movie) => void;
   onRemove: () => void;
 }) {
-  const tileRef = useRef<HTMLDivElement | null>(null);
+  const ref = React.useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (isFocused) {
-      tileRef.current?.focus();
-    }
+    if (isFocused) ref.current?.focus();
   }, [isFocused]);
 
   return (
     <motion.div
-      ref={tileRef}
-      layout
+      ref={ref}
+      layout="position"
       tabIndex={0}
       role="button"
       aria-label={`Open ${movie.title || movie.name}`}
-      initial={{ opacity: 0, scale: 0.98 }}
+      initial={{ opacity: 0, scale: 0.96 }}
       animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.9, x: -40, transition: { duration: 0.25 } }}
+      exit={{ opacity: 0, scale: 0.92 }}
+      transition={{ duration: 0.2 }}
       onFocus={onFocus}
       onClick={() => onSelect(movie)}
       onKeyDown={(e) => {
@@ -88,11 +84,13 @@ const WatchlistTile = React.memo(function WatchlistTile({
         if (e.key === "Delete") onRemove();
       }}
       className={[
-        "group relative aspect-[2/2.8] rounded-xl overflow-hidden bg-black transition",
-        "focus-visible:ring-4 ring-[#80ffcc]",
+        "group relative aspect-[2/2.8] rounded-xl overflow-hidden",
+        "bg-[hsl(var(--background))]",
+        "transition-transform duration-200",
+        "focus-visible:ring-4 focus-visible:ring-[hsl(var(--foreground))]",
         isFocused
-          ? "z-30 ring-4 ring-[#80ffcc] scale-[1.03]"
-          : "z-10 ring-1 ring-transparent",
+          ? "z-30 ring-4 ring-[hsl(var(--foreground))] scale-[1.04]"
+          : "z-10 ring-1 ring-[hsl(var(--foreground)/0.15)] hover:scale-[1.02]",
       ].join(" ")}
     >
       <img
@@ -104,27 +102,24 @@ const WatchlistTile = React.memo(function WatchlistTile({
         alt={movie.title || movie.name}
         loading="lazy"
         className="w-full h-full object-cover"
-        onError={(e) => {
-          (e.target as HTMLImageElement).src = "/fallback.jpg";
-        }}
+        onError={(e) => ((e.target as HTMLImageElement).src = "/fallback.jpg")}
       />
 
       <button
         type="button"
-        aria-label="Remove from watchlist"
         onClick={(e) => {
           e.stopPropagation();
           onRemove();
         }}
         className={[
-          "pointer-events-auto absolute top-2 right-2",
-          "inline-flex items-center justify-center",
+          "absolute top-2 right-2",
           "h-9 w-9 rounded-full",
+          "flex items-center justify-center",
           "bg-[hsl(var(--background))]",
           "ring-1 ring-[hsl(var(--foreground)/0.25)]",
           "text-[hsl(var(--foreground))]",
           "transition hover:scale-105 active:scale-95",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#80ffcc]",
+          "focus-visible:ring-2 focus-visible:ring-[hsl(var(--foreground))]",
           "opacity-100 lg:opacity-0",
           "group-hover:opacity-100 group-focus-within:opacity-100",
         ].join(" ")}
@@ -134,7 +129,6 @@ const WatchlistTile = React.memo(function WatchlistTile({
     </motion.div>
   );
 });
-
 /* ---------- Filter Pill ---------- */
 
 function FilterPill({
@@ -150,7 +144,6 @@ function FilterPill({
 }) {
   return (
     <button
-      type="button"
       onClick={onClick}
       className="relative rounded-full px-4 py-2 text-sm xl:px-6 xl:py-3 xl:text-base hover:bg-white/5"
     >
@@ -165,12 +158,12 @@ function FilterPill({
   );
 }
 
-/* ---------- Watchlist ---------- */
+/* ---------- Main ---------- */
 
 export default function Watchlist({
   onSelect,
 }: {
-  onSelect: (movie: Movie) => void;
+  onSelect: (m: Movie) => void;
 }) {
   const { watchlist, toggleWatchlist } = useWatchlist();
 
@@ -185,43 +178,30 @@ export default function Watchlist({
     setToggleHandler,
   } = useNavigation();
 
-  const undoRef = useRef<{ movie: Movie; ts: number } | null>(null);
-  const railIndexRef = useRef<number | null>(null);
-
-  const [filters, setFilters] = useState<Filters>(readStoredFilters);
+  const [filters, setFilters] = useState(readStoredFilters);
   const deferredFilters = useDeferredValue(filters);
 
-  /* ---------- Actions ---------- */
-
-  const handleRemove = useCallback(
-    (movie: Movie) => {
-      undoRef.current = { movie, ts: Date.now() };
-      toggleWatchlist(movie);
-    },
-    [toggleWatchlist],
-  );
-
-  /* ---------- Filtered list ---------- */
+  /* ---------- Data ---------- */
 
   const filteredList = useMemo(() => {
-    const list = watchlist.filter(
+    const base = watchlist.filter(
       (m) =>
         deferredFilters.type === "all" || m.media_type === deferredFilters.type,
     );
 
-    const getTitle = (m: Movie) => m.title || m.name || "";
-    const getDate = (m: Movie) =>
+    const title = (m: Movie) => m.title || m.name || "";
+    const date = (m: Movie) =>
       m.release_date ? Date.parse(m.release_date) : 0;
 
     switch (deferredFilters.sortBy) {
       case "title-asc":
-        return [...list].sort((a, b) => getTitle(a).localeCompare(getTitle(b)));
+        return [...base].sort((a, b) => title(a).localeCompare(title(b)));
       case "title-desc":
-        return [...list].sort((a, b) => getTitle(b).localeCompare(getTitle(a)));
+        return [...base].sort((a, b) => title(b).localeCompare(title(a)));
       case "newest":
-        return [...list].sort((a, b) => getDate(b) - getDate(a));
+        return [...base].sort((a, b) => date(b) - date(a));
       default:
-        return [...list].sort(
+        return [...base].sort(
           (a, b) => (b.vote_average ?? 0) - (a.vote_average ?? 0),
         );
     }
@@ -229,57 +209,75 @@ export default function Watchlist({
 
   /* ---------- Rail ---------- */
 
+  const [railIndex, setRailIndex] = useState<number | null>(null);
+
   useEffect(() => {
     if (!filteredList.length) return;
 
-    if (railIndexRef.current === null) {
-      railIndexRef.current = registerRail(filteredList.length);
+    if (railIndex === null) {
+      const idx = registerRail(filteredList.length);
+      setRailIndex(idx);
     } else {
-      updateRailLength(railIndexRef.current, filteredList.length);
+      updateRailLength(railIndex, filteredList.length);
     }
-  }, [filteredList.length, registerRail, updateRailLength]);
+  }, [filteredList.length, railIndex, registerRail, updateRailLength]);
 
-  const railIndex = railIndexRef.current;
-
-  /* ---------- Focus ---------- */
-
-  const focusedMovie = useMemo(() => {
-    if (activeTab !== "watchlist") return null;
-    if (railIndex === null) return null;
-    if (focus.section !== railIndex) return null;
-    return filteredList[focus.index] ?? null;
-  }, [activeTab, railIndex, focus, filteredList]);
-
-  /* ---------- Controller mapping ---------- */
+  /* ---------- Initial Focus ---------- */
 
   useEffect(() => {
-    if (activeTab !== "watchlist") {
-      setSelectHandler(null);
-      setPlayHandler(null);
-      setToggleHandler(null);
-      return;
+    if (activeTab !== "watchlist") return;
+    if (railIndex === null) return;
+    if (!filteredList.length) return;
+
+    const stored = sessionStorage.getItem(STORAGE_KEY);
+    let index = 0;
+
+    if (stored) {
+      const i = filteredList.findIndex((m) => String(m.id) === stored);
+      if (i >= 0) index = i;
     }
 
-    setSelectHandler(() => {
-      if (!focusedMovie) return;
-      onSelect(focusedMovie);
-    });
+    setFocus({ section: railIndex, index });
+  }, [activeTab, railIndex, filteredList.length, setFocus]);
+
+  /* ---------- Persist ---------- */
+
+  useEffect(() => {
+    if (activeTab !== "watchlist") return;
+    if (railIndex === null) return;
+    if (focus.section !== railIndex) return;
+
+    const m = filteredList[focus.index];
+    if (!m) return;
+
+    sessionStorage.setItem(STORAGE_KEY, String(m.id));
+  }, [focus, filteredList, railIndex, activeTab]);
+
+  /* ---------- Controls ---------- */
+
+  const focused =
+    activeTab === "watchlist" &&
+    railIndex !== null &&
+    focus.section === railIndex
+      ? filteredList[focus.index]
+      : null;
+
+  useEffect(() => {
+    if (activeTab !== "watchlist") return;
+
+    setSelectHandler(() => focused && onSelect(focused));
 
     setPlayHandler(() => {
-      if (!focusedMovie) return;
-
-      sessionStorage.setItem("lastFocusedTile", String(focusedMovie.id));
-
-      if (focusedMovie.media_type === "tv") {
-        window.location.href = `/watch/tv/${focusedMovie.id}/1/1`;
-      } else {
-        window.location.href = `/watch/movie/${focusedMovie.id}`;
-      }
+      if (!focused) return;
+      window.location.href =
+        focused.media_type === "tv"
+          ? `/watch/tv/${focused.id}/1/1`
+          : `/watch/movie/${focused.id}`;
     });
 
     setToggleHandler(() => {
-      if (!focusedMovie) return;
-      handleRemove(focusedMovie);
+      if (!focused) return;
+      toggleWatchlist(focused);
     });
 
     return () => {
@@ -287,20 +285,13 @@ export default function Watchlist({
       setPlayHandler(null);
       setToggleHandler(null);
     };
-  }, [
-    activeTab,
-    focusedMovie,
-    onSelect,
-    handleRemove,
-    setSelectHandler,
-    setPlayHandler,
-    setToggleHandler,
-  ]);
+  }, [activeTab, focused, onSelect, toggleWatchlist]);
 
   /* ---------- UI ---------- */
 
   return (
     <motion.main className="h-screen w-full flex flex-col overflow-hidden">
+      {/* HEADER */}
       <div className="sticky top-0 z-40 backdrop-blur-xl bg-black/40 border-b border-white/10">
         <div className="pt-10 pb-4 text-center">
           <h1 className="text-4xl font-bold">Watchlist</h1>
@@ -342,10 +333,14 @@ export default function Watchlist({
         </div>
       </div>
 
+      {/* GRID */}
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-7xl mx-auto px-4 py-10">
-          <motion.div className="grid gap-3 grid-cols-3 md:grid-cols-5 lg:grid-cols-7">
-            <AnimatePresence>
+          <motion.div
+            layout
+            className="grid gap-3 grid-cols-3 md:grid-cols-5 lg:grid-cols-7"
+          >
+            <AnimatePresence mode="popLayout">
               {filteredList.map((movie, idx) => (
                 <WatchlistTile
                   key={movie.id}
@@ -355,12 +350,12 @@ export default function Watchlist({
                     focus.section === railIndex &&
                     focus.index === idx
                   }
-                  onFocus={() => {
-                    if (railIndex === null) return;
-                    setFocus({ section: railIndex, index: idx });
-                  }}
+                  onFocus={() =>
+                    railIndex !== null &&
+                    setFocus({ section: railIndex, index: idx })
+                  }
                   onSelect={onSelect}
-                  onRemove={() => handleRemove(movie)}
+                  onRemove={() => toggleWatchlist(movie)}
                 />
               ))}
             </AnimatePresence>
