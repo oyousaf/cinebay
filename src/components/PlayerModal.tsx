@@ -41,6 +41,8 @@ const WATCHDOG_HARD_STALL_MS = 12000;
 const SCRUB_DELTA_SECONDS = 5;
 const STABLE_DELTA_SECONDS = 1;
 
+const playbackConfirmedAtRef = useRef<number | null>(null);
+
 const THEME = "2dd4bf";
 
 /* -------------------------------- TYPES -------------------------------- */
@@ -677,6 +679,10 @@ export default function PlayerModal({
           if (currentTime > lastProgressRef.current) {
             lastProgressRef.current = currentTime;
             lastProgressTsRef.current = now;
+            
+            if (currentTime > 5 && !playbackConfirmedAtRef.current) {
+              playbackConfirmedAtRef.current = now;
+            }
           }
         }
 
