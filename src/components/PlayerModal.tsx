@@ -23,9 +23,9 @@ const IFRAME_LOAD_TIMEOUT = 12000;
 /*
   Event-driven playback timeout.
   Used only for providers that actually emit progress / playback events.
-  This is longer than before so older titles get a fair chance to start.
+  Give them more breathing room before failover.
 */
-const EVENT_PLAYBACK_START_TIMEOUT = 15000;
+const EVENT_PLAYBACK_START_TIMEOUT = 22000;
 
 const START_THRESHOLD_SECONDS = 30;
 const NEXT_OVERLAY_THRESHOLD = 0.9;
@@ -36,8 +36,8 @@ const PROGRESS_FLUSH_INTERVAL_MS = 30000;
 
 /* Watchdog */
 const WATCHDOG_CHECK_INTERVAL_MS = 2500;
-const WATCHDOG_SOFT_STALL_MS = 3000;
-const WATCHDOG_HARD_STALL_MS = 6000;
+const WATCHDOG_SOFT_STALL_MS = 4000;
+const WATCHDOG_HARD_STALL_MS = 12000;
 const SCRUB_DELTA_SECONDS = 5;
 const STABLE_DELTA_SECONDS = 1;
 
@@ -208,6 +208,11 @@ export default function PlayerModal({
   const lastKnownTimeRef = useRef(0);
   const isScrubbingRef = useRef(false);
 
+  const rafLockRef = useRef(false);
+  const lastProgressRef = useRef(0);
+  const lastProgressTsRef = useRef(Date.now());
+  const loaderVisibleRef = useRef(true);
+
   const { getTVProgress, reportTVPlayback } = useContinueWatching();
 
   const intentKey = useMemo(() => getIntentKey(intent), [intent]);
@@ -289,11 +294,36 @@ export default function PlayerModal({
 
       loaderTimerRef.current = window.setTimeout(() => {
         if (!mountedRef.current) return;
+        if (!loaderVisibleRef.current) return;
+
+        loaderVisibleRef.current = false;
         setShowLoader(false);
+        loaderTimerRef.current = null;
       }, remaining);
     },
     [clearLoaderTimer],
   );
+
+  const showLoaderNow = useCallback(() => {
+    clearLoaderTimer();
+    loaderVisibleRef.current = true;
+    if (mountedRef.current) {
+      setShowLoader(true);
+    }
+  }, [clearLoaderTimer]);
+
+  const safeHideLoader = useCallback(() => {
+    clearLoaderTimer();
+
+    loaderTimerRef.current = window.setTimeout(() => {
+      if (!mountedRef.current) return;
+      if (!loaderVisibleRef.current) return;
+
+      loaderVisibleRef.current = false;
+      setShowLoader(false);
+      loaderTimerRef.current = null;
+    }, 300);
+  }, [clearLoaderTimer]);
 
   /* ------------------------------------------------------------------ */
   /* PROGRESS BATCHING                                                  */
@@ -378,15 +408,19 @@ export default function PlayerModal({
       playbackStartedRef.current = false;
       hasStartedRef.current = false;
       showNextOverlayRef.current = false;
+
       lastEventTimeRef.current = Date.now();
       lastKnownTimeRef.current = 0;
       isScrubbingRef.current = false;
 
+      lastProgressRef.current = 0;
+      lastProgressTsRef.current = Date.now();
+
       setShowNextOverlay(false);
-      setShowLoader(true);
+      showLoaderNow();
       setProviderIndex(current + 1);
     },
-    [clearFailoverTimers, clearLoaderTimer, scheduleHideLoader],
+    [clearFailoverTimers, clearLoaderTimer, scheduleHideLoader, showLoaderNow],
   );
 
   /* ------------------------------------------------------------------ */
@@ -537,7 +571,7 @@ export default function PlayerModal({
     flushPendingProgress();
 
     setProviderIndex(0);
-    setShowLoader(true);
+    showLoaderNow();
     setShowNextOverlay(false);
 
     playbackStartedRef.current = false;
@@ -547,13 +581,23 @@ export default function PlayerModal({
     lastQueuedProgressRef.current = 0;
     pendingProgressRef.current = null;
     showNextOverlayRef.current = false;
+
     lastEventTimeRef.current = Date.now();
     lastKnownTimeRef.current = 0;
     isScrubbingRef.current = false;
 
+    lastProgressRef.current = 0;
+    lastProgressTsRef.current = Date.now();
+
     clearFailoverTimers();
     clearLoaderTimer();
-  }, [intentKey, flushPendingProgress, clearFailoverTimers, clearLoaderTimer]);
+  }, [
+    intentKey,
+    flushPendingProgress,
+    clearFailoverTimers,
+    clearLoaderTimer,
+    showLoaderNow,
+  ]);
 
   /* ------------------------------------------------------------------ */
   /* FAILOVER TIMERS                                                    */
@@ -564,19 +608,23 @@ export default function PlayerModal({
     clearLoaderTimer();
 
     loadStartRef.current = Date.now();
-
-    setShowLoader(true);
+    showLoaderNow();
 
     iframeLoadedRef.current = false;
     playbackStartedRef.current = false;
+
     lastEventTimeRef.current = Date.now();
     lastKnownTimeRef.current = 0;
     isScrubbingRef.current = false;
+
+    lastProgressRef.current = 0;
+    lastProgressTsRef.current = Date.now();
 
     iframeLoadTimerRef.current = window.setTimeout(() => {
       if (!iframeLoadedRef.current && !playbackStartedRef.current) {
         fallbackProvider("iframe-load-timeout");
       }
+      iframeLoadTimerRef.current = null;
     }, IFRAME_LOAD_TIMEOUT);
 
     return () => {
@@ -589,95 +637,104 @@ export default function PlayerModal({
     fallbackProvider,
     clearFailoverTimers,
     clearLoaderTimer,
+    showLoaderNow,
   ]);
 
   /* ------------------------------------------------------------------ */
   /* PLAYER MESSAGE HANDLER                                             */
   /* ------------------------------------------------------------------ */
 
-  const lastProcessedRef = useRef(0);
-
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (!isPlayerOrigin(event.origin)) return;
+      if (rafLockRef.current) return;
 
-      const now = Date.now();
-      if (now - lastProcessedRef.current < 250) return;
-      lastProcessedRef.current = now;
+      rafLockRef.current = true;
 
-      const msg = safeMsgData(event.data);
-      if (!msg) return;
+      requestAnimationFrame(() => {
+        rafLockRef.current = false;
 
-      const { currentTime, duration, eventType } = extractPlayerMetrics(msg);
+        const msg = safeMsgData(event.data);
+        if (!msg) return;
 
-      lastEventTimeRef.current = now;
+        const now = Date.now();
 
-      if (typeof currentTime === "number") {
-        const delta = Math.abs(currentTime - lastKnownTimeRef.current);
+        const { currentTime, duration, eventType } = extractPlayerMetrics(msg);
 
-        if (delta >= SCRUB_DELTA_SECONDS) {
-          isScrubbingRef.current = true;
-        } else if (delta <= STABLE_DELTA_SECONDS) {
-          isScrubbingRef.current = false;
+        lastEventTimeRef.current = now;
+
+        if (typeof currentTime === "number") {
+          const delta = Math.abs(currentTime - lastKnownTimeRef.current);
+
+          if (delta >= SCRUB_DELTA_SECONDS) {
+            isScrubbingRef.current = true;
+          } else if (delta <= STABLE_DELTA_SECONDS) {
+            isScrubbingRef.current = false;
+          }
+
+          lastKnownTimeRef.current = currentTime;
+
+          if (currentTime > lastProgressRef.current) {
+            lastProgressRef.current = currentTime;
+            lastProgressTsRef.current = now;
+          }
         }
 
-        lastKnownTimeRef.current = currentTime;
-      }
+        const started =
+          (typeof currentTime === "number" && currentTime > 0) ||
+          eventType === "play" ||
+          eventType === "playing" ||
+          eventType === "ready" ||
+          eventType === "canplay" ||
+          eventType === "loadeddata";
 
-      const started =
-        (typeof currentTime === "number" && currentTime > 0) ||
-        eventType === "play" ||
-        eventType === "playing" ||
-        eventType === "ready" ||
-        eventType === "canplay" ||
-        eventType === "loadeddata";
-
-      if (started && !playbackStartedRef.current) {
-        playbackStartedRef.current = true;
-        clearFailoverTimers();
-        scheduleHideLoader(LOADER_MIN_MS);
-      }
-
-      if (
-        typeof currentTime === "number" &&
-        !hasStartedRef.current &&
-        currentTime >= START_THRESHOLD_SECONDS
-      ) {
-        hasStartedRef.current = true;
-      }
-
-      if (
-        intent.mediaType === "tv" &&
-        typeof currentTime === "number" &&
-        hasStartedRef.current
-      ) {
-        const floored = Math.floor(currentTime);
+        if (started && !playbackStartedRef.current) {
+          playbackStartedRef.current = true;
+          clearFailoverTimers();
+          scheduleHideLoader(LOADER_MIN_MS);
+        }
 
         if (
-          floored - lastQueuedProgressRef.current >=
-          PROGRESS_QUEUE_STEP_SECONDS
+          typeof currentTime === "number" &&
+          !hasStartedRef.current &&
+          currentTime >= START_THRESHOLD_SECONDS
         ) {
-          lastQueuedProgressRef.current = floored;
-          queueProgressWrite(floored);
+          hasStartedRef.current = true;
         }
-      }
 
-      if (
-        typeof currentTime === "number" &&
-        hasNextEpisode &&
-        typeof duration === "number" &&
-        duration > 60 &&
-        currentTime >= duration * NEXT_OVERLAY_THRESHOLD &&
-        !showNextOverlayRef.current
-      ) {
-        showNextOverlayRef.current = true;
+        if (
+          intent.mediaType === "tv" &&
+          typeof currentTime === "number" &&
+          hasStartedRef.current
+        ) {
+          const floored = Math.floor(currentTime);
 
-        requestAnimationFrame(() => {
-          if (mountedRef.current) {
-            setShowNextOverlay(true);
+          if (
+            floored - lastQueuedProgressRef.current >=
+            PROGRESS_QUEUE_STEP_SECONDS
+          ) {
+            lastQueuedProgressRef.current = floored;
+            queueProgressWrite(floored);
           }
-        });
-      }
+        }
+
+        if (
+          typeof currentTime === "number" &&
+          hasNextEpisode &&
+          typeof duration === "number" &&
+          duration > 60 &&
+          currentTime >= duration * NEXT_OVERLAY_THRESHOLD &&
+          !showNextOverlayRef.current
+        ) {
+          showNextOverlayRef.current = true;
+
+          requestAnimationFrame(() => {
+            if (mountedRef.current) {
+              setShowNextOverlay(true);
+            }
+          });
+        }
+      });
     };
 
     window.addEventListener("message", handleMessage);
@@ -705,25 +762,23 @@ export default function PlayerModal({
     watchdogIntervalRef.current = window.setInterval(() => {
       if (!playbackStartedRef.current) return;
 
-      const silence = Date.now() - lastEventTimeRef.current;
+      const now = Date.now();
+      const silence = now - lastEventTimeRef.current;
+      const noProgress = now - lastProgressTsRef.current;
 
       if (silence >= WATCHDOG_SOFT_STALL_MS) {
-        scheduleHideLoader(0);
+        safeHideLoader();
       }
 
-      if (
-        silence >= WATCHDOG_HARD_STALL_MS &&
-        isScrubbingRef.current &&
-        providerSupportsPlaybackEvents(provider)
-      ) {
-        fallbackProvider("scrub-stall");
+      if (noProgress >= WATCHDOG_HARD_STALL_MS) {
+        fallbackProvider("true-stall");
       }
     }, WATCHDOG_CHECK_INTERVAL_MS);
 
     return () => {
       clearWatchdogInterval();
     };
-  }, [provider, fallbackProvider, scheduleHideLoader, clearWatchdogInterval]);
+  }, [provider, fallbackProvider, safeHideLoader, clearWatchdogInterval]);
 
   /* ------------------------------------------------------------------ */
   /* NEXT EPISODE                                                       */
@@ -807,6 +862,7 @@ export default function PlayerModal({
           onLoad={() => {
             iframeLoadedRef.current = true;
             lastEventTimeRef.current = Date.now();
+            lastProgressTsRef.current = Date.now();
 
             if (iframeLoadTimerRef.current !== null) {
               clearTimeout(iframeLoadTimerRef.current);
@@ -819,10 +875,16 @@ export default function PlayerModal({
               events, so we do not auto-fail them after load.
             */
             if (providerSupportsPlaybackEvents(provider)) {
+              if (playbackStartTimerRef.current !== null) {
+                clearTimeout(playbackStartTimerRef.current);
+                playbackStartTimerRef.current = null;
+              }
+
               playbackStartTimerRef.current = window.setTimeout(() => {
                 if (!playbackStartedRef.current) {
                   fallbackProvider("playback-event-timeout");
                 }
+                playbackStartTimerRef.current = null;
               }, EVENT_PLAYBACK_START_TIMEOUT);
             } else {
               scheduleHideLoader(LOADER_MIN_MS);
