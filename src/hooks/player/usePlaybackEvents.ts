@@ -16,9 +16,7 @@ const SCRUB_RELEASE_MS = 1500;
 function safeMsgData(data: unknown): Record<string, any> | null {
   if (!data) return null;
 
-  if (typeof data === "object") {
-    return data as Record<string, any>;
-  }
+  if (typeof data === "object") return data as Record<string, any>;
 
   if (typeof data === "string") {
     try {
@@ -71,6 +69,7 @@ export function usePlaybackEvents({
   hasNextEpisode,
   maybeQueueProgress,
   markPlaybackStarted,
+  iframeRef,
 }: {
   intent: {
     mediaType: "movie" | "tv";
@@ -78,6 +77,7 @@ export function usePlaybackEvents({
   hasNextEpisode: boolean;
   maybeQueueProgress: (t: number) => void;
   markPlaybackStarted: () => void;
+  iframeRef?: React.RefObject<HTMLIFrameElement | null>;
 }) {
   const [showNextOverlay, setShowNextOverlay] = useState(false);
 
@@ -116,17 +116,38 @@ export function usePlaybackEvents({
       if (typeof currentTime === "number") {
         const delta = Math.abs(currentTime - lastKnownTimeRef.current);
 
+        // detect scrub start
         if (delta >= SCRUB_DELTA_SECONDS) {
           isScrubbingRef.current = true;
           lastScrubTimeRef.current = now;
         }
 
+        // detect scrub end
         if (
           isScrubbingRef.current &&
           now - lastScrubTimeRef.current > SCRUB_RELEASE_MS &&
           delta <= STABLE_DELTA_SECONDS
         ) {
           isScrubbingRef.current = false;
+
+          // force resume
+          try {
+            iframeRef?.current?.contentWindow?.postMessage(
+              JSON.stringify({ event: "play" }),
+              "*",
+            );
+
+            // fallback formats (some providers differ)
+            iframeRef?.current?.contentWindow?.postMessage(
+              { type: "play" },
+              "*",
+            );
+
+            iframeRef?.current?.contentWindow?.postMessage(
+              { command: "play" },
+              "*",
+            );
+          } catch {}
         }
 
         lastKnownTimeRef.current = currentTime;
@@ -195,6 +216,7 @@ export function usePlaybackEvents({
     hasNextEpisode,
     maybeQueueProgress,
     markPlaybackStarted,
+    iframeRef,
   ]);
 
   /* ------------------------------------------------------------------ */
@@ -217,8 +239,6 @@ export function usePlaybackEvents({
     showNextOverlay,
     setShowNextOverlay,
     resetPlaybackEvents,
-
-    /* exposed for watchdog */
     lastEventTimeRef,
     isScrubbingRef,
   };

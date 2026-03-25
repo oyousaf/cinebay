@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useCallback } from "react";
+import { useEffect, useMemo, useCallback, useRef } from "react";
 import { X, Play, LoaderCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -37,6 +37,8 @@ export default function PlayerModal({
   onClose,
   onPlayNext,
 }: PlayerModalProps) {
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+
   const { getTVProgress, reportTVPlayback } = useContinueWatching();
   const { setTabNavigator, setModalOpen } = useNavigation();
 
@@ -87,6 +89,7 @@ export default function PlayerModal({
     hasNextEpisode,
     maybeQueueProgress,
     markPlaybackStarted,
+    iframeRef,
   });
 
   /* ------------------------------------------------------------------ */
@@ -198,6 +201,7 @@ export default function PlayerModal({
     >
       <motion.div className="relative w-full max-w-6xl aspect-video rounded-2xl overflow-hidden bg-[hsl(var(--background))] ring-2 ring-[hsl(var(--foreground))]">
         <iframe
+          ref={iframeRef}
           key={`${intentKey}-${providerIndex}`}
           src={embedUrl}
           className="w-full h-full border-none"
