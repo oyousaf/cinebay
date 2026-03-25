@@ -8,7 +8,6 @@ import type { PlaybackIntent } from "@/lib/embed/buildEmbedUrl";
 import { useContinueWatching } from "@/hooks/useContinueWatching";
 import { useNavigation } from "@/context/NavigationContext";
 
-/* hooks */
 import { usePlayerCore } from "@/hooks/player/usePlayerCore";
 import { useEpisodeMeta } from "@/hooks/player/useEpisodeMeta";
 import { useProgressTracker } from "@/hooks/player/useProgressTracker";
