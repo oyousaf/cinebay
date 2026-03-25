@@ -9,6 +9,7 @@ const NEXT_OVERLAY_THRESHOLD = 0.9;
 
 const SCRUB_DELTA_SECONDS = 5;
 const STABLE_DELTA_SECONDS = 1;
+const SCRUB_RELEASE_MS = 1500;
 
 /* ======================================================================== */
 
@@ -86,6 +87,7 @@ export function usePlaybackEvents({
   const lastEventTimeRef = useRef(Date.now());
   const lastKnownTimeRef = useRef(0);
   const isScrubbingRef = useRef(false);
+  const lastScrubTimeRef = useRef(0);
 
   const lastProcessedRef = useRef(0);
 
@@ -116,7 +118,14 @@ export function usePlaybackEvents({
 
         if (delta >= SCRUB_DELTA_SECONDS) {
           isScrubbingRef.current = true;
-        } else if (delta <= STABLE_DELTA_SECONDS) {
+          lastScrubTimeRef.current = now;
+        }
+
+        if (
+          isScrubbingRef.current &&
+          now - lastScrubTimeRef.current > SCRUB_RELEASE_MS &&
+          delta <= STABLE_DELTA_SECONDS
+        ) {
           isScrubbingRef.current = false;
         }
 
@@ -152,7 +161,8 @@ export function usePlaybackEvents({
       if (
         intent.mediaType === "tv" &&
         typeof currentTime === "number" &&
-        hasStartedRef.current
+        hasStartedRef.current &&
+        !isScrubbingRef.current
       ) {
         maybeQueueProgress(currentTime);
       }
@@ -188,7 +198,7 @@ export function usePlaybackEvents({
   ]);
 
   /* ------------------------------------------------------------------ */
-  /* RESET (on intent change externally)                               */
+  /* RESET                                                             */
   /* ------------------------------------------------------------------ */
 
   const resetPlaybackEvents = () => {
@@ -197,6 +207,7 @@ export function usePlaybackEvents({
     lastEventTimeRef.current = Date.now();
     lastKnownTimeRef.current = 0;
     isScrubbingRef.current = false;
+    lastScrubTimeRef.current = 0;
     setShowNextOverlay(false);
   };
 
