@@ -124,14 +124,9 @@ export function usePlaybackEvents({
     };
 
     const maybeShowNextOverlay = (currentTime?: number, duration?: number) => {
-      // Once shown, never re-evaluate during this playback session.
       if (showNextOverlayRef.current) return;
 
-      if (
-        typeof currentTime !== "number" ||
-        !hasNextEpisodeRef.current ||
-        !hasStartedRef.current
-      ) {
+      if (typeof currentTime !== "number" || !hasNextEpisodeRef.current) {
         return;
       }
 
@@ -196,12 +191,13 @@ export function usePlaybackEvents({
         markPlaybackStarted();
       }
 
-      if (
-        typeof currentTime === "number" &&
-        !hasStartedRef.current &&
-        currentTime >= START_THRESHOLD_SECONDS
-      ) {
-        hasStartedRef.current = true;
+      if (!hasStartedRef.current) {
+        if (
+          (typeof currentTime === "number" && currentTime > 5) ||
+          eventType === "playing"
+        ) {
+          hasStartedRef.current = true;
+        }
       }
 
       if (

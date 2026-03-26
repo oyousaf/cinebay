@@ -3,20 +3,14 @@
 import { useEffect, useRef } from "react";
 import type { ProviderType } from "@/lib/embed/buildEmbedUrl";
 
-/* -------------------------------- CONFIG -------------------------------- */
-
 const WATCHDOG_CHECK_INTERVAL_MS = 2500;
 const WATCHDOG_SOFT_STALL_MS = 3000;
 const WATCHDOG_HARD_STALL_MS = 6000;
-
-/* ======================================================================== */
 
 function providerSupportsPlaybackEvents(provider: ProviderType) {
   const p = String(provider).toLowerCase();
   return p.includes("vidlink") || p.includes("vidfast");
 }
-
-/* ======================================================================== */
 
 export function useWatchdog({
   provider,
@@ -24,7 +18,7 @@ export function useWatchdog({
   isScrubbingRef,
   fallbackProvider,
   scheduleHideLoader,
-  playbackStartedRef, // ✅ use ref
+  playbackStartedRef,
 }: {
   provider: ProviderType;
   lastEventTimeRef: React.MutableRefObject<number>;
@@ -39,19 +33,19 @@ export function useWatchdog({
     if (!providerSupportsPlaybackEvents(provider)) return;
 
     watchdogIntervalRef.current = window.setInterval(() => {
-      // ✅ live value, not stale snapshot
       if (!playbackStartedRef.current) return;
 
       const silence = Date.now() - lastEventTimeRef.current;
 
-      /* soft stall → hide loader */
+      // soft stall → hide loader only
       if (silence >= WATCHDOG_SOFT_STALL_MS) {
         scheduleHideLoader(0);
       }
+      if (isScrubbingRef.current) return;
 
-      /* hard stall while scrubbing → fallback */
-      if (silence >= WATCHDOG_HARD_STALL_MS && isScrubbingRef.current) {
-        fallbackProvider("scrub-stall");
+      // hard stall → real failure
+      if (silence >= WATCHDOG_HARD_STALL_MS) {
+        fallbackProvider("hard-stall");
       }
     }, WATCHDOG_CHECK_INTERVAL_MS);
 
