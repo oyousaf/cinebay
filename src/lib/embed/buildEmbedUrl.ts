@@ -107,6 +107,9 @@ function buildVidFastUrl(intent: PlaybackIntent, o: BuildEmbedOptions) {
     hideServer: o.hideServer ?? true,
     fullscreenButton: o.fullscreenButton ?? true,
     chromecast: false,
+
+    autonext: 0,
+    autoNext: 0,
   });
 
   if (mediaType === "tv") {
@@ -133,6 +136,9 @@ function buildSuperEmbedUrl(intent: PlaybackIntent, o: BuildEmbedOptions = {}) {
     t: o.startAt && o.startAt > 5 ? o.startAt : undefined,
     color: theme,
     quality: "auto",
+
+    next: 0,
+    autonext: 0,
   });
 
   if (mediaType === "tv") {
