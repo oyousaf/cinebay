@@ -204,18 +204,25 @@ export function usePlaybackEvents({
       if (
         typeof currentTime === "number" &&
         hasNextEpisodeRef.current &&
-        typeof duration === "number" &&
-        duration > 60 &&
-        currentTime >= duration * NEXT_OVERLAY_THRESHOLD &&
         !showNextOverlayRef.current
       ) {
-        showNextOverlayRef.current = true;
+        const reachedEndWithDuration =
+          typeof duration === "number" &&
+          duration > 60 &&
+          currentTime >= duration * NEXT_OVERLAY_THRESHOLD;
 
-        requestAnimationFrame(() => {
-          if (mountedRef.current) {
-            setShowNextOverlay(true);
-          }
-        });
+        const fallbackNoDuration =
+          typeof duration !== "number" && currentTime > 1200;
+
+        if (reachedEndWithDuration || fallbackNoDuration) {
+          showNextOverlayRef.current = true;
+
+          requestAnimationFrame(() => {
+            if (mountedRef.current) {
+              setShowNextOverlay(true);
+            }
+          });
+        }
       }
     };
 
