@@ -78,10 +78,7 @@ function buildVidLinkUrl(intent: PlaybackIntent, o: BuildEmbedOptions) {
     autoplay: o.autoplay ?? true,
     startAt: o.startAt && o.startAt > 5 ? o.startAt : undefined,
 
-    next: 0,
-    autonext: 0,
-    autoNext: 0,
-    nextButton: 0,
+    nextbutton: 0,
   });
 
   if (mediaType === "tv") {
@@ -108,7 +105,7 @@ function buildVidFastUrl(intent: PlaybackIntent, o: BuildEmbedOptions) {
     fullscreenButton: o.fullscreenButton ?? true,
     chromecast: false,
 
-    autonext: 0,
+    nextButton: 0,
     autoNext: 0,
   });
 
@@ -136,9 +133,6 @@ function buildSuperEmbedUrl(intent: PlaybackIntent, o: BuildEmbedOptions = {}) {
     t: o.startAt && o.startAt > 5 ? o.startAt : undefined,
     color: theme,
     quality: "auto",
-
-    next: 0,
-    autonext: 0,
   });
 
   if (mediaType === "tv") {
