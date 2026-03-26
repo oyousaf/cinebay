@@ -77,7 +77,11 @@ function buildVidLinkUrl(intent: PlaybackIntent, o: BuildEmbedOptions) {
     iconColor: WHITE,
     autoplay: o.autoplay ?? true,
     startAt: o.startAt && o.startAt > 5 ? o.startAt : undefined,
-    nextButton: false,
+
+    next: 0,
+    autonext: 0,
+    autoNext: 0,
+    nextButton: 0,
   });
 
   if (mediaType === "tv") {
