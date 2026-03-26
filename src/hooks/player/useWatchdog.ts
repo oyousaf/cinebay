@@ -1,16 +1,31 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type RefObject } from "react";
 import type { ProviderType } from "@/lib/embed/buildEmbedUrl";
+
+/* -------------------------------- CONFIG -------------------------------- */
 
 const WATCHDOG_CHECK_INTERVAL_MS = 2500;
 const WATCHDOG_SOFT_STALL_MS = 3000;
 const WATCHDOG_HARD_STALL_MS = 6000;
 
+/* ======================================================================== */
+
 function providerSupportsPlaybackEvents(provider: ProviderType) {
   const p = String(provider).toLowerCase();
   return p.includes("vidlink") || p.includes("vidfast");
 }
+
+/* ======================================================================== */
+
+type UseWatchdogParams = {
+  provider: ProviderType;
+  lastEventTimeRef: RefObject<number>;
+  isScrubbingRef: RefObject<boolean>;
+  fallbackProvider: (reason?: string) => void;
+  scheduleHideLoader: (ms?: number) => void;
+  playbackStartedRef: RefObject<boolean>;
+};
 
 export function useWatchdog({
   provider,
@@ -19,31 +34,41 @@ export function useWatchdog({
   fallbackProvider,
   scheduleHideLoader,
   playbackStartedRef,
-}: {
-  provider: ProviderType;
-  lastEventTimeRef: React.MutableRefObject<number>;
-  isScrubbingRef: React.MutableRefObject<boolean>;
-  fallbackProvider: (reason?: string) => void;
-  scheduleHideLoader: (ms?: number) => void;
-  playbackStartedRef: React.MutableRefObject<boolean>;
-}) {
+}: UseWatchdogParams) {
   const watchdogIntervalRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (!providerSupportsPlaybackEvents(provider)) return;
+    const supportsEvents = providerSupportsPlaybackEvents(provider);
+
+    if (!supportsEvents) {
+      if (watchdogIntervalRef.current !== null) {
+        clearInterval(watchdogIntervalRef.current);
+        watchdogIntervalRef.current = null;
+      }
+      return;
+    }
+
+    if (watchdogIntervalRef.current !== null) {
+      clearInterval(watchdogIntervalRef.current);
+      watchdogIntervalRef.current = null;
+    }
 
     watchdogIntervalRef.current = window.setInterval(() => {
       if (!playbackStartedRef.current) return;
 
-      const silence = Date.now() - lastEventTimeRef.current;
+      const lastEventAt = lastEventTimeRef.current ?? Date.now();
+      const isScrubbing = isScrubbingRef.current ?? false;
+      const silence = Date.now() - lastEventAt;
 
-      // soft stall → hide loader only
+      /* soft stall → hide loader only */
       if (silence >= WATCHDOG_SOFT_STALL_MS) {
         scheduleHideLoader(0);
       }
-      if (isScrubbingRef.current) return;
 
-      // hard stall → real failure
+      /* do not fallback during scrubbing */
+      if (isScrubbing) return;
+
+      /* hard stall → real failure */
       if (silence >= WATCHDOG_HARD_STALL_MS) {
         fallbackProvider("hard-stall");
       }
