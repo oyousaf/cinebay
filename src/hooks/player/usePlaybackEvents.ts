@@ -94,8 +94,6 @@ export function usePlaybackEvents({
 
   const lastProcessedRef = useRef(0);
 
-  /* ---------------- SYNC REFS ---------------- */
-
   useEffect(() => {
     hasNextEpisodeRef.current = hasNextEpisode;
   }, [hasNextEpisode]);
@@ -105,10 +103,6 @@ export function usePlaybackEvents({
       mountedRef.current = false;
     };
   }, []);
-
-  /* ------------------------------------------------------------------ */
-  /* MESSAGE HANDLER                                                   */
-  /* ------------------------------------------------------------------ */
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
@@ -125,8 +119,6 @@ export function usePlaybackEvents({
       const { currentTime, duration, eventType } = extractPlayerMetrics(msg);
 
       lastEventTimeRef.current = now;
-
-      /* ---------------- SCRUB DETECTION ---------------- */
 
       if (typeof currentTime === "number") {
         const delta = Math.abs(currentTime - lastKnownTimeRef.current);
@@ -148,12 +140,10 @@ export function usePlaybackEvents({
               JSON.stringify({ event: "play" }),
               "*",
             );
-
             iframeRef?.current?.contentWindow?.postMessage(
               { type: "play" },
               "*",
             );
-
             iframeRef?.current?.contentWindow?.postMessage(
               { command: "play" },
               "*",
@@ -164,8 +154,6 @@ export function usePlaybackEvents({
         lastKnownTimeRef.current = currentTime;
       }
 
-      /* ---------------- PLAYBACK START ---------------- */
-
       const started =
         (typeof currentTime === "number" && currentTime > 0) ||
         eventType === "play" ||
@@ -174,11 +162,7 @@ export function usePlaybackEvents({
         eventType === "canplay" ||
         eventType === "loadeddata";
 
-      if (started) {
-        markPlaybackStarted();
-      }
-
-      /* ---------------- START THRESHOLD ---------------- */
+      if (started) markPlaybackStarted();
 
       if (
         typeof currentTime === "number" &&
@@ -187,8 +171,6 @@ export function usePlaybackEvents({
       ) {
         hasStartedRef.current = true;
       }
-
-      /* ---------------- PROGRESS ---------------- */
 
       if (
         intent.mediaType === "tv" &&
@@ -199,22 +181,19 @@ export function usePlaybackEvents({
         maybeQueueProgress(currentTime);
       }
 
-      /* ---------------- NEXT EPISODE OVERLAY ---------------- */
-
       if (
         typeof currentTime === "number" &&
         hasNextEpisodeRef.current &&
         !showNextOverlayRef.current
       ) {
-        const reachedEndWithDuration =
+        const reachedEnd =
           typeof duration === "number" &&
           duration > 60 &&
           currentTime >= duration * NEXT_OVERLAY_THRESHOLD;
 
-        const fallbackNoDuration =
-          typeof duration !== "number" && currentTime > 1200;
+        const fallback = typeof duration !== "number" && currentTime > 1200;
 
-        if (reachedEndWithDuration || fallbackNoDuration) {
+        if (reachedEnd || fallback) {
           showNextOverlayRef.current = true;
 
           requestAnimationFrame(() => {
@@ -231,11 +210,13 @@ export function usePlaybackEvents({
     return () => {
       window.removeEventListener("message", handleMessage);
     };
-  }, [intent.mediaType, maybeQueueProgress, markPlaybackStarted, iframeRef]);
-
-  /* ------------------------------------------------------------------ */
-  /* RESET                                                             */
-  /* ------------------------------------------------------------------ */
+  }, [
+    intent.mediaType,
+    hasNextEpisode,
+    maybeQueueProgress,
+    markPlaybackStarted,
+    iframeRef,
+  ]);
 
   const resetPlaybackEvents = () => {
     hasStartedRef.current = false;
@@ -246,8 +227,6 @@ export function usePlaybackEvents({
     lastScrubTimeRef.current = 0;
     setShowNextOverlay(false);
   };
-
-  /* ------------------------------------------------------------------ */
 
   return {
     showNextOverlay,

@@ -168,7 +168,7 @@ export default function PlayerModal({
     flushPendingProgress();
     setShowNextOverlay(false);
     onPlayNext?.(nextIntent);
-  }, [flushPendingProgress, nextIntent, onPlayNext, setShowNextOverlay]);
+  }, [flushPendingProgress, nextIntent, onPlayNext]);
 
   /* ------------------------------------------------------------------ */
   /* NAVIGATION                                                         */
