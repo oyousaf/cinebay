@@ -8,8 +8,11 @@ const START_THRESHOLD_SECONDS = 30;
 const NEXT_OVERLAY_THRESHOLD = 0.9;
 
 const SCRUB_DELTA_SECONDS = 5;
-const STABLE_DELTA_SECONDS = 1;
-const SCRUB_RELEASE_MS = 1500;
+const STABLE_DELTA_SECONDS = 2;
+const SCRUB_RELEASE_MS = 800;
+
+const POLL_INTERVAL_MS = 1000;
+const NEXT_OVERLAY_FALLBACK_SECONDS = 1200;
 
 /* ======================================================================== */
 
@@ -89,28 +92,61 @@ export function usePlaybackEvents({
 
   const lastEventTimeRef = useRef(Date.now());
   const lastKnownTimeRef = useRef(0);
+  const lastKnownDurationRef = useRef<number | undefined>(undefined);
+
   const isScrubbingRef = useRef(false);
   const lastScrubTimeRef = useRef(0);
 
   const lastProcessedRef = useRef(0);
+  const pollIntervalRef = useRef<number | null>(null);
 
   useEffect(() => {
     hasNextEpisodeRef.current = hasNextEpisode;
   }, [hasNextEpisode]);
 
   useEffect(() => {
+    mountedRef.current = true;
+
     return () => {
       mountedRef.current = false;
     };
   }, []);
 
   useEffect(() => {
+    const maybeShowNextOverlay = (currentTime?: number, duration?: number) => {
+      if (
+        typeof currentTime !== "number" ||
+        !hasNextEpisodeRef.current ||
+        !hasStartedRef.current ||
+        showNextOverlayRef.current
+      ) {
+        return;
+      }
+
+      const nearEnd =
+        typeof duration === "number" &&
+        duration > 60 &&
+        currentTime >= duration * NEXT_OVERLAY_THRESHOLD;
+
+      const fallback = currentTime >= NEXT_OVERLAY_FALLBACK_SECONDS;
+
+      if (nearEnd || fallback) {
+        showNextOverlayRef.current = true;
+
+        requestAnimationFrame(() => {
+          if (mountedRef.current) {
+            setShowNextOverlay(true);
+          }
+        });
+      }
+    };
+
     const handleMessage = (event: MessageEvent) => {
       if (!isPlayerOrigin(event.origin)) return;
 
       const now = Date.now();
 
-      if (now - lastProcessedRef.current < 250) return;
+      if (now - lastProcessedRef.current < 150) return;
       lastProcessedRef.current = now;
 
       const msg = safeMsgData(event.data);
@@ -120,35 +156,23 @@ export function usePlaybackEvents({
 
       lastEventTimeRef.current = now;
 
+      if (typeof duration === "number" && duration > 0) {
+        lastKnownDurationRef.current = duration;
+      }
+
       if (typeof currentTime === "number") {
-        const delta = Math.abs(currentTime - lastKnownTimeRef.current);
+        const prev = lastKnownTimeRef.current;
+        const delta = Math.abs(currentTime - prev);
 
         if (delta >= SCRUB_DELTA_SECONDS) {
           isScrubbingRef.current = true;
           lastScrubTimeRef.current = now;
-        }
-
-        if (
+        } else if (
           isScrubbingRef.current &&
-          now - lastScrubTimeRef.current > SCRUB_RELEASE_MS &&
+          now - lastScrubTimeRef.current >= SCRUB_RELEASE_MS &&
           delta <= STABLE_DELTA_SECONDS
         ) {
           isScrubbingRef.current = false;
-
-          try {
-            iframeRef?.current?.contentWindow?.postMessage(
-              JSON.stringify({ event: "play" }),
-              "*",
-            );
-            iframeRef?.current?.contentWindow?.postMessage(
-              { type: "play" },
-              "*",
-            );
-            iframeRef?.current?.contentWindow?.postMessage(
-              { command: "play" },
-              "*",
-            );
-          } catch {}
         }
 
         lastKnownTimeRef.current = currentTime;
@@ -162,7 +186,9 @@ export function usePlaybackEvents({
         eventType === "canplay" ||
         eventType === "loadeddata";
 
-      if (started) markPlaybackStarted();
+      if (started) {
+        markPlaybackStarted();
+      }
 
       if (
         typeof currentTime === "number" &&
@@ -181,28 +207,10 @@ export function usePlaybackEvents({
         maybeQueueProgress(currentTime);
       }
 
-      if (
-        typeof currentTime === "number" &&
-        hasNextEpisodeRef.current &&
-        !showNextOverlayRef.current
-      ) {
-        const reachedEnd =
-          typeof duration === "number" &&
-          duration > 60 &&
-          currentTime >= duration * NEXT_OVERLAY_THRESHOLD;
-
-        const fallback = typeof duration !== "number" && currentTime > 1200;
-
-        if (reachedEnd || fallback) {
-          showNextOverlayRef.current = true;
-
-          requestAnimationFrame(() => {
-            if (mountedRef.current) {
-              setShowNextOverlay(true);
-            }
-          });
-        }
-      }
+      maybeShowNextOverlay(
+        currentTime,
+        typeof duration === "number" ? duration : lastKnownDurationRef.current,
+      );
     };
 
     window.addEventListener("message", handleMessage);
@@ -210,21 +218,46 @@ export function usePlaybackEvents({
     return () => {
       window.removeEventListener("message", handleMessage);
     };
-  }, [
-    intent.mediaType,
-    hasNextEpisode,
-    maybeQueueProgress,
-    markPlaybackStarted,
-    iframeRef,
-  ]);
+  }, [intent.mediaType, maybeQueueProgress, markPlaybackStarted]);
+
+  useEffect(() => {
+    if (pollIntervalRef.current !== null) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
+
+    pollIntervalRef.current = window.setInterval(() => {
+      try {
+        const target = iframeRef?.current?.contentWindow;
+        if (!target) return;
+
+        target.postMessage({ event: "getTime" }, "*");
+        target.postMessage({ type: "getTime" }, "*");
+        target.postMessage(JSON.stringify({ event: "getTime" }), "*");
+
+        target.postMessage({ event: "getDuration" }, "*");
+        target.postMessage({ type: "getDuration" }, "*");
+        target.postMessage(JSON.stringify({ event: "getDuration" }), "*");
+      } catch {}
+    }, POLL_INTERVAL_MS);
+
+    return () => {
+      if (pollIntervalRef.current !== null) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
+    };
+  }, [iframeRef]);
 
   const resetPlaybackEvents = () => {
     hasStartedRef.current = false;
     showNextOverlayRef.current = false;
     lastEventTimeRef.current = Date.now();
     lastKnownTimeRef.current = 0;
+    lastKnownDurationRef.current = undefined;
     isScrubbingRef.current = false;
     lastScrubTimeRef.current = 0;
+    lastProcessedRef.current = 0;
     setShowNextOverlay(false);
   };
 

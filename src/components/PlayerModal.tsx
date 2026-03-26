@@ -58,6 +58,7 @@ export default function PlayerModal({
     markPlaybackStarted,
     setStartAt,
     scheduleHideLoader,
+    playbackStartedRef,
   } = usePlayerCore(intent);
 
   /* ------------------------------------------------------------------ */
@@ -93,7 +94,7 @@ export default function PlayerModal({
   });
 
   /* ------------------------------------------------------------------ */
-  /* WATCHDOG                                                           */
+  /* WATCHDOG (FIXED)                                                   */
   /* ------------------------------------------------------------------ */
 
   useWatchdog({
@@ -102,7 +103,7 @@ export default function PlayerModal({
     isScrubbingRef,
     fallbackProvider,
     scheduleHideLoader,
-    playbackStarted: true,
+    playbackStartedRef,
   });
 
   /* ------------------------------------------------------------------ */
@@ -152,6 +153,23 @@ export default function PlayerModal({
     resetPlaybackEvents,
     setShowNextOverlay,
   ]);
+
+  /* ------------------------------------------------------------------ */
+  /* FALLBACK OVERLAY                                     */
+  /* ------------------------------------------------------------------ */
+
+  useEffect(() => {
+    if (!hasNextEpisode || showNextOverlay) return;
+
+    const timeout = setTimeout(
+      () => {
+        setShowNextOverlay(true);
+      },
+      20 * 60 * 1000,
+    );
+
+    return () => clearTimeout(timeout);
+  }, [hasNextEpisode, showNextOverlay, setShowNextOverlay]);
 
   /* ------------------------------------------------------------------ */
   /* ACTIONS                                                            */
@@ -239,33 +257,36 @@ export default function PlayerModal({
 
         <AnimatePresence>
           {showNextOverlay && nextIntent && (
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              className="absolute bottom-20 right-6 z-30 bg-[hsl(var(--background)/0.95)] ring-2 ring-[hsl(var(--foreground))] rounded-xl px-4 py-3 shadow-lg flex items-center gap-4 max-w-xs"
-            >
-              <div className="text-sm">
-                <div className="text-xs opacity-70">Up next</div>
+            <>
+              <div className="absolute bottom-0 right-0 z-30 w-36 h-20" />
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="absolute bottom-20 right-6 z-40 bg-[hsl(var(--background)/0.95)] ring-2 ring-[hsl(var(--foreground))] rounded-xl px-4 py-3 shadow-lg flex items-center gap-4 max-w-xs"
+              >
+                <div className="text-sm">
+                  <div className="text-xs opacity-70">Up next</div>
 
-                <div className="font-semibold">
-                  S{nextIntent.season} · E{nextIntent.episode}
+                  <div className="font-semibold">
+                    S{nextIntent.season} · E{nextIntent.episode}
+                  </div>
+
+                  {nextEpisodeTitle && (
+                    <div className="text-xs opacity-80 mt-1 line-clamp-2">
+                      {nextEpisodeTitle}
+                    </div>
+                  )}
                 </div>
 
-                {nextEpisodeTitle && (
-                  <div className="text-xs opacity-80 mt-1 line-clamp-2">
-                    {nextEpisodeTitle}
-                  </div>
-                )}
-              </div>
-
-              <button
-                onClick={handlePlayNext}
-                className="h-10 w-10 rounded-full bg-[hsl(var(--foreground))] text-[hsl(var(--background))] flex items-center justify-center"
-              >
-                <Play size={20} fill="currentColor" />
-              </button>
-            </motion.div>
+                <button
+                  onClick={handlePlayNext}
+                  className="h-10 w-10 rounded-full bg-[hsl(var(--foreground))] text-[hsl(var(--background))] flex items-center justify-center"
+                >
+                  <Play size={20} fill="currentColor" />
+                </button>
+              </motion.div>
+            </>
           )}
         </AnimatePresence>
       </motion.div>

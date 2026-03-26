@@ -45,25 +45,16 @@ function prefetchSeasonEpisodes(tmdbId: number, season: number) {
   void getSeasonEpisodesCached(tmdbId, season);
 }
 
-function getIntentKey(i: PlaybackIntent) {
-  return i.mediaType === "tv"
-    ? `${i.tmdbId}-s${i.season ?? 1}-e${i.episode ?? 1}`
-    : `${i.tmdbId}-movie`;
-}
-
 /* ======================================================================== */
 
 export function useEpisodeMeta(intent: PlaybackIntent) {
   const [episodeTitle, setEpisodeTitle] = useState("");
   const [nextEpisodeTitle, setNextEpisodeTitle] = useState("");
   const [hasNextEpisode, setHasNextEpisode] = useState(false);
-
   const [nextSeasonFirst, setNextSeasonFirst] = useState<{
     season: number;
     episode: number;
   } | null>(null);
-
-  const intentKey = useMemo(() => getIntentKey(intent), [intent]);
 
   useEffect(() => {
     if (intent.mediaType !== "tv" || !intent.season || !intent.episode) {
@@ -76,24 +67,26 @@ export function useEpisodeMeta(intent: PlaybackIntent) {
 
     let cancelled = false;
 
+    setEpisodeTitle("");
+    setNextEpisodeTitle("");
+    setHasNextEpisode(false);
+    setNextSeasonFirst(null);
+
     async function loadSeasonMeta() {
+      const season = intent.season!;
+      const episode = intent.episode!;
+
       const currentSeasonEpisodes = await getSeasonEpisodesCached(
         intent.tmdbId,
-        intent.season!,
+        season,
       );
 
       if (cancelled) return;
 
-      if (!currentSeasonEpisodes.length) {
-        setEpisodeTitle("");
-        setNextEpisodeTitle("");
-        setHasNextEpisode(false);
-        setNextSeasonFirst(null);
-        return;
-      }
+      if (!currentSeasonEpisodes.length) return;
 
       const currentEpisode = currentSeasonEpisodes.find(
-        (e) => e.episode_number === intent.episode,
+        (e) => e.episode_number === episode,
       );
 
       setEpisodeTitle(currentEpisode?.name || "");
@@ -102,29 +95,27 @@ export function useEpisodeMeta(intent: PlaybackIntent) {
         ...currentSeasonEpisodes.map((e) => e.episode_number),
       );
 
-      const season = intent.season ?? 1;
-      const episode = intent.episode ?? 1;
-
+      // prefetch next season near end
       if (episode >= maxEpisode - 1) {
         prefetchSeasonEpisodes(intent.tmdbId, season + 1);
       }
 
+      // next episode in same season
       if (episode < maxEpisode) {
         const nextEp = currentSeasonEpisodes.find(
           (e) => e.episode_number === episode + 1,
         );
 
         setHasNextEpisode(true);
-        setNextSeasonFirst(null);
         setNextEpisodeTitle(nextEp?.name || "");
+        setNextSeasonFirst(null);
         return;
       }
 
-      const nextSeason = season + 1;
-
+      // next season fallback
       const nextSeasonEpisodes = await getSeasonEpisodesCached(
         intent.tmdbId,
-        nextSeason,
+        season + 1,
       );
 
       if (cancelled) return;
@@ -132,14 +123,10 @@ export function useEpisodeMeta(intent: PlaybackIntent) {
       if (nextSeasonEpisodes.length) {
         setHasNextEpisode(true);
         setNextSeasonFirst({
-          season: nextSeason,
+          season: season + 1,
           episode: nextSeasonEpisodes[0].episode_number,
         });
         setNextEpisodeTitle(nextSeasonEpisodes[0].name || "");
-      } else {
-        setHasNextEpisode(false);
-        setNextSeasonFirst(null);
-        setNextEpisodeTitle("");
       }
     }
 
@@ -148,17 +135,10 @@ export function useEpisodeMeta(intent: PlaybackIntent) {
     return () => {
       cancelled = true;
     };
-  }, [
-    intentKey,
-    intent.mediaType,
-    intent.tmdbId,
-    intent.season,
-    intent.episode,
-  ]);
+  }, [intent.tmdbId, intent.season, intent.episode, intent.mediaType]);
 
   const nextIntent = useMemo(() => {
-    if (!hasNextEpisode) return null;
-    if (intent.mediaType !== "tv") return null;
+    if (!hasNextEpisode || intent.mediaType !== "tv") return null;
 
     if (nextSeasonFirst) {
       return {

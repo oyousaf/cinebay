@@ -24,41 +24,23 @@ export function useWatchdog({
   isScrubbingRef,
   fallbackProvider,
   scheduleHideLoader,
-  playbackStarted,
+  playbackStartedRef, // ✅ use ref
 }: {
   provider: ProviderType;
   lastEventTimeRef: React.MutableRefObject<number>;
   isScrubbingRef: React.MutableRefObject<boolean>;
   fallbackProvider: (reason?: string) => void;
   scheduleHideLoader: (ms?: number) => void;
-  playbackStarted: boolean;
+  playbackStartedRef: React.MutableRefObject<boolean>;
 }) {
   const watchdogIntervalRef = useRef<number | null>(null);
 
-  /* ------------------------------------------------------------------ */
-  /* CLEAR                                                              */
-  /* ------------------------------------------------------------------ */
-
-  const clearWatchdogInterval = () => {
-    if (watchdogIntervalRef.current !== null) {
-      clearInterval(watchdogIntervalRef.current);
-      watchdogIntervalRef.current = null;
-    }
-  };
-
-  /* ------------------------------------------------------------------ */
-  /* WATCHDOG LOOP                                                      */
-  /* ------------------------------------------------------------------ */
-
   useEffect(() => {
-    clearWatchdogInterval();
-
-    if (!providerSupportsPlaybackEvents(provider)) {
-      return;
-    }
+    if (!providerSupportsPlaybackEvents(provider)) return;
 
     watchdogIntervalRef.current = window.setInterval(() => {
-      if (!playbackStarted) return;
+      // ✅ live value, not stale snapshot
+      if (!playbackStartedRef.current) return;
 
       const silence = Date.now() - lastEventTimeRef.current;
 
@@ -68,24 +50,23 @@ export function useWatchdog({
       }
 
       /* hard stall while scrubbing → fallback */
-      if (
-        silence >= WATCHDOG_HARD_STALL_MS &&
-        isScrubbingRef.current &&
-        providerSupportsPlaybackEvents(provider)
-      ) {
+      if (silence >= WATCHDOG_HARD_STALL_MS && isScrubbingRef.current) {
         fallbackProvider("scrub-stall");
       }
     }, WATCHDOG_CHECK_INTERVAL_MS);
 
     return () => {
-      clearWatchdogInterval();
+      if (watchdogIntervalRef.current !== null) {
+        clearInterval(watchdogIntervalRef.current);
+        watchdogIntervalRef.current = null;
+      }
     };
   }, [
     provider,
-    playbackStarted,
     fallbackProvider,
     scheduleHideLoader,
     lastEventTimeRef,
     isScrubbingRef,
+    playbackStartedRef,
   ]);
 }

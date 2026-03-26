@@ -83,10 +83,13 @@ export default function EpisodeSelector({ tv, onPlay }: Props) {
     const validSeasons = tv.seasons.filter((s) => s.season_number > 0);
     setSeasons(validSeasons);
 
-    if (!initialisedRef.current) {
+    if (!initialisedRef.current && validSeasons.length) {
       initialisedRef.current = true;
 
-      if (validSeasons.length) {
+      // prefer resume season if exists
+      if (resume?.season) {
+        setSeason(resume.season);
+      } else {
         setSeason(validSeasons[0].season_number);
       }
     }
@@ -111,7 +114,9 @@ export default function EpisodeSelector({ tv, onPlay }: Props) {
     if (!season) return;
 
     let active = true;
+
     setEpisodes([]);
+    setEpisode(null);
 
     fetchSeasonEpisodes(tv.id, season).then((eps) => {
       if (!active || !Array.isArray(eps) || eps.length === 0) return;
@@ -119,9 +124,25 @@ export default function EpisodeSelector({ tv, onPlay }: Props) {
       setEpisodes(eps);
 
       setEpisode((current) => {
-        if (current && eps.some((e) => e.episode_number === current)) {
+        // if user explicitly picked episode, respect it
+        if (
+          userInteractedRef.current &&
+          current &&
+          eps.some((e) => e.episode_number === current)
+        ) {
           return current;
         }
+
+        // resume match (if exists)
+        if (
+          resume &&
+          resume.season === season &&
+          eps.some((e) => e.episode_number === resume.episode)
+        ) {
+          return resume.episode;
+        }
+
+        // default fallback
         return eps[0].episode_number;
       });
     });
@@ -129,7 +150,7 @@ export default function EpisodeSelector({ tv, onPlay }: Props) {
     return () => {
       active = false;
     };
-  }, [tv.id, season]);
+  }, [tv.id, season, resume]);
 
   /* ------------------------------------------------------------------ */
   /* PLAY                                               */

@@ -20,6 +20,7 @@ const THEME = "2dd4bf";
 export function usePlayerCore(intent: PlaybackIntent) {
   const [showLoader, setShowLoader] = useState(true);
   const [providerIndex, setProviderIndex] = useState(0);
+  const [startAt, setStartAt] = useState(0); // FIXED
 
   const providerIndexRef = useRef(0);
   const iframeLoadedRef = useRef(false);
@@ -41,18 +42,6 @@ export function usePlayerCore(intent: PlaybackIntent) {
   useEffect(() => {
     providerIndexRef.current = providerIndex;
   }, [providerIndex]);
-
-  /* ------------------------------------------------------------------ */
-  /* START AT (resume handled outside)                                 */
-  /* ------------------------------------------------------------------ */
-
-  const startAtRef = useRef(0);
-
-  const setStartAt = useCallback((v: number) => {
-    startAtRef.current = v || 0;
-  }, []);
-
-  const startAt = startAtRef.current;
 
   /* ------------------------------------------------------------------ */
   /* EMBED URL                                                         */
@@ -151,6 +140,7 @@ export function usePlayerCore(intent: PlaybackIntent) {
   useEffect(() => {
     setProviderIndex(0);
     setShowLoader(true);
+    setStartAt(0); // reset properly
 
     playbackStartedRef.current = false;
     iframeLoadedRef.current = false;
@@ -242,11 +232,11 @@ export function usePlayerCore(intent: PlaybackIntent) {
     providerIndex,
     embedUrl,
     showLoader,
-    setShowLoader,
     onIframeLoad,
     fallbackProvider,
     markPlaybackStarted,
     setStartAt,
     scheduleHideLoader,
+    playbackStartedRef,
   };
 }
