@@ -113,12 +113,24 @@ export function usePlaybackEvents({
   }, []);
 
   useEffect(() => {
+    const openNextOverlay = () => {
+      if (showNextOverlayRef.current) return;
+
+      showNextOverlayRef.current = true;
+
+      if (mountedRef.current) {
+        setShowNextOverlay(true);
+      }
+    };
+
     const maybeShowNextOverlay = (currentTime?: number, duration?: number) => {
+      // Once shown, never re-evaluate during this playback session.
+      if (showNextOverlayRef.current) return;
+
       if (
         typeof currentTime !== "number" ||
         !hasNextEpisodeRef.current ||
-        !hasStartedRef.current ||
-        showNextOverlayRef.current
+        !hasStartedRef.current
       ) {
         return;
       }
@@ -131,13 +143,7 @@ export function usePlaybackEvents({
       const fallback = currentTime >= NEXT_OVERLAY_FALLBACK_SECONDS;
 
       if (nearEnd || fallback) {
-        showNextOverlayRef.current = true;
-
-        requestAnimationFrame(() => {
-          if (mountedRef.current) {
-            setShowNextOverlay(true);
-          }
-        });
+        openNextOverlay();
       }
     };
 

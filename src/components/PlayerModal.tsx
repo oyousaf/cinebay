@@ -22,8 +22,6 @@ interface PlayerModalProps {
   onPlayNext?: (intent: PlaybackIntent) => void;
 }
 
-/* ======================================================================== */
-
 function getIntentKey(i: PlaybackIntent) {
   return i.mediaType === "tv"
     ? `${i.tmdbId}-s${i.season ?? 1}-e${i.episode ?? 1}`
@@ -44,9 +42,7 @@ export default function PlayerModal({
 
   const intentKey = useMemo(() => getIntentKey(intent), [intent]);
 
-  /* ------------------------------------------------------------------ */
-  /* PLAYER CORE                                                        */
-  /* ------------------------------------------------------------------ */
+  /* PLAYER CORE */
 
   const {
     provider,
@@ -61,23 +57,17 @@ export default function PlayerModal({
     playbackStartedRef,
   } = usePlayerCore(intent);
 
-  /* ------------------------------------------------------------------ */
-  /* EPISODE META                                                       */
-  /* ------------------------------------------------------------------ */
+  /* EPISODE META */
 
   const { episodeTitle, nextEpisodeTitle, hasNextEpisode, nextIntent } =
     useEpisodeMeta(intent);
 
-  /* ------------------------------------------------------------------ */
-  /* PROGRESS                                                           */
-  /* ------------------------------------------------------------------ */
+  /* PROGRESS */
 
   const { maybeQueueProgress, flushPendingProgress, resetProgressTracking } =
     useProgressTracker(intent, reportTVPlayback);
 
-  /* ------------------------------------------------------------------ */
-  /* PLAYBACK EVENTS                                                    */
-  /* ------------------------------------------------------------------ */
+  /* PLAYBACK EVENTS */
 
   const {
     showNextOverlay,
@@ -93,9 +83,7 @@ export default function PlayerModal({
     iframeRef,
   });
 
-  /* ------------------------------------------------------------------ */
-  /* WATCHDOG (FIXED)                                                   */
-  /* ------------------------------------------------------------------ */
+  /* WATCHDOG */
 
   useWatchdog({
     provider,
@@ -106,9 +94,7 @@ export default function PlayerModal({
     playbackStartedRef,
   });
 
-  /* ------------------------------------------------------------------ */
-  /* RESUME                                                             */
-  /* ------------------------------------------------------------------ */
+  /* RESUME */
 
   useEffect(() => {
     if (intent.mediaType !== "tv") {
@@ -137,43 +123,20 @@ export default function PlayerModal({
     setStartAt,
   ]);
 
-  /* ------------------------------------------------------------------ */
-  /* RESET                                                              */
-  /* ------------------------------------------------------------------ */
+  /* RESET  */
 
   useEffect(() => {
     flushPendingProgress();
     resetProgressTracking();
     resetPlaybackEvents();
-    setShowNextOverlay(false);
   }, [
     intentKey,
     flushPendingProgress,
     resetProgressTracking,
     resetPlaybackEvents,
-    setShowNextOverlay,
   ]);
 
-  /* ------------------------------------------------------------------ */
-  /* FALLBACK OVERLAY                                     */
-  /* ------------------------------------------------------------------ */
-
-  useEffect(() => {
-    if (!hasNextEpisode || showNextOverlay) return;
-
-    const timeout = setTimeout(
-      () => {
-        setShowNextOverlay(true);
-      },
-      20 * 60 * 1000,
-    );
-
-    return () => clearTimeout(timeout);
-  }, [hasNextEpisode, showNextOverlay, setShowNextOverlay]);
-
-  /* ------------------------------------------------------------------ */
-  /* ACTIONS                                                            */
-  /* ------------------------------------------------------------------ */
+  /* ACTIONS */
 
   const handleClose = useCallback(() => {
     flushPendingProgress();
@@ -186,11 +149,9 @@ export default function PlayerModal({
     flushPendingProgress();
     setShowNextOverlay(false);
     onPlayNext?.(nextIntent);
-  }, [flushPendingProgress, nextIntent, onPlayNext]);
+  }, [flushPendingProgress, nextIntent, onPlayNext, setShowNextOverlay]);
 
-  /* ------------------------------------------------------------------ */
-  /* NAVIGATION                                                         */
-  /* ------------------------------------------------------------------ */
+  /* NAVIGATION */
 
   useEffect(() => {
     const handleNav = (dir: "up" | "down" | "escape") => {
@@ -206,9 +167,7 @@ export default function PlayerModal({
     };
   }, [handleClose, setTabNavigator, setModalOpen]);
 
-  /* ------------------------------------------------------------------ */
-  /* RENDER                                                             */
-  /* ------------------------------------------------------------------ */
+  /* RENDER */
 
   return (
     <motion.div
