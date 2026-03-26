@@ -57,7 +57,7 @@ export default function PlayerModal({
     playbackStartedRef,
   } = usePlayerCore(intent);
 
-  /* EPISODE META (NOW INCLUDES runtimeSeconds) */
+  /* EPISODE META */
 
   const {
     episodeTitle,
