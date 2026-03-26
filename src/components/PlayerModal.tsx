@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useCallback, useRef, useState } from "react";
+import { useEffect, useMemo, useCallback, useRef } from "react";
 import { X, Play, LoaderCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -59,13 +59,8 @@ export default function PlayerModal({
 
   /* EPISODE META */
 
-  const {
-    episodeTitle,
-    nextEpisodeTitle,
-    hasNextEpisode,
-    nextIntent,
-    runtimeSeconds,
-  } = useEpisodeMeta(intent);
+  const { episodeTitle, nextEpisodeTitle, hasNextEpisode, nextIntent } =
+    useEpisodeMeta(intent);
 
   /* PROGRESS */
 
@@ -76,7 +71,6 @@ export default function PlayerModal({
 
   const {
     showNextOverlay,
-    setShowNextOverlay,
     resetPlaybackEvents,
     lastEventTimeRef,
     isScrubbingRef,
@@ -102,34 +96,6 @@ export default function PlayerModal({
     lastKnownTimeRef,
     lastKnownDurationRef,
   });
-
-  /* ------------------------------------------------------------------ */
-  /* HARD OVERLAY CONTROL (TMDB RUNTIME ONLY)                            */
-  /* ------------------------------------------------------------------ */
-
-  const forcedOverlayRef = useRef(false);
-
-  useEffect(() => {
-    if (!runtimeSeconds) return;
-    if (!hasNextEpisode) return;
-
-    const interval = setInterval(() => {
-      if (forcedOverlayRef.current) return;
-
-      const currentTime = lastKnownTimeRef.current;
-
-      if (!currentTime || currentTime <= 0) return;
-
-      const remaining = runtimeSeconds - currentTime;
-
-      if (remaining <= 120 || currentTime >= runtimeSeconds * 0.9) {
-        forcedOverlayRef.current = true;
-        setShowNextOverlay(true);
-      }
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [runtimeSeconds, hasNextEpisode, setShowNextOverlay]);
 
   /* RESUME */
 
@@ -166,7 +132,6 @@ export default function PlayerModal({
     flushPendingProgress();
     resetProgressTracking();
     resetPlaybackEvents();
-    forcedOverlayRef.current = false;
   }, [
     intentKey,
     flushPendingProgress,
@@ -187,7 +152,6 @@ export default function PlayerModal({
 
     flushPendingProgress();
     resetPlaybackEvents();
-    forcedOverlayRef.current = false;
     onPlayNext?.(nextIntent);
   }, [flushPendingProgress, nextIntent, onPlayNext, resetPlaybackEvents]);
 
