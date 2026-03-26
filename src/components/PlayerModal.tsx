@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useCallback, useRef } from "react";
+import { useEffect, useMemo, useCallback, useRef, useState } from "react";
 import { X, Play, LoaderCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -57,10 +57,15 @@ export default function PlayerModal({
     playbackStartedRef,
   } = usePlayerCore(intent);
 
-  /* EPISODE META */
+  /* EPISODE META (NOW INCLUDES runtimeSeconds) */
 
-  const { episodeTitle, nextEpisodeTitle, hasNextEpisode, nextIntent } =
-    useEpisodeMeta(intent);
+  const {
+    episodeTitle,
+    nextEpisodeTitle,
+    hasNextEpisode,
+    nextIntent,
+    runtimeSeconds,
+  } = useEpisodeMeta(intent);
 
   /* PROGRESS */
 
@@ -75,6 +80,8 @@ export default function PlayerModal({
     resetPlaybackEvents,
     lastEventTimeRef,
     isScrubbingRef,
+    lastKnownTimeRef,
+    lastKnownDurationRef,
   } = usePlaybackEvents({
     intent,
     hasNextEpisode,
@@ -92,7 +99,37 @@ export default function PlayerModal({
     fallbackProvider,
     scheduleHideLoader,
     playbackStartedRef,
+    lastKnownTimeRef,
+    lastKnownDurationRef,
   });
+
+  /* ------------------------------------------------------------------ */
+  /* HARD OVERLAY CONTROL (TMDB RUNTIME ONLY)                            */
+  /* ------------------------------------------------------------------ */
+
+  const forcedOverlayRef = useRef(false);
+
+  useEffect(() => {
+    if (!runtimeSeconds) return;
+    if (!hasNextEpisode) return;
+
+    const interval = setInterval(() => {
+      if (forcedOverlayRef.current) return;
+
+      const currentTime = lastKnownTimeRef.current;
+
+      if (!currentTime || currentTime <= 0) return;
+
+      const remaining = runtimeSeconds - currentTime;
+
+      if (remaining <= 120 || currentTime >= runtimeSeconds * 0.9) {
+        forcedOverlayRef.current = true;
+        setShowNextOverlay(true);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [runtimeSeconds, hasNextEpisode, setShowNextOverlay]);
 
   /* RESUME */
 
@@ -123,12 +160,13 @@ export default function PlayerModal({
     setStartAt,
   ]);
 
-  /* RESET  */
+  /* RESET */
 
   useEffect(() => {
     flushPendingProgress();
     resetProgressTracking();
     resetPlaybackEvents();
+    forcedOverlayRef.current = false;
   }, [
     intentKey,
     flushPendingProgress,
@@ -140,16 +178,18 @@ export default function PlayerModal({
 
   const handleClose = useCallback(() => {
     flushPendingProgress();
+    resetPlaybackEvents();
     onClose();
-  }, [flushPendingProgress, onClose]);
+  }, [flushPendingProgress, resetPlaybackEvents, onClose]);
 
   const handlePlayNext = useCallback(() => {
     if (!nextIntent) return;
 
     flushPendingProgress();
-    setShowNextOverlay(false);
+    resetPlaybackEvents();
+    forcedOverlayRef.current = false;
     onPlayNext?.(nextIntent);
-  }, [flushPendingProgress, nextIntent, onPlayNext, setShowNextOverlay]);
+  }, [flushPendingProgress, nextIntent, onPlayNext, resetPlaybackEvents]);
 
   /* NAVIGATION */
 
@@ -216,36 +256,33 @@ export default function PlayerModal({
 
         <AnimatePresence>
           {showNextOverlay && nextIntent && (
-            <>
-              <div className="absolute bottom-0 right-0 z-30 w-36 h-20" />
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                className="absolute bottom-20 right-6 z-40 bg-[hsl(var(--background)/0.95)] ring-2 ring-[hsl(var(--foreground))] rounded-xl px-4 py-3 shadow-lg flex items-center gap-4 max-w-xs"
-              >
-                <div className="text-sm">
-                  <div className="text-xs opacity-70">Up next</div>
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="absolute bottom-20 right-6 z-40 bg-[hsl(var(--background)/0.95)] ring-2 ring-[hsl(var(--foreground))] rounded-xl px-4 py-3 shadow-lg flex items-center gap-4 max-w-xs"
+            >
+              <div className="text-sm">
+                <div className="text-xs opacity-70">Up next</div>
 
-                  <div className="font-semibold">
-                    S{nextIntent.season} · E{nextIntent.episode}
-                  </div>
-
-                  {nextEpisodeTitle && (
-                    <div className="text-xs opacity-80 mt-1 line-clamp-2">
-                      {nextEpisodeTitle}
-                    </div>
-                  )}
+                <div className="font-semibold">
+                  S{nextIntent.season} · E{nextIntent.episode}
                 </div>
 
-                <button
-                  onClick={handlePlayNext}
-                  className="h-10 w-10 rounded-full bg-[hsl(var(--foreground))] text-[hsl(var(--background))] flex items-center justify-center"
-                >
-                  <Play size={20} fill="currentColor" />
-                </button>
-              </motion.div>
-            </>
+                {nextEpisodeTitle && (
+                  <div className="text-xs opacity-80 mt-1 line-clamp-2">
+                    {nextEpisodeTitle}
+                  </div>
+                )}
+              </div>
+
+              <button
+                onClick={handlePlayNext}
+                className="h-10 w-10 rounded-full bg-[hsl(var(--foreground))] text-[hsl(var(--background))] flex items-center justify-center"
+              >
+                <Play size={20} fill="currentColor" />
+              </button>
+            </motion.div>
           )}
         </AnimatePresence>
       </motion.div>

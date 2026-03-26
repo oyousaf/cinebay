@@ -9,6 +9,8 @@ import { fetchSeasonEpisodes } from "@/lib/tmdb";
 type SeasonEpisode = {
   episode_number: number;
   name?: string;
+  runtime?: number;
+  episode_run_time?: number[];
 };
 
 /* -------------------------------- CACHE -------------------------------- */
@@ -56,12 +58,17 @@ export function useEpisodeMeta(intent: PlaybackIntent) {
     episode: number;
   } | null>(null);
 
+  const [runtimeSeconds, setRuntimeSeconds] = useState<number | undefined>(
+    undefined,
+  );
+
   useEffect(() => {
     if (intent.mediaType !== "tv" || !intent.season || !intent.episode) {
       setEpisodeTitle("");
       setNextEpisodeTitle("");
       setHasNextEpisode(false);
       setNextSeasonFirst(null);
+      setRuntimeSeconds(undefined);
       return;
     }
 
@@ -71,6 +78,7 @@ export function useEpisodeMeta(intent: PlaybackIntent) {
     setNextEpisodeTitle("");
     setHasNextEpisode(false);
     setNextSeasonFirst(null);
+    setRuntimeSeconds(undefined);
 
     async function loadSeasonMeta() {
       const season = intent.season!;
@@ -82,7 +90,6 @@ export function useEpisodeMeta(intent: PlaybackIntent) {
       );
 
       if (cancelled) return;
-
       if (!currentSeasonEpisodes.length) return;
 
       const currentEpisode = currentSeasonEpisodes.find(
@@ -91,16 +98,25 @@ export function useEpisodeMeta(intent: PlaybackIntent) {
 
       setEpisodeTitle(currentEpisode?.name || "");
 
+      /* ---------------- RUNTIME (KEY ADDITION) ---------------- */
+
+      const runtimeMinutes =
+        currentEpisode?.runtime ?? currentEpisode?.episode_run_time?.[0];
+
+      if (runtimeMinutes && runtimeMinutes > 0) {
+        setRuntimeSeconds(runtimeMinutes * 60);
+      }
+
+      /* ---------------- NEXT EPISODE LOGIC ---------------- */
+
       const maxEpisode = Math.max(
         ...currentSeasonEpisodes.map((e) => e.episode_number),
       );
 
-      // prefetch next season near end
       if (episode >= maxEpisode - 1) {
         prefetchSeasonEpisodes(intent.tmdbId, season + 1);
       }
 
-      // next episode in same season
       if (episode < maxEpisode) {
         const nextEp = currentSeasonEpisodes.find(
           (e) => e.episode_number === episode + 1,
@@ -112,7 +128,6 @@ export function useEpisodeMeta(intent: PlaybackIntent) {
         return;
       }
 
-      // next season fallback
       const nextSeasonEpisodes = await getSeasonEpisodesCached(
         intent.tmdbId,
         season + 1,
@@ -159,5 +174,6 @@ export function useEpisodeMeta(intent: PlaybackIntent) {
     nextEpisodeTitle,
     hasNextEpisode,
     nextIntent,
+    runtimeSeconds,
   };
 }

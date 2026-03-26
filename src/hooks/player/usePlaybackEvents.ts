@@ -5,14 +5,22 @@ import { useEffect, useRef, useState } from "react";
 /* -------------------------------- CONFIG -------------------------------- */
 
 const START_THRESHOLD_SECONDS = 30;
-const NEXT_OVERLAY_THRESHOLD = 0.9;
+const NEXT_OVERLAY_REMAINING_SECONDS = 120;
 
-const SCRUB_DELTA_SECONDS = 5;
+const SCRUB_DELTA_SECONDS = 10;
 const STABLE_DELTA_SECONDS = 2;
 const SCRUB_RELEASE_MS = 800;
 
 const POLL_INTERVAL_MS = 1000;
-const NEXT_OVERLAY_FALLBACK_SECONDS = 1200;
+const FALLBACK_PERCENT = 0.9;
+
+const ENDED_EVENTS = new Set([
+  "ended",
+  "end",
+  "complete",
+  "completed",
+  "finished",
+]);
 
 /* ======================================================================== */
 
@@ -47,22 +55,19 @@ function isPlayerOrigin(origin: string) {
 }
 
 function extractPlayerMetrics(msg: Record<string, any>) {
-  const payload =
-    msg?.data && typeof msg.data === "object" ? msg.data : (msg ?? {});
+  const payload = msg?.data && typeof msg.data === "object" ? msg.data : msg;
 
   const rawCurrentTime = payload?.currentTime ?? payload?.current_time;
   const rawDuration = payload?.duration ?? payload?.totalDuration;
   const rawEvent =
     msg?.event ?? msg?.type ?? payload?.event ?? payload?.type ?? "";
 
-  const currentTime =
-    typeof rawCurrentTime === "number" ? rawCurrentTime : undefined;
-
-  const duration = typeof rawDuration === "number" ? rawDuration : undefined;
-
-  const eventType = String(rawEvent).toLowerCase();
-
-  return { currentTime, duration, eventType };
+  return {
+    currentTime:
+      typeof rawCurrentTime === "number" ? rawCurrentTime : undefined,
+    duration: typeof rawDuration === "number" ? rawDuration : undefined,
+    eventType: String(rawEvent).toLowerCase().trim(),
+  };
 }
 
 /* ======================================================================== */
@@ -74,9 +79,7 @@ export function usePlaybackEvents({
   markPlaybackStarted,
   iframeRef,
 }: {
-  intent: {
-    mediaType: "movie" | "tv";
-  };
+  intent: { mediaType: "movie" | "tv" };
   hasNextEpisode: boolean;
   maybeQueueProgress: (t: number) => void;
   markPlaybackStarted: () => void;
@@ -86,7 +89,6 @@ export function usePlaybackEvents({
 
   const hasStartedRef = useRef(false);
   const showNextOverlayRef = useRef(false);
-
   const hasNextEpisodeRef = useRef(hasNextEpisode);
   const mountedRef = useRef(true);
 
@@ -94,11 +96,16 @@ export function usePlaybackEvents({
   const lastKnownTimeRef = useRef(0);
   const lastKnownDurationRef = useRef<number | undefined>(undefined);
 
+  const internalTimeRef = useRef(0);
+
   const isScrubbingRef = useRef(false);
   const lastScrubTimeRef = useRef(0);
 
   const lastProcessedRef = useRef(0);
   const pollIntervalRef = useRef<number | null>(null);
+  const internalTimerRef = useRef<number | null>(null);
+
+  /* ---------------- STATE SYNC ---------------- */
 
   useEffect(() => {
     hasNextEpisodeRef.current = hasNextEpisode;
@@ -106,47 +113,51 @@ export function usePlaybackEvents({
 
   useEffect(() => {
     mountedRef.current = true;
-
     return () => {
       mountedRef.current = false;
     };
   }, []);
 
+  /* ---------------- INTERNAL TIMER (CRITICAL FIX) ---------------- */
+
   useEffect(() => {
-    const openNextOverlay = () => {
-      if (showNextOverlayRef.current) return;
+    if (internalTimerRef.current !== null) {
+      clearInterval(internalTimerRef.current);
+    }
 
-      showNextOverlayRef.current = true;
+    internalTimerRef.current = window.setInterval(() => {
+      if (!hasStartedRef.current) return;
 
-      if (mountedRef.current) {
-        setShowNextOverlay(true);
+      internalTimeRef.current += 1;
+
+      // fallback only if provider is dead
+      if (lastKnownTimeRef.current < internalTimeRef.current - 5) {
+        lastKnownTimeRef.current = internalTimeRef.current;
+      }
+    }, 1000);
+
+    return () => {
+      if (internalTimerRef.current !== null) {
+        clearInterval(internalTimerRef.current);
       }
     };
+  }, []);
 
-    const maybeShowNextOverlay = (currentTime?: number, duration?: number) => {
+  /* ---------------- MESSAGE HANDLER ---------------- */
+
+  useEffect(() => {
+    const openOverlay = () => {
       if (showNextOverlayRef.current) return;
+      if (!hasNextEpisodeRef.current) return;
 
-      if (typeof currentTime !== "number" || !hasNextEpisodeRef.current) {
-        return;
-      }
-
-      const nearEnd =
-        typeof duration === "number" &&
-        duration > 60 &&
-        currentTime >= duration * NEXT_OVERLAY_THRESHOLD;
-
-      const fallback = currentTime >= NEXT_OVERLAY_FALLBACK_SECONDS;
-
-      if (nearEnd || fallback) {
-        openNextOverlay();
-      }
+      showNextOverlayRef.current = true;
+      if (mountedRef.current) setShowNextOverlay(true);
     };
 
     const handleMessage = (event: MessageEvent) => {
       if (!isPlayerOrigin(event.origin)) return;
 
       const now = Date.now();
-
       if (now - lastProcessedRef.current < 150) return;
       lastProcessedRef.current = now;
 
@@ -162,8 +173,7 @@ export function usePlaybackEvents({
       }
 
       if (typeof currentTime === "number") {
-        const prev = lastKnownTimeRef.current;
-        const delta = Math.abs(currentTime - prev);
+        const delta = Math.abs(currentTime - lastKnownTimeRef.current);
 
         if (delta >= SCRUB_DELTA_SECONDS) {
           isScrubbingRef.current = true;
@@ -179,26 +189,28 @@ export function usePlaybackEvents({
         lastKnownTimeRef.current = currentTime;
       }
 
+      /* playback started */
+
       const started =
         (typeof currentTime === "number" && currentTime > 0) ||
         eventType === "play" ||
         eventType === "playing" ||
-        eventType === "ready" ||
-        eventType === "canplay" ||
-        eventType === "loadeddata";
+        eventType === "ready";
 
       if (started) {
         markPlaybackStarted();
+        hasStartedRef.current = true;
       }
 
-      if (!hasStartedRef.current) {
-        if (
-          (typeof currentTime === "number" && currentTime > 5) ||
-          eventType === "playing"
-        ) {
-          hasStartedRef.current = true;
-        }
+      if (
+        typeof currentTime === "number" &&
+        !hasStartedRef.current &&
+        currentTime >= START_THRESHOLD_SECONDS
+      ) {
+        hasStartedRef.current = true;
       }
+
+      /* progress */
 
       if (
         intent.mediaType === "tv" &&
@@ -209,23 +221,48 @@ export function usePlaybackEvents({
         maybeQueueProgress(currentTime);
       }
 
-      maybeShowNextOverlay(
-        currentTime,
-        typeof duration === "number" ? duration : lastKnownDurationRef.current,
-      );
+      /* ---------------- OVERLAY ---------------- */
+
+      const time = lastKnownTimeRef.current;
+      const durationSafe =
+        typeof duration === "number" ? duration : lastKnownDurationRef.current;
+
+      if (hasNextEpisodeRef.current && time > 0) {
+        if (
+          typeof durationSafe === "number" &&
+          durationSafe > 60 &&
+          durationSafe - time <= NEXT_OVERLAY_REMAINING_SECONDS
+        ) {
+          openOverlay();
+          return;
+        }
+
+        if (
+          typeof durationSafe === "number" &&
+          time >= durationSafe * FALLBACK_PERCENT
+        ) {
+          openOverlay();
+        }
+
+        if (time >= 1200) {
+          openOverlay();
+        }
+      }
+
+      if (ENDED_EVENTS.has(eventType)) {
+        openOverlay();
+      }
     };
 
     window.addEventListener("message", handleMessage);
-
-    return () => {
-      window.removeEventListener("message", handleMessage);
-    };
+    return () => window.removeEventListener("message", handleMessage);
   }, [intent.mediaType, maybeQueueProgress, markPlaybackStarted]);
+
+  /* ---------------- POLLING ---------------- */
 
   useEffect(() => {
     if (pollIntervalRef.current !== null) {
       clearInterval(pollIntervalRef.current);
-      pollIntervalRef.current = null;
     }
 
     pollIntervalRef.current = window.setInterval(() => {
@@ -234,22 +271,18 @@ export function usePlaybackEvents({
         if (!target) return;
 
         target.postMessage({ event: "getTime" }, "*");
-        target.postMessage({ type: "getTime" }, "*");
-        target.postMessage(JSON.stringify({ event: "getTime" }), "*");
-
         target.postMessage({ event: "getDuration" }, "*");
-        target.postMessage({ type: "getDuration" }, "*");
-        target.postMessage(JSON.stringify({ event: "getDuration" }), "*");
       } catch {}
     }, POLL_INTERVAL_MS);
 
     return () => {
       if (pollIntervalRef.current !== null) {
         clearInterval(pollIntervalRef.current);
-        pollIntervalRef.current = null;
       }
     };
   }, [iframeRef]);
+
+  /* ---------------- RESET ---------------- */
 
   const resetPlaybackEvents = () => {
     hasStartedRef.current = false;
@@ -257,6 +290,7 @@ export function usePlaybackEvents({
     lastEventTimeRef.current = Date.now();
     lastKnownTimeRef.current = 0;
     lastKnownDurationRef.current = undefined;
+    internalTimeRef.current = 0;
     isScrubbingRef.current = false;
     lastScrubTimeRef.current = 0;
     lastProcessedRef.current = 0;
@@ -269,5 +303,7 @@ export function usePlaybackEvents({
     resetPlaybackEvents,
     lastEventTimeRef,
     isScrubbingRef,
+    lastKnownTimeRef,
+    lastKnownDurationRef,
   };
 }
