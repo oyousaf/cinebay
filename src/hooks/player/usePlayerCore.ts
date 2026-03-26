@@ -20,7 +20,7 @@ const THEME = "2dd4bf";
 export function usePlayerCore(intent: PlaybackIntent) {
   const [showLoader, setShowLoader] = useState(true);
   const [providerIndex, setProviderIndex] = useState(0);
-  const [startAt, setStartAt] = useState(0); // FIXED
+  const [startAt, setStartAt] = useState(0);
 
   const providerIndexRef = useRef(0);
   const iframeLoadedRef = useRef(false);
