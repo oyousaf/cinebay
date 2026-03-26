@@ -84,12 +84,27 @@ export function usePlaybackEvents({
   const hasStartedRef = useRef(false);
   const showNextOverlayRef = useRef(false);
 
+  const hasNextEpisodeRef = useRef(hasNextEpisode);
+  const mountedRef = useRef(true);
+
   const lastEventTimeRef = useRef(Date.now());
   const lastKnownTimeRef = useRef(0);
   const isScrubbingRef = useRef(false);
   const lastScrubTimeRef = useRef(0);
 
   const lastProcessedRef = useRef(0);
+
+  /* ---------------- SYNC REFS ---------------- */
+
+  useEffect(() => {
+    hasNextEpisodeRef.current = hasNextEpisode;
+  }, [hasNextEpisode]);
+
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   /* ------------------------------------------------------------------ */
   /* MESSAGE HANDLER                                                   */
@@ -116,13 +131,11 @@ export function usePlaybackEvents({
       if (typeof currentTime === "number") {
         const delta = Math.abs(currentTime - lastKnownTimeRef.current);
 
-        // detect scrub start
         if (delta >= SCRUB_DELTA_SECONDS) {
           isScrubbingRef.current = true;
           lastScrubTimeRef.current = now;
         }
 
-        // detect scrub end
         if (
           isScrubbingRef.current &&
           now - lastScrubTimeRef.current > SCRUB_RELEASE_MS &&
@@ -130,14 +143,12 @@ export function usePlaybackEvents({
         ) {
           isScrubbingRef.current = false;
 
-          // force resume
           try {
             iframeRef?.current?.contentWindow?.postMessage(
               JSON.stringify({ event: "play" }),
               "*",
             );
 
-            // fallback formats (some providers differ)
             iframeRef?.current?.contentWindow?.postMessage(
               { type: "play" },
               "*",
@@ -192,7 +203,7 @@ export function usePlaybackEvents({
 
       if (
         typeof currentTime === "number" &&
-        hasNextEpisode &&
+        hasNextEpisodeRef.current &&
         typeof duration === "number" &&
         duration > 60 &&
         currentTime >= duration * NEXT_OVERLAY_THRESHOLD &&
@@ -201,7 +212,9 @@ export function usePlaybackEvents({
         showNextOverlayRef.current = true;
 
         requestAnimationFrame(() => {
-          setShowNextOverlay(true);
+          if (mountedRef.current) {
+            setShowNextOverlay(true);
+          }
         });
       }
     };
@@ -211,13 +224,7 @@ export function usePlaybackEvents({
     return () => {
       window.removeEventListener("message", handleMessage);
     };
-  }, [
-    intent.mediaType,
-    hasNextEpisode,
-    maybeQueueProgress,
-    markPlaybackStarted,
-    iframeRef,
-  ]);
+  }, [intent.mediaType, maybeQueueProgress, markPlaybackStarted, iframeRef]);
 
   /* ------------------------------------------------------------------ */
   /* RESET                                                             */
