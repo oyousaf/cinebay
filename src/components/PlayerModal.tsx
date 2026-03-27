@@ -188,7 +188,16 @@ export default function PlayerModal({
           className="w-full h-full border-none"
           allow="autoplay; fullscreen; picture-in-picture"
           referrerPolicy="no-referrer"
-          onLoad={onIframeLoad}
+          onLoad={() => {
+            onIframeLoad();
+
+            /* -------- FORCE START FALLBACK -------- */
+            setTimeout(() => {
+              if (iframeRef.current) {
+                markPlaybackStarted();
+              }
+            }, 2000);
+          }}
         />
 
         <AnimatePresence>

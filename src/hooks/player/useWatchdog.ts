@@ -68,25 +68,29 @@ export function useWatchdog({
       const silence = now - lastEventAt;
 
       const isScrubbing = isScrubbingRef.current ?? false;
-      const currentTime = lastKnownTimeRef.current;
+      const time = lastKnownTimeRef.current;
       const duration = lastKnownDurationRef.current;
 
-      /* ---------------- NEAR END DETECTION ---------------- */
+      /* ---------------- NEAR END (MATCH OVERLAY LOGIC) ---------------- */
 
       let isNearEnd = false;
 
-      if (
-        typeof currentTime === "number" &&
-        typeof duration === "number" &&
-        duration > 60
-      ) {
-        const remaining = duration - currentTime;
+      if (typeof time === "number" && time > 0) {
+        // duration-based
+        if (typeof duration === "number" && duration > 60) {
+          const remaining = duration - time;
 
-        if (remaining <= NEAR_END_SECONDS) {
-          isNearEnd = true;
+          if (remaining <= NEAR_END_SECONDS) {
+            isNearEnd = true;
+          }
+
+          if (time >= duration * FALLBACK_PERCENT) {
+            isNearEnd = true;
+          }
         }
 
-        if (currentTime >= duration * FALLBACK_PERCENT) {
+        // no duration fallback
+        if (typeof duration !== "number" && time >= 1200) {
           isNearEnd = true;
         }
       }
@@ -97,8 +101,9 @@ export function useWatchdog({
         scheduleHideLoader(0);
       }
 
-      /* ---------------- GUARDS ---------------- */
+      /* ---------------- HARD GUARDS ---------------- */
 
+      // DO NOT interfere in these states
       if (isScrubbing) return;
       if (isNearEnd) return;
 
