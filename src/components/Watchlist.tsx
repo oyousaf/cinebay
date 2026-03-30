@@ -29,19 +29,51 @@ const TYPES = [
   { key: "tv", label: "TV" },
 ] as const;
 
-const STORAGE_KEY = "watchlist:lastFocusedId";
+const FOCUS_STORAGE_KEY = "watchlist:lastFocusedId";
+const FILTERS_STORAGE_KEY = "watchlistFilters";
+const SCROLL_STORAGE_KEY = "watchlist:scrollTop";
 
 const defaultFilters: Filters = { sortBy: "rating-desc", type: "all" };
 
 function readStoredFilters(): Filters {
   if (typeof window === "undefined") return defaultFilters;
+
   try {
-    return (
-      JSON.parse(localStorage.getItem("watchlistFilters") || "null") ??
-      defaultFilters
-    );
+    const raw = localStorage.getItem(FILTERS_STORAGE_KEY);
+    if (!raw) return defaultFilters;
+
+    const parsed = JSON.parse(raw);
+
+    const sortBy: SortKey =
+      parsed?.sortBy === "rating-desc" ||
+      parsed?.sortBy === "newest" ||
+      parsed?.sortBy === "title-asc" ||
+      parsed?.sortBy === "title-desc"
+        ? parsed.sortBy
+        : defaultFilters.sortBy;
+
+    const type: TypeKey =
+      parsed?.type === "all" ||
+      parsed?.type === "movie" ||
+      parsed?.type === "tv"
+        ? parsed.type
+        : defaultFilters.type;
+
+    return { sortBy, type };
   } catch {
     return defaultFilters;
+  }
+}
+
+function readStoredScrollTop() {
+  if (typeof window === "undefined") return 0;
+
+  try {
+    const raw = sessionStorage.getItem(SCROLL_STORAGE_KEY);
+    const n = raw ? Number(raw) : 0;
+    return Number.isFinite(n) && n >= 0 ? n : 0;
+  } catch {
+    return 0;
   }
 }
 
@@ -129,6 +161,7 @@ const WatchlistTile = React.memo(function WatchlistTile({
     </motion.div>
   );
 });
+
 /* ---------- Filter Pill ---------- */
 
 function FilterPill({
@@ -178,8 +211,29 @@ export default function Watchlist({
     setToggleHandler,
   } = useNavigation();
 
-  const [filters, setFilters] = useState(readStoredFilters);
+  const scrollRef = React.useRef<HTMLDivElement | null>(null);
+  const hasRestoredScrollRef = React.useRef(false);
+
+  const [hydrated, setHydrated] = useState(false);
+  const [filters, setFilters] = useState<Filters>(defaultFilters);
   const deferredFilters = useDeferredValue(filters);
+
+  /* ---------- Hydration ---------- */
+
+  useEffect(() => {
+    setFilters(readStoredFilters());
+    setHydrated(true);
+  }, []);
+
+  /* ---------- Persist Filters ---------- */
+
+  useEffect(() => {
+    if (!hydrated) return;
+
+    try {
+      localStorage.setItem(FILTERS_STORAGE_KEY, JSON.stringify(filters));
+    } catch {}
+  }, [filters, hydrated]);
 
   /* ---------- Data ---------- */
 
@@ -225,22 +279,25 @@ export default function Watchlist({
   /* ---------- Initial Focus ---------- */
 
   useEffect(() => {
+    if (!hydrated) return;
     if (activeTab !== "watchlist") return;
     if (railIndex === null) return;
     if (!filteredList.length) return;
 
-    const stored = sessionStorage.getItem(STORAGE_KEY);
+    const stored = sessionStorage.getItem(FOCUS_STORAGE_KEY);
     let index = 0;
 
     if (stored) {
       const i = filteredList.findIndex((m) => String(m.id) === stored);
-      if (i >= 0) index = i;
+      if (i >= 0) {
+        index = i;
+      }
     }
 
     setFocus({ section: railIndex, index });
-  }, [activeTab, railIndex, filteredList.length, setFocus]);
+  }, [hydrated, activeTab, railIndex, filteredList, setFocus]);
 
-  /* ---------- Persist ---------- */
+  /* ---------- Persist Focus ---------- */
 
   useEffect(() => {
     if (activeTab !== "watchlist") return;
@@ -250,8 +307,40 @@ export default function Watchlist({
     const m = filteredList[focus.index];
     if (!m) return;
 
-    sessionStorage.setItem(STORAGE_KEY, String(m.id));
+    sessionStorage.setItem(FOCUS_STORAGE_KEY, String(m.id));
   }, [focus, filteredList, railIndex, activeTab]);
+
+  /* ---------- Restore Scroll ---------- */
+
+  useEffect(() => {
+    if (!hydrated) return;
+    if (hasRestoredScrollRef.current) return;
+    if (!scrollRef.current) return;
+
+    const top = readStoredScrollTop();
+
+    requestAnimationFrame(() => {
+      if (!scrollRef.current) return;
+      scrollRef.current.scrollTop = top;
+      hasRestoredScrollRef.current = true;
+    });
+  }, [hydrated]);
+
+  /* ---------- Persist Scroll ---------- */
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+
+    const onScroll = () => {
+      try {
+        sessionStorage.setItem(SCROLL_STORAGE_KEY, String(el.scrollTop));
+      } catch {}
+    };
+
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, [hydrated]);
 
   /* ---------- Controls ---------- */
 
@@ -285,7 +374,17 @@ export default function Watchlist({
       setPlayHandler(null);
       setToggleHandler(null);
     };
-  }, [activeTab, focused, onSelect, toggleWatchlist]);
+  }, [
+    activeTab,
+    focused,
+    onSelect,
+    setPlayHandler,
+    setSelectHandler,
+    setToggleHandler,
+    toggleWatchlist,
+  ]);
+
+  if (!hydrated) return null;
 
   /* ---------- UI ---------- */
 
@@ -326,6 +425,7 @@ export default function Watchlist({
             <button
               onClick={() => setFilters(defaultFilters)}
               className="ml-2 px-3 py-2 rounded-full hover:bg-white/10"
+              aria-label="Reset filters"
             >
               <RefreshCw size={18} />
             </button>
@@ -334,7 +434,7 @@ export default function Watchlist({
       </div>
 
       {/* GRID */}
-      <div className="flex-1 overflow-y-auto">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto">
         <div className="max-w-7xl mx-auto px-4 py-10">
           <motion.div
             layout

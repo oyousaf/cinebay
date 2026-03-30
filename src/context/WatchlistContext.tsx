@@ -23,13 +23,15 @@ const STORAGE_KEY = "watchlist";
 
 const WatchlistContext = createContext<WatchlistContextType | null>(null);
 
-/* ---------- Storage helpers (internal only) ---------- */
+/* ---------- Storage helpers ---------- */
 
 function readStorage(): Movie[] {
   if (typeof window === "undefined") return [];
+
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
   }
@@ -37,17 +39,38 @@ function readStorage(): Movie[] {
 
 function writeStorage(list: Movie[]) {
   if (typeof window === "undefined") return;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+  } catch {}
 }
 
 export function WatchlistProvider({ children }: { children: ReactNode }) {
-  const [watchlist, setWatchlist] = useState<Movie[]>(readStorage);
+  const [watchlist, setWatchlist] = useState<Movie[]>([]);
+
+  /* ---------- Hydrate from localStorage ---------- */
+
+  useEffect(() => {
+    setWatchlist(readStorage());
+  }, []);
 
   /* ---------- Sync to localStorage ---------- */
 
   useEffect(() => {
     writeStorage(watchlist);
   }, [watchlist]);
+
+  /* ---------- Cross-tab sync ---------- */
+
+  useEffect(() => {
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== STORAGE_KEY) return;
+      setWatchlist(readStorage());
+    };
+
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
 
   /* ---------- Toast helpers ---------- */
 
@@ -104,7 +127,10 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
       if (!movie) return prev;
 
       notifyRemove(movie, () => {
-        setWatchlist((restorePrev) => [movie, ...restorePrev]);
+        setWatchlist((restorePrev) => {
+          if (restorePrev.some((m) => m.id === movie.id)) return restorePrev;
+          return [movie, ...restorePrev];
+        });
         notifyRestore(movie);
       });
 
@@ -118,7 +144,10 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
 
       if (exists) {
         notifyRemove(movie, () => {
-          setWatchlist((restorePrev) => [movie, ...restorePrev]);
+          setWatchlist((restorePrev) => {
+            if (restorePrev.some((m) => m.id === movie.id)) return restorePrev;
+            return [movie, ...restorePrev];
+          });
           notifyRestore(movie);
         });
 
