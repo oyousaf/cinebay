@@ -172,7 +172,7 @@ export function usePlaybackEvents({
       } else if (typeof durationSafe === "number" && durationSafe > 0) {
         const progress = time / durationSafe;
 
-        if (progress >= 0.85 || durationSafe - time <= 180) {
+        if (progress >= 0.9 || durationSafe - time <= 180) {
           shouldTrigger = true;
         }
       }
