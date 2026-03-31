@@ -22,11 +22,10 @@ interface PlayerModalProps {
   onPlayNext?: (intent: PlaybackIntent) => void;
 }
 
-function getIntentKey(i: PlaybackIntent) {
-  return i.mediaType === "tv"
+const getIntentKey = (i: PlaybackIntent) =>
+  i.mediaType === "tv"
     ? `${i.tmdbId}-s${i.season ?? 1}-e${i.episode ?? 1}`
     : `${i.tmdbId}-movie`;
-}
 
 /* ======================================================================== */
 
@@ -42,7 +41,7 @@ export default function PlayerModal({
 
   const intentKey = useMemo(() => getIntentKey(intent), [intent]);
 
-  /* PLAYER CORE */
+  /* ---------------- CORE ---------------- */
 
   const {
     provider,
@@ -57,34 +56,34 @@ export default function PlayerModal({
     playbackStartedRef,
   } = usePlayerCore(intent);
 
-  /* EPISODE META */
+  /* ---------------- META ---------------- */
 
   const { episodeTitle, nextEpisodeTitle, hasNextEpisode, nextIntent } =
     useEpisodeMeta(intent);
 
-  /* PROGRESS */
+  /* ---------------- PROGRESS ---------------- */
 
-  const { maybeQueueProgress, flushPendingProgress, resetProgressTracking } =
-    useProgressTracker(intent, reportTVPlayback);
+  const { flushPendingProgress, resetProgressTracking } = useProgressTracker(
+    intent,
+    reportTVPlayback,
+  );
 
-  /* PLAYBACK EVENTS */
+  /* ---------------- PLAYBACK ---------------- */
 
   const {
     showNextOverlay,
-    resetPlaybackEvents,
-    lastEventTimeRef,
-    isScrubbingRef,
     lastKnownTimeRef,
     lastKnownDurationRef,
+    lastEventTimeRef,
+    hasStartedRef,
+    isScrubbingRef,
+    resetPlaybackEvents,
   } = usePlaybackEvents({
-    intent,
-    hasNextEpisode,
-    maybeQueueProgress,
-    markPlaybackStarted,
     iframeRef,
+    markPlaybackStarted,
   });
 
-  /* WATCHDOG */
+  /* ---------------- WATCHDOG ---------------- */
 
   useWatchdog({
     provider,
@@ -93,11 +92,9 @@ export default function PlayerModal({
     fallbackProvider,
     scheduleHideLoader,
     playbackStartedRef,
-    lastKnownTimeRef,
-    lastKnownDurationRef,
   });
 
-  /* RESUME */
+  /* ---------------- RESUME ---------------- */
 
   useEffect(() => {
     if (intent.mediaType !== "tv") {
@@ -116,36 +113,23 @@ export default function PlayerModal({
     } else {
       setStartAt(0);
     }
-  }, [
-    intentKey,
-    intent.mediaType,
-    intent.tmdbId,
-    intent.season,
-    intent.episode,
-    getTVProgress,
-    setStartAt,
-  ]);
+  }, [intentKey]);
 
-  /* RESET */
+  /* ---------------- RESET ---------------- */
 
   useEffect(() => {
     flushPendingProgress();
     resetProgressTracking();
     resetPlaybackEvents();
-  }, [
-    intentKey,
-    flushPendingProgress,
-    resetProgressTracking,
-    resetPlaybackEvents,
-  ]);
+  }, [intentKey]);
 
-  /* ACTIONS */
+  /* ---------------- ACTIONS ---------------- */
 
   const handleClose = useCallback(() => {
     flushPendingProgress();
     resetPlaybackEvents();
     onClose();
-  }, [flushPendingProgress, resetPlaybackEvents, onClose]);
+  }, [onClose]);
 
   const handlePlayNext = useCallback(() => {
     if (!nextIntent) return;
@@ -153,25 +137,25 @@ export default function PlayerModal({
     flushPendingProgress();
     resetPlaybackEvents();
     onPlayNext?.(nextIntent);
-  }, [flushPendingProgress, nextIntent, onPlayNext, resetPlaybackEvents]);
+  }, [nextIntent, onPlayNext]);
 
-  /* NAVIGATION */
+  /* ---------------- NAV ---------------- */
 
   useEffect(() => {
-    const handleNav = (dir: "up" | "down" | "escape") => {
+    const nav = (dir: "up" | "down" | "escape") => {
       if (dir === "escape") handleClose();
     };
 
-    setTabNavigator(handleNav);
+    setTabNavigator(nav);
     setModalOpen(true);
 
     return () => {
       setTabNavigator(() => {});
       setModalOpen(false);
     };
-  }, [handleClose, setTabNavigator, setModalOpen]);
+  }, [handleClose]);
 
-  /* RENDER */
+  /* ---------------- RENDER ---------------- */
 
   return (
     <motion.div
@@ -191,28 +175,24 @@ export default function PlayerModal({
           onLoad={() => {
             onIframeLoad();
 
-            /* -------- FORCE START FALLBACK -------- */
             setTimeout(() => {
-              if (iframeRef.current) {
-                markPlaybackStarted();
+              if (iframeRef.current && !hasStartedRef.current) {
+                scheduleHideLoader(0);
               }
-            }, 2000);
+            }, 4000);
           }}
         />
 
+        {/* LOADER */}
         <AnimatePresence>
           {showLoader && (
-            <motion.div
-              initial={{ opacity: 1 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 z-10 flex items-center justify-center bg-[hsl(var(--background))]"
-            >
+            <motion.div className="absolute inset-0 z-10 flex items-center justify-center bg-[hsl(var(--background))]">
               <LoaderCircle className="h-10 w-10 animate-spin text-[hsl(var(--foreground))]" />
             </motion.div>
           )}
         </AnimatePresence>
 
+        {/* CLOSE */}
         <button
           onClick={handleClose}
           className="absolute top-3 right-3 z-20 rounded-full bg-[hsl(var(--background))] ring-2 ring-[hsl(var(--foreground))]"
@@ -220,6 +200,7 @@ export default function PlayerModal({
           <X size={22} className="m-2" />
         </button>
 
+        {/* EPISODE LABEL */}
         {episodeTitle && intent.mediaType === "tv" && (
           <div className="absolute top-4 left-4 z-20 text-sm bg-[hsl(var(--background)/0.9)] px-3 py-1.5 rounded-lg">
             S{intent.season} · E{intent.episode}
@@ -227,8 +208,9 @@ export default function PlayerModal({
           </div>
         )}
 
+        {/* OVERLAY */}
         <AnimatePresence>
-          {showNextOverlay && nextIntent && (
+          {showNextOverlay && hasNextEpisode && (
             <motion.div
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
@@ -239,7 +221,9 @@ export default function PlayerModal({
                 <div className="text-xs opacity-70">Up next</div>
 
                 <div className="font-semibold">
-                  S{nextIntent.season} · E{nextIntent.episode}
+                  {nextIntent
+                    ? `S${nextIntent.season} · E${nextIntent.episode}`
+                    : "Loading next episode..."}
                 </div>
 
                 {nextEpisodeTitle && (
@@ -251,7 +235,8 @@ export default function PlayerModal({
 
               <button
                 onClick={handlePlayNext}
-                className="h-10 w-10 rounded-full bg-[hsl(var(--foreground))] text-[hsl(var(--background))] flex items-center justify-center"
+                disabled={!nextIntent}
+                className="h-10 w-10 rounded-full bg-[hsl(var(--foreground))] text-[hsl(var(--background))] flex items-center justify-center disabled:opacity-50"
               >
                 <Play size={20} fill="currentColor" />
               </button>
