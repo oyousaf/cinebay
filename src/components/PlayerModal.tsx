@@ -14,8 +14,6 @@ import { useProgressTracker } from "@/hooks/player/useProgressTracker";
 import { usePlaybackEvents } from "@/hooks/player/usePlaybackEvents";
 import { useWatchdog } from "@/hooks/player/useWatchdog";
 
-/* ======================================================================== */
-
 interface PlayerModalProps {
   intent: PlaybackIntent;
   onClose: () => void;
@@ -26,8 +24,6 @@ const getIntentKey = (i: PlaybackIntent) =>
   i.mediaType === "tv"
     ? `${i.tmdbId}-s${i.season ?? 1}-e${i.episode ?? 1}`
     : `${i.tmdbId}-movie`;
-
-/* ======================================================================== */
 
 export default function PlayerModal({
   intent,
@@ -40,8 +36,6 @@ export default function PlayerModal({
   const { setTabNavigator, setModalOpen } = useNavigation();
 
   const intentKey = useMemo(() => getIntentKey(intent), [intent]);
-
-  /* ---------------- CORE ---------------- */
 
   const {
     provider,
@@ -56,24 +50,15 @@ export default function PlayerModal({
     playbackStartedRef,
   } = usePlayerCore(intent);
 
-  /* ---------------- META ---------------- */
-
   const { episodeTitle, nextEpisodeTitle, hasNextEpisode, nextIntent } =
     useEpisodeMeta(intent);
 
-  /* ---------------- PROGRESS ---------------- */
-
-  const { flushPendingProgress, resetProgressTracking } = useProgressTracker(
-    intent,
-    reportTVPlayback,
-  );
-
-  /* ---------------- PLAYBACK ---------------- */
+  const { maybeQueueProgress, flushPendingProgress, resetProgressTracking } =
+    useProgressTracker(intent, reportTVPlayback);
 
   const {
     showNextOverlay,
     lastKnownTimeRef,
-    lastKnownDurationRef,
     lastEventTimeRef,
     hasStartedRef,
     isScrubbingRef,
@@ -83,8 +68,6 @@ export default function PlayerModal({
     markPlaybackStarted,
   });
 
-  /* ---------------- WATCHDOG ---------------- */
-
   useWatchdog({
     provider,
     lastEventTimeRef,
@@ -93,8 +76,6 @@ export default function PlayerModal({
     scheduleHideLoader,
     playbackStartedRef,
   });
-
-  /* ---------------- RESUME ---------------- */
 
   useEffect(() => {
     if (intent.mediaType !== "tv") {
@@ -115,15 +96,24 @@ export default function PlayerModal({
     }
   }, [intentKey]);
 
-  /* ---------------- RESET ---------------- */
-
   useEffect(() => {
     flushPendingProgress();
     resetProgressTracking();
     resetPlaybackEvents();
   }, [intentKey]);
 
-  /* ---------------- ACTIONS ---------------- */
+  useEffect(() => {
+    if (intent.mediaType !== "tv") return;
+
+    const interval = setInterval(() => {
+      const t = lastKnownTimeRef.current;
+      if (typeof t === "number" && t > 0) {
+        maybeQueueProgress(t);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [intent.mediaType, maybeQueueProgress]);
 
   const handleClose = useCallback(() => {
     flushPendingProgress();
@@ -139,8 +129,6 @@ export default function PlayerModal({
     onPlayNext?.(nextIntent);
   }, [nextIntent, onPlayNext]);
 
-  /* ---------------- NAV ---------------- */
-
   useEffect(() => {
     const nav = (dir: "up" | "down" | "escape") => {
       if (dir === "escape") handleClose();
@@ -154,8 +142,6 @@ export default function PlayerModal({
       setModalOpen(false);
     };
   }, [handleClose]);
-
-  /* ---------------- RENDER ---------------- */
 
   return (
     <motion.div
@@ -183,7 +169,6 @@ export default function PlayerModal({
           }}
         />
 
-        {/* LOADER */}
         <AnimatePresence>
           {showLoader && (
             <motion.div className="absolute inset-0 z-10 flex items-center justify-center bg-[hsl(var(--background))]">
@@ -192,7 +177,6 @@ export default function PlayerModal({
           )}
         </AnimatePresence>
 
-        {/* CLOSE */}
         <button
           onClick={handleClose}
           className="absolute top-3 right-3 z-20 rounded-full bg-[hsl(var(--background))] ring-2 ring-[hsl(var(--foreground))]"
@@ -200,7 +184,6 @@ export default function PlayerModal({
           <X size={22} className="m-2" />
         </button>
 
-        {/* EPISODE LABEL */}
         {episodeTitle && intent.mediaType === "tv" && (
           <div className="absolute top-4 left-4 z-20 text-sm bg-[hsl(var(--background)/0.9)] px-3 py-1.5 rounded-lg">
             S{intent.season} · E{intent.episode}
@@ -208,7 +191,6 @@ export default function PlayerModal({
           </div>
         )}
 
-        {/* OVERLAY */}
         <AnimatePresence>
           {showNextOverlay && hasNextEpisode && (
             <motion.div
