@@ -63,6 +63,7 @@ export default function PlayerModal({
     hasStartedRef,
     isScrubbingRef,
     resetPlaybackEvents,
+    lastKnownDurationRef,
   } = usePlaybackEvents({
     iframeRef,
     markPlaybackStarted,
@@ -75,6 +76,8 @@ export default function PlayerModal({
     fallbackProvider,
     scheduleHideLoader,
     playbackStartedRef,
+    lastKnownTimeRef,
+    lastKnownDurationRef,
   });
 
   useEffect(() => {
