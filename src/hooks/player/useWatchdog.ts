@@ -102,7 +102,6 @@ export function useWatchdog({
         scheduleHideLoader(0);
       }
 
-      // IMPORTANT:
       // No fallback here. Silent providers are normal.
     }, WATCHDOG_CHECK_INTERVAL_MS);
 
