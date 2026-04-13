@@ -97,13 +97,18 @@ export default function PlayerModal({
     } else {
       setStartAt(0);
     }
-  }, [intentKey]);
+  }, [intent, intentKey, getTVProgress, setStartAt]);
 
   useEffect(() => {
     flushPendingProgress();
     resetProgressTracking();
     resetPlaybackEvents();
-  }, [intentKey]);
+  }, [
+    intentKey,
+    flushPendingProgress,
+    resetProgressTracking,
+    resetPlaybackEvents,
+  ]);
 
   useEffect(() => {
     if (intent.mediaType !== "tv") return;
@@ -116,13 +121,13 @@ export default function PlayerModal({
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [intent.mediaType, maybeQueueProgress]);
+  }, [intent.mediaType, maybeQueueProgress, lastKnownTimeRef]);
 
   const handleClose = useCallback(() => {
     flushPendingProgress();
     resetPlaybackEvents();
     onClose();
-  }, [onClose]);
+  }, [flushPendingProgress, resetPlaybackEvents, onClose]);
 
   const handlePlayNext = useCallback(() => {
     if (!nextIntent) return;
@@ -130,7 +135,7 @@ export default function PlayerModal({
     flushPendingProgress();
     resetPlaybackEvents();
     onPlayNext?.(nextIntent);
-  }, [nextIntent, onPlayNext]);
+  }, [nextIntent, flushPendingProgress, resetPlaybackEvents, onPlayNext]);
 
   useEffect(() => {
     const nav = (dir: "up" | "down" | "escape") => {
@@ -144,7 +149,7 @@ export default function PlayerModal({
       setTabNavigator(() => {});
       setModalOpen(false);
     };
-  }, [handleClose]);
+  }, [handleClose, setTabNavigator, setModalOpen]);
 
   return (
     <motion.div
