@@ -10,6 +10,9 @@ const SCRUB_DELTA_SECONDS = 10;
 const STABLE_DELTA_SECONDS = 2;
 const SCRUB_RELEASE_MS = 800;
 
+const OVERLAY_PROGRESS_THRESHOLD = 0.9;
+const OVERLAY_REMAINING_SECONDS = 120;
+
 const ENDED_EVENTS = new Set([
   "ended",
   "end",
@@ -66,7 +69,24 @@ function extractPlayerMetrics(msg: Record<string, any>) {
   };
 }
 
-/* ======================================================================== */
+function shouldShowOverlay(params: {
+  ended: boolean;
+  currentTime: number;
+  duration?: number;
+}) {
+  const { ended, currentTime, duration } = params;
+
+  if (ended) return true;
+  if (typeof duration !== "number" || duration <= 0) return false;
+
+  const remaining = duration - currentTime;
+  const progress = currentTime / duration;
+
+  return (
+    progress >= OVERLAY_PROGRESS_THRESHOLD ||
+    remaining <= OVERLAY_REMAINING_SECONDS
+  );
+}
 
 export function usePlaybackEvents({
   iframeRef,
@@ -89,6 +109,21 @@ export function usePlaybackEvents({
 
   const lastProcessedRef = useRef(0);
   const overlayShownRef = useRef(false);
+
+  const maybeShowOverlay = () => {
+    if (overlayShownRef.current) return;
+
+    const shouldTrigger = shouldShowOverlay({
+      ended: endedRef.current,
+      currentTime: lastKnownTimeRef.current,
+      duration: lastKnownDurationRef.current,
+    });
+
+    if (!shouldTrigger) return;
+
+    overlayShownRef.current = true;
+    setShowNextOverlay(true);
+  };
 
   /* ------------------------------------------------------------------ */
   /* MESSAGE HANDLER                                                    */
@@ -114,7 +149,7 @@ export function usePlaybackEvents({
       if (typeof duration === "number" && duration > 0) {
         const prev = lastKnownDurationRef.current;
 
-        if (!prev || Math.abs(duration - prev) < 60) {
+        if (!prev || Math.abs(duration - prev) < 30) {
           lastKnownDurationRef.current = duration;
         }
       }
@@ -158,29 +193,9 @@ export function usePlaybackEvents({
         endedRef.current = true;
       }
 
-      /* ------------------------------------------------------------------ */
-      /* 🔥 OVERLAY TRIGGER                                  */
-      /* ------------------------------------------------------------------ */
+      /* -------- OVERLAY TRIGGER -------- */
 
-      const time = lastKnownTimeRef.current;
-      const durationSafe = lastKnownDurationRef.current;
-
-      let shouldTrigger = false;
-
-      if (endedRef.current) {
-        shouldTrigger = true;
-      } else if (typeof durationSafe === "number" && durationSafe > 0) {
-        const progress = time / durationSafe;
-
-        if (progress >= 0.9 || durationSafe - time <= 180) {
-          shouldTrigger = true;
-        }
-      }
-
-      if (shouldTrigger && !overlayShownRef.current) {
-        overlayShownRef.current = true;
-        setShowNextOverlay(true);
-      }
+      maybeShowOverlay();
     };
 
     window.addEventListener("message", handleMessage);
@@ -204,6 +219,18 @@ export function usePlaybackEvents({
 
     return () => clearInterval(interval);
   }, [iframeRef]);
+
+  /* ------------------------------------------------------------------ */
+  /* FAILSAFE OVERLAY CHECK                                             */
+  /* ------------------------------------------------------------------ */
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      maybeShowOverlay();
+    }, POLL_INTERVAL_MS);
+
+    return () => clearInterval(interval);
+  }, []);
 
   /* ------------------------------------------------------------------ */
   /* RESET                                                              */
