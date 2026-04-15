@@ -10,14 +10,10 @@ const SCRUB_DELTA_SECONDS = 10;
 const STABLE_DELTA_SECONDS = 2;
 const SCRUB_RELEASE_MS = 800;
 
-// Primary overlay rules
 const OVERLAY_PROGRESS_THRESHOLD = 0.92;
 const OVERLAY_REMAINING_SECONDS = 90;
 
-// Last resort only when no runtime exists anywhere
 const HARD_FALLBACK_NEAR_END_SECONDS = 25 * 60;
-
-// Keep storage short-lived so old overlay state does not leak forever
 const STORAGE_TTL_MS = 5 * 60 * 1000;
 
 const ENDED_EVENTS = new Set([
@@ -186,8 +182,6 @@ export function usePlaybackEvents({
     setShowNextOverlay(true);
   }, [getEffectiveDuration, persistOverlayState]);
 
-  /* -------------------------- MESSAGE HANDLER -------------------------- */
-
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (!isPlayerOrigin(event.origin)) return;
@@ -231,7 +225,7 @@ export function usePlaybackEvents({
           lastKnownTimeRef.current = currentTime;
         }
 
-        if (!hasStartedRef.current && currentTime > 1) {
+        if (!hasStartedRef.current && lastKnownTimeRef.current > 1) {
           hasStartedRef.current = true;
           markPlaybackStarted();
         }
@@ -247,8 +241,6 @@ export function usePlaybackEvents({
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
   }, [markPlaybackStarted, maybeShowOverlay]);
-
-  /* -------------------------- POLLING -------------------------- */
 
   useEffect(() => {
     const interval = window.setInterval(() => {
@@ -267,17 +259,18 @@ export function usePlaybackEvents({
     return () => clearInterval(interval);
   }, [iframeRef]);
 
-  /* -------------------------- FAILSAFE -------------------------- */
-
   useEffect(() => {
     const interval = window.setInterval(() => {
+      if (!hasStartedRef.current && lastKnownTimeRef.current > 1) {
+        hasStartedRef.current = true;
+        markPlaybackStarted();
+      }
+
       maybeShowOverlay();
     }, POLL_INTERVAL_MS);
 
     return () => clearInterval(interval);
-  }, [maybeShowOverlay]);
-
-  /* -------------------------- RESTORE -------------------------- */
+  }, [markPlaybackStarted, maybeShowOverlay]);
 
   useEffect(() => {
     try {
@@ -295,8 +288,6 @@ export function usePlaybackEvents({
       setShowNextOverlay(true);
     } catch {}
   }, [STORAGE_KEY]);
-
-  /* -------------------------- FULLSCREEN EXIT -------------------------- */
 
   useEffect(() => {
     const onFullscreenChange = () => {
@@ -320,8 +311,6 @@ export function usePlaybackEvents({
     return () =>
       document.removeEventListener("fullscreenchange", onFullscreenChange);
   }, [getEffectiveDuration, persistOverlayState]);
-
-  /* -------------------------- RESET -------------------------- */
 
   const resetPlaybackEvents = useCallback(() => {
     lastKnownTimeRef.current = 0;

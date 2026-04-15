@@ -65,7 +65,6 @@ export default function PlayerModal({
     showNextOverlay,
     lastKnownTimeRef,
     lastEventTimeRef,
-    hasStartedRef,
     isScrubbingRef,
     resetPlaybackEvents,
     lastKnownDurationRef,
@@ -85,6 +84,7 @@ export default function PlayerModal({
     playbackStartedRef,
     lastKnownTimeRef,
     lastKnownDurationRef,
+    runtimeSeconds,
   });
 
   useEffect(() => {
@@ -173,15 +173,7 @@ export default function PlayerModal({
           className="w-full h-full border-none"
           allow="autoplay; fullscreen; picture-in-picture"
           referrerPolicy="no-referrer"
-          onLoad={() => {
-            onIframeLoad();
-
-            window.setTimeout(() => {
-              if (!hasStartedRef.current) {
-                scheduleHideLoader(0);
-              }
-            }, 2500);
-          }}
+          onLoad={onIframeLoad}
         />
 
         <AnimatePresence>
