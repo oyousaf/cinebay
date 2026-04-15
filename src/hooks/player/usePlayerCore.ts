@@ -12,6 +12,7 @@ import {
 
 const LOADER_MIN_MS = 900;
 const IFRAME_LOAD_TIMEOUT = 12000;
+const PLAYBACK_START_TIMEOUT = 9000;
 const THEME = "2dd4bf";
 
 /* ======================================================================== */
@@ -26,6 +27,7 @@ export function usePlayerCore(intent: PlaybackIntent) {
   const playbackStartedRef = useRef(false);
 
   const iframeLoadTimerRef = useRef<number | null>(null);
+  const playbackStartTimerRef = useRef<number | null>(null);
   const loaderTimerRef = useRef<number | null>(null);
 
   const loadStartRef = useRef(0);
@@ -46,6 +48,8 @@ export function usePlayerCore(intent: PlaybackIntent) {
     });
   }, [intent, provider, startAt]);
 
+  /* ------------------------ TIMER HELPERS ------------------------ */
+
   const clearLoaderTimer = useCallback(() => {
     if (loaderTimerRef.current !== null) {
       clearTimeout(loaderTimerRef.current);
@@ -57,6 +61,10 @@ export function usePlayerCore(intent: PlaybackIntent) {
     if (iframeLoadTimerRef.current !== null) {
       clearTimeout(iframeLoadTimerRef.current);
       iframeLoadTimerRef.current = null;
+    }
+    if (playbackStartTimerRef.current !== null) {
+      clearTimeout(playbackStartTimerRef.current);
+      playbackStartTimerRef.current = null;
     }
   }, []);
 
@@ -73,6 +81,8 @@ export function usePlayerCore(intent: PlaybackIntent) {
     },
     [clearLoaderTimer],
   );
+
+  /* ------------------------ PROVIDER FALLBACK ------------------------ */
 
   const fallbackProvider = useCallback(
     (reason?: string) => {
@@ -103,6 +113,8 @@ export function usePlayerCore(intent: PlaybackIntent) {
     [clearFailoverTimers, clearLoaderTimer, scheduleHideLoader],
   );
 
+  /* ------------------------ INTENT KEY RESET ------------------------ */
+
   const getIntentKey = (i: PlaybackIntent) =>
     i.mediaType === "tv"
       ? `${i.tmdbId}-s${i.season ?? 1}-e${i.episode ?? 1}`
@@ -121,6 +133,8 @@ export function usePlayerCore(intent: PlaybackIntent) {
     clearFailoverTimers();
     clearLoaderTimer();
   }, [intentKey, clearFailoverTimers, clearLoaderTimer]);
+
+  /* ------------------------ LOAD TIMEOUT ------------------------ */
 
   useEffect(() => {
     clearFailoverTimers();
@@ -150,6 +164,8 @@ export function usePlayerCore(intent: PlaybackIntent) {
     clearLoaderTimer,
   ]);
 
+  /* ------------------------ IFRAME LOAD ------------------------ */
+
   const onIframeLoad = useCallback(() => {
     iframeLoadedRef.current = true;
 
@@ -158,17 +174,25 @@ export function usePlayerCore(intent: PlaybackIntent) {
       iframeLoadTimerRef.current = null;
     }
 
-    // playback events are sparse or delayed. Let the watchdog judge real stalls.
-    scheduleHideLoader(LOADER_MIN_MS);
-  }, [scheduleHideLoader]);
+    playbackStartTimerRef.current = window.setTimeout(() => {
+      if (!playbackStartedRef.current) {
+        fallbackProvider("no-playback-after-load");
+      }
+    }, PLAYBACK_START_TIMEOUT);
+  }, [fallbackProvider]);
+
+  /* ------------------------ PLAYBACK START ------------------------ */
 
   const markPlaybackStarted = useCallback(() => {
     if (!playbackStartedRef.current) {
       playbackStartedRef.current = true;
+
       clearFailoverTimers();
       scheduleHideLoader(LOADER_MIN_MS);
     }
   }, [clearFailoverTimers, scheduleHideLoader]);
+
+  /* ------------------------ RETURN ------------------------ */
 
   return {
     provider,
