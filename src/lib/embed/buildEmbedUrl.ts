@@ -44,17 +44,26 @@ const GOLD_ACCENT = "f59e0b";
 const WHITE = "ffffff";
 
 /* -------------------------------------------------
-   INTERNAL
+   HELPERS
 -------------------------------------------------- */
 
 type QueryValue = string | number | boolean | null | undefined;
 
 function buildQuery(params: Record<string, QueryValue>) {
   const entries = Object.entries(params)
-    .filter(([, v]) => v !== undefined && v !== null && v !== false)
+    .filter(([, v]) => v !== undefined && v !== null)
     .map(([k, v]) => [k, String(v)]);
 
   return new URLSearchParams(entries).toString();
+}
+
+function bool(v: boolean | undefined, def = true) {
+  return v === undefined ? (def ? 1 : 0) : v ? 1 : 0;
+}
+
+function sanitizeStartAt(startAt?: number) {
+  if (!startAt || startAt <= 5) return undefined;
+  return Math.floor(startAt);
 }
 
 function tvDefaults(intent: PlaybackIntent) {
@@ -75,9 +84,8 @@ function buildVidLinkUrl(intent: PlaybackIntent, o: BuildEmbedOptions) {
     primaryColor: o.theme ?? DEFAULT_THEME,
     secondaryColor: GOLD_ACCENT,
     iconColor: WHITE,
-    autoplay: o.autoplay ?? true,
-    startAt: o.startAt && o.startAt > 5 ? o.startAt : undefined,
-
+    autoplay: bool(o.autoplay),
+    startAt: sanitizeStartAt(o.startAt),
     nextbutton: 0,
   });
 
@@ -97,14 +105,13 @@ function buildVidFastUrl(intent: PlaybackIntent, o: BuildEmbedOptions) {
   const { mediaType, tmdbId } = intent;
 
   const query = buildQuery({
-    autoplay: o.autoplay ?? true,
-    startAt: o.startAt && o.startAt > 5 ? o.startAt : undefined,
+    autoplay: bool(o.autoplay),
+    startAt: sanitizeStartAt(o.startAt),
     theme: o.theme ?? DEFAULT_THEME,
     server: o.server ?? "auto",
-    hideServer: o.hideServer ?? true,
-    fullscreenButton: o.fullscreenButton ?? true,
-    chromecast: false,
-
+    hideServer: bool(o.hideServer, true),
+    fullscreenButton: bool(o.fullscreenButton, true),
+    chromecast: 0,
     nextButton: 0,
     autoNext: 0,
   });
@@ -124,14 +131,11 @@ function buildVidFastUrl(intent: PlaybackIntent, o: BuildEmbedOptions) {
 function buildSuperEmbedUrl(intent: PlaybackIntent, o: BuildEmbedOptions = {}) {
   const { mediaType, tmdbId } = intent;
 
-  const autoplay = o.autoplay === false ? 0 : 1;
-  const theme = o.theme ?? DEFAULT_THEME;
-
   const query = buildQuery({
     tmdb: 1,
-    autoplay,
-    t: o.startAt && o.startAt > 5 ? o.startAt : undefined,
-    color: theme,
+    autoplay: bool(o.autoplay),
+    t: sanitizeStartAt(o.startAt),
+    color: o.theme ?? DEFAULT_THEME,
     quality: "auto",
   });
 
