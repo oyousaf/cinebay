@@ -84,7 +84,7 @@ function buildVidLinkUrl(intent: PlaybackIntent, o: BuildEmbedOptions) {
     primaryColor: o.theme ?? DEFAULT_THEME,
     secondaryColor: GOLD_ACCENT,
     iconColor: WHITE,
-    autoplay: bool(o.autoplay),
+    autoplay: o.autoplay === false ? "false" : "true",
     startAt: sanitizeStartAt(o.startAt),
     nextbutton: 0,
   });
@@ -105,7 +105,7 @@ function buildVidFastUrl(intent: PlaybackIntent, o: BuildEmbedOptions) {
   const { mediaType, tmdbId } = intent;
 
   const query = buildQuery({
-    autoplay: bool(o.autoplay),
+    autoplay: o.autoplay === false ? "false" : "true",
     startAt: sanitizeStartAt(o.startAt),
     theme: o.theme ?? DEFAULT_THEME,
     server: o.server ?? "auto",
@@ -133,7 +133,7 @@ function buildSuperEmbedUrl(intent: PlaybackIntent, o: BuildEmbedOptions = {}) {
 
   const query = buildQuery({
     tmdb: 1,
-    autoplay: bool(o.autoplay),
+    autoplay: o.autoplay === false ? 0 : 1,
     t: sanitizeStartAt(o.startAt),
     color: o.theme ?? DEFAULT_THEME,
     quality: "auto",
