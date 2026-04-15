@@ -12,7 +12,6 @@ import {
 
 const LOADER_MIN_MS = 900;
 const IFRAME_LOAD_TIMEOUT = 12000;
-const EVENT_PLAYBACK_START_TIMEOUT = 15000;
 const THEME = "2dd4bf";
 
 /* ======================================================================== */
@@ -27,14 +26,9 @@ export function usePlayerCore(intent: PlaybackIntent) {
   const playbackStartedRef = useRef(false);
 
   const iframeLoadTimerRef = useRef<number | null>(null);
-  const playbackStartTimerRef = useRef<number | null>(null);
   const loaderTimerRef = useRef<number | null>(null);
 
   const loadStartRef = useRef(0);
-
-  /* ------------------------------------------------------------------ */
-  /* PROVIDER                                                          */
-  /* ------------------------------------------------------------------ */
 
   const provider: ProviderType =
     PROVIDER_ORDER[providerIndex] ?? PROVIDER_ORDER[0];
@@ -42,10 +36,6 @@ export function usePlayerCore(intent: PlaybackIntent) {
   useEffect(() => {
     providerIndexRef.current = providerIndex;
   }, [providerIndex]);
-
-  /* ------------------------------------------------------------------ */
-  /* EMBED URL                                                         */
-  /* ------------------------------------------------------------------ */
 
   const embedUrl = useMemo(() => {
     return buildEmbedUrl(intent, {
@@ -55,10 +45,6 @@ export function usePlayerCore(intent: PlaybackIntent) {
       theme: THEME,
     });
   }, [intent, provider, startAt]);
-
-  /* ------------------------------------------------------------------ */
-  /* TIMER HELPERS                                                     */
-  /* ------------------------------------------------------------------ */
 
   const clearLoaderTimer = useCallback(() => {
     if (loaderTimerRef.current !== null) {
@@ -71,11 +57,6 @@ export function usePlayerCore(intent: PlaybackIntent) {
     if (iframeLoadTimerRef.current !== null) {
       clearTimeout(iframeLoadTimerRef.current);
       iframeLoadTimerRef.current = null;
-    }
-
-    if (playbackStartTimerRef.current !== null) {
-      clearTimeout(playbackStartTimerRef.current);
-      playbackStartTimerRef.current = null;
     }
   }, []);
 
@@ -92,10 +73,6 @@ export function usePlayerCore(intent: PlaybackIntent) {
     },
     [clearLoaderTimer],
   );
-
-  /* ------------------------------------------------------------------ */
-  /* FAILOVER                                                          */
-  /* ------------------------------------------------------------------ */
 
   const fallbackProvider = useCallback(
     (reason?: string) => {
@@ -126,10 +103,6 @@ export function usePlayerCore(intent: PlaybackIntent) {
     [clearFailoverTimers, clearLoaderTimer, scheduleHideLoader],
   );
 
-  /* ------------------------------------------------------------------ */
-  /* RESET ON INTENT CHANGE                                            */
-  /* ------------------------------------------------------------------ */
-
   const getIntentKey = (i: PlaybackIntent) =>
     i.mediaType === "tv"
       ? `${i.tmdbId}-s${i.season ?? 1}-e${i.episode ?? 1}`
@@ -140,7 +113,7 @@ export function usePlayerCore(intent: PlaybackIntent) {
   useEffect(() => {
     setProviderIndex(0);
     setShowLoader(true);
-    setStartAt(0); // reset properly
+    setStartAt(0);
 
     playbackStartedRef.current = false;
     iframeLoadedRef.current = false;
@@ -148,10 +121,6 @@ export function usePlayerCore(intent: PlaybackIntent) {
     clearFailoverTimers();
     clearLoaderTimer();
   }, [intentKey, clearFailoverTimers, clearLoaderTimer]);
-
-  /* ------------------------------------------------------------------ */
-  /* FAILOVER TIMERS                                                   */
-  /* ------------------------------------------------------------------ */
 
   useEffect(() => {
     clearFailoverTimers();
@@ -164,7 +133,7 @@ export function usePlayerCore(intent: PlaybackIntent) {
     playbackStartedRef.current = false;
 
     iframeLoadTimerRef.current = window.setTimeout(() => {
-      if (!iframeLoadedRef.current && !playbackStartedRef.current) {
+      if (!iframeLoadedRef.current) {
         fallbackProvider("iframe-load-timeout");
       }
     }, IFRAME_LOAD_TIMEOUT);
@@ -181,19 +150,6 @@ export function usePlayerCore(intent: PlaybackIntent) {
     clearLoaderTimer,
   ]);
 
-  /* ------------------------------------------------------------------ */
-  /* PROVIDER CAPABILITY                                               */
-  /* ------------------------------------------------------------------ */
-
-  function providerSupportsPlaybackEvents(provider: ProviderType) {
-    const p = String(provider).toLowerCase();
-    return p.includes("vidlink") || p.includes("vidfast");
-  }
-
-  /* ------------------------------------------------------------------ */
-  /* IFRAME LOAD HANDLER                                               */
-  /* ------------------------------------------------------------------ */
-
   const onIframeLoad = useCallback(() => {
     iframeLoadedRef.current = true;
 
@@ -202,20 +158,9 @@ export function usePlayerCore(intent: PlaybackIntent) {
       iframeLoadTimerRef.current = null;
     }
 
-    if (providerSupportsPlaybackEvents(provider)) {
-      playbackStartTimerRef.current = window.setTimeout(() => {
-        if (!playbackStartedRef.current) {
-          fallbackProvider("playback-event-timeout");
-        }
-      }, EVENT_PLAYBACK_START_TIMEOUT);
-    } else {
-      scheduleHideLoader(LOADER_MIN_MS);
-    }
-  }, [provider, fallbackProvider, scheduleHideLoader]);
-
-  /* ------------------------------------------------------------------ */
-  /* EXTERNAL CONTROL                                                  */
-  /* ------------------------------------------------------------------ */
+    // playback events are sparse or delayed. Let the watchdog judge real stalls.
+    scheduleHideLoader(LOADER_MIN_MS);
+  }, [scheduleHideLoader]);
 
   const markPlaybackStarted = useCallback(() => {
     if (!playbackStartedRef.current) {
@@ -224,8 +169,6 @@ export function usePlayerCore(intent: PlaybackIntent) {
       scheduleHideLoader(LOADER_MIN_MS);
     }
   }, [clearFailoverTimers, scheduleHideLoader]);
-
-  /* ------------------------------------------------------------------ */
 
   return {
     provider,

@@ -5,32 +5,24 @@ import type { ProviderType } from "@/lib/embed/buildEmbedUrl";
 
 /* CONFIG */
 
-const WATCHDOG_CHECK_INTERVAL_MS = 2500;
+const WATCHDOG_CHECK_INTERVAL_MS = 2000;
 
-// Before playback starts
-const PRE_START_TIMEOUT_MS = 15000;
+const PRE_START_TIMEOUT_MS = 20000;
 
-// After playback starts
-const POST_START_SILENT_MS = 15000;
+// after playback starts
+const STALL_FREEZE_WINDOW_MS = 20000;
 
-// Real stall detection
-const STALL_FREEZE_WINDOW_MS = 10000;
-const MIN_TIME_DELTA = 0.5;
+const MIN_TIME_DELTA = 0.35;
 
-// Grace windows
-const START_GRACE_MS = 8000;
-const SCRUB_GRACE_MS = 5000;
+const START_GRACE_MS = 12000;
+const SCRUB_GRACE_MS = 6000;
 
-// Prevent rapid provider flipping
-const FALLBACK_COOLDOWN_MS = 10000;
+const FALLBACK_COOLDOWN_MS = 20000;
+const MAX_FALLBACKS = 2;
 
-const MAX_FALLBACKS = 3;
-const END_PROTECTION_SECONDS = 30;
+const END_PROTECTION_SECONDS = 90;
 
-function providerSupportsPlaybackEvents(provider: ProviderType) {
-  const p = String(provider).toLowerCase();
-  return p.includes("vidlink") || p.includes("vidfast");
-}
+/* ======================================================================== */
 
 type UseWatchdogParams = {
   provider: ProviderType;
@@ -41,6 +33,7 @@ type UseWatchdogParams = {
   playbackStartedRef: RefObject<boolean>;
   lastKnownTimeRef: RefObject<number>;
   lastKnownDurationRef: RefObject<number | undefined>;
+  runtimeSeconds?: number;
 };
 
 export function useWatchdog({
@@ -52,6 +45,7 @@ export function useWatchdog({
   playbackStartedRef,
   lastKnownTimeRef,
   lastKnownDurationRef,
+  runtimeSeconds,
 }: UseWatchdogParams) {
   const watchdogIntervalRef = useRef<number | null>(null);
 
@@ -64,19 +58,7 @@ export function useWatchdog({
   const startTimeRef = useRef(Date.now());
   const lastScrubAtRef = useRef(0);
 
-  const isBufferingRef = useRef(false);
-
   useEffect(() => {
-    const supportsEvents = providerSupportsPlaybackEvents(provider);
-
-    if (!supportsEvents) {
-      if (watchdogIntervalRef.current !== null) {
-        clearInterval(watchdogIntervalRef.current);
-        watchdogIntervalRef.current = null;
-      }
-      return;
-    }
-
     lastFallbackAtRef.current = 0;
     fallbackCountRef.current = 0;
 
@@ -85,8 +67,6 @@ export function useWatchdog({
 
     startTimeRef.current = Date.now();
     lastScrubAtRef.current = 0;
-
-    isBufferingRef.current = false;
 
     if (watchdogIntervalRef.current !== null) {
       clearInterval(watchdogIntervalRef.current);
@@ -98,88 +78,67 @@ export function useWatchdog({
       if (document.visibilityState === "hidden") return;
 
       const isScrubbing = isScrubbingRef.current ?? false;
-
       if (isScrubbing) {
         lastScrubAtRef.current = now;
         return;
       }
 
       const started = playbackStartedRef.current;
-
-      const lastEventAt = lastEventTimeRef.current ?? now;
-      const silence = now - lastEventAt;
-
       const currentTime = lastKnownTimeRef.current ?? 0;
-      const duration = lastKnownDurationRef.current;
 
-      /* PRE-START */
-
-      if (!started) {
-        const cooldown = now - lastFallbackAtRef.current < FALLBACK_COOLDOWN_MS;
-
-        if (silence >= PRE_START_TIMEOUT_MS && !cooldown) {
-          lastFallbackAtRef.current = now;
-          fallbackProvider("pre-start-stall");
-        }
-
-        return;
-      }
-
-      /* BUFFERING DETECTION */
-
-      const recentlyActive = silence < 4000;
-
-      if (
-        recentlyActive &&
-        Math.abs(currentTime - lastProgressTimeRef.current) < 0.1
-      ) {
-        isBufferingRef.current = true;
-      } else if (
-        Math.abs(currentTime - lastProgressTimeRef.current) >= MIN_TIME_DELTA
-      ) {
-        isBufferingRef.current = false;
-      }
-
-      /* TRACK PROGRESSION */
+      const effectiveDuration =
+        typeof runtimeSeconds === "number" && runtimeSeconds > 0
+          ? runtimeSeconds
+          : lastKnownDurationRef.current;
 
       const lastTime = lastProgressTimeRef.current;
+      const delta = Math.abs(currentTime - lastTime);
 
-      if (Math.abs(currentTime - lastTime) >= MIN_TIME_DELTA) {
+      if (delta >= MIN_TIME_DELTA) {
         lastProgressTimeRef.current = currentTime;
         lastProgressAtRef.current = now;
       }
 
       const freezeDuration = now - lastProgressAtRef.current;
 
-      /* GRACE WINDOWS */
-
       const inStartGrace = now - startTimeRef.current < START_GRACE_MS;
       const inScrubGrace = now - lastScrubAtRef.current < SCRUB_GRACE_MS;
 
-      /* UI CLEANUP */
-
-      if (silence >= POST_START_SILENT_MS) {
-        scheduleHideLoader(0);
-      }
-
-      /* END PROTECTION */
-
       const nearEnd =
-        typeof duration === "number" &&
-        duration > 0 &&
-        duration - currentTime <= END_PROTECTION_SECONDS;
-
-      /* MULTI-SIGNAL STALL */
+        typeof effectiveDuration === "number" &&
+        effectiveDuration > 0 &&
+        effectiveDuration - currentTime <= END_PROTECTION_SECONDS;
 
       const cooldown = now - lastFallbackAtRef.current < FALLBACK_COOLDOWN_MS;
 
+      /* ---------------- PRE-START ---------------- */
+
+      if (!started) {
+        if (
+          now - startTimeRef.current >= PRE_START_TIMEOUT_MS &&
+          !cooldown
+        ) {
+          lastFallbackAtRef.current = now;
+          fallbackCountRef.current += 1;
+          fallbackProvider("pre-start-timeout");
+        }
+        return;
+      }
+
+      /* ---------------- CLEAN LOADER ---------------- */
+
+      if (currentTime > 1) {
+        scheduleHideLoader(0);
+      }
+
+      /* ---------------- STALL DETECTION ---------------- */
+
       const shouldFallback =
         freezeDuration >= STALL_FREEZE_WINDOW_MS &&
-        !isBufferingRef.current &&
         !inStartGrace &&
         !inScrubGrace &&
-        !cooldown &&
         !nearEnd &&
+        !cooldown &&
         fallbackCountRef.current < MAX_FALLBACKS;
 
       if (shouldFallback) {
@@ -205,5 +164,6 @@ export function useWatchdog({
     playbackStartedRef,
     lastKnownTimeRef,
     lastKnownDurationRef,
+    runtimeSeconds,
   ]);
 }

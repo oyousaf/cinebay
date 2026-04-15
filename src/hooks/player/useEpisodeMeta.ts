@@ -16,6 +16,7 @@ type SeasonEpisode = {
 /* -------------------------------- CACHE -------------------------------- */
 
 const seasonEpisodesCache = new Map<string, SeasonEpisode[]>();
+const seasonRuntimeCache = new Map<string, number>();
 
 function getSeasonCacheKey(tmdbId: number, season: number) {
   return `${tmdbId}-season-${season}`;
@@ -23,7 +24,7 @@ function getSeasonCacheKey(tmdbId: number, season: number) {
 
 async function getSeasonEpisodesCached(
   tmdbId: number,
-  season: number,
+  season: number
 ): Promise<SeasonEpisode[]> {
   const key = getSeasonCacheKey(tmdbId, season);
 
@@ -47,6 +48,45 @@ function prefetchSeasonEpisodes(tmdbId: number, season: number) {
   void getSeasonEpisodesCached(tmdbId, season);
 }
 
+/* -------------------------- RUNTIME RESOLUTION -------------------------- */
+
+function resolveEpisodeRuntime(ep?: SeasonEpisode): number | undefined {
+  if (!ep) return;
+
+  if (typeof ep.runtime === "number" && ep.runtime > 0) {
+    return ep.runtime * 60;
+  }
+
+  if (Array.isArray(ep.episode_run_time) && ep.episode_run_time.length) {
+    const val = ep.episode_run_time[0];
+    if (typeof val === "number" && val > 0) {
+      return val * 60;
+    }
+  }
+}
+
+function resolveSeasonAverageRuntime(
+  key: string,
+  episodes: SeasonEpisode[]
+): number | undefined {
+  if (seasonRuntimeCache.has(key)) {
+    return seasonRuntimeCache.get(key);
+  }
+
+  const runtimes = episodes
+    .map((e) => resolveEpisodeRuntime(e))
+    .filter((r): r is number => typeof r === "number");
+
+  if (!runtimes.length) return;
+
+  const avg = Math.round(
+    runtimes.reduce((a, b) => a + b, 0) / runtimes.length
+  );
+
+  seasonRuntimeCache.set(key, avg);
+  return avg;
+}
+
 /* ======================================================================== */
 
 export function useEpisodeMeta(intent: PlaybackIntent) {
@@ -58,9 +98,7 @@ export function useEpisodeMeta(intent: PlaybackIntent) {
     episode: number;
   } | null>(null);
 
-  const [runtimeSeconds, setRuntimeSeconds] = useState<number | undefined>(
-    undefined,
-  );
+  const [runtimeSeconds, setRuntimeSeconds] = useState<number | undefined>();
 
   useEffect(() => {
     if (intent.mediaType !== "tv" || !intent.season || !intent.episode) {
@@ -83,34 +121,39 @@ export function useEpisodeMeta(intent: PlaybackIntent) {
     async function loadSeasonMeta() {
       const season = intent.season!;
       const episode = intent.episode!;
+      const cacheKey = getSeasonCacheKey(intent.tmdbId, season);
 
       const currentSeasonEpisodes = await getSeasonEpisodesCached(
         intent.tmdbId,
-        season,
+        season
       );
 
       if (cancelled) return;
       if (!currentSeasonEpisodes.length) return;
 
       const currentEpisode = currentSeasonEpisodes.find(
-        (e) => e.episode_number === episode,
+        (e) => e.episode_number === episode
       );
 
       setEpisodeTitle(currentEpisode?.name || "");
 
-      /* ---------------- RUNTIME (KEY ADDITION) ---------------- */
+      /* ---------------- RUNTIME ---------------- */
 
-      const runtimeMinutes =
-        currentEpisode?.runtime ?? currentEpisode?.episode_run_time?.[0];
+      let runtime =
+        resolveEpisodeRuntime(currentEpisode) ??
+        resolveSeasonAverageRuntime(cacheKey, currentSeasonEpisodes);
 
-      if (runtimeMinutes && runtimeMinutes > 0) {
-        setRuntimeSeconds(runtimeMinutes * 60);
+      // FINAL fallback (safe baseline)
+      if (!runtime) {
+        runtime = 45 * 60; // 45 min default
       }
 
-      /* ---------------- NEXT EPISODE LOGIC ---------------- */
+      setRuntimeSeconds(runtime);
+
+      /* ---------------- NEXT EPISODE ---------------- */
 
       const maxEpisode = Math.max(
-        ...currentSeasonEpisodes.map((e) => e.episode_number),
+        ...currentSeasonEpisodes.map((e) => e.episode_number)
       );
 
       if (episode >= maxEpisode - 1) {
@@ -119,7 +162,7 @@ export function useEpisodeMeta(intent: PlaybackIntent) {
 
       if (episode < maxEpisode) {
         const nextEp = currentSeasonEpisodes.find(
-          (e) => e.episode_number === episode + 1,
+          (e) => e.episode_number === episode + 1
         );
 
         setHasNextEpisode(true);
@@ -130,7 +173,7 @@ export function useEpisodeMeta(intent: PlaybackIntent) {
 
       const nextSeasonEpisodes = await getSeasonEpisodesCached(
         intent.tmdbId,
-        season + 1,
+        season + 1
       );
 
       if (cancelled) return;

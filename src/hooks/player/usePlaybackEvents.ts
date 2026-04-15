@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 
 /* -------------------------------- CONFIG -------------------------------- */
 
@@ -10,8 +10,15 @@ const SCRUB_DELTA_SECONDS = 10;
 const STABLE_DELTA_SECONDS = 2;
 const SCRUB_RELEASE_MS = 800;
 
-const OVERLAY_PROGRESS_THRESHOLD = 0.9;
-const OVERLAY_REMAINING_SECONDS = 120;
+// Primary overlay rules
+const OVERLAY_PROGRESS_THRESHOLD = 0.92;
+const OVERLAY_REMAINING_SECONDS = 90;
+
+// Last resort only when no runtime exists anywhere
+const HARD_FALLBACK_NEAR_END_SECONDS = 25 * 60;
+
+// Keep storage short-lived so old overlay state does not leak forever
+const STORAGE_TTL_MS = 5 * 60 * 1000;
 
 const ENDED_EVENTS = new Set([
   "ended",
@@ -56,10 +63,26 @@ function isPlayerOrigin(origin: string) {
 function extractPlayerMetrics(msg: Record<string, any>) {
   const payload = msg?.data && typeof msg.data === "object" ? msg.data : msg;
 
-  const rawCurrentTime = payload?.currentTime ?? payload?.current_time;
-  const rawDuration = payload?.duration ?? payload?.totalDuration;
+  const rawCurrentTime =
+    payload?.currentTime ??
+    payload?.current_time ??
+    payload?.time ??
+    payload?.position ??
+    payload?.playerState?.currentTime;
+
+  const rawDuration =
+    payload?.duration ??
+    payload?.totalDuration ??
+    payload?.length ??
+    payload?.playerState?.duration;
+
   const rawEvent =
-    msg?.event ?? msg?.type ?? payload?.event ?? payload?.type ?? "";
+    msg?.event ??
+    msg?.type ??
+    payload?.event ??
+    payload?.type ??
+    payload?.name ??
+    "";
 
   return {
     currentTime:
@@ -72,29 +95,40 @@ function extractPlayerMetrics(msg: Record<string, any>) {
 function shouldShowOverlay(params: {
   ended: boolean;
   currentTime: number;
-  duration?: number;
+  effectiveDuration?: number;
 }) {
-  const { ended, currentTime, duration } = params;
+  const { ended, currentTime, effectiveDuration } = params;
 
   if (ended) return true;
-  if (typeof duration !== "number" || duration <= 0) return false;
 
-  const remaining = duration - currentTime;
-  const progress = currentTime / duration;
+  if (typeof effectiveDuration === "number" && effectiveDuration > 0) {
+    const progress = currentTime / effectiveDuration;
+    const remaining = effectiveDuration - currentTime;
 
-  return (
-    progress >= OVERLAY_PROGRESS_THRESHOLD ||
-    remaining <= OVERLAY_REMAINING_SECONDS
-  );
+    return (
+      progress >= OVERLAY_PROGRESS_THRESHOLD ||
+      remaining <= OVERLAY_REMAINING_SECONDS
+    );
+  }
+
+  return currentTime >= HARD_FALLBACK_NEAR_END_SECONDS;
 }
+
+/* ======================================================================== */
 
 export function usePlaybackEvents({
   iframeRef,
   markPlaybackStarted,
+  intentKey,
+  runtimeSeconds,
 }: {
   iframeRef?: React.RefObject<HTMLIFrameElement | null>;
   markPlaybackStarted: () => void;
+  intentKey: string;
+  runtimeSeconds?: number;
 }) {
+  const STORAGE_KEY = `omega-near-end:${intentKey}`;
+
   const [showNextOverlay, setShowNextOverlay] = useState(false);
 
   const lastKnownTimeRef = useRef(0);
@@ -109,32 +143,58 @@ export function usePlaybackEvents({
 
   const lastProcessedRef = useRef(0);
   const overlayShownRef = useRef(false);
+  const nearEndRef = useRef(false);
 
-  const maybeShowOverlay = () => {
-    if (overlayShownRef.current) return;
+  const getEffectiveDuration = useCallback(() => {
+    if (typeof runtimeSeconds === "number" && runtimeSeconds > 0) {
+      return runtimeSeconds;
+    }
 
-    const shouldTrigger = shouldShowOverlay({
+    const providerDuration = lastKnownDurationRef.current;
+    if (typeof providerDuration === "number" && providerDuration > 0) {
+      return providerDuration;
+    }
+
+    return undefined;
+  }, [runtimeSeconds]);
+
+  const persistOverlayState = useCallback(() => {
+    try {
+      sessionStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          t: Date.now(),
+        }),
+      );
+    } catch {}
+  }, [STORAGE_KEY]);
+
+  const maybeShowOverlay = useCallback(() => {
+    if (overlayShownRef.current || nearEndRef.current) return;
+
+    const isNearEnd = shouldShowOverlay({
       ended: endedRef.current,
       currentTime: lastKnownTimeRef.current,
-      duration: lastKnownDurationRef.current,
+      effectiveDuration: getEffectiveDuration(),
     });
 
-    if (!shouldTrigger) return;
+    if (!isNearEnd) return;
 
+    nearEndRef.current = true;
     overlayShownRef.current = true;
+    persistOverlayState();
     setShowNextOverlay(true);
-  };
+  }, [getEffectiveDuration, persistOverlayState]);
 
-  /* ------------------------------------------------------------------ */
-  /* MESSAGE HANDLER                                                    */
-  /* ------------------------------------------------------------------ */
+  /* -------------------------- MESSAGE HANDLER -------------------------- */
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (!isPlayerOrigin(event.origin)) return;
 
       const now = Date.now();
-      if (now - lastProcessedRef.current < 120) return;
+
+      if (now - lastProcessedRef.current < 60) return;
       lastProcessedRef.current = now;
 
       const msg = safeMsgData(event.data);
@@ -144,23 +204,17 @@ export function usePlaybackEvents({
 
       lastEventTimeRef.current = now;
 
-      /* -------- DURATION -------- */
-
       if (typeof duration === "number" && duration > 0) {
         const prev = lastKnownDurationRef.current;
 
-        if (!prev || Math.abs(duration - prev) < 30) {
+        if (!prev || Math.abs(duration - prev) < 120) {
           lastKnownDurationRef.current = duration;
         }
       }
 
-      /* -------- TIME -------- */
-
-      if (typeof currentTime === "number") {
+      if (typeof currentTime === "number" && Number.isFinite(currentTime)) {
         const prev = lastKnownTimeRef.current;
         const delta = Math.abs(currentTime - prev);
-
-        /* SCRUB DETECTION */
 
         if (delta >= SCRUB_DELTA_SECONDS) {
           isScrubbingRef.current = true;
@@ -173,13 +227,9 @@ export function usePlaybackEvents({
           isScrubbingRef.current = false;
         }
 
-        /* MONOTONIC TIME PROTECTION */
-
-        if (currentTime >= prev || Math.abs(currentTime - prev) < 5) {
+        if (currentTime >= prev - 3) {
           lastKnownTimeRef.current = currentTime;
         }
-
-        /* START DETECTION */
 
         if (!hasStartedRef.current && currentTime > 1) {
           hasStartedRef.current = true;
@@ -187,24 +237,18 @@ export function usePlaybackEvents({
         }
       }
 
-      /* -------- ENDED -------- */
-
       if (ENDED_EVENTS.has(eventType)) {
         endedRef.current = true;
       }
-
-      /* -------- OVERLAY TRIGGER -------- */
 
       maybeShowOverlay();
     };
 
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [markPlaybackStarted]);
+  }, [markPlaybackStarted, maybeShowOverlay]);
 
-  /* ------------------------------------------------------------------ */
-  /* POLLING                                                            */
-  /* ------------------------------------------------------------------ */
+  /* -------------------------- POLLING -------------------------- */
 
   useEffect(() => {
     const interval = window.setInterval(() => {
@@ -214,15 +258,16 @@ export function usePlaybackEvents({
 
         target.postMessage({ event: "getTime" }, "*");
         target.postMessage({ event: "getDuration" }, "*");
+
+        target.postMessage({ type: "getTime" }, "*");
+        target.postMessage({ type: "getDuration" }, "*");
       } catch {}
     }, POLL_INTERVAL_MS);
 
     return () => clearInterval(interval);
   }, [iframeRef]);
 
-  /* ------------------------------------------------------------------ */
-  /* FAILSAFE OVERLAY CHECK                                             */
-  /* ------------------------------------------------------------------ */
+  /* -------------------------- FAILSAFE -------------------------- */
 
   useEffect(() => {
     const interval = window.setInterval(() => {
@@ -230,13 +275,55 @@ export function usePlaybackEvents({
     }, POLL_INTERVAL_MS);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [maybeShowOverlay]);
 
-  /* ------------------------------------------------------------------ */
-  /* RESET                                                              */
-  /* ------------------------------------------------------------------ */
+  /* -------------------------- RESTORE -------------------------- */
 
-  const resetPlaybackEvents = () => {
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+
+      const data = JSON.parse(raw);
+      if (Date.now() - data.t > STORAGE_TTL_MS) {
+        sessionStorage.removeItem(STORAGE_KEY);
+        return;
+      }
+
+      overlayShownRef.current = true;
+      nearEndRef.current = true;
+      setShowNextOverlay(true);
+    } catch {}
+  }, [STORAGE_KEY]);
+
+  /* -------------------------- FULLSCREEN EXIT -------------------------- */
+
+  useEffect(() => {
+    const onFullscreenChange = () => {
+      if (!document.fullscreenElement) {
+        const isNearEnd = shouldShowOverlay({
+          ended: endedRef.current,
+          currentTime: lastKnownTimeRef.current,
+          effectiveDuration: getEffectiveDuration(),
+        });
+
+        if (isNearEnd) {
+          nearEndRef.current = true;
+          overlayShownRef.current = true;
+          persistOverlayState();
+          setShowNextOverlay(true);
+        }
+      }
+    };
+
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    return () =>
+      document.removeEventListener("fullscreenchange", onFullscreenChange);
+  }, [getEffectiveDuration, persistOverlayState]);
+
+  /* -------------------------- RESET -------------------------- */
+
+  const resetPlaybackEvents = useCallback(() => {
     lastKnownTimeRef.current = 0;
     lastKnownDurationRef.current = undefined;
     lastEventTimeRef.current = Date.now();
@@ -249,9 +336,14 @@ export function usePlaybackEvents({
 
     lastProcessedRef.current = 0;
     overlayShownRef.current = false;
+    nearEndRef.current = false;
+
+    try {
+      sessionStorage.removeItem(STORAGE_KEY);
+    } catch {}
 
     setShowNextOverlay(false);
-  };
+  }, [STORAGE_KEY]);
 
   return {
     showNextOverlay,

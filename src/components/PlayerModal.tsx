@@ -50,8 +50,13 @@ export default function PlayerModal({
     playbackStartedRef,
   } = usePlayerCore(intent);
 
-  const { episodeTitle, nextEpisodeTitle, hasNextEpisode, nextIntent } =
-    useEpisodeMeta(intent);
+  const {
+    episodeTitle,
+    nextEpisodeTitle,
+    hasNextEpisode,
+    nextIntent,
+    runtimeSeconds,
+  } = useEpisodeMeta(intent);
 
   const { maybeQueueProgress, flushPendingProgress, resetProgressTracking } =
     useProgressTracker(intent, reportTVPlayback);
@@ -67,6 +72,8 @@ export default function PlayerModal({
   } = usePlaybackEvents({
     iframeRef,
     markPlaybackStarted,
+    intentKey,
+    runtimeSeconds,
   });
 
   useWatchdog({
@@ -113,7 +120,7 @@ export default function PlayerModal({
   useEffect(() => {
     if (intent.mediaType !== "tv") return;
 
-    const interval = setInterval(() => {
+    const interval = window.setInterval(() => {
       const t = lastKnownTimeRef.current;
       if (typeof t === "number" && t > 0) {
         maybeQueueProgress(t);
@@ -169,11 +176,11 @@ export default function PlayerModal({
           onLoad={() => {
             onIframeLoad();
 
-            setTimeout(() => {
-              if (iframeRef.current && !hasStartedRef.current) {
+            window.setTimeout(() => {
+              if (!hasStartedRef.current) {
                 scheduleHideLoader(0);
               }
-            }, 4000);
+            }, 2500);
           }}
         />
 
