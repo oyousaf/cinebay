@@ -8,7 +8,7 @@ import type { ProviderType } from "@/lib/embed/buildEmbedUrl";
 const WATCHDOG_CHECK_INTERVAL_MS = 2000;
 
 const PRE_START_TIMEOUT_MS = 20000;
-const STALL_FREEZE_WINDOW_MS = 20000;
+const STALL_FREEZE_WINDOW_MS = 30000;
 
 const MIN_TIME_DELTA = 0.35;
 
@@ -117,6 +117,12 @@ export function useWatchdog({
         return;
       }
 
+      /* ---------------- START GRACE PERIOD ---------------- */
+
+      const justStarted = now - startTimeRef.current < 15000;
+
+      if (justStarted) return;
+
       /* ---------------- STALL DETECTION ---------------- */
 
       if (!isActive) return;
@@ -125,8 +131,13 @@ export function useWatchdog({
       if (cooldown) return;
       if (fallbackCountRef.current >= MAX_FALLBACKS) return;
 
-      const isStalled =
+      const noRecentEvents =
         now - lastEventTimeRef.current >= STALL_FREEZE_WINDOW_MS;
+
+      const noProgress =
+        now - lastProgressAtRef.current >= STALL_FREEZE_WINDOW_MS;
+
+      const isStalled = noRecentEvents && noProgress;
 
       if (isStalled) {
         lastFallbackAtRef.current = now;

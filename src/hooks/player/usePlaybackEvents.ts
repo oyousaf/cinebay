@@ -268,7 +268,11 @@ export function usePlaybackEvents({
       const delta = (now - lastTickRef.current) / 1000;
       lastTickRef.current = now;
 
-      if (now - lastEventTimeRef.current > 2000) {
+      if (
+        isPlaybackActiveRef.current &&
+        !isScrubbingRef.current &&
+        now - lastEventTimeRef.current > 2000
+      ) {
         lastKnownTimeRef.current += delta;
       }
 
