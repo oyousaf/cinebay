@@ -8,7 +8,7 @@ import type { ProviderType } from "@/lib/embed/buildEmbedUrl";
 const WATCHDOG_CHECK_INTERVAL_MS = 2000;
 
 const PRE_START_TIMEOUT_MS = 20000;
-const STALL_FREEZE_WINDOW_MS = 30000;
+const STALL_FREEZE_WINDOW_MS = 15000;
 
 const MIN_TIME_DELTA = 0.35;
 

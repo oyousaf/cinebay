@@ -141,9 +141,7 @@ export function usePlaybackEvents({
   const overlayShownRef = useRef(false);
   const nearEndRef = useRef(false);
 
-  /* NEW */
   const isPlaybackActiveRef = useRef(false);
-  const lastTickRef = useRef(Date.now());
 
   const getEffectiveDuration = useCallback(() => {
     if (typeof runtimeSeconds === "number" && runtimeSeconds > 0) {
@@ -260,22 +258,10 @@ export function usePlaybackEvents({
     return () => clearInterval(interval);
   }, [iframeRef]);
 
-  /* ---------------- SYNTHETIC TIME (ANTI-FREEZE) ---------------- */
+  /* ---------------- OVERLAY TICK ONLY ---------------- */
 
   useEffect(() => {
     const interval = setInterval(() => {
-      const now = Date.now();
-      const delta = (now - lastTickRef.current) / 1000;
-      lastTickRef.current = now;
-
-      if (
-        isPlaybackActiveRef.current &&
-        !isScrubbingRef.current &&
-        now - lastEventTimeRef.current > 2000
-      ) {
-        lastKnownTimeRef.current += delta;
-      }
-
       maybeShowOverlay();
     }, 1000);
 
