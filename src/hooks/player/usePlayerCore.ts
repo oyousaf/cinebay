@@ -173,6 +173,10 @@ export function usePlayerCore(intent: PlaybackIntent) {
       iframeLoadTimerRef.current = null;
     }
 
+    const isLast = providerIndexRef.current >= PROVIDER_ORDER.length - 1;
+
+    if (isLast) return;
+
     playbackStartTimerRef.current = window.setTimeout(() => {
       if (!playbackStartedRef.current) {
         fallbackProvider("no-playback-after-load");
