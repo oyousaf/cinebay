@@ -93,8 +93,7 @@ export function usePlayerCore(intent: PlaybackIntent) {
       const isLast = current >= PROVIDER_ORDER.length - 1;
 
       if (isLast) {
-        console.warn("[PLAYER] all providers exhausted", { reason });
-        scheduleHideLoader(LOADER_MIN_MS);
+        console.warn("[PLAYER] final provider reached (superembed). locking.");
         return;
       }
 
