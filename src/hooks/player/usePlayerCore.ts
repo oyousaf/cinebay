@@ -93,7 +93,16 @@ export function usePlayerCore(intent: PlaybackIntent) {
       const isLast = current >= PROVIDER_ORDER.length - 1;
 
       if (isLast) {
-        console.warn("[PLAYER] final provider reached (superembed). locking.");
+        console.warn("[PLAYER] final provider reached (superembed). locking.", {
+          provider: PROVIDER_ORDER[current],
+          reason,
+        });
+
+        playbackStartedRef.current = true;
+        iframeLoadedRef.current = true;
+
+        scheduleHideLoader(0);
+
         return;
       }
 
@@ -103,10 +112,14 @@ export function usePlayerCore(intent: PlaybackIntent) {
         reason,
       });
 
+      // reset state for next provider
       iframeLoadedRef.current = false;
       playbackStartedRef.current = false;
 
+      // restart loader cycle cleanly
+      loadStartRef.current = Date.now();
       setShowLoader(true);
+
       setProviderIndex(current + 1);
     },
     [clearFailoverTimers, clearLoaderTimer, scheduleHideLoader],
