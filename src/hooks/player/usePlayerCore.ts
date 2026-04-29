@@ -188,14 +188,19 @@ export function usePlayerCore(intent: PlaybackIntent) {
 
     const isLast = providerIndexRef.current >= PROVIDER_ORDER.length - 1;
 
-    if (isLast) return;
+    if (isLast) {
+      // ✅ force UI to settle even if provider never emits events
+      playbackStartedRef.current = true;
+      scheduleHideLoader(500);
+      return;
+    }
 
     playbackStartTimerRef.current = window.setTimeout(() => {
       if (!playbackStartedRef.current) {
         fallbackProvider("no-playback-after-load");
       }
     }, PLAYBACK_START_TIMEOUT);
-  }, [fallbackProvider]);
+  }, [fallbackProvider, scheduleHideLoader]);
 
   /* ------------------------ PLAYBACK START ------------------------ */
 
