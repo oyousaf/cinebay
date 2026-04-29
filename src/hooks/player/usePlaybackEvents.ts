@@ -14,7 +14,11 @@ const OVERLAY_PROGRESS_THRESHOLD = 0.92;
 const OVERLAY_REMAINING_SECONDS = 90;
 
 const HARD_FALLBACK_NEAR_END_SECONDS = 25 * 60;
+
 const STORAGE_TTL_MS = 5 * 60 * 1000;
+
+const INTERPOLATION_INTERVAL_MS = 500;
+const STALL_INTERPOLATE_AFTER_MS = 1000;
 
 const ENDED_EVENTS = new Set([
   "ended",
@@ -143,6 +147,9 @@ export function usePlaybackEvents({
 
   const isPlaybackActiveRef = useRef(false);
 
+  /* 👇 NEW */
+  const lastTickRef = useRef(Date.now());
+
   const getEffectiveDuration = useCallback(() => {
     if (typeof runtimeSeconds === "number" && runtimeSeconds > 0) {
       return runtimeSeconds;
@@ -156,11 +163,35 @@ export function usePlaybackEvents({
     return undefined;
   }, [runtimeSeconds]);
 
+  /* ---------------- STORAGE ---------------- */
+
   const persistOverlayState = useCallback(() => {
     try {
       sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ t: Date.now() }));
     } catch {}
   }, [STORAGE_KEY]);
+
+  const restoreOverlayState = useCallback(() => {
+    try {
+      const raw = sessionStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+
+      const parsed = JSON.parse(raw);
+      if (!parsed?.t) return;
+
+      if (Date.now() - parsed.t < STORAGE_TTL_MS) {
+        overlayShownRef.current = true;
+        nearEndRef.current = true;
+        setShowNextOverlay(true);
+      } else {
+        sessionStorage.removeItem(STORAGE_KEY);
+      }
+    } catch {}
+  }, [STORAGE_KEY]);
+
+  useEffect(() => {
+    restoreOverlayState();
+  }, [restoreOverlayState]);
 
   const maybeShowOverlay = useCallback(() => {
     if (overlayShownRef.current || nearEndRef.current) return;
@@ -196,6 +227,7 @@ export function usePlaybackEvents({
       const { currentTime, duration, eventType } = extractPlayerMetrics(msg);
 
       lastEventTimeRef.current = now;
+      lastTickRef.current = now;
 
       if (typeof duration === "number" && duration > 0) {
         const prev = lastKnownDurationRef.current;
@@ -242,6 +274,29 @@ export function usePlaybackEvents({
     return () => window.removeEventListener("message", handleMessage);
   }, [markPlaybackStarted, maybeShowOverlay]);
 
+  /* ---------------- INTERPOLATION (ANTI-FREEZE) ---------------- */
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = Date.now();
+
+      if (!isPlaybackActiveRef.current) return;
+      if (isScrubbingRef.current) return;
+
+      const timeSinceLastRealUpdate = now - lastTickRef.current;
+
+      if (timeSinceLastRealUpdate < STALL_INTERPOLATE_AFTER_MS) return;
+
+      const delta = timeSinceLastRealUpdate / 1000;
+
+      lastKnownTimeRef.current += delta;
+
+      lastTickRef.current = now;
+    }, INTERPOLATION_INTERVAL_MS);
+
+    return () => clearInterval(interval);
+  }, []);
+
   /* ---------------- PROVIDER POLL ---------------- */
 
   useEffect(() => {
@@ -258,7 +313,7 @@ export function usePlaybackEvents({
     return () => clearInterval(interval);
   }, [iframeRef]);
 
-  /* ---------------- OVERLAY TICK ONLY ---------------- */
+  /* ---------------- OVERLAY TICK ---------------- */
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -302,7 +357,7 @@ export function usePlaybackEvents({
     hasStartedRef,
     endedRef,
     isScrubbingRef,
-    isPlaybackActiveRef, // NEW
+    isPlaybackActiveRef,
     resetPlaybackEvents,
   };
 }
