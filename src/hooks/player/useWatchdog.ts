@@ -8,11 +8,10 @@ import type { ProviderType } from "@/lib/embed/buildEmbedUrl";
 const WATCHDOG_CHECK_INTERVAL_MS = 2000;
 
 const PRE_START_TIMEOUT_MS = 20000;
-const STALL_FREEZE_WINDOW_MS = 15000;
+const STALL_FREEZE_WINDOW_MS = 30000;
 
 const MIN_TIME_DELTA = 0.35;
-
-const FALLBACK_COOLDOWN_MS = 20000;
+const FALLBACK_COOLDOWN_MS = 45000;
 const MAX_FALLBACKS = 2;
 
 const END_PROTECTION_SECONDS = 90;
@@ -137,7 +136,7 @@ export function useWatchdog({
       const noProgress =
         now - lastProgressAtRef.current >= STALL_FREEZE_WINDOW_MS;
 
-      const isStalled = noRecentEvents && noProgress;
+      const isStalled = noRecentEvents && noProgress && currentTime > 5;
 
       if (isStalled) {
         lastFallbackAtRef.current = now;

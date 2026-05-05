@@ -290,8 +290,8 @@ export function usePlaybackEvents({
       const delta = timeSinceLastRealUpdate / 1000;
 
       lastKnownTimeRef.current += delta;
-
       lastTickRef.current = now;
+      
     }, INTERPOLATION_INTERVAL_MS);
 
     return () => clearInterval(interval);
