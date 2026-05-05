@@ -287,11 +287,13 @@ export function usePlaybackEvents({
 
       if (timeSinceLastRealUpdate < STALL_INTERPOLATE_AFTER_MS) return;
 
-      const delta = timeSinceLastRealUpdate / 1000;
+      const delta = Math.min(timeSinceLastRealUpdate / 1000, 1.5);
 
       lastKnownTimeRef.current += delta;
       lastTickRef.current = now;
-      
+      lastEventTimeRef.current = now;
+
+      isPlaybackActiveRef.current = true;
     }, INTERPOLATION_INTERVAL_MS);
 
     return () => clearInterval(interval);
