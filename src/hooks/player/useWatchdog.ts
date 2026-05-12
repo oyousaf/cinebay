@@ -1,28 +1,27 @@
 "use client";
 
 import { useEffect, useRef, type RefObject } from "react";
-import type { ProviderType } from "@/lib/embed/buildEmbedUrl";
-
-/* CONFIG */
+import { PROVIDER_ORDER, type ProviderType } from "@/lib/embed/buildEmbedUrl";
 
 const WATCHDOG_CHECK_INTERVAL_MS = 2000;
 
 const PRE_START_TIMEOUT_MS = 20000;
-const STALL_FREEZE_WINDOW_MS = 30000;
+const STALL_FREEZE_WINDOW_MS = 20000;
 
-const MIN_TIME_DELTA = 0.35;
-const FALLBACK_COOLDOWN_MS = 45000;
+const REAL_MESSAGE_RECENT_MS = 6000;
+
+const FALLBACK_COOLDOWN_MS = 30000;
 const MAX_FALLBACKS = 2;
 
 const END_PROTECTION_SECONDS = 90;
 
-/* ======================================================================== */
-
 type UseWatchdogParams = {
   provider: ProviderType;
   lastEventTimeRef: RefObject<number>;
+  lastRealProgressAtRef: RefObject<number>;
   isScrubbingRef: RefObject<boolean>;
   isPlaybackActiveRef: RefObject<boolean>;
+  isPlaybackPausedRef: RefObject<boolean>;
   fallbackProvider: (reason?: string) => void;
   scheduleHideLoader: (ms?: number) => void;
   playbackStartedRef: RefObject<boolean>;
@@ -34,8 +33,10 @@ type UseWatchdogParams = {
 export function useWatchdog({
   provider,
   lastEventTimeRef,
+  lastRealProgressAtRef,
   isScrubbingRef,
   isPlaybackActiveRef,
+  isPlaybackPausedRef,
   fallbackProvider,
   scheduleHideLoader,
   playbackStartedRef,
@@ -43,37 +44,32 @@ export function useWatchdog({
   lastKnownDurationRef,
   runtimeSeconds,
 }: UseWatchdogParams) {
-  const watchdogIntervalRef = useRef<number | null>(null);
-
+  const intervalRef = useRef<number | null>(null);
   const lastFallbackAtRef = useRef(0);
   const fallbackCountRef = useRef(0);
-
-  const lastProgressTimeRef = useRef(0);
-  const lastProgressAtRef = useRef(Date.now());
-
   const startTimeRef = useRef(Date.now());
 
   useEffect(() => {
     lastFallbackAtRef.current = 0;
     fallbackCountRef.current = 0;
-
-    lastProgressTimeRef.current = 0;
-    lastProgressAtRef.current = Date.now();
-
     startTimeRef.current = Date.now();
 
-    if (watchdogIntervalRef.current !== null) {
-      clearInterval(watchdogIntervalRef.current);
+    if (intervalRef.current !== null) {
+      clearInterval(intervalRef.current);
     }
 
-    watchdogIntervalRef.current = window.setInterval(() => {
+    intervalRef.current = window.setInterval(() => {
       const now = Date.now();
 
       if (document.visibilityState === "hidden") return;
 
+      const finalProvider =
+        provider === PROVIDER_ORDER[PROVIDER_ORDER.length - 1];
+
       const started = playbackStartedRef.current ?? false;
-      const isScrubbing = isScrubbingRef.current ?? false;
-      const isActive = isPlaybackActiveRef.current ?? false;
+      const active = isPlaybackActiveRef.current ?? false;
+      const paused = isPlaybackPausedRef.current ?? false;
+      const scrubbing = isScrubbingRef.current ?? false;
       const currentTime = lastKnownTimeRef.current ?? 0;
 
       const effectiveDuration =
@@ -88,22 +84,15 @@ export function useWatchdog({
 
       const cooldown = now - lastFallbackAtRef.current < FALLBACK_COOLDOWN_MS;
 
-      const lastTime = lastProgressTimeRef.current;
-      const delta = Math.abs(currentTime - lastTime);
-
-      if (delta >= MIN_TIME_DELTA) {
-        lastProgressTimeRef.current = currentTime;
-        lastProgressAtRef.current = now;
-      }
-
-      if (currentTime > 1) {
+      if (currentTime > 1 && started) {
         scheduleHideLoader(0);
       }
 
-      /* ---------------- PRE-START ---------------- */
+      if (finalProvider) {
+        return;
+      }
 
       if (!started) {
-        if (!isActive) return;
         if (cooldown) return;
         if (fallbackCountRef.current >= MAX_FALLBACKS) return;
 
@@ -116,46 +105,39 @@ export function useWatchdog({
         return;
       }
 
-      /* ---------------- START GRACE PERIOD ---------------- */
-
-      const justStarted = now - startTimeRef.current < 15000;
-
-      if (justStarted) return;
-
-      /* ---------------- STALL DETECTION ---------------- */
-
-      if (!isActive) return;
-      if (isScrubbing) return;
+      if (!active) return;
+      if (paused) return;
+      if (scrubbing) return;
       if (nearEnd) return;
       if (cooldown) return;
       if (fallbackCountRef.current >= MAX_FALLBACKS) return;
 
-      const noRecentEvents =
-        now - lastEventTimeRef.current >= STALL_FREEZE_WINDOW_MS;
+      const providerStillTalking =
+        now - lastEventTimeRef.current <= REAL_MESSAGE_RECENT_MS;
 
-      const noProgress =
-        now - lastProgressAtRef.current >= STALL_FREEZE_WINDOW_MS;
+      const noRealProgress =
+        now - lastRealProgressAtRef.current >= STALL_FREEZE_WINDOW_MS;
 
-      const isStalled = noRecentEvents && noProgress && currentTime > 5;
-
-      if (isStalled) {
+      if (providerStillTalking && noRealProgress && currentTime > 5) {
         lastFallbackAtRef.current = now;
         fallbackCountRef.current += 1;
-        fallbackProvider("stalled");
+        fallbackProvider("real-time-frozen");
       }
     }, WATCHDOG_CHECK_INTERVAL_MS);
 
     return () => {
-      if (watchdogIntervalRef.current !== null) {
-        clearInterval(watchdogIntervalRef.current);
-        watchdogIntervalRef.current = null;
+      if (intervalRef.current !== null) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
     };
   }, [
     provider,
     lastEventTimeRef,
+    lastRealProgressAtRef,
     isScrubbingRef,
     isPlaybackActiveRef,
+    isPlaybackPausedRef,
     fallbackProvider,
     scheduleHideLoader,
     playbackStartedRef,
