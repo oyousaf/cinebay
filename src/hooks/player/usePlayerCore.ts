@@ -8,10 +8,14 @@ import {
   type ProviderType,
 } from "@/lib/embed/buildEmbedUrl";
 
+/* -------------------------------- CONFIG -------------------------------- */
+
 const LOADER_MIN_MS = 900;
 const IFRAME_LOAD_TIMEOUT = 12000;
-const PLAYBACK_START_TIMEOUT = 12000;
+const PLAYBACK_START_TIMEOUT = 9000;
 const THEME = "2dd4bf";
+
+/* ======================================================================== */
 
 export function usePlayerCore(intent: PlaybackIntent) {
   const [showLoader, setShowLoader] = useState(true);
@@ -31,8 +35,6 @@ export function usePlayerCore(intent: PlaybackIntent) {
   const provider: ProviderType =
     PROVIDER_ORDER[providerIndex] ?? PROVIDER_ORDER[0];
 
-  const isFinalProvider = providerIndex >= PROVIDER_ORDER.length - 1;
-
   useEffect(() => {
     providerIndexRef.current = providerIndex;
   }, [providerIndex]);
@@ -46,6 +48,8 @@ export function usePlayerCore(intent: PlaybackIntent) {
     });
   }, [intent, provider, startAt]);
 
+  /* ------------------------ TIMER HELPERS ------------------------ */
+
   const clearLoaderTimer = useCallback(() => {
     if (loaderTimerRef.current !== null) {
       clearTimeout(loaderTimerRef.current);
@@ -58,7 +62,6 @@ export function usePlayerCore(intent: PlaybackIntent) {
       clearTimeout(iframeLoadTimerRef.current);
       iframeLoadTimerRef.current = null;
     }
-
     if (playbackStartTimerRef.current !== null) {
       clearTimeout(playbackStartTimerRef.current);
       playbackStartTimerRef.current = null;
@@ -79,6 +82,8 @@ export function usePlayerCore(intent: PlaybackIntent) {
     [clearLoaderTimer],
   );
 
+  /* ------------------------ PROVIDER FALLBACK ------------------------ */
+
   const fallbackProvider = useCallback(
     (reason?: string) => {
       clearFailoverTimers();
@@ -88,10 +93,15 @@ export function usePlayerCore(intent: PlaybackIntent) {
       const isLast = current >= PROVIDER_ORDER.length - 1;
 
       if (isLast) {
-        console.warn("[PLAYER] final provider reached. Locked.", {
+        console.warn("[PLAYER] final provider reached (superembed). locking.", {
           provider: PROVIDER_ORDER[current],
           reason,
         });
+
+        playbackStartedRef.current = true;
+        iframeLoadedRef.current = true;
+
+        scheduleHideLoader(0);
 
         return;
       }
@@ -102,15 +112,20 @@ export function usePlayerCore(intent: PlaybackIntent) {
         reason,
       });
 
+      // reset state for next provider
       iframeLoadedRef.current = false;
       playbackStartedRef.current = false;
 
+      // restart loader cycle cleanly
       loadStartRef.current = Date.now();
       setShowLoader(true);
+
       setProviderIndex(current + 1);
     },
-    [clearFailoverTimers, clearLoaderTimer],
+    [clearFailoverTimers, clearLoaderTimer, scheduleHideLoader],
   );
+
+  /* ------------------------ INTENT KEY RESET ------------------------ */
 
   const getIntentKey = (i: PlaybackIntent) =>
     i.mediaType === "tv"
@@ -130,6 +145,8 @@ export function usePlayerCore(intent: PlaybackIntent) {
     clearFailoverTimers();
     clearLoaderTimer();
   }, [intentKey, clearFailoverTimers, clearLoaderTimer]);
+
+  /* ------------------------ LOAD TIMEOUT ------------------------ */
 
   useEffect(() => {
     clearFailoverTimers();
@@ -159,6 +176,8 @@ export function usePlayerCore(intent: PlaybackIntent) {
     clearLoaderTimer,
   ]);
 
+  /* ------------------------ IFRAME LOAD ------------------------ */
+
   const onIframeLoad = useCallback(() => {
     iframeLoadedRef.current = true;
 
@@ -170,6 +189,9 @@ export function usePlayerCore(intent: PlaybackIntent) {
     const isLast = providerIndexRef.current >= PROVIDER_ORDER.length - 1;
 
     if (isLast) {
+      // ✅ force UI to settle even if provider never emits events
+      playbackStartedRef.current = true;
+      scheduleHideLoader(500);
       return;
     }
 
@@ -178,21 +200,24 @@ export function usePlayerCore(intent: PlaybackIntent) {
         fallbackProvider("no-playback-after-load");
       }
     }, PLAYBACK_START_TIMEOUT);
-  }, [fallbackProvider]);
+  }, [fallbackProvider, scheduleHideLoader]);
+
+  /* ------------------------ PLAYBACK START ------------------------ */
 
   const markPlaybackStarted = useCallback(() => {
-    if (playbackStartedRef.current) return;
+    if (!playbackStartedRef.current) {
+      playbackStartedRef.current = true;
 
-    playbackStartedRef.current = true;
-
-    clearFailoverTimers();
-    scheduleHideLoader(LOADER_MIN_MS);
+      clearFailoverTimers();
+      scheduleHideLoader(LOADER_MIN_MS);
+    }
   }, [clearFailoverTimers, scheduleHideLoader]);
+
+  /* ------------------------ RETURN ------------------------ */
 
   return {
     provider,
     providerIndex,
-    isFinalProvider,
     embedUrl,
     showLoader,
     onIframeLoad,

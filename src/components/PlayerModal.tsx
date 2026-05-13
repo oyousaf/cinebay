@@ -65,12 +65,10 @@ export default function PlayerModal({
     showNextOverlay,
     lastKnownTimeRef,
     lastEventTimeRef,
-    lastRealProgressAtRef,
     isScrubbingRef,
     resetPlaybackEvents,
     lastKnownDurationRef,
     isPlaybackActiveRef,
-    isPlaybackPausedRef,
   } = usePlaybackEvents({
     iframeRef,
     markPlaybackStarted,
@@ -81,10 +79,8 @@ export default function PlayerModal({
   useWatchdog({
     provider,
     lastEventTimeRef,
-    lastRealProgressAtRef,
     isScrubbingRef,
     isPlaybackActiveRef,
-    isPlaybackPausedRef,
     fallbackProvider,
     scheduleHideLoader,
     playbackStartedRef,
@@ -127,18 +123,14 @@ export default function PlayerModal({
     if (intent.mediaType !== "tv") return;
 
     const interval = window.setInterval(() => {
-      if (!isPlaybackActiveRef.current) return;
-      if (isPlaybackPausedRef.current) return;
-
       const t = lastKnownTimeRef.current;
-
       if (typeof t === "number" && t > 0) {
         maybeQueueProgress(t);
       }
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [intent.mediaType, maybeQueueProgress]);
+  }, [intent.mediaType, maybeQueueProgress, lastKnownTimeRef]);
 
   const handleClose = useCallback(() => {
     flushPendingProgress();

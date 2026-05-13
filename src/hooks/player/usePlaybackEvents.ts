@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 
+/* CONFIG */
+
 const POLL_INTERVAL_MS = 1000;
 
 const SCRUB_DELTA_SECONDS = 10;
@@ -10,8 +12,13 @@ const SCRUB_RELEASE_MS = 800;
 
 const OVERLAY_PROGRESS_THRESHOLD = 0.92;
 const OVERLAY_REMAINING_SECONDS = 90;
+
 const HARD_FALLBACK_NEAR_END_SECONDS = 25 * 60;
+
 const STORAGE_TTL_MS = 5 * 60 * 1000;
+
+const INTERPOLATION_INTERVAL_MS = 500;
+const STALL_INTERPOLATE_AFTER_MS = 1000;
 
 const ENDED_EVENTS = new Set([
   "ended",
@@ -20,11 +27,12 @@ const ENDED_EVENTS = new Set([
   "completed",
   "finished",
 ]);
-const PAUSE_EVENTS = new Set(["pause", "paused"]);
-const PLAY_EVENTS = new Set(["play", "playing", "resume", "resumed"]);
+
+/* ======================================================================== */
 
 function safeMsgData(data: unknown): Record<string, any> | null {
   if (!data) return null;
+
   if (typeof data === "object") return data as Record<string, any>;
 
   if (typeof data === "string") {
@@ -41,6 +49,7 @@ function safeMsgData(data: unknown): Record<string, any> | null {
 
 function isPlayerOrigin(origin: string) {
   if (!origin) return false;
+
   const o = origin.toLowerCase();
 
   return (
@@ -105,6 +114,8 @@ function shouldShowOverlay(params: {
   return currentTime >= HARD_FALLBACK_NEAR_END_SECONDS;
 }
 
+/* ======================================================================== */
+
 export function usePlaybackEvents({
   iframeRef,
   markPlaybackStarted,
@@ -122,22 +133,22 @@ export function usePlaybackEvents({
 
   const lastKnownTimeRef = useRef(0);
   const lastKnownDurationRef = useRef<number | undefined>(undefined);
-
   const lastEventTimeRef = useRef(Date.now());
-  const lastRealProgressAtRef = useRef(Date.now());
 
   const hasStartedRef = useRef(false);
   const endedRef = useRef(false);
 
   const isScrubbingRef = useRef(false);
-  const isPlaybackActiveRef = useRef(false);
-  const isPlaybackPausedRef = useRef(false);
-
   const lastScrubTimeRef = useRef(0);
-  const lastProcessedRef = useRef(0);
 
+  const lastProcessedRef = useRef(0);
   const overlayShownRef = useRef(false);
   const nearEndRef = useRef(false);
+
+  const isPlaybackActiveRef = useRef(false);
+
+  /* 👇 NEW */
+  const lastTickRef = useRef(Date.now());
 
   const getEffectiveDuration = useCallback(() => {
     if (typeof runtimeSeconds === "number" && runtimeSeconds > 0) {
@@ -152,31 +163,15 @@ export function usePlaybackEvents({
     return undefined;
   }, [runtimeSeconds]);
 
+  /* ---------------- STORAGE ---------------- */
+
   const persistOverlayState = useCallback(() => {
     try {
       sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ t: Date.now() }));
     } catch {}
   }, [STORAGE_KEY]);
 
-  const maybeShowOverlay = useCallback(() => {
-    if (overlayShownRef.current || nearEndRef.current) return;
-
-    const isNearEnd = shouldShowOverlay({
-      ended: endedRef.current,
-      currentTime: lastKnownTimeRef.current,
-      effectiveDuration: getEffectiveDuration(),
-    });
-
-    if (!isNearEnd) return;
-
-    nearEndRef.current = true;
-    overlayShownRef.current = true;
-
-    persistOverlayState();
-    setShowNextOverlay(true);
-  }, [getEffectiveDuration, persistOverlayState]);
-
-  useEffect(() => {
+  const restoreOverlayState = useCallback(() => {
     try {
       const raw = sessionStorage.getItem(STORAGE_KEY);
       if (!raw) return;
@@ -195,6 +190,29 @@ export function usePlaybackEvents({
   }, [STORAGE_KEY]);
 
   useEffect(() => {
+    restoreOverlayState();
+  }, [restoreOverlayState]);
+
+  const maybeShowOverlay = useCallback(() => {
+    if (overlayShownRef.current || nearEndRef.current) return;
+
+    const isNearEnd = shouldShowOverlay({
+      ended: endedRef.current,
+      currentTime: lastKnownTimeRef.current,
+      effectiveDuration: getEffectiveDuration(),
+    });
+
+    if (!isNearEnd) return;
+
+    nearEndRef.current = true;
+    overlayShownRef.current = true;
+    persistOverlayState();
+    setShowNextOverlay(true);
+  }, [getEffectiveDuration, persistOverlayState]);
+
+  /* ---------------- MESSAGE HANDLER ---------------- */
+
+  useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (!isPlayerOrigin(event.origin)) return;
 
@@ -209,25 +227,18 @@ export function usePlaybackEvents({
       const { currentTime, duration, eventType } = extractPlayerMetrics(msg);
 
       lastEventTimeRef.current = now;
-
-      if (PAUSE_EVENTS.has(eventType)) {
-        isPlaybackPausedRef.current = true;
-      }
-
-      if (PLAY_EVENTS.has(eventType)) {
-        isPlaybackPausedRef.current = false;
-        isPlaybackActiveRef.current = true;
-      }
+      lastTickRef.current = now;
 
       if (typeof duration === "number" && duration > 0) {
         const prev = lastKnownDurationRef.current;
-
         if (!prev || Math.abs(duration - prev) < 120) {
           lastKnownDurationRef.current = duration;
         }
       }
 
       if (typeof currentTime === "number" && Number.isFinite(currentTime)) {
+        isPlaybackActiveRef.current = true;
+
         const prev = lastKnownTimeRef.current;
         const delta = Math.abs(currentTime - prev);
 
@@ -242,28 +253,18 @@ export function usePlaybackEvents({
           isScrubbingRef.current = false;
         }
 
-        const movedForward = currentTime > prev + 0.25;
-
         if (currentTime >= prev - 3) {
           lastKnownTimeRef.current = currentTime;
         }
 
-        if (movedForward) {
-          isPlaybackActiveRef.current = true;
-          isPlaybackPausedRef.current = false;
-          lastRealProgressAtRef.current = now;
-        }
-
         if (!hasStartedRef.current && lastKnownTimeRef.current > 0.3) {
           hasStartedRef.current = true;
-          isPlaybackActiveRef.current = true;
           markPlaybackStarted();
         }
       }
 
       if (ENDED_EVENTS.has(eventType)) {
         endedRef.current = true;
-        isPlaybackPausedRef.current = false;
       }
 
       maybeShowOverlay();
@@ -273,6 +274,33 @@ export function usePlaybackEvents({
     return () => window.removeEventListener("message", handleMessage);
   }, [markPlaybackStarted, maybeShowOverlay]);
 
+  /* ---------------- INTERPOLATION (ANTI-FREEZE) ---------------- */
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = Date.now();
+
+      if (!isPlaybackActiveRef.current) return;
+      if (isScrubbingRef.current) return;
+
+      const timeSinceLastRealUpdate = now - lastTickRef.current;
+
+      if (timeSinceLastRealUpdate < STALL_INTERPOLATE_AFTER_MS) return;
+
+      const delta = Math.min(timeSinceLastRealUpdate / 1000, 1.5);
+
+      lastKnownTimeRef.current += delta;
+      lastTickRef.current = now;
+      lastEventTimeRef.current = now;
+
+      isPlaybackActiveRef.current = true;
+    }, INTERPOLATION_INTERVAL_MS);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  /* ---------------- PROVIDER POLL ---------------- */
+
   useEffect(() => {
     const interval = window.setInterval(() => {
       try {
@@ -281,41 +309,38 @@ export function usePlaybackEvents({
 
         target.postMessage({ event: "getTime" }, "*");
         target.postMessage({ event: "getDuration" }, "*");
-        target.postMessage({ type: "getTime" }, "*");
-        target.postMessage({ type: "getDuration" }, "*");
       } catch {}
     }, POLL_INTERVAL_MS);
 
     return () => clearInterval(interval);
   }, [iframeRef]);
 
+  /* ---------------- OVERLAY TICK ---------------- */
+
   useEffect(() => {
-    const interval = window.setInterval(() => {
+    const interval = setInterval(() => {
       maybeShowOverlay();
     }, 1000);
 
     return () => clearInterval(interval);
   }, [maybeShowOverlay]);
 
-  const resetPlaybackEvents = useCallback(() => {
-    const now = Date.now();
+  /* ---------------- RESET ---------------- */
 
+  const resetPlaybackEvents = useCallback(() => {
     lastKnownTimeRef.current = 0;
     lastKnownDurationRef.current = undefined;
-
-    lastEventTimeRef.current = now;
-    lastRealProgressAtRef.current = now;
+    lastEventTimeRef.current = Date.now();
 
     hasStartedRef.current = false;
     endedRef.current = false;
 
     isScrubbingRef.current = false;
-    isPlaybackActiveRef.current = false;
-    isPlaybackPausedRef.current = false;
-
     lastScrubTimeRef.current = 0;
-    lastProcessedRef.current = 0;
 
+    isPlaybackActiveRef.current = false;
+
+    lastProcessedRef.current = 0;
     overlayShownRef.current = false;
     nearEndRef.current = false;
 
@@ -331,12 +356,10 @@ export function usePlaybackEvents({
     lastKnownTimeRef,
     lastKnownDurationRef,
     lastEventTimeRef,
-    lastRealProgressAtRef,
     hasStartedRef,
     endedRef,
     isScrubbingRef,
     isPlaybackActiveRef,
-    isPlaybackPausedRef,
     resetPlaybackEvents,
   };
 }
