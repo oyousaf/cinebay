@@ -17,9 +17,6 @@ const HARD_FALLBACK_NEAR_END_SECONDS = 25 * 60;
 
 const STORAGE_TTL_MS = 5 * 60 * 1000;
 
-const INTERPOLATION_INTERVAL_MS = 500;
-const STALL_INTERPOLATE_AFTER_MS = 1000;
-
 const ENDED_EVENTS = new Set([
   "ended",
   "end",
@@ -147,9 +144,6 @@ export function usePlaybackEvents({
 
   const isPlaybackActiveRef = useRef(false);
 
-  /* 👇 NEW */
-  const lastTickRef = useRef(Date.now());
-
   const getEffectiveDuration = useCallback(() => {
     if (typeof runtimeSeconds === "number" && runtimeSeconds > 0) {
       return runtimeSeconds;
@@ -227,7 +221,6 @@ export function usePlaybackEvents({
       const { currentTime, duration, eventType } = extractPlayerMetrics(msg);
 
       lastEventTimeRef.current = now;
-      lastTickRef.current = now;
 
       if (typeof duration === "number" && duration > 0) {
         const prev = lastKnownDurationRef.current;
@@ -273,31 +266,6 @@ export function usePlaybackEvents({
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
   }, [markPlaybackStarted, maybeShowOverlay]);
-
-  /* ---------------- INTERPOLATION (ANTI-FREEZE) ---------------- */
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const now = Date.now();
-
-      if (!isPlaybackActiveRef.current) return;
-      if (isScrubbingRef.current) return;
-
-      const timeSinceLastRealUpdate = now - lastTickRef.current;
-
-      if (timeSinceLastRealUpdate < STALL_INTERPOLATE_AFTER_MS) return;
-
-      const delta = Math.min(timeSinceLastRealUpdate / 1000, 1.5);
-
-      lastKnownTimeRef.current += delta;
-      lastTickRef.current = now;
-      lastEventTimeRef.current = now;
-
-      isPlaybackActiveRef.current = true;
-    }, INTERPOLATION_INTERVAL_MS);
-
-    return () => clearInterval(interval);
-  }, []);
 
   /* ---------------- PROVIDER POLL ---------------- */
 
