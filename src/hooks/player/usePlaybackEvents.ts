@@ -14,7 +14,6 @@ const OVERLAY_PROGRESS_THRESHOLD = 0.92;
 const OVERLAY_REMAINING_SECONDS = 90;
 
 const HARD_FALLBACK_NEAR_END_SECONDS = 25 * 60;
-
 const STORAGE_TTL_MS = 5 * 60 * 1000;
 
 const ENDED_EVENTS = new Set([
@@ -24,6 +23,9 @@ const ENDED_EVENTS = new Set([
   "completed",
   "finished",
 ]);
+
+const PAUSE_EVENTS = new Set(["pause", "paused"]);
+const PLAY_EVENTS = new Set(["play", "playing", "resume", "resumed"]);
 
 /* ======================================================================== */
 
@@ -130,7 +132,9 @@ export function usePlaybackEvents({
 
   const lastKnownTimeRef = useRef(0);
   const lastKnownDurationRef = useRef<number | undefined>(undefined);
+
   const lastEventTimeRef = useRef(Date.now());
+  const lastRealProgressAtRef = useRef(Date.now());
 
   const hasStartedRef = useRef(false);
   const endedRef = useRef(false);
@@ -138,11 +142,12 @@ export function usePlaybackEvents({
   const isScrubbingRef = useRef(false);
   const lastScrubTimeRef = useRef(0);
 
+  const isPlaybackActiveRef = useRef(false);
+  const isPlaybackPausedRef = useRef(false);
+
   const lastProcessedRef = useRef(0);
   const overlayShownRef = useRef(false);
   const nearEndRef = useRef(false);
-
-  const isPlaybackActiveRef = useRef(false);
 
   const getEffectiveDuration = useCallback(() => {
     if (typeof runtimeSeconds === "number" && runtimeSeconds > 0) {
@@ -150,6 +155,7 @@ export function usePlaybackEvents({
     }
 
     const providerDuration = lastKnownDurationRef.current;
+
     if (typeof providerDuration === "number" && providerDuration > 0) {
       return providerDuration;
     }
@@ -200,6 +206,7 @@ export function usePlaybackEvents({
 
     nearEndRef.current = true;
     overlayShownRef.current = true;
+
     persistOverlayState();
     setShowNextOverlay(true);
   }, [getEffectiveDuration, persistOverlayState]);
@@ -222,18 +229,26 @@ export function usePlaybackEvents({
 
       lastEventTimeRef.current = now;
 
+      if (PAUSE_EVENTS.has(eventType)) {
+        isPlaybackPausedRef.current = true;
+      }
+
+      if (PLAY_EVENTS.has(eventType)) {
+        isPlaybackPausedRef.current = false;
+        isPlaybackActiveRef.current = true;
+      }
+
       if (typeof duration === "number" && duration > 0) {
-        const prev = lastKnownDurationRef.current;
-        if (!prev || Math.abs(duration - prev) < 120) {
+        const prevDuration = lastKnownDurationRef.current;
+
+        if (!prevDuration || Math.abs(duration - prevDuration) < 120) {
           lastKnownDurationRef.current = duration;
         }
       }
 
       if (typeof currentTime === "number" && Number.isFinite(currentTime)) {
-        isPlaybackActiveRef.current = true;
-
-        const prev = lastKnownTimeRef.current;
-        const delta = Math.abs(currentTime - prev);
+        const prevTime = lastKnownTimeRef.current;
+        const delta = Math.abs(currentTime - prevTime);
 
         if (delta >= SCRUB_DELTA_SECONDS) {
           isScrubbingRef.current = true;
@@ -246,18 +261,26 @@ export function usePlaybackEvents({
           isScrubbingRef.current = false;
         }
 
-        if (currentTime >= prev - 3) {
+        if (currentTime >= prevTime - 3) {
           lastKnownTimeRef.current = currentTime;
+        }
+
+        if (currentTime > prevTime + 0.25) {
+          isPlaybackActiveRef.current = true;
+          isPlaybackPausedRef.current = false;
+          lastRealProgressAtRef.current = now;
         }
 
         if (!hasStartedRef.current && lastKnownTimeRef.current > 0.3) {
           hasStartedRef.current = true;
+          isPlaybackActiveRef.current = true;
           markPlaybackStarted();
         }
       }
 
       if (ENDED_EVENTS.has(eventType)) {
         endedRef.current = true;
+        isPlaybackPausedRef.current = false;
       }
 
       maybeShowOverlay();
@@ -277,6 +300,9 @@ export function usePlaybackEvents({
 
         target.postMessage({ event: "getTime" }, "*");
         target.postMessage({ event: "getDuration" }, "*");
+
+        target.postMessage({ type: "getTime" }, "*");
+        target.postMessage({ type: "getDuration" }, "*");
       } catch {}
     }, POLL_INTERVAL_MS);
 
@@ -286,7 +312,7 @@ export function usePlaybackEvents({
   /* ---------------- OVERLAY TICK ---------------- */
 
   useEffect(() => {
-    const interval = setInterval(() => {
+    const interval = window.setInterval(() => {
       maybeShowOverlay();
     }, 1000);
 
@@ -296,9 +322,13 @@ export function usePlaybackEvents({
   /* ---------------- RESET ---------------- */
 
   const resetPlaybackEvents = useCallback(() => {
+    const now = Date.now();
+
     lastKnownTimeRef.current = 0;
     lastKnownDurationRef.current = undefined;
-    lastEventTimeRef.current = Date.now();
+
+    lastEventTimeRef.current = now;
+    lastRealProgressAtRef.current = now;
 
     hasStartedRef.current = false;
     endedRef.current = false;
@@ -307,6 +337,7 @@ export function usePlaybackEvents({
     lastScrubTimeRef.current = 0;
 
     isPlaybackActiveRef.current = false;
+    isPlaybackPausedRef.current = false;
 
     lastProcessedRef.current = 0;
     overlayShownRef.current = false;
@@ -321,13 +352,19 @@ export function usePlaybackEvents({
 
   return {
     showNextOverlay,
+
     lastKnownTimeRef,
     lastKnownDurationRef,
     lastEventTimeRef,
+    lastRealProgressAtRef,
+
     hasStartedRef,
     endedRef,
+
     isScrubbingRef,
     isPlaybackActiveRef,
+    isPlaybackPausedRef,
+
     resetPlaybackEvents,
   };
 }

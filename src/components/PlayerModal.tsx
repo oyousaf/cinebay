@@ -5,6 +5,7 @@ import { X, Play, LoaderCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 import type { PlaybackIntent } from "@/lib/embed/buildEmbedUrl";
+
 import { useContinueWatching } from "@/hooks/useContinueWatching";
 import { useNavigation } from "@/context/NavigationContext";
 
@@ -33,6 +34,7 @@ export default function PlayerModal({
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
 
   const { getTVProgress, reportTVPlayback } = useContinueWatching();
+
   const { setTabNavigator, setModalOpen } = useNavigation();
 
   const intentKey = useMemo(() => getIntentKey(intent), [intent]);
@@ -63,12 +65,18 @@ export default function PlayerModal({
 
   const {
     showNextOverlay,
+
     lastKnownTimeRef,
-    lastEventTimeRef,
-    isScrubbingRef,
-    resetPlaybackEvents,
     lastKnownDurationRef,
+
+    lastEventTimeRef,
+    lastRealProgressAtRef,
+
+    isScrubbingRef,
     isPlaybackActiveRef,
+    isPlaybackPausedRef,
+
+    resetPlaybackEvents,
   } = usePlaybackEvents({
     iframeRef,
     markPlaybackStarted,
@@ -78,16 +86,26 @@ export default function PlayerModal({
 
   useWatchdog({
     provider,
+
     lastEventTimeRef,
+    lastRealProgressAtRef,
+
     isScrubbingRef,
     isPlaybackActiveRef,
+    isPlaybackPausedRef,
+
     fallbackProvider,
     scheduleHideLoader,
+
     playbackStartedRef,
+
     lastKnownTimeRef,
     lastKnownDurationRef,
+
     runtimeSeconds,
   });
+
+  /* ---------------- RESUME POSITION ---------------- */
 
   useEffect(() => {
     if (intent.mediaType !== "tv") {
@@ -108,8 +126,11 @@ export default function PlayerModal({
     }
   }, [intent, intentKey, getTVProgress, setStartAt]);
 
+  /* ---------------- RESET ON INTENT CHANGE ---------------- */
+
   useEffect(() => {
     flushPendingProgress();
+
     resetProgressTracking();
     resetPlaybackEvents();
   }, [
@@ -119,36 +140,58 @@ export default function PlayerModal({
     resetPlaybackEvents,
   ]);
 
+  /* ---------------- TV PROGRESS LOOP ---------------- */
+
   useEffect(() => {
     if (intent.mediaType !== "tv") return;
 
     const interval = window.setInterval(() => {
-      const t = lastKnownTimeRef.current;
-      if (typeof t === "number" && t > 0) {
-        maybeQueueProgress(t);
+      if (!isPlaybackActiveRef.current) return;
+      if (isPlaybackPausedRef.current) return;
+
+      const currentTime = lastKnownTimeRef.current;
+
+      if (typeof currentTime === "number" && currentTime > 0) {
+        maybeQueueProgress(currentTime);
       }
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [intent.mediaType, maybeQueueProgress, lastKnownTimeRef]);
+  }, [
+    intent.mediaType,
+    maybeQueueProgress,
+    isPlaybackActiveRef,
+    isPlaybackPausedRef,
+    lastKnownTimeRef,
+  ]);
+
+  /* ---------------- CLOSE ---------------- */
 
   const handleClose = useCallback(() => {
     flushPendingProgress();
     resetPlaybackEvents();
+
     onClose();
   }, [flushPendingProgress, resetPlaybackEvents, onClose]);
+
+  /* ---------------- NEXT EPISODE ---------------- */
 
   const handlePlayNext = useCallback(() => {
     if (!nextIntent) return;
 
     flushPendingProgress();
     resetPlaybackEvents();
+
     onPlayNext?.(nextIntent);
   }, [nextIntent, flushPendingProgress, resetPlaybackEvents, onPlayNext]);
 
+  /* ---------------- NAVIGATION ---------------- */
+
   useEffect(() => {
     const nav = (dir: "up" | "down" | "escape") => {
-      if (dir === "escape") handleClose();
+      if (dir === "escape") {
+        handleClose();
+      }
     };
 
     setTabNavigator(nav);
@@ -159,6 +202,8 @@ export default function PlayerModal({
       setModalOpen(false);
     };
   }, [handleClose, setTabNavigator, setModalOpen]);
+
+  /* ---------------- UI ---------------- */
 
   return (
     <motion.div
