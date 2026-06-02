@@ -52,9 +52,10 @@ function isPlayerOrigin(origin: string) {
   const o = origin.toLowerCase();
 
   return (
-    o.includes("vidlink") ||
     o.includes("vidfast") ||
+    o.includes("vidbinge") ||
     o.includes("multiembed") ||
+    o.includes("superembed") ||
     o.includes("embed")
   );
 }
