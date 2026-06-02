@@ -191,8 +191,6 @@ export default defineConfig(() => {
             router: ["react-router-dom"],
 
             motion: ["framer-motion"],
-
-            player: ["hls.js", "vidstack", "maverick.js"],
           },
         },
       },
