@@ -285,6 +285,7 @@ export default function PlayerModal({
     >
       <motion.div className="relative aspect-video w-full max-w-6xl overflow-hidden rounded-2xl bg-[hsl(var(--background))] ring-2 ring-[hsl(var(--foreground))]">
         <iframe
+          title="CineBay Player"
           ref={iframeRef}
           key={`${intentKey}-${providerIndex}`}
           src={embedUrl}
@@ -292,7 +293,6 @@ export default function PlayerModal({
           loading="eager"
           allow="autoplay; fullscreen; picture-in-picture"
           allowFullScreen
-          sandbox="allow-scripts allow-same-origin allow-presentation"
           referrerPolicy="strict-origin-when-cross-origin"
           onLoad={onIframeLoad}
         />
@@ -306,6 +306,7 @@ export default function PlayerModal({
         </AnimatePresence>
 
         <button
+          aria-label="Close player"
           onClick={handleClose}
           className="absolute top-3 right-3 z-20 rounded-full bg-[hsl(var(--background))] ring-2 ring-[hsl(var(--foreground))]"
         >
@@ -352,6 +353,7 @@ export default function PlayerModal({
               </div>
 
               <button
+                aria-label="Play next episode"
                 onClick={handlePlayNext}
                 disabled={!nextIntent}
                 className="flex h-10 w-10 items-center justify-center rounded-full bg-[hsl(var(--foreground))] text-[hsl(var(--background))] disabled:opacity-50"
