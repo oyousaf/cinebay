@@ -1,9 +1,15 @@
-("use client");
+"use client";
 
-import React, { ReactNode, useEffect, useRef, useState } from "react";
+import React, {
+  ReactNode,
+  useEffect,
+  useRef,
+  useState,
+  useCallback,
+} from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Navbar from "./Navbar";
-import { useNavigation } from "@/context/NavigationContext";
+import { useNavigation, Tab } from "@/context/NavigationContext";
 
 interface LayoutProps {
   children: ReactNode;
@@ -11,64 +17,80 @@ interface LayoutProps {
 }
 
 const FADE_EASE = [0.22, 1, 0.36, 1] as const;
+const LOAD_DURATION = 500;
 
-const Layout: React.FC<LayoutProps> = ({ children, isModalOpen = false }) => {
-  const { activeTab } = useNavigation();
+const Layout: React.FC<LayoutProps> = ({ children, isModalOpen }) => {
+  const { activeTab, restoreFocusForTab } = useNavigation();
 
   /* ---------------------------------------
      STATE
   --------------------------------------- */
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingTab, setIsLoadingTab] = useState(false);
 
   /* ---------------------------------------
      REFS
   --------------------------------------- */
-  const previousTabRef = useRef(activeTab);
-  const isFirstRenderRef = useRef(true);
+  const hasMountedRef = useRef(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   /* ---------------------------------------
-     TAB TRANSITION LOADER
+     TAB CHANGE HANDLER
+  --------------------------------------- */
+  const handleTabChange = useCallback(
+    (tab: Tab) => {
+      if (tab === activeTab) return;
+
+      // Clear any existing timer (prevents stacking)
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+
+      setIsLoadingTab(true);
+      restoreFocusForTab(tab);
+
+      timerRef.current = setTimeout(() => {
+        setIsLoadingTab(false);
+        timerRef.current = null;
+      }, LOAD_DURATION);
+    },
+    [activeTab, restoreFocusForTab],
+  );
+
+  /* ---------------------------------------
+     INITIAL LOAD LOADER
   --------------------------------------- */
   useEffect(() => {
-    // Skip first render
-    if (isFirstRenderRef.current) {
-      isFirstRenderRef.current = false;
-      return;
-    }
+    if (hasMountedRef.current) return;
+    hasMountedRef.current = true;
 
-    // Only trigger on actual tab change
-    if (previousTabRef.current !== activeTab) {
-      setIsLoading(true);
-      previousTabRef.current = activeTab;
-    }
-  }, [activeTab]);
+    setIsLoadingTab(true);
+
+    timerRef.current = setTimeout(() => {
+      setIsLoadingTab(false);
+      timerRef.current = null;
+    }, LOAD_DURATION);
+
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, []);
 
   /* ---------------------------------------
      BODY SCROLL LOCK
-     Better iOS handling
   --------------------------------------- */
   useEffect(() => {
-    const body = document.body;
-    const html = document.documentElement;
-
     if (isModalOpen) {
-      body.style.overflow = "hidden";
-      body.style.touchAction = "none";
-
-      // iOS Safari fix
-      html.style.overflow = "hidden";
+      document.body.style.overflow = "hidden";
     } else {
-      body.style.overflow = "";
-      body.style.touchAction = "";
-
-      html.style.overflow = "";
+      document.body.style.overflow = "";
     }
 
     return () => {
-      body.style.overflow = "";
-      body.style.touchAction = "";
-
-      html.style.overflow = "";
+      document.body.style.overflow = "";
     };
   }, [isModalOpen]);
 
@@ -76,86 +98,45 @@ const Layout: React.FC<LayoutProps> = ({ children, isModalOpen = false }) => {
      UI
   --------------------------------------- */
   return (
-    <div className="w-full min-h-screen flex flex-col bg-background">
-      {/* Top Loader */}
-      <AnimatePresence mode="wait">
-        {isLoading && (
+    <div className="w-full h-full flex flex-col overflow-hidden">
+      {/* Top loader */}
+      <AnimatePresence>
+        {isLoadingTab && (
           <motion.div
-            className="fixed top-0 left-0 right-0 h-[2px] z-[9999] overflow-hidden pointer-events-none"
+            className="fixed top-0 left-0 w-full h-0.5 z-50 overflow-hidden"
             initial={{ opacity: 1 }}
-            animate={{ opacity: 1 }}
-            exit={{
-              opacity: 0,
-              transition: { duration: 0.15 },
-            }}
+            exit={{ opacity: 0, transition: { duration: 0.2 } }}
           >
             <motion.div
-              className="
-                h-full
-                w-full
-                bg-gradient-to-r
-                from-transparent
-                via-[hsl(var(--foreground))]
-                to-transparent
-              "
-              initial={{
-                scaleX: 0,
-                x: "-35%",
-              }}
-              animate={{
-                scaleX: 1,
-                x: "35%",
-              }}
+              className="h-full w-full bg-linear-to-r from-transparent via-[hsl(var(--foreground))]
+                to-transparent shadow-[0_0_6px_hsl(var(--foreground)/0.6)]"
+              initial={{ scaleX: 0, x: "-30%" }}
+              animate={{ scaleX: 1, x: "30%" }}
               transition={{
-                duration: 0.45,
+                duration: LOAD_DURATION / 1000,
                 ease: "easeOut",
               }}
-              style={{
-                transformOrigin: "left",
-                willChange: "transform",
-              }}
+              style={{ transformOrigin: "left" }}
             />
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Navbar */}
-      <Navbar activeTab={activeTab} isModalOpen={isModalOpen} />
+      <Navbar
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+        isModalOpen={isModalOpen}
+      />
 
-      {/* Content */}
-      <main
-        className="
-          flex-1
-          min-h-0
-          overflow-auto
-          overscroll-contain
-          md:pl-20
-          [-webkit-overflow-scrolling:touch]
-        "
-      >
-        <AnimatePresence initial={false} mode="sync">
+      <main className="flex-1 min-h-0 overflow-y-auto md:pl-20">
+        <AnimatePresence initial={false} mode="wait">
           <motion.div
             key={activeTab}
-            className="min-h-full will-change-transform"
-            initial={{
-              opacity: 0,
-              y: 4,
-            }}
-            animate={{
-              opacity: 1,
-              y: 0,
-            }}
-            exit={{
-              opacity: 0,
-              y: -4,
-            }}
-            transition={{
-              duration: 0.22,
-              ease: FADE_EASE,
-            }}
-            onAnimationComplete={() => {
-              setIsLoading(false);
-            }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25, ease: FADE_EASE }}
+            className="min-h-full"
           >
             {children}
           </motion.div>
