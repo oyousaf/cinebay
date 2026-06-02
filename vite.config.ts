@@ -181,6 +181,8 @@ export default defineConfig(() => {
 
       chunkSizeWarningLimit: 1000,
 
+      reportCompressedSize: false,
+
       rollupOptions: {
         output: {
           manualChunks: {
@@ -190,20 +192,16 @@ export default defineConfig(() => {
 
             motion: ["framer-motion"],
 
-            player: ["hls.js", "react-player", "vidstack", "maverick.js"],
+            player: ["hls.js", "vidstack", "maverick.js"],
           },
         },
       },
     },
 
     optimizeDeps: {
-      include: [
-        "react",
-        "react-dom",
-        "react-router-dom",
-        "framer-motion",
-        "hls.js",
-      ],
+      include: ["react", "react-dom", "react-router-dom"],
+
+      exclude: ["framer-motion"],
     },
   };
 });

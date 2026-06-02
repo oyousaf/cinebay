@@ -1,15 +1,19 @@
 "use client";
 
 import React, {
-  ReactNode,
+  type ReactNode,
   useEffect,
   useRef,
   useState,
   useCallback,
 } from "react";
+
 import { motion, AnimatePresence } from "framer-motion";
+
 import Navbar from "./Navbar";
-import { useNavigation, Tab } from "@/context/NavigationContext";
+
+import { useNavigation } from "@/context/NavigationContext";
+import type { Tab } from "@/context/NavigationContext";
 
 interface LayoutProps {
   children: ReactNode;
@@ -19,50 +23,23 @@ interface LayoutProps {
 const FADE_EASE = [0.22, 1, 0.36, 1] as const;
 const LOAD_DURATION = 500;
 
-const Layout: React.FC<LayoutProps> = ({ children, isModalOpen }) => {
+const Layout = ({ children, isModalOpen }: LayoutProps) => {
   const { activeTab, restoreFocusForTab } = useNavigation();
 
-  /* ---------------------------------------
-     STATE
-  --------------------------------------- */
   const [isLoadingTab, setIsLoadingTab] = useState(false);
 
-  /* ---------------------------------------
-     REFS
-  --------------------------------------- */
   const hasMountedRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  /* ---------------------------------------
-     TAB CHANGE HANDLER
-  --------------------------------------- */
-  const handleTabChange = useCallback(
-    (tab: Tab) => {
-      if (tab === activeTab) return;
+  const clearLoaderTimer = useCallback(() => {
+    if (!timerRef.current) return;
 
-      // Clear any existing timer (prevents stacking)
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-        timerRef.current = null;
-      }
+    clearTimeout(timerRef.current);
+    timerRef.current = null;
+  }, []);
 
-      setIsLoadingTab(true);
-      restoreFocusForTab(tab);
-
-      timerRef.current = setTimeout(() => {
-        setIsLoadingTab(false);
-        timerRef.current = null;
-      }, LOAD_DURATION);
-    },
-    [activeTab, restoreFocusForTab],
-  );
-
-  /* ---------------------------------------
-     INITIAL LOAD LOADER
-  --------------------------------------- */
-  useEffect(() => {
-    if (hasMountedRef.current) return;
-    hasMountedRef.current = true;
+  const startLoader = useCallback(() => {
+    clearLoaderTimer();
 
     setIsLoadingTab(true);
 
@@ -70,46 +47,47 @@ const Layout: React.FC<LayoutProps> = ({ children, isModalOpen }) => {
       setIsLoadingTab(false);
       timerRef.current = null;
     }, LOAD_DURATION);
+  }, [clearLoaderTimer]);
 
-    return () => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-        timerRef.current = null;
-      }
-    };
-  }, []);
+  const handleTabChange = useCallback(
+    (tab: Tab) => {
+      if (tab === activeTab) return;
 
-  /* ---------------------------------------
-     BODY SCROLL LOCK
-  --------------------------------------- */
+      restoreFocusForTab(tab);
+      startLoader();
+    },
+    [activeTab, restoreFocusForTab, startLoader],
+  );
+
   useEffect(() => {
-    if (isModalOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
+    if (hasMountedRef.current) return;
+
+    hasMountedRef.current = true;
+    startLoader();
+
+    return clearLoaderTimer;
+  }, [startLoader, clearLoaderTimer]);
+
+  useEffect(() => {
+    document.body.style.overflow = isModalOpen ? "hidden" : "";
 
     return () => {
       document.body.style.overflow = "";
     };
   }, [isModalOpen]);
 
-  /* ---------------------------------------
-     UI
-  --------------------------------------- */
   return (
-    <div className="w-full h-full flex flex-col overflow-hidden">
-      {/* Top loader */}
+    <div className="flex h-full w-full flex-col overflow-hidden">
       <AnimatePresence>
         {isLoadingTab && (
           <motion.div
-            className="fixed top-0 left-0 w-full h-0.5 z-50 overflow-hidden"
+            className="fixed top-0 left-0 z-50 h-0.5 w-full overflow-hidden"
             initial={{ opacity: 1 }}
             exit={{ opacity: 0, transition: { duration: 0.2 } }}
           >
             <motion.div
               className="h-full w-full bg-linear-to-r from-transparent via-[hsl(var(--foreground))]
-                to-transparent shadow-[0_0_6px_hsl(var(--foreground)/0.6)]"
+              to-transparent shadow-[0_0_6px_hsl(var(--foreground)/0.6)]"
               initial={{ scaleX: 0, x: "-30%" }}
               animate={{ scaleX: 1, x: "30%" }}
               transition={{
@@ -128,15 +106,18 @@ const Layout: React.FC<LayoutProps> = ({ children, isModalOpen }) => {
         isModalOpen={isModalOpen}
       />
 
-      <main className="flex-1 min-h-0 overflow-y-auto md:pl-20">
+      <main className="min-h-0 flex-1 overflow-y-auto md:pl-20">
         <AnimatePresence initial={false} mode="wait">
           <motion.div
             key={activeTab}
+            className="min-h-full"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.25, ease: FADE_EASE }}
-            className="min-h-full"
+            transition={{
+              duration: 0.25,
+              ease: FADE_EASE,
+            }}
           >
             {children}
           </motion.div>

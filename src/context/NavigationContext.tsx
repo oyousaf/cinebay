@@ -12,10 +12,29 @@ import {
 } from "react";
 
 /* =========================
+   CONSTANTS
+========================= */
+
+const TAB_ORDER = [
+  "movies",
+  "tvshows",
+  "search",
+  "devspick",
+  "watchlist",
+] as const;
+
+const NAV_STORAGE_KEY = "nav_state_v2";
+
+const STICK_DEADZONE = 0.45;
+const INITIAL_REPEAT_DELAY = 220;
+const REPEAT_INTERVAL = 90;
+
+/* =========================
    TYPES
 ========================= */
 
-export type Tab = "movies" | "tvshows" | "search" | "devspick" | "watchlist";
+export type Tab = (typeof TAB_ORDER)[number];
+
 export type FocusItemId = string | number;
 
 export type FocusTarget = {
@@ -25,6 +44,7 @@ export type FocusTarget = {
 };
 
 type TabDirection = "up" | "down" | "escape";
+
 type SetFocus = (
   next: FocusTarget | ((prev: FocusTarget) => FocusTarget),
 ) => void;
@@ -34,12 +54,20 @@ type PersistedNavigationState = {
   focusMemory: Record<Tab, FocusTarget>;
 };
 
+type HoldState = {
+  pressed: boolean;
+  nextAt?: number;
+};
+
+type HoldMap = Record<string, HoldState>;
+
 interface NavigationContextType {
   activeTab: Tab;
   setActiveTab: (tab: Tab) => void;
 
   focus: FocusTarget;
   setFocus: SetFocus;
+
   setFocusByIndex: (
     section: number,
     index: number,
@@ -48,6 +76,7 @@ interface NavigationContextType {
 
   registerRail: (length: number) => number;
   updateRailLength: (index: number, length: number) => void;
+
   restoreFocusForTab: (tab: Tab) => void;
 
   isModalOpen: boolean;
@@ -60,45 +89,35 @@ interface NavigationContextType {
   setToggleHandler: (fn: (() => void) | null) => void;
 }
 
-const NavigationContext = createContext<NavigationContextType | null>(null);
-
 /* =========================
-   CONSTANTS
+   CONTEXT
 ========================= */
 
-const TAB_ORDER: Tab[] = [
-  "movies",
-  "tvshows",
-  "search",
-  "devspick",
-  "watchlist",
-];
-
-const NAV_STORAGE_KEY = "nav_state_v2";
-
-const STICK_DEADZONE = 0.45;
-const INITIAL_REPEAT_DELAY = 220;
-const REPEAT_INTERVAL = 90;
-const POLL_INTERVAL_MS = 50;
+const NavigationContext = createContext<NavigationContextType | null>(null);
 
 /* =========================
    HELPERS
 ========================= */
 
-const isPressed = (b?: GamepadButton) => !!b?.pressed || (b?.value ?? 0) > 0.5;
+const isPressed = (button?: GamepadButton) =>
+  !!button?.pressed || (button?.value ?? 0) > 0.5;
 
-const DEFAULT_FOCUS: FocusTarget = {
+const DEFAULT_FOCUS: FocusTarget = Object.freeze({
   section: 0,
   index: 0,
   itemId: null,
-};
+});
+
+const createFocus = (): FocusTarget => ({
+  ...DEFAULT_FOCUS,
+});
 
 const createDefaultFocusMemory = (): Record<Tab, FocusTarget> => ({
-  movies: { ...DEFAULT_FOCUS },
-  tvshows: { ...DEFAULT_FOCUS },
-  search: { ...DEFAULT_FOCUS },
-  devspick: { ...DEFAULT_FOCUS },
-  watchlist: { ...DEFAULT_FOCUS },
+  movies: createFocus(),
+  tvshows: createFocus(),
+  search: createFocus(),
+  devspick: createFocus(),
+  watchlist: createFocus(),
 });
 
 const createDefaultNavState = (): PersistedNavigationState => ({
@@ -109,17 +128,17 @@ const createDefaultNavState = (): PersistedNavigationState => ({
 const isValidTab = (value: unknown): value is Tab =>
   typeof value === "string" && TAB_ORDER.includes(value as Tab);
 
-const normaliseFocus = (
-  value: Partial<FocusTarget> | null | undefined,
-): FocusTarget => ({
+const normaliseFocus = (value?: Partial<FocusTarget> | null): FocusTarget => ({
   section:
     typeof value?.section === "number" && Number.isFinite(value.section)
       ? Math.max(0, Math.floor(value.section))
       : 0,
+
   index:
     typeof value?.index === "number" && Number.isFinite(value.index)
       ? Math.max(0, Math.floor(value.index))
       : 0,
+
   itemId:
     typeof value?.itemId === "string" || typeof value?.itemId === "number"
       ? value.itemId
@@ -127,16 +146,22 @@ const normaliseFocus = (
 });
 
 const readPersistedNavState = (): PersistedNavigationState => {
-  if (typeof window === "undefined") return createDefaultNavState();
+  if (typeof window === "undefined") {
+    return createDefaultNavState();
+  }
 
   try {
     const raw = localStorage.getItem(NAV_STORAGE_KEY);
-    if (!raw) return createDefaultNavState();
+
+    if (!raw) {
+      return createDefaultNavState();
+    }
 
     const parsed = JSON.parse(raw) as Partial<PersistedNavigationState>;
 
     return {
       activeTab: isValidTab(parsed?.activeTab) ? parsed.activeTab : "movies",
+
       focusMemory: {
         movies: normaliseFocus(parsed?.focusMemory?.movies),
         tvshows: normaliseFocus(parsed?.focusMemory?.tvshows),
@@ -150,19 +175,12 @@ const readPersistedNavState = (): PersistedNavigationState => {
   }
 };
 
-type HoldState = {
-  pressed: boolean;
-  nextAt?: number;
-};
-
-type HoldMap = Record<string, HoldState>;
+/* =========================
+   PROVIDER
+========================= */
 
 export function NavigationProvider({ children }: { children: ReactNode }) {
-  /* ---------- HYDRATE ONCE ---------- */
-
-  const initialNavRef = useRef<PersistedNavigationState>(
-    readPersistedNavState(),
-  );
+  const initialNavRef = useRef(readPersistedNavState());
 
   const [activeTab, setActiveTabState] = useState<Tab>(
     initialNavRef.current.activeTab,
@@ -170,15 +188,15 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
 
   const [focus, setFocusState] = useState<FocusTarget>(
     initialNavRef.current.focusMemory[initialNavRef.current.activeTab] ??
-      DEFAULT_FOCUS,
+      createFocus(),
   );
 
   const [isModalOpen, setModalOpenState] = useState(false);
 
   /* ---------- REFS ---------- */
 
-  const activeTabRef = useRef<Tab>(activeTab);
-  const focusRef = useRef<FocusTarget>(focus);
+  const activeTabRef = useRef(activeTab);
+  const focusRef = useRef(focus);
   const isModalOpenRef = useRef(false);
 
   const focusMemoryRef = useRef<Record<Tab, FocusTarget>>(
@@ -191,24 +209,31 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   const persistTimeoutRef = useRef<number | null>(null);
 
   const tabNavigatorRef = useRef<((dir: TabDirection) => void) | null>(null);
+
   const selectRef = useRef<(() => void) | null>(null);
   const playRef = useRef<(() => void) | null>(null);
   const toggleRef = useRef<(() => void) | null>(null);
+
+  const animationFrameRef = useRef<number | null>(null);
 
   const holdRef = useRef<HoldMap>({
     up: { pressed: false, nextAt: 0 },
     down: { pressed: false, nextAt: 0 },
     left: { pressed: false, nextAt: 0 },
     right: { pressed: false, nextAt: 0 },
+
     lb: { pressed: false },
     rb: { pressed: false },
+
     select: { pressed: false },
     play: { pressed: false },
     back: { pressed: false },
     toggle: { pressed: false },
   });
 
-  /* ---------- REF SYNC ---------- */
+  /* =========================
+     REF SYNC
+  ========================= */
 
   useEffect(() => {
     activeTabRef.current = activeTab;
@@ -222,12 +247,18 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     isModalOpenRef.current = isModalOpen;
   }, [isModalOpen]);
 
-  /* ---------- PERSIST ---------- */
+  /* =========================
+     PERSISTENCE
+  ========================= */
 
   const persistState = useCallback(() => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined") {
+      return;
+    }
 
-    if (persistTimeoutRef.current !== null) return;
+    if (persistTimeoutRef.current !== null) {
+      return;
+    }
 
     persistTimeoutRef.current = window.setTimeout(() => {
       persistTimeoutRef.current = null;
@@ -238,25 +269,26 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       };
 
       localStorage.setItem(NAV_STORAGE_KEY, JSON.stringify(payload));
-    }, 500);
+    }, 400);
   }, []);
 
   useEffect(() => {
     return () => {
       if (persistTimeoutRef.current !== null) {
         clearTimeout(persistTimeoutRef.current);
-        persistTimeoutRef.current = null;
       }
     };
   }, []);
 
-  /* ---------- SAFE CALL ---------- */
+  /* =========================
+     UTILITIES
+  ========================= */
 
-  const call = useCallback((fn: (() => void) | null | undefined) => {
+  const call = useCallback((fn?: (() => void) | null) => {
     try {
       fn?.();
     } catch (err) {
-      console.error("Navigation action failed:", err);
+      console.error(err);
     }
   }, []);
 
@@ -264,19 +296,20 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     try {
       tabNavigatorRef.current?.(dir);
     } catch (err) {
-      console.error("Tab navigation failed:", err);
+      console.error(err);
     }
   }, []);
 
   const resetHoldState = useCallback(() => {
-    const entries = holdRef.current;
-    for (const key of Object.keys(entries)) {
-      entries[key].pressed = false;
-      entries[key].nextAt = 0;
+    for (const state of Object.values(holdRef.current)) {
+      state.pressed = false;
+      state.nextAt = 0;
     }
   }, []);
 
-  /* ---------- FOCUS ---------- */
+  /* =========================
+     FOCUS
+  ========================= */
 
   const setFocusSafe: SetFocus = useCallback(
     (next) => {
@@ -286,10 +319,12 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
         );
 
         const tab = activeTabRef.current;
+
         focusMemoryRef.current[tab] = resolved;
         focusRef.current = resolved;
 
         persistState();
+
         return resolved;
       });
     },
@@ -307,24 +342,32 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     [setFocusSafe],
   );
 
-  /* ---------- TABS ---------- */
+  /* =========================
+     TABS
+  ========================= */
 
   const setActiveTab = useCallback(
     (tab: Tab) => {
-      if (tab === activeTabRef.current) return;
+      if (tab === activeTabRef.current) {
+        return;
+      }
 
       const currentTab = activeTabRef.current;
+
       focusMemoryRef.current[currentTab] = normaliseFocus(focusRef.current);
 
       activeTabRef.current = tab;
+
       setActiveTabState(tab);
 
       const nextFocus = normaliseFocus(
-        focusMemoryRef.current[tab] ?? DEFAULT_FOCUS,
+        focusMemoryRef.current[tab] ?? createFocus(),
       );
 
       focusMemoryRef.current[tab] = nextFocus;
+
       focusRef.current = nextFocus;
+
       setFocusState(nextFocus);
 
       persistState();
@@ -336,36 +379,46 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     (tab: Tab) => {
       railCountRef.current = 0;
       railsRef.current = [];
+
       setActiveTab(tab);
     },
     [setActiveTab],
   );
 
-  /* ---------- RAILS ---------- */
+  /* =========================
+     RAILS
+  ========================= */
 
   const registerRail = useCallback((length: number) => {
-    const nextIndex = railCountRef.current;
-    railCountRef.current += 1;
-    railsRef.current[nextIndex] = length;
-    return nextIndex;
+    const index = railCountRef.current++;
+
+    railsRef.current[index] = length;
+
+    return index;
   }, []);
 
   const updateRailLength = useCallback((index: number, length: number) => {
     railsRef.current[index] = length;
   }, []);
 
-  /* ---------- MODAL ---------- */
+  /* =========================
+     MODAL
+  ========================= */
 
   const setModalOpen = useCallback(
     (open: boolean) => {
       isModalOpenRef.current = open;
+
       setModalOpenState(open);
+
       resetHoldState();
     },
     [resetHoldState],
   );
 
-  /* ---------- HANDLERS ---------- */
+  /* =========================
+     HANDLERS
+  ========================= */
 
   const setTabNavigator = useCallback(
     (fn: ((dir: TabDirection) => void) | null) => {
@@ -386,20 +439,25 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     toggleRef.current = fn;
   }, []);
 
-  /* ---------- MOVEMENT ---------- */
+  /* =========================
+     MOVEMENT
+  ========================= */
 
   const moveHorizontal = useCallback(
     (dir: "left" | "right") => {
       setFocusSafe((prev) => {
-        const len = railsRef.current[prev.section] ?? 1;
-        const max = Math.max(len - 1, 0);
+        const railLength = railsRef.current[prev.section] ?? 1;
+
+        const maxIndex = Math.max(railLength - 1, 0);
 
         const nextIndex =
           dir === "right"
-            ? Math.min(prev.index + 1, max)
+            ? Math.min(prev.index + 1, maxIndex)
             : Math.max(prev.index - 1, 0);
 
-        if (nextIndex === prev.index) return prev;
+        if (nextIndex === prev.index) {
+          return prev;
+        }
 
         return {
           section: prev.section,
@@ -414,7 +472,10 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   const cycleTab = useCallback(
     (dir: "prev" | "next") => {
       const currentIndex = TAB_ORDER.indexOf(activeTabRef.current);
-      if (currentIndex === -1) return;
+
+      if (currentIndex === -1) {
+        return;
+      }
 
       const nextIndex =
         dir === "next"
@@ -426,11 +487,14 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     [restoreFocusForTab],
   );
 
-  /* ---------- KEYBOARD ---------- */
+  /* =========================
+     KEYBOARD
+  ========================= */
 
   useEffect(() => {
     const handle = (e: KeyboardEvent) => {
       const key = e.key;
+
       const target = e.target as HTMLElement | null;
 
       const isTyping =
@@ -440,45 +504,67 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
           target.isContentEditable);
 
       if (isTyping) {
-        if (key === "Escape") callTabNav("escape");
+        if (key === "Escape") {
+          callTabNav("escape");
+        }
+
         return;
       }
 
-      if (key === "ArrowUp" || key === "w" || key === "W") {
-        callTabNav("up");
-      }
+      switch (key) {
+        case "ArrowUp":
+        case "w":
+        case "W":
+          callTabNav("up");
+          break;
 
-      if (key === "ArrowDown" || key === "s" || key === "S") {
-        callTabNav("down");
-      }
+        case "ArrowDown":
+        case "s":
+        case "S":
+          callTabNav("down");
+          break;
 
-      if (key === "ArrowLeft" || key === "a" || key === "A") {
-        moveHorizontal("left");
-      }
+        case "ArrowLeft":
+        case "a":
+        case "A":
+          moveHorizontal("left");
+          break;
 
-      if (key === "ArrowRight" || key === "d" || key === "D") {
-        moveHorizontal("right");
-      }
+        case "ArrowRight":
+        case "d":
+        case "D":
+          moveHorizontal("right");
+          break;
 
-      if (key === "Enter" || key.toLowerCase() === "i") {
-        call(selectRef.current);
-      }
+        case "Enter":
+          call(selectRef.current);
+          break;
 
-      if (
-        key === "p" ||
-        key === "P" ||
-        key === "MediaPlayPause" ||
-        key === "MediaPlay"
-      ) {
-        call(playRef.current);
-      }
+        case "Escape":
+        case "Backspace":
+        case "BrowserBack":
+          callTabNav("escape");
+          break;
 
-      if (key.toLowerCase() === "y") {
-        call(toggleRef.current);
-      }
+        default: {
+          const lower = key.toLowerCase();
 
-      if (key === "Escape" || key === "Backspace" || key === "BrowserBack") {
-        callTabNav("escape");
+          if (lower === "i") {
+            call(selectRef.current);
+          }
+
+          if (lower === "y") {
+            call(toggleRef.current);
+          }
+
+          if (
+            lower === "p" ||
+            key === "MediaPlayPause" ||
+            key === "MediaPlay"
+          ) {
+            call(playRef.current);
+          }
+        }
       }
     };
 
@@ -491,10 +577,13 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     };
   }, [call, callTabNav, moveHorizontal, resetHoldState]);
 
-  /* ---------- GAMEPAD HELPERS ---------- */
+  /* =========================
+     GAMEPAD HELPERS
+  ========================= */
 
   const repeat = useCallback((key: string, active: boolean, fn: () => void) => {
     const state = holdRef.current[key];
+
     const now = performance.now();
 
     if (!active) {
@@ -505,23 +594,31 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     if (!state.pressed) {
       state.pressed = true;
       state.nextAt = now + INITIAL_REPEAT_DELAY;
+
       fn();
+
       return;
     }
 
     if (now >= (state.nextAt ?? 0)) {
       state.nextAt = now + REPEAT_INTERVAL;
+
       fn();
     }
   }, []);
 
   const single = useCallback((key: string, active: boolean, fn: () => void) => {
     const state =
-      holdRef.current[key] ?? (holdRef.current[key] = { pressed: false });
+      holdRef.current[key] ??
+      (holdRef.current[key] = {
+        pressed: false,
+      });
 
     if (active && !state.pressed) {
       state.pressed = true;
+
       fn();
+
       return;
     }
 
@@ -530,17 +627,16 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  /* ---------- GAMEPAD ---------- */
+  /* =========================
+     GAMEPAD POLL
+  ========================= */
 
   const poll = useCallback(() => {
-    const pads = navigator.getGamepads?.() ?? [];
-    const pad = pads[0] ?? null;
+    const pad = navigator.getGamepads?.()?.[0] ?? null;
 
     if (!pad) {
       return;
     }
-
-    const isModal = isModalOpenRef.current;
 
     const axX = pad.axes[0] ?? 0;
     const axY = pad.axes[1] ?? 0;
@@ -552,21 +648,24 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
 
     const aPressed = isPressed(pad.buttons?.[0]);
     const bPressed = isPressed(pad.buttons?.[1]);
+
     const yPressed = isPressed(pad.buttons?.[3]);
+
     const lbPressed = isPressed(pad.buttons?.[4]);
     const rbPressed = isPressed(pad.buttons?.[5]);
+
     const backPressed = isPressed(pad.buttons?.[8]);
     const startPressed = isPressed(pad.buttons?.[9]);
 
     const rtPressed = (pad.buttons?.[7]?.value ?? 0) > 0.75;
 
-    // ✅ EARLY EXIT — no meaningful input
-    const noStick =
-      Math.abs(axX) < STICK_DEADZONE && Math.abs(axY) < STICK_DEADZONE;
-
-    const noDpad = !dpadUp && !dpadDown && !dpadLeft && !dpadRight;
-
-    const noButtons =
+    const noInput =
+      Math.abs(axX) < STICK_DEADZONE &&
+      Math.abs(axY) < STICK_DEADZONE &&
+      !dpadUp &&
+      !dpadDown &&
+      !dpadLeft &&
+      !dpadRight &&
       !aPressed &&
       !bPressed &&
       !yPressed &&
@@ -576,29 +675,25 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       !startPressed &&
       !rtPressed;
 
-    if (noStick && noDpad && noButtons) {
-      for (const key of Object.keys(holdRef.current)) {
-        holdRef.current[key].pressed = false;
-      }
+    if (noInput) {
+      resetHoldState();
       return;
     }
 
-    if (!isModal) {
-      repeat("left", axX < -STICK_DEADZONE || dpadLeft, () => {
-        moveHorizontal("left");
-      });
+    if (!isModalOpenRef.current) {
+      repeat("left", axX < -STICK_DEADZONE || dpadLeft, () =>
+        moveHorizontal("left"),
+      );
 
-      repeat("right", axX > STICK_DEADZONE || dpadRight, () => {
-        moveHorizontal("right");
-      });
+      repeat("right", axX > STICK_DEADZONE || dpadRight, () =>
+        moveHorizontal("right"),
+      );
 
-      repeat("up", axY < -STICK_DEADZONE || dpadUp, () => {
-        callTabNav("up");
-      });
+      repeat("up", axY < -STICK_DEADZONE || dpadUp, () => callTabNav("up"));
 
-      repeat("down", axY > STICK_DEADZONE || dpadDown, () => {
-        callTabNav("down");
-      });
+      repeat("down", axY > STICK_DEADZONE || dpadDown, () =>
+        callTabNav("down"),
+      );
 
       single("lb", lbPressed, () => {
         cycleTab("prev");
@@ -624,33 +719,55 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     single("back", bPressed, () => {
       callTabNav("escape");
     });
-  }, [call, callTabNav, cycleTab, moveHorizontal, repeat, single]);
+  }, [
+    call,
+    callTabNav,
+    cycleTab,
+    moveHorizontal,
+    repeat,
+    resetHoldState,
+    single,
+  ]);
+
+  /* =========================
+     RAF LOOP
+  ========================= */
 
   useEffect(() => {
-    const onGamepadDisconnected = () => {
-      resetHoldState();
-    };
-
-    const onGamepadConnected = () => {
-      resetHoldState();
-    };
-
-    window.addEventListener("gamepadconnected", onGamepadConnected);
-    window.addEventListener("gamepaddisconnected", onGamepadDisconnected);
-
-    const intervalId = window.setInterval(() => {
+    const loop = () => {
       poll();
-    }, POLL_INTERVAL_MS);
+
+      animationFrameRef.current = requestAnimationFrame(loop);
+    };
+
+    const onConnect = () => {
+      resetHoldState();
+    };
+
+    const onDisconnect = () => {
+      resetHoldState();
+    };
+
+    window.addEventListener("gamepadconnected", onConnect);
+
+    window.addEventListener("gamepaddisconnected", onDisconnect);
+
+    animationFrameRef.current = requestAnimationFrame(loop);
 
     return () => {
-      window.removeEventListener("gamepadconnected", onGamepadConnected);
-      window.removeEventListener("gamepaddisconnected", onGamepadDisconnected);
+      window.removeEventListener("gamepadconnected", onConnect);
 
-      clearInterval(intervalId);
+      window.removeEventListener("gamepaddisconnected", onDisconnect);
+
+      if (animationFrameRef.current !== null) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
     };
   }, [poll, resetHoldState]);
 
-  /* ---------- CONTEXT ---------- */
+  /* =========================
+     CONTEXT VALUE
+  ========================= */
 
   const value = useMemo<NavigationContextType>(
     () => ({
@@ -659,16 +776,19 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
 
       focus,
       setFocus: setFocusSafe,
+
       setFocusByIndex,
 
       registerRail,
       updateRailLength,
+
       restoreFocusForTab,
 
       isModalOpen,
       setModalOpen,
 
       setTabNavigator,
+
       setSelectHandler,
       setPlayHandler,
       setToggleHandler,
@@ -700,8 +820,10 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
 
 export function useNavigation() {
   const ctx = useContext(NavigationContext);
+
   if (!ctx) {
     throw new Error("useNavigation must be used inside provider");
   }
+
   return ctx;
 }
