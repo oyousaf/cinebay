@@ -11,18 +11,15 @@ export interface PlaybackIntent {
   episode?: number;
 }
 
-export type ProviderType = "vidfast" | "vidbinge" | "superembed";
+export type ProviderType = "vidlink" | "vidfast" | "superembed";
 
 export interface BuildEmbedOptions {
   provider?: ProviderType;
-
   startAt?: number;
   autoplay?: boolean;
-
   theme?: string;
 
   server?: string;
-
   hideServer?: boolean;
   fullscreenButton?: boolean;
   chromecast?: boolean;
@@ -33,8 +30,8 @@ export interface BuildEmbedOptions {
 -------------------------------------------------- */
 
 export const PROVIDER_ORDER: ProviderType[] = [
+  "vidlink",
   "vidfast",
-  "vidbinge",
   "superembed",
 ];
 
@@ -54,29 +51,18 @@ type QueryValue = string | number | boolean | null | undefined;
 
 function buildQuery(params: Record<string, QueryValue>) {
   const entries = Object.entries(params)
-    .filter(([, value]) => {
-      return value !== undefined && value !== null;
-    })
-    .map(([key, value]) => {
-      return [key, String(value)];
-    });
+    .filter(([, v]) => v !== undefined && v !== null)
+    .map(([k, v]) => [k, String(v)]);
 
   return new URLSearchParams(entries).toString();
 }
 
-function bool(value: boolean | undefined, fallback = true) {
-  if (value === undefined) {
-    return fallback ? 1 : 0;
-  }
-
-  return value ? 1 : 0;
+function bool(v: boolean | undefined, def = true) {
+  return v === undefined ? (def ? 1 : 0) : v ? 1 : 0;
 }
 
 function sanitizeStartAt(startAt?: number) {
-  if (!startAt || startAt <= 5) {
-    return undefined;
-  }
-
+  if (!startAt || startAt <= 5) return undefined;
   return Math.floor(startAt);
 }
 
@@ -88,34 +74,50 @@ function tvDefaults(intent: PlaybackIntent) {
 }
 
 /* -------------------------------------------------
-   VIDFAST
+   VIDLINK
 -------------------------------------------------- */
 
-function buildVidFastUrl(intent: PlaybackIntent, options: BuildEmbedOptions) {
+function buildVidLinkUrl(intent: PlaybackIntent, o: BuildEmbedOptions) {
   const { mediaType, tmdbId } = intent;
 
   const query = buildQuery({
-    autoplay: options.autoplay === false ? "false" : "true",
+    primaryColor: o.theme ?? DEFAULT_THEME,
+    secondaryColor: GOLD_ACCENT,
+    iconColor: WHITE,
+    autoplay: o.autoplay === false ? "false" : "true",
+    startAt: sanitizeStartAt(o.startAt),
+    nextbutton: 0,
+  });
 
-    startAt: sanitizeStartAt(options.startAt),
+  if (mediaType === "tv") {
+    const { season, episode } = tvDefaults(intent);
+    return `https://vidlink.pro/tv/${tmdbId}/${season}/${episode}?${query}`;
+  }
 
-    theme: options.theme ?? DEFAULT_THEME,
+  return `https://vidlink.pro/movie/${tmdbId}?${query}`;
+}
 
-    server: options.server ?? "auto",
+/* -------------------------------------------------
+   VIDFAST
+-------------------------------------------------- */
 
-    hideServer: bool(options.hideServer, true),
+function buildVidFastUrl(intent: PlaybackIntent, o: BuildEmbedOptions) {
+  const { mediaType, tmdbId } = intent;
 
-    fullscreenButton: bool(options.fullscreenButton, true),
-
+  const query = buildQuery({
+    autoplay: o.autoplay === false ? "false" : "true",
+    startAt: sanitizeStartAt(o.startAt),
+    theme: o.theme ?? DEFAULT_THEME,
+    server: o.server ?? "auto",
+    hideServer: bool(o.hideServer, true),
+    fullscreenButton: bool(o.fullscreenButton, true),
     chromecast: 0,
-
     nextButton: 0,
     autoNext: 0,
   });
 
   if (mediaType === "tv") {
     const { season, episode } = tvDefaults(intent);
-
     return `https://vidfast.pro/tv/${tmdbId}/${season}/${episode}?${query}`;
   }
 
@@ -123,63 +125,22 @@ function buildVidFastUrl(intent: PlaybackIntent, options: BuildEmbedOptions) {
 }
 
 /* -------------------------------------------------
-   VIDBINGE
--------------------------------------------------- */
-
-function buildVidBingeUrl(intent: PlaybackIntent, options: BuildEmbedOptions) {
-  const { mediaType, tmdbId } = intent;
-
-  const query = buildQuery({
-    autoplay: options.autoplay === false ? "false" : "true",
-
-    startAt: sanitizeStartAt(options.startAt),
-
-    color: options.theme ?? DEFAULT_THEME,
-
-    primaryColor: options.theme ?? DEFAULT_THEME,
-
-    secondaryColor: GOLD_ACCENT,
-
-    iconColor: WHITE,
-
-    nextButton: 0,
-    autoNext: 0,
-  });
-
-  if (mediaType === "tv") {
-    const { season, episode } = tvDefaults(intent);
-
-    return `https://www.vidbinge.to/embed/tv/${tmdbId}/${season}/${episode}?${query}`;
-  }
-
-  return `https://www.vidbinge.to/embed/movie/${tmdbId}?${query}`;
-}
-
-/* -------------------------------------------------
    SUPEREMBED
 -------------------------------------------------- */
 
-function buildSuperEmbedUrl(
-  intent: PlaybackIntent,
-  options: BuildEmbedOptions = {},
-) {
+function buildSuperEmbedUrl(intent: PlaybackIntent, o: BuildEmbedOptions = {}) {
   const { mediaType, tmdbId } = intent;
 
   const query = buildQuery({
     tmdb: 1,
-
-    autoplay: options.autoplay === false ? 0 : 1,
-
-    t: sanitizeStartAt(options.startAt),
-
-    color: options.theme ?? DEFAULT_THEME,
-
+    autoplay: o.autoplay === false ? 0 : 1,
+    t: sanitizeStartAt(o.startAt),
+    color: o.theme ?? DEFAULT_THEME,
     quality: "auto",
   });
 
   if (mediaType === "tv") {
     const { season, episode } = tvDefaults(intent);
-
     return `https://multiembed.mov/?video_id=${tmdbId}&s=${season}&e=${episode}&${query}`;
   }
 
@@ -194,17 +155,15 @@ export function buildEmbedUrl(
   intent: PlaybackIntent,
   options: BuildEmbedOptions = {},
 ): string {
-  const provider = options.provider ?? "vidfast";
+  const provider = options.provider ?? "vidlink";
 
-  switch (provider) {
-    case "vidfast":
-      return buildVidFastUrl(intent, options);
-
-    case "vidbinge":
-      return buildVidBingeUrl(intent, options);
-
-    case "superembed":
-    default:
-      return buildSuperEmbedUrl(intent, options);
+  if (provider === "vidlink") {
+    return buildVidLinkUrl(intent, options);
   }
+
+  if (provider === "vidfast") {
+    return buildVidFastUrl(intent, options);
+  }
+
+  return buildSuperEmbedUrl(intent, options);
 }
