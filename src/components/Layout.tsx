@@ -1,6 +1,6 @@
 "use client";
 
-import React, {
+import {
   type ReactNode,
   useEffect,
   useRef,
@@ -13,7 +13,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import Navbar from "./Navbar";
 
 import { useNavigation } from "@/context/NavigationContext";
-import type { Tab } from "@/context/NavigationContext";
 
 interface LayoutProps {
   children: ReactNode;
@@ -24,7 +23,7 @@ const FADE_EASE = [0.22, 1, 0.36, 1] as const;
 const LOAD_DURATION = 500;
 
 const Layout = ({ children, isModalOpen }: LayoutProps) => {
-  const { activeTab, restoreFocusForTab } = useNavigation();
+  const { activeTab } = useNavigation();
 
   const [isLoadingTab, setIsLoadingTab] = useState(false);
 
@@ -48,16 +47,6 @@ const Layout = ({ children, isModalOpen }: LayoutProps) => {
       timerRef.current = null;
     }, LOAD_DURATION);
   }, [clearLoaderTimer]);
-
-  const handleTabChange = useCallback(
-    (tab: Tab) => {
-      if (tab === activeTab) return;
-
-      restoreFocusForTab(tab);
-      startLoader();
-    },
-    [activeTab, restoreFocusForTab, startLoader],
-  );
 
   useEffect(() => {
     if (hasMountedRef.current) return;
@@ -100,11 +89,7 @@ const Layout = ({ children, isModalOpen }: LayoutProps) => {
         )}
       </AnimatePresence>
 
-      <Navbar
-        activeTab={activeTab}
-        onTabChange={handleTabChange}
-        isModalOpen={isModalOpen}
-      />
+      <Navbar />
 
       <main className="min-h-0 flex-1 overflow-y-auto md:pl-20">
         <AnimatePresence initial={false} mode="wait">
