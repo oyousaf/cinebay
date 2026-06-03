@@ -5,7 +5,7 @@ import {
   useContext,
   useState,
   useEffect,
-  ReactNode,
+  type ReactNode,
   useCallback,
 } from "react";
 import { toast } from "sonner";

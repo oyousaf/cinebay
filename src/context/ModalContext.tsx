@@ -5,7 +5,7 @@ import {
   useEffect,
   useCallback,
   useRef,
-  ReactNode,
+  type ReactNode,
 } from "react";
 import type { Movie } from "@/types/movie";
 import { useNavigation } from "@/context/NavigationContext";
