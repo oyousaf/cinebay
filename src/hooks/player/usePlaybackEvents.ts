@@ -49,31 +49,71 @@ function safeMsgData(data: unknown): Record<string, any> | null {
 function isPlayerOrigin(origin: string) {
   if (!origin) return false;
 
-  const o = origin.toLowerCase();
+  try {
+    const host = new URL(origin).hostname.toLowerCase();
 
-  return (
-    o.includes("vidlink") ||
-    o.includes("vidfast") ||
-    o.includes("multiembed") ||
-    o.includes("embed")
-  );
+    return (
+      host === "vidlink.pro" ||
+      host.endsWith(".vidlink.pro") ||
+      host === "vidfast.pro" ||
+      host.endsWith(".vidfast.pro") ||
+      host === "multiembed.mov" ||
+      host.endsWith(".multiembed.mov")
+    );
+  } catch {
+    return false;
+  }
+}
+
+function toFiniteNumber(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    const cleaned = value.trim();
+
+    if (!cleaned) return undefined;
+
+    const n = Number(cleaned);
+
+    if (Number.isFinite(n)) {
+      return n;
+    }
+  }
+
+  return undefined;
 }
 
 function extractPlayerMetrics(msg: Record<string, any>) {
   const payload = msg?.data && typeof msg.data === "object" ? msg.data : msg;
+  const playerState =
+    payload?.playerState && typeof payload.playerState === "object"
+      ? payload.playerState
+      : {};
 
   const rawCurrentTime =
     payload?.currentTime ??
     payload?.current_time ??
+    payload?.current ??
     payload?.time ??
     payload?.position ??
-    payload?.playerState?.currentTime;
+    payload?.seconds ??
+    payload?.playedSeconds ??
+    playerState?.currentTime ??
+    playerState?.current_time ??
+    playerState?.time ??
+    playerState?.position;
 
   const rawDuration =
     payload?.duration ??
     payload?.totalDuration ??
+    payload?.total_duration ??
     payload?.length ??
-    payload?.playerState?.duration;
+    payload?.total ??
+    playerState?.duration ??
+    playerState?.totalDuration ??
+    playerState?.length;
 
   const rawEvent =
     msg?.event ??
@@ -81,12 +121,12 @@ function extractPlayerMetrics(msg: Record<string, any>) {
     payload?.event ??
     payload?.type ??
     payload?.name ??
+    payload?.action ??
     "";
 
   return {
-    currentTime:
-      typeof rawCurrentTime === "number" ? rawCurrentTime : undefined,
-    duration: typeof rawDuration === "number" ? rawDuration : undefined,
+    currentTime: toFiniteNumber(rawCurrentTime),
+    duration: toFiniteNumber(rawDuration),
     eventType: String(rawEvent).toLowerCase().trim(),
   };
 }
@@ -163,8 +203,6 @@ export function usePlaybackEvents({
     return undefined;
   }, [runtimeSeconds]);
 
-  /* ---------------- STORAGE ---------------- */
-
   const persistOverlayState = useCallback(() => {
     try {
       sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ t: Date.now() }));
@@ -210,8 +248,6 @@ export function usePlaybackEvents({
     persistOverlayState();
     setShowNextOverlay(true);
   }, [getEffectiveDuration, persistOverlayState]);
-
-  /* ---------------- MESSAGE HANDLER ---------------- */
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
@@ -290,8 +326,6 @@ export function usePlaybackEvents({
     return () => window.removeEventListener("message", handleMessage);
   }, [markPlaybackStarted, maybeShowOverlay]);
 
-  /* ---------------- PROVIDER POLL ---------------- */
-
   useEffect(() => {
     const interval = window.setInterval(() => {
       try {
@@ -303,13 +337,14 @@ export function usePlaybackEvents({
 
         target.postMessage({ type: "getTime" }, "*");
         target.postMessage({ type: "getDuration" }, "*");
+
+        target.postMessage("getTime", "*");
+        target.postMessage("getDuration", "*");
       } catch {}
     }, POLL_INTERVAL_MS);
 
     return () => clearInterval(interval);
   }, [iframeRef]);
-
-  /* ---------------- OVERLAY TICK ---------------- */
 
   useEffect(() => {
     const interval = window.setInterval(() => {
@@ -318,8 +353,6 @@ export function usePlaybackEvents({
 
     return () => clearInterval(interval);
   }, [maybeShowOverlay]);
-
-  /* ---------------- RESET ---------------- */
 
   const resetPlaybackEvents = useCallback(() => {
     const now = Date.now();
