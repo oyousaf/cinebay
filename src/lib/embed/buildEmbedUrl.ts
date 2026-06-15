@@ -30,8 +30,8 @@ export interface BuildEmbedOptions {
 -------------------------------------------------- */
 
 export const PROVIDER_ORDER: ProviderType[] = [
-  "vidlink",
   "vidfast",
+  "vidlink",
   "superembed",
 ];
 
